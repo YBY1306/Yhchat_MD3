@@ -35,3 +35,4 @@
 # 特别感谢
 ### [yhchatAPI](https://github.com/yh-Tpdev/yhchatAPI)
 
+- 这个app经历Cursor Kiro Windsurf CodeFlicker VSCode里面的Copilot Antigravity AndroidStudio里面的Gemini 等AI IDE之手

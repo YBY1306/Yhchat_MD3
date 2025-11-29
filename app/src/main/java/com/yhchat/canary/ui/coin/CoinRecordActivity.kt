@@ -8,6 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -50,21 +53,22 @@ class CoinRecordActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CoinRecordScreen(
     onBackClick: () -> Unit,
     viewModel: CoinRecordViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
     }
     
-    LaunchedEffect(selectedTabIndex) {
-        when (selectedTabIndex) {
+    LaunchedEffect(pagerState.currentPage) {
+        when (pagerState.currentPage) {
             0 -> viewModel.loadCoinIncreaseDecreaseRecord()
             1 -> viewModel.loadPostRewardRecord()
             2 -> viewModel.loadCommentRewardRecord()
@@ -100,70 +104,88 @@ fun CoinRecordScreen(
         ) {
             // Tab导航栏
             TabRow(
-                selectedTabIndex = selectedTabIndex,
+                selectedTabIndex = pagerState.currentPage,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 },
+                    selected = pagerState.currentPage == 0,
+                    onClick = { 
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(0)
+                        }
+                    },
                     text = { Text("金币增减") }
                 )
                 Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 },
+                    selected = pagerState.currentPage == 1,
+                    onClick = { 
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(1)
+                        }
+                    },
                     text = { Text("文章打赏") }
                 )
                 Tab(
-                    selected = selectedTabIndex == 2,
-                    onClick = { selectedTabIndex = 2 },
+                    selected = pagerState.currentPage == 2,
+                    onClick = { 
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(2)
+                        }
+                    },
                     text = { Text("评论打赏") }
                 )
             }
             
             // 内容区域
-            when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                
-                uiState.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+            // 内容区域
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when {
+                    uiState.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = uiState.error ?: "加载失败",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            TextButton(
-                                onClick = {
-                                    when (selectedTabIndex) {
-                                        0 -> viewModel.loadCoinIncreaseDecreaseRecord()
-                                        1 -> viewModel.loadPostRewardRecord()
-                                        2 -> viewModel.loadCommentRewardRecord()
-                                    }
-                                }
+                            CircularProgressIndicator()
+                        }
+                    }
+                    
+                    uiState.error != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("重试")
+                                Text(
+                                    text = uiState.error ?: "加载失败",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                TextButton(
+                                    onClick = {
+                                        when (page) {
+                                            0 -> viewModel.loadCoinIncreaseDecreaseRecord()
+                                            1 -> viewModel.loadPostRewardRecord()
+                                            2 -> viewModel.loadCommentRewardRecord()
+                                        }
+                                    }
+                                ) {
+                                    Text("重试")
+                                }
                             }
                         }
                     }
-                }
-                
-                else -> {
-                    when (selectedTabIndex) {
-                        0 -> CoinIncreaseDecreaseList(uiState.coinRecords)
-                        1 -> PostRewardList(uiState.postRewards)
-                        2 -> CommentRewardList(uiState.commentRewards)
+                    
+                    else -> {
+                        when (page) {
+                            0 -> CoinIncreaseDecreaseList(uiState.coinRecords)
+                            1 -> PostRewardList(uiState.postRewards)
+                            2 -> CommentRewardList(uiState.commentRewards)
+                        }
                     }
                 }
             }

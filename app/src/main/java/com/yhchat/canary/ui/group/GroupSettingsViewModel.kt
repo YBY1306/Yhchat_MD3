@@ -283,4 +283,32 @@ class GroupSettingsViewModel @Inject constructor(
             )
         }
     }
+    
+    /**
+     * 获取当前用户ID
+     */
+    fun getCurrentUserId(): String {
+        return tokenRepository.getUserIdSync() ?: ""
+    }
+    
+    /**
+     * 修改群口令
+     */
+    fun editGroupKeyword(groupId: String, keyword: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            groupRepository.editGroupKeyword(groupId, keyword).fold(
+                onSuccess = {
+                    Log.d(tag, "✅ 群口令修改成功")
+                    onResult(true)
+                },
+                onFailure = { error ->
+                    Log.e(tag, "❌ 群口令修改失败", error)
+                    _uiState.value = _uiState.value.copy(
+                        saveError = error.message ?: "修改群口令失败"
+                    )
+                    onResult(false)
+                }
+            )
+        }
+    }
 }

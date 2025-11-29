@@ -48,7 +48,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class AppInfoActivity : BaseActivity() {
     
     companion object {
-        const val APP_VERSION = "Canary 20.1 Preview"
+        const val APP_VERSION = "Canary 20.2"
         const val APP_NAME = "Yhchat Canary"
 
         const val DEVELOPER_NAME_1 = "Kauid323"
@@ -56,7 +56,7 @@ class AppInfoActivity : BaseActivity() {
         const val DEVELOPER_URL_1 = "https://github.com/Kauid323/"
         const val DEVELOPER_URL_2 = "yunhu://chat-add?id=8516939&type=user"
         const val GITHUB_REPO_URL = "https://github.com/Kauid323/Yhchat_md3"
-        const val DEFAULT_VERSION_TAG = "v0.0.20-pre"
+        const val DEFAULT_VERSION_TAG = "v0.0.20-2-pre"
         const val IS_LATEST_BUILD_PREVIEW = true
 
         fun start(context: Context) {
@@ -263,7 +263,7 @@ private fun AppInfoScreen(
                 title = "许可证",
                 content = {
                     Text(
-                        text = "AGPL Licence",
+                        text = "AGPL v3",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

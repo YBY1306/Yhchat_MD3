@@ -110,7 +110,16 @@ object RepositoryFactory {
      * 获取用户仓库实例
      */
     fun getUserRepository(context: Context): UserRepository {
-        return UserRepository(apiService, null)
+        return UserRepository(apiService, getTokenRepository(context))
+    }
+    
+    /**
+     * 获取群组仓库实例
+     */
+    fun getGroupRepository(context: Context): GroupRepository {
+        val repository = GroupRepository(apiService)
+        repository.setTokenRepository(getTokenRepository(context))
+        return repository
     }
     
     /**
@@ -220,26 +229,10 @@ object RepositoryFactory {
             tokenRepository = getTokenRepository(context)
         )
     }
-    
-    /**
-     * 获取群组仓库实例
-     */
-    fun getGroupRepository(context: Context): GroupRepository {
-        val groupRepository = GroupRepository(apiService)
-        groupRepository.setTokenRepository(getTokenRepository(context))
-        return groupRepository
-    }
-    
     /**
      * 获取更新仓库实例
      */
     fun getUpdateRepository(context: Context): com.yhchat.canary.data.repository.UpdateRepository {
         return com.yhchat.canary.data.repository.UpdateRepository(context)
     }
-    
-
-    
-    /**
-     * 获取ApiService实例
-     */
 }

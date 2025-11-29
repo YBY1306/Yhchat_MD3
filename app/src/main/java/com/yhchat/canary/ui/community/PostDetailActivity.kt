@@ -31,6 +31,8 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -131,7 +133,8 @@ class PostDetailActivity : BaseActivity() {
                 val viewModel: PostDetailViewModel = viewModel {
                     PostDetailViewModel(
                         communityRepository = RepositoryFactory.getCommunityRepository(this@PostDetailActivity),
-                        tokenRepository = RepositoryFactory.getTokenRepository(this@PostDetailActivity)
+                        tokenRepository = RepositoryFactory.getTokenRepository(this@PostDetailActivity),
+                        userRepository = RepositoryFactory.getUserRepository(this@PostDetailActivity)
                     )
                 }
                 
@@ -1033,6 +1036,12 @@ fun PostDetailScreen(
     var currentToken by remember { mutableStateOf("") }
     var isTokenLoaded by remember { mutableStateOf(false) }
     
+    // 上下文菜单状态
+    var showContextMenu by remember { mutableStateOf(false) }
+    // 删除确认对话框状态
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
     // 加载数据
     LaunchedEffect(postId) {
         if (postId > 0) {
@@ -1056,14 +1065,11 @@ fun PostDetailScreen(
         }
     }
     
-    Surface(
+    
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // 顶部应用栏
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
             TopAppBar(
                 title = {
                     Text(
@@ -1083,6 +1089,15 @@ fun PostDetailScreen(
                     }
                 },
                 actions = {
+                    // 仅当是作者或管理员时显示编辑按钮
+                    if (postDetailState.post != null && (postDetailState.post?.senderId == postDetailState.currentUserId || postDetailState.isAdmin == 1)) {
+                        IconButton(onClick = { showContextMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "管理文章"
+                            )
+                        }
+                    }
                     IconButton(onClick = { showShareDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Share,
@@ -1091,6 +1106,13 @@ fun PostDetailScreen(
                     }
                 }
             )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             
             // 错误提示
             postDetailState.error?.let { error ->
@@ -1287,6 +1309,58 @@ fun PostDetailScreen(
                 ShareDialog(
                     postId = postId,
                     onDismiss = { showShareDialog = false }
+                )
+            }
+            
+            // 上下文菜单
+            if (showContextMenu) {
+                PostContextMenu(
+                    onDismiss = { showContextMenu = false },
+                    onEdit = {
+                        showContextMenu = false
+                        // 跳转到编辑文章Activity
+                        postDetailState.post?.let { post ->
+                            val intent = Intent(context, EditPostActivity::class.java).apply {
+                                putExtra("post_id", post.id)
+                                putExtra("token", if (isTokenLoaded) currentToken else "")
+                                putExtra("original_title", post.title)
+                                putExtra("original_content", post.content)
+                                putExtra("content_type", post.contentType)
+                            }
+                            context.startActivity(intent)
+                        }
+                    },
+                    onDelete = {
+                        showContextMenu = false
+                        showDeleteDialog = true
+                    }
+                )
+            }
+            
+            // 删除确认对话框
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("删除文章") },
+                    text = { Text("确定要删除这篇文章吗？删除后无法恢复。") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                viewModel.deletePost(if (isTokenLoaded) currentToken else "", postId) {
+                                    // 删除成功，关闭页面
+                                    (context as? android.app.Activity)?.finish()
+                                }
+                            }
+                        ) {
+                            Text("删除", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("取消")
+                        }
+                    }
                 )
             }
         }

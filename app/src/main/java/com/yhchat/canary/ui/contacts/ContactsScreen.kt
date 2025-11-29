@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -32,7 +35,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 /**
  * 通讯录界面
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ContactsScreen(
     modifier: Modifier = Modifier,
@@ -102,17 +105,21 @@ fun ContactsScreen(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         // 好友分组
-                        item {
+                        item(key = "header_friends") {
                             ContactGroupHeader(
                                 title = "好友",
                                 count = uiState.friends.size,
                                 isExpanded = uiState.friendsExpanded,
-                                onToggle = { viewModel.toggleFriendsExpanded() }
+                                onToggle = { viewModel.toggleFriendsExpanded() },
+                                modifier = Modifier.animateItemPlacement()
                             )
                         }
                         
                         if (uiState.friendsExpanded) {
-                            items(uiState.friends) { contact ->
+                            items(
+                                items = uiState.friends,
+                                key = { "friend_${it.chatId}" }
+                            ) { contact ->
                                 ContactItem(
                                     contact = contact,
                                     onClick = {
@@ -123,23 +130,28 @@ fun ContactsScreen(
                                             putExtra("chatName", contact.name)
                                         }
                                         context.startActivity(intent)
-                                    }
+                                    },
+                                    modifier = Modifier.animateItemPlacement()
                                 )
                             }
                         }
                         
                         // 群聊分组
-                        item {
+                        item(key = "header_groups") {
                             ContactGroupHeader(
                                 title = "我加入的群聊",
                                 count = uiState.groups.size,
                                 isExpanded = uiState.groupsExpanded,
-                                onToggle = { viewModel.toggleGroupsExpanded() }
+                                onToggle = { viewModel.toggleGroupsExpanded() },
+                                modifier = Modifier.animateItemPlacement()
                             )
                         }
                         
                         if (uiState.groupsExpanded) {
-                            items(uiState.groups) { contact ->
+                            items(
+                                items = uiState.groups,
+                                key = { "group_${it.chatId}" }
+                            ) { contact ->
                                 ContactItem(
                                     contact = contact,
                                     onClick = {
@@ -150,23 +162,28 @@ fun ContactsScreen(
                                             putExtra("chatName", contact.name)
                                         }
                                         context.startActivity(intent)
-                                    }
+                                    },
+                                    modifier = Modifier.animateItemPlacement()
                                 )
                             }
                         }
                         
                         // 机器人分组
-                        item {
+                        item(key = "header_bots") {
                             ContactGroupHeader(
                                 title = "机器人",
                                 count = uiState.bots.size,
                                 isExpanded = uiState.botsExpanded,
-                                onToggle = { viewModel.toggleBotsExpanded() }
+                                onToggle = { viewModel.toggleBotsExpanded() },
+                                modifier = Modifier.animateItemPlacement()
                             )
                         }
                         
                         if (uiState.botsExpanded) {
-                            items(uiState.bots) { contact ->
+                            items(
+                                items = uiState.bots,
+                                key = { "bot_${it.chatId}" }
+                            ) { contact ->
                                 ContactItem(
                                     contact = contact,
                                     onClick = {
@@ -177,23 +194,28 @@ fun ContactsScreen(
                                             putExtra("chatName", contact.name)
                                         }
                                         context.startActivity(intent)
-                                    }
+                                    },
+                                    modifier = Modifier.animateItemPlacement()
                                 )
                             }
                         }
                         
                         // 我创建的机器人分组
-                        item {
+                        item(key = "header_my_bots") {
                             ContactGroupHeader(
                                 title = "我创建的机器人",
                                 count = uiState.myBots.size,
                                 isExpanded = uiState.myBotsExpanded,
-                                onToggle = { viewModel.toggleMyBotsExpanded() }
+                                onToggle = { viewModel.toggleMyBotsExpanded() },
+                                modifier = Modifier.animateItemPlacement()
                             )
                         }
                         
                         if (uiState.myBotsExpanded) {
-                            items(uiState.myBots) { contact ->
+                            items(
+                                items = uiState.myBots,
+                                key = { "my_bot_${it.chatId}" }
+                            ) { contact ->
                                 ContactItem(
                                     contact = contact,
                                     onClick = {
@@ -203,7 +225,8 @@ fun ContactsScreen(
                                             putExtra("botName", contact.name)
                                         }
                                         context.startActivity(intent)
-                                    }
+                                    },
+                                    modifier = Modifier.animateItemPlacement()
                                 )
                             }
                         }
@@ -225,6 +248,11 @@ private fun ContactGroupHeader(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        label = "rotation"
+    )
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -238,9 +266,10 @@ private fun ContactGroupHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                imageVector = Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "收起" else "展开",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(rotation)
             )
             
             Spacer(modifier = Modifier.width(8.dp))

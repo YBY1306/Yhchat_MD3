@@ -136,7 +136,9 @@ class GroupRepository @Inject constructor(
                 ownerId = data.owner,
                 limitedMsgType = data.limitedMsgType,
                 avatarId = data.avatarId,
-                recommendation = data.recommandation
+                recommendation = data.recommandation,
+                myGroupNickname = data.myGroupNickname.takeIf { it.isNotEmpty() },
+                groupCode = data.groupCode.takeIf { it.isNotEmpty() }
             )
 
             Log.d(
@@ -787,6 +789,66 @@ class GroupRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "邀请失败", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * 设置我的群昵称
+     */
+    suspend fun editMyGroupNickname(groupId: String, nickname: String): Result<Boolean> {
+        return try {
+            val token = tokenRepository?.getTokenSync()
+            if (token == null) {
+                return Result.failure(Exception("未登录"))
+            }
+            
+            val response = apiService.editMyGroupNickname(
+                token = token,
+                request = mapOf(
+                    "groupId" to groupId,
+                    "nickname" to nickname
+                )
+            )
+            
+            if (response.isSuccessful) {
+                Log.d(tag, "✅ 群昵称修改成功")
+                Result.success(true)
+            } else {
+                Result.failure(Exception("修改群昵称失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "修改群昵称失败", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * 设置群口令（仅群主）
+     */
+    suspend fun editGroupKeyword(groupId: String, keyword: String): Result<Boolean> {
+        return try {
+            val token = tokenRepository?.getTokenSync()
+            if (token == null) {
+                return Result.failure(Exception("未登录"))
+            }
+            
+            val response = apiService.editGroupKeyword(
+                token = token,
+                request = mapOf(
+                    "groupId" to groupId,
+                    "keyword" to keyword
+                )
+            )
+            
+            if (response.isSuccessful && response.body()?.code == 1) {
+                Log.d(tag, "✅ 群口令修改成功")
+                Result.success(true)
+            } else {
+                Result.failure(Exception("修改群口令失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "修改群口令失败", e)
             Result.failure(e)
         }
     }

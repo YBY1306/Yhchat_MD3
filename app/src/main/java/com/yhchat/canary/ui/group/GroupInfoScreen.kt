@@ -223,16 +223,23 @@ fun GroupInfoScreenRoot(
             onConfirm = {
                 // 实现退出群聊逻辑
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    val userRepository = com.yhchat.canary.data.di.RepositoryFactory.getUserRepository(context)
-                    userRepository.deleteFriend(groupId, 2).fold(
-                        onSuccess = { _: Boolean ->
-                            android.widget.Toast.makeText(context, "已退出群聊", android.widget.Toast.LENGTH_SHORT).show()
-                            onBackClick()
-                        },
-                        onFailure = { error: Throwable ->
-                            android.widget.Toast.makeText(context, "退出失败：${error.message}", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                    try {
+                        // 获取UserRepository（它内部会自动获取token）
+                        val userRepository = com.yhchat.canary.data.di.RepositoryFactory.getUserRepository(context)
+                        
+                        // 调用退出群聊API（chatType=2表示群聊）
+                        userRepository.deleteFriend(groupId, 2).fold(
+                            onSuccess = { _: Boolean ->
+                                android.widget.Toast.makeText(context, "已退出群聊", android.widget.Toast.LENGTH_SHORT).show()
+                                onBackClick()
+                            },
+                            onFailure = { error: Throwable ->
+                                android.widget.Toast.makeText(context, "退出失败：${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "退出失败：${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
                 showExitGroupDialog = false
             },
@@ -442,12 +449,101 @@ private fun GroupInfoContent(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    // 搜索聊天记录
                     FunctionMenuItem(
                         icon = Icons.Default.Search,
                         text = "搜索聊天记录",
                         onClick = onSearchChatClick
                     )
+                    
+                    // 我的群昵称
+                    var showNicknameDialog by remember { mutableStateOf(false) }
+                    FunctionMenuItem(
+                        icon = Icons.Default.Person,
+                        text = "我的群昵称",
+                        onClick = { showNicknameDialog = true }
+                    )
+                    
+                    if (showNicknameDialog) {
+                        var nicknameInput by remember { mutableStateOf(groupInfo.myGroupNickname ?: "") }
+                        var isLoading by remember { mutableStateOf(false) }
+                        
+                        AlertDialog(
+                            onDismissRequest = { if (!isLoading) showNicknameDialog = false },
+                            title = { Text("设置我的群昵称") },
+                            text = {
+                                Column {
+                                    Text(
+                                        text = "当前昵称: ${groupInfo.myGroupNickname?.takeIf { it.isNotEmpty() } ?: "未设置"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
+                                    OutlinedTextField(
+                                        value = nicknameInput,
+                                        onValueChange = { nicknameInput = it },
+                                        label = { Text("群昵称") },
+                                        enabled = !isLoading,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        isLoading = true
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            try {
+                                                val groupRepository = com.yhchat.canary.data.di.RepositoryFactory.getGroupRepository(currentContext)
+                                                val result = groupRepository.editMyGroupNickname(currentGroupId, nicknameInput)
+                                                
+                                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                    result.fold(
+                                                        onSuccess = {
+                                                            android.widget.Toast.makeText(currentContext, "群昵称修改成功", android.widget.Toast.LENGTH_SHORT).show()
+                                                            isLoading = false
+                                                            showNicknameDialog = false
+                                                            // 刷新群信息
+                                                            val intent = (currentContext as? android.app.Activity)?.intent
+                                                            currentContext.startActivity(intent)
+                                                            (currentContext as? android.app.Activity)?.finish()
+                                                        },
+                                                        onFailure = { error ->
+                                                            android.widget.Toast.makeText(currentContext, "修改失败: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                                            isLoading = false
+                                                        }
+                                                    )
+                                                }
+                                            } catch (e: Exception) {
+                                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                    android.widget.Toast.makeText(currentContext, "修改失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                                    isLoading = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !isLoading
+                                ) {
+                                    if (isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    } else {
+                                        Text("确定")
+                                    }
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showNicknameDialog = false },
+                                    enabled = !isLoading
+                                ) {
+                                    Text("取消")
+                                }
+                            }
+                        )
+                    }
                     
                     // 举报群聊
                     FunctionMenuItem(

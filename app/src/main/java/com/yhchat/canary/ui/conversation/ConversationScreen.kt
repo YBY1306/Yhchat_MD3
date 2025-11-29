@@ -237,19 +237,12 @@ fun ConversationScreen(
                             Column(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                // 置顶会话标题
-                                Text(
-                                    text = "置顶会话",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                // 置顶会话标题已移除
                                 
                                 // 置顶会话横向列表
                                 androidx.compose.foundation.lazy.LazyRow(
                                     contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     items(
@@ -732,13 +725,13 @@ fun StickyConversationCard(
 ) {
     Column(
         modifier = modifier
-            .width(72.dp)
+            .width(56.dp)
             .clickable { onClick() }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(8.dp),
+            .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 头像 - 优化GIF性能
@@ -746,24 +739,11 @@ fun StickyConversationCard(
             model = stickyItem.avatarUrl,
             contentDescription = stickyItem.chatName,
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop,
             placeholder = painterResource(R.drawable.ic_person),
             error = painterResource(R.drawable.ic_person)
-        )
-        
-        Spacer(modifier = Modifier.height(2.dp))
-        
-        // 会话名称
-        Text(
-            text = stickyItem.chatName,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
         )
     }
 }

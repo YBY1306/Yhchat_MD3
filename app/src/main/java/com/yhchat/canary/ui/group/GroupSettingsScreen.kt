@@ -265,6 +265,89 @@ private fun GroupSettingsContent(
                             value = groupInfo.categoryName
                         )
                     }
+                    
+                    // 群口令（所有成员可见和编辑）
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    var showKeywordDialog by remember { mutableStateOf(false) }
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showKeywordDialog = true },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "群口令",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = groupInfo.groupCode?.takeIf { it.isNotEmpty() } ?: "未设置",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "编辑",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    if (showKeywordDialog) {
+                        var keywordInput by remember { mutableStateOf(groupInfo.groupCode ?: "") }
+                        var isLoading by remember { mutableStateOf(false) }
+                        
+                        AlertDialog(
+                            onDismissRequest = { if (!isLoading) showKeywordDialog = false },
+                            title = { Text("设置群口令") },
+                            text = {
+                                OutlinedTextField(
+                                    value = keywordInput,
+                                    onValueChange = { keywordInput = it },
+                                    label = { Text("群口令") },
+                                    enabled = !isLoading,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        isLoading = true
+                                        viewModel.editGroupKeyword(groupInfo.groupId, keywordInput) { success ->
+                                            isLoading = false
+                                            if (success) {
+                                                showKeywordDialog = false
+                                                viewModel.loadGroupInfo(groupInfo.groupId)
+                                            }
+                                        }
+                                    },
+                                    enabled = !isLoading
+                                ) {
+                                    if (isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    } else {
+                                        Text("确定")
+                                    }
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showKeywordDialog = false },
+                                    enabled = !isLoading
+                                ) {
+                                    Text("取消")
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -1365,7 +1365,9 @@ data class GroupDetail(
     val ownerId: String,
     val limitedMsgType: String,
     val avatarId: Long? = null,
-    val recommendation: Int? = null
+    val recommendation: Int? = null,
+    val myGroupNickname: String? = null,
+    val groupCode: String? = null
 )
 
 /**

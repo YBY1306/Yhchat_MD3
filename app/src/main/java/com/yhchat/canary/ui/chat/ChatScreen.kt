@@ -219,10 +219,24 @@ fun ChatScreen(
         }
     }
     
-    // 退出时保存读取位置
+    // 退出时保存读取位置和草稿
     DisposableEffect(Unit) {
         onDispose {
             viewModel.saveCurrentReadPosition()
+            // 保存草稿
+            if (inputText.isNotEmpty()) {
+                viewModel.saveDraft(inputText)
+            } else {
+                viewModel.clearDraft()
+            }
+        }
+    }
+    
+    // 进入时恢复草稿
+    LaunchedEffect(chatId, chatType) {
+        val draft = viewModel.getDraft(chatId, chatType)
+        if (!draft.isNullOrEmpty()) {
+            inputText = draft
         }
     }
     
@@ -561,22 +575,22 @@ fun ChatScreen(
                                 .fillMaxWidth()
                                 .animateItem(
                                     fadeInSpec = tween(
-                                        durationMillis = 300,
+                                        durationMillis = 150,
                                         easing = FastOutSlowInEasing
                                     ),
                                     fadeOutSpec = tween(
-                                        durationMillis = 200,
+                                        durationMillis = 150,
                                         easing = FastOutSlowInEasing
                                     ),
-                                    placementSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
+                                    placementSpec = tween(
+                                        durationMillis = 200,
+                                        easing = FastOutSlowInEasing
                                     )
                                 )
                                 .animateContentSize(
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        easing = FastOutSlowInEasing
                                     )
                                 ),
                             onImageClick = { imageUrl ->
@@ -760,20 +774,30 @@ fun ChatScreen(
                             contentType = selectedMessageType,
                             quoteMsgId = quotedMessageId,
                             quoteMsgText = quotedMessageText,
-                            commandId = selectedInstruction?.id  // 传递指令ID
+                            commandId = selectedInstruction?.id,  // 传递指令ID
+                            onSuccess = {
+                                inputText = ""
+                                // 发送后重置为文本类型
+                                selectedMessageType = 1
+                                // 清除引用状态
+                                quotedMessageId = null
+                                quotedMessageText = null
+                                // 清除选中的指令
+                                selectedInstruction = null
+                                // 发送消息后自动滚动到最新消息
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
+                                // 发送成功后清除草稿
+                                viewModel.clearDraft()
+                            },
+                            onError = { error ->
+                                // 发送失败，保留输入框内容
+                                android.util.Log.e("ChatScreen", "发送消息失败: $error")
+                                // 可以选择显示Toast提示
+                                // android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         )
-                        inputText = ""
-                        // 发送后重置为文本类型
-                        selectedMessageType = 1
-                        // 清除引用状态
-                        quotedMessageId = null
-                        quotedMessageText = null
-                        // 清除选中的指令
-                        selectedInstruction = null
-                        // 发送消息后自动滚动到最新消息
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(0)
-                        }
                     }
                 },
                 onImageClick = {

@@ -48,7 +48,8 @@ class ChatViewModel @Inject constructor(
     private val groupRepository: GroupRepository,
     private val readPositionStore: ReadPositionStore,
     private val apiService: com.yhchat.canary.data.api.ApiService,
-    private val botRepository: com.yhchat.canary.data.repository.BotRepository
+    private val botRepository: com.yhchat.canary.data.repository.BotRepository,
+    private val draftStore: com.yhchat.canary.data.local.DraftStore
 ) : ViewModel() {
 
     private var currentChatId: String = ""
@@ -795,7 +796,6 @@ class ChatViewModel @Inject constructor(
                     messageRepository.getMessages(
                         chatId = currentChatId,
                         chatType = currentChatType,
-                        msgCount = 20
                     )
                 }
 
@@ -854,6 +854,31 @@ class ChatViewModel @Inject constructor(
     }
     
     /**
+     * 保存草稿
+     */
+    fun saveDraft(content: String) {
+        if (currentChatId.isNotEmpty()) {
+            draftStore.saveDraft(currentChatId, currentChatType, content)
+        }
+    }
+
+    /**
+     * 获取草稿
+     */
+    fun getDraft(chatId: String, chatType: Int): String? {
+        return draftStore.getDraft(chatId, chatType)
+    }
+
+    /**
+     * 清除草稿
+     */
+    fun clearDraft() {
+        if (currentChatId.isNotEmpty()) {
+            draftStore.clearDraft(currentChatId, currentChatType)
+        }
+    }
+
+    /**
      * 加载更多历史消息
      */
     fun loadMoreMessages() {
@@ -886,15 +911,19 @@ class ChatViewModel @Inject constructor(
         contentType: Int = 1, 
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
-        commandId: Long? = null
+        commandId: Long? = null,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
     ) {
         // 如果是指令消息，允许空文本；否则检查文本是否为空
         if (currentChatId.isEmpty()) {
             Log.w(tag, "Chat not initialized")
+            onError("Chat not initialized")
             return
         }
         if (text.isBlank() && commandId == null) {
             Log.w(tag, "Cannot send empty message without command")
+            onError("Cannot send empty message")
             return
         }
         
@@ -923,15 +952,20 @@ class ChatViewModel @Inject constructor(
                             Log.d(tag, "$typeText message sent successfully")
                             // 发送成功后刷新消息列表以获取最新消息
                             loadMessages(refresh = true)
+                            onSuccess()
+                        } else {
+                            Log.e(tag, "Failed to send $typeText message")
+                            _uiState.value = _uiState.value.copy(error = "发送失败")
+                            onError("发送失败")
                         }
                     },
-                    onFailure = { exception ->
-                        Log.e(tag, "Failed to send $typeText message", exception)
-                        _uiState.value = _uiState.value.copy(
-                            error = exception.message ?: "发送消息失败"
-                        )
+                    onFailure = { error ->
+                        Log.e(tag, "Error sending $typeText message", error)
+                        _uiState.value = _uiState.value.copy(error = "发送失败: ${error.message}")
+                        onError(error.message ?: "发送失败")
                     }
                 )
+
             } catch (e: Exception) {
                 Log.e(tag, "Error sending message", e)
                 _uiState.value = _uiState.value.copy(

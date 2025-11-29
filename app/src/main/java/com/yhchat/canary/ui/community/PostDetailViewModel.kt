@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.data.repository.CommunityRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PostDetailViewModel @Inject constructor(
     private val communityRepository: CommunityRepository,
-    private val tokenRepository: TokenRepository
+    private val tokenRepository: TokenRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
     
     private val _postDetailState = MutableStateFlow(PostDetailState())
@@ -66,13 +68,31 @@ class PostDetailViewModel @Inject constructor(
             
             communityRepository.getPostDetail(token, postId)
                 .onSuccess { response ->
-                    _postDetailState.value = PostDetailState(
-                        post = response.data.post,
-                        board = response.data.board,
-                        isAdmin = response.data.isAdmin,
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = null
+                    // 获取用户信息以确认当前用户ID
+                    userRepository.getUserProfile().fold(
+                        onSuccess = { userProfile ->
+                            _postDetailState.value = PostDetailState(
+                                post = response.data.post,
+                                board = response.data.board,
+                                isAdmin = response.data.isAdmin,
+                                currentUserId = userProfile.userId,
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = null
+                            )
+                        },
+                        onFailure = {
+                            // 如果获取用户信息失败，回退到本地存储的ID
+                            _postDetailState.value = PostDetailState(
+                                post = response.data.post,
+                                board = response.data.board,
+                                isAdmin = response.data.isAdmin,
+                                currentUserId = tokenRepository.getUserIdSync(),
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = null
+                            )
+                        }
                     )
                     
                     // 同时加载评论列表(仅在初次加载或非刷新时)
@@ -342,6 +362,24 @@ class PostDetailViewModel @Inject constructor(
     }
 
     /**
+     * 删除文章
+     */
+    fun deletePost(token: String, postId: Int, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            communityRepository.deletePost(token, postId).fold(
+                onSuccess = {
+                    onSuccess()
+                },
+                onFailure = { error ->
+                    _postDetailState.value = _postDetailState.value.copy(
+                        error = error.message ?: "删除文章失败"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
      * 刷新文章详情
      */
     fun refreshPostDetail(token: String, postId: Int) {
@@ -371,6 +409,7 @@ data class PostDetailState(
     val post: CommunityPost? = null,
     val board: CommunityBoard? = null,
     val isAdmin: Int = 0,
+    val currentUserId: String? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null

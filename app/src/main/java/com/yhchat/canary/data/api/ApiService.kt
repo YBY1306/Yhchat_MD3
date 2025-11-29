@@ -944,6 +944,24 @@ interface ApiService {
     ): Response<ApiStatus>
     
     /**
+     * 设置我的群昵称
+     */
+    @POST("v1/group/edit-my-group-nickname")
+    suspend fun editMyGroupNickname(
+        @Header("token") token: String,
+        @Body request: Map<String, String>
+    ): Response<Map<String, Any>>
+    
+    /**
+     * 设置群口令（仅群主）
+     */
+    @POST("v1/group/edit-group-keyword")
+    suspend fun editGroupKeyword(
+        @Header("token") token: String,
+        @Body request: Map<String, String>
+    ): Response<ApiStatus>
+    
+    /**
      * 获取标签绑定的用户列表（ProtoBuf）
      */
     @POST("v1/group-tag/members")

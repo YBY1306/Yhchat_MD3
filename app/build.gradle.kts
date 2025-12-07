@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    id("com.google.protobuf") version "0.9.1"
+    id("com.google.protobuf") version "0.9.5"
 }
 
 android {
@@ -16,7 +16,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "20.2"
+        versionName = "20.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

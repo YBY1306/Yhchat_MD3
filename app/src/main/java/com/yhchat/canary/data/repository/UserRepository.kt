@@ -845,14 +845,64 @@ class UserRepository @Inject constructor(
     /**
      * 获取用户详细信息
      */
-    suspend fun getUserDetail(token: String, requestBody: RequestBody): Result<ByteArray> {
+    /**
+     * 获取用户详细信息
+     */
+    suspend fun getUserDetail(token: String, requestBody: RequestBody): Result<UserDetail> {
         return try {
             val response = apiService.getUserDetail(token, requestBody)
             
             if (response.isSuccessful) {
-                response.body()?.bytes()?.let { bytes ->
-                    Result.success(bytes)
-                } ?: Result.failure(Exception("响应为空"))
+                val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
+                val getUserResponse = yh_user.User.get_user.parseFrom(responseBytes)
+                
+                if (getUserResponse.status.code == 1) {
+                    val data = getUserResponse.data
+                    
+                    // 解析备注信息
+                    val remarkInfo = if (data.hasRemarkInfo()) {
+                        RemarkInfo(
+                            remarkName = data.remarkInfo.remarkName,
+                            phoneNumber = data.remarkInfo.phoneNumber,
+                            extraRemark = data.remarkInfo.extraRemark
+                        )
+                    } else null
+                    
+                    // 解析个人资料信息
+                    val profileInfo = if (data.hasProfileInfo()) {
+                        ProfileInfo(
+                            lastActiveTime = data.profileInfo.lastActiveTime,
+                            introduction = data.profileInfo.introduction,
+                            gender = data.profileInfo.gender,
+                            birthday = data.profileInfo.birthday,
+                            city = data.profileInfo.city,
+                            district = data.profileInfo.district,
+                            address = data.profileInfo.address
+                        )
+                    } else null
+                    
+                    val userDetail = UserDetail(
+                        id = data.id,
+                        name = data.name,
+                        nameId = data.nameId,
+                        avatarUrl = data.avatarUrl,
+                        avatarId = data.avatarId,
+                        medalList = data.medalList.map { 
+                            MedalInfo(it.id, it.name, it.sort)
+                        },
+                        registerTime = data.registerTime,
+                        banTime = data.banTime,
+                        onlineDay = data.onlineDay,
+                        continuousOnlineDay = data.continuousOnlineDay,
+                        isVip = data.isVip,
+                        vipExpiredTime = data.vipExpiredTime,
+                        remarkInfo = remarkInfo,
+                        profileInfo = profileInfo
+                    )
+                    Result.success(userDetail)
+                } else {
+                    Result.failure(Exception(getUserResponse.status.msg))
+                }
             } else {
                 Result.failure(Exception("网络请求失败: ${response.code()}"))
             }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
 import androidx.compose.material.ExperimentalMaterialApi
@@ -73,6 +74,7 @@ import com.yhchat.canary.ui.components.ChatInputBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.LinkText
+import com.yhchat.canary.ui.components.ExpressionText
 import com.yhchat.canary.ui.components.LinkDetector
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MessageContent
@@ -139,6 +141,9 @@ fun ChatScreen(
     var selectedMessageType by remember { mutableStateOf(1) } // 1-文本, 3-Markdown, 8-HTML
     var selectedInstruction by remember { mutableStateOf<com.yhchat.canary.data.model.Instruction?>(null) } // 选中的指令
     val listState = rememberLazyListState()
+    
+    // @用户状态 (userId -> userName)
+    var mentionedUsers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     
     // 图片预览状态
     var showImageViewer by remember { mutableStateOf(false) }
@@ -610,6 +615,32 @@ fun ChatScreen(
                                     onAvatarClick(chatId, name, chatType, currentUserPermission)
                                 }
                             },
+                            onAvatarLongClick = { userId, userName ->
+                                // 长按头像@用户
+                                android.util.Log.d("ChatScreen", "长按头像@用户: userId=$userId, userName=$userName")
+                                
+                                // 添加@用户到映射表
+                                mentionedUsers = mentionedUsers + (userId to userName)
+                                
+                                // 在输入框添加@用户名
+                                val mentionText = "@$userName "
+                                inputText = if (inputText.isEmpty()) {
+                                    mentionText
+                                } else {
+                                    "$inputText$mentionText"
+                                }
+                                
+                                // 自动聚焦输入框并显示键盘
+                                coroutineScope.launch {
+                                    inputFocusRequester.requestFocus()
+                                    shouldShowKeyboard = true
+                                    delay(100)
+                                    shouldShowKeyboard = false
+                                }
+                                
+                                // 显示提示
+                                Toast.makeText(context, "已@$userName", Toast.LENGTH_SHORT).show()
+                            },
                             onAddExpression = viewModel::addExpressionToFavorites,
                             onQuote = { msgId, msgText ->
                                 // 设置引用消息，格式：发送者名称 : 内容
@@ -637,6 +668,11 @@ fun ChatScreen(
                                 // 编辑消息
                                 messageToEdit = message
                                 showEditDialog = true
+                            },
+                            onBlockUser = { userId, userName, avatarUrl ->
+                                // 屏蔽用户
+                                viewModel.blockUser(userId, userName, avatarUrl)
+                                Toast.makeText(context, "已屏蔽用户：$userName", Toast.LENGTH_SHORT).show()
                             },
                             memberPermission = memberPermission
                         )
@@ -762,21 +798,38 @@ fun ChatScreen(
                 onSendMessage = {
                     if (inputText.isNotBlank()) {
                         val messageText = inputText.trim()
+                        
+                        // 解析@用户，提取用户ID列表
+                        val mentionedIdsList = mutableListOf<String>()
+                        val mentionRegex = Regex("@([^\\s@]+)")
+                        mentionRegex.findAll(messageText).forEach { matchResult ->
+                            val userName = matchResult.groupValues[1]
+                            // 从 mentionedUsers 映射中找到对应的 userId
+                            mentionedUsers.entries.find { it.value == userName }?.let { entry ->
+                                mentionedIdsList.add(entry.key)
+                            }
+                        }
+                        
                         if (selectedInstruction != null) {
                             android.util.Log.d("ChatScreen", "📤 发送指令消息: /${selectedInstruction?.name}, commandId=${selectedInstruction?.id}, text=$messageText")
                         } else {
-                            android.util.Log.d("ChatScreen", "📤 发送普通消息: $messageText")
+                            android.util.Log.d("ChatScreen", "📤 发送普通消息: $messageText" + 
+                                if (mentionedIdsList.isNotEmpty()) ", @${mentionedIdsList.size}人: $mentionedIdsList" else ""
+                            )
                         }
                         
-                        // 根据选择的消息类型发送消息，带上引用信息和指令ID
+                        // 根据选择的消息类型发送消息，带上引用信息、指令ID和@用户列表
                         viewModel.sendMessage(
                             text = messageText,
                             contentType = selectedMessageType,
                             quoteMsgId = quotedMessageId,
                             quoteMsgText = quotedMessageText,
                             commandId = selectedInstruction?.id,  // 传递指令ID
+                            mentionedIds = if (mentionedIdsList.isNotEmpty()) mentionedIdsList else null,  // 传递@用户ID列表
                             onSuccess = {
                                 inputText = ""
+                                // 清除@用户映射
+                                mentionedUsers = emptyMap()
                                 // 发送后重置为文本类型
                                 selectedMessageType = 1
                                 // 清除引用状态
@@ -954,10 +1007,12 @@ private fun MessageItem(
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
+    onAvatarLongClick: (String, String) -> Unit = { _, _ -> },  // 长按头像@用户 (userId, userName)
     onAddExpression: (String) -> Unit = {},
     onQuote: (String, String) -> Unit = { _, _ -> },
     onRecall: (String) -> Unit = {},  // 撤回消息
     onEdit: (ChatMessage) -> Unit = {},  // 编辑消息
+    onBlockUser: (String, String, String?) -> Unit = { _, _, _ -> },  // 屏蔽用户 (userId, userName, avatarUrl)
     memberPermission: Int? = null  // 群成员权限等级
 ) {
     val context = LocalContext.current
@@ -1019,9 +1074,14 @@ private fun MessageItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .clickable {
-                        onAvatarClick(message.sender.chatId, message.sender.name, message.sender.chatType)
-                    },
+                    .combinedClickable(
+                        onClick = {
+                            onAvatarClick(message.sender.chatId, message.sender.name, message.sender.chatType)
+                        },
+                        onLongClick = {
+                            onAvatarLongClick(message.sender.chatId, message.sender.name)
+                        }
+                    ),
                 contentScale = ContentScale.Crop
             )
             
@@ -1145,9 +1205,14 @@ private fun MessageItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .clickable {
-                        onAvatarClick(message.sender.chatId, message.sender.name, message.sender.chatType)
-                    },
+                    .combinedClickable(
+                        onClick = {
+                            onAvatarClick(message.sender.chatId, message.sender.name, message.sender.chatType)
+                        },
+                        onLongClick = {
+                            onAvatarLongClick(message.sender.chatId, message.sender.name)
+                        }
+                    ),
                 contentScale = ContentScale.Crop
             )
         }
@@ -1199,6 +1264,13 @@ private fun MessageItem(
                     }
                     showContextMenu = false
                 }
+            } else null,
+            onBlockUser = if (!isMyMessage) {
+                {
+                    // 屏蔽用户
+                    onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl)
+                    showContextMenu = false
+                }
             } else null
         )
     }
@@ -1215,7 +1287,8 @@ private fun MessageContextMenu(
     onQuote: () -> Unit,
     onRecall: () -> Unit,
     onEdit: (() -> Unit)? = null,
-    onAddExpression: (() -> Unit)? = null
+    onAddExpression: (() -> Unit)? = null,
+    onBlockUser: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1310,6 +1383,32 @@ private fun MessageContextMenu(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("添加表情")
+                        }
+                    }
+                }
+                
+                // 屏蔽用户
+                if (onBlockUser != null) {
+                    TextButton(
+                        onClick = onBlockUser,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = "屏蔽用户",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "屏蔽用户",
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
@@ -1891,7 +1990,25 @@ private fun MessageContentView(
             else -> {
                 // 其他类型消息，显示文本内容
                 content.text?.let { text ->
-                    if (LinkDetector.containsLink(text)) {
+                    val context = LocalContext.current
+                    val prefs = remember { context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) }
+                    val showInlineExpressions = remember { prefs.getBoolean("show_inline_expressions", true) }
+
+                    if (showInlineExpressions) {
+                        ExpressionText(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                            linkColor = if (isMyMessage) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            modifier = Modifier.combinedClickable(
+                                onClick = { },
+                                onLongClick = onLongClick
+                            )
+                        )
+                    } else if (LinkDetector.containsLink(text)) {
                         // 包含链接的文本
                         LinkText(
                             text = text,
@@ -2809,10 +2926,12 @@ private fun AnimatedMessageItem(
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
+    onAvatarLongClick: (String, String) -> Unit = { _, _ -> },  // 长按头像@用户
     onAddExpression: (String) -> Unit = {},
     onQuote: (String, String) -> Unit = { _, _ -> },
     onRecall: (String) -> Unit = {},
     onEdit: (ChatMessage) -> Unit = {},
+    onBlockUser: (String, String, String?) -> Unit = { _, _, _ -> },  // 屏蔽用户
     memberPermission: Int? = null
 ) {
     // 检查消息是否是新消息（发送时间在最近2秒内）
@@ -2849,10 +2968,12 @@ private fun AnimatedMessageItem(
             modifier = Modifier.fillMaxWidth(),
             onImageClick = onImageClick,
             onAvatarClick = onAvatarClick,
+            onAvatarLongClick = onAvatarLongClick,
             onAddExpression = onAddExpression,
             onQuote = onQuote,
             onRecall = onRecall,
             onEdit = onEdit,
+            onBlockUser = onBlockUser,
             memberPermission = memberPermission
         )
     }

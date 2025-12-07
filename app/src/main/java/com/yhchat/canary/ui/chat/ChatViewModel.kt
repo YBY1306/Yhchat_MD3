@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.chat
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
@@ -9,11 +10,13 @@ import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.data.repository.GroupRepository
 import com.yhchat.canary.data.repository.MessageRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.BlocklistRepository
 import com.yhchat.canary.data.websocket.WebSocketManager
 import com.yhchat.canary.data.websocket.MessageEvent
 import com.yhchat.canary.data.local.ReadPositionStore
 import com.yhchat.canary.proto.group.Bot_data
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +45,7 @@ data class ChatUiState(
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val messageRepository: MessageRepository,
     private val tokenRepository: TokenRepository,
     private val webSocketManager: WebSocketManager,
@@ -51,6 +55,8 @@ class ChatViewModel @Inject constructor(
     private val botRepository: com.yhchat.canary.data.repository.BotRepository,
     private val draftStore: com.yhchat.canary.data.local.DraftStore
 ) : ViewModel() {
+    
+    private val blocklistRepository = BlocklistRepository(context)
 
     private var currentChatId: String = ""
     private var currentChatType: Int = 1
@@ -803,13 +809,25 @@ class ChatViewModel @Inject constructor(
                     onSuccess = { newMessages ->
                         Log.d(tag, "Loaded ${newMessages.size} messages")
                         
+                        // 过滤被屏蔽用户的消息
+                        val filteredMessages = newMessages.filter { message ->
+                            val isBlocked = kotlin.runCatching {
+                                blocklistRepository.isUserBlocked(message.sender.chatId)
+                            }.getOrElse { false }
+                            !isBlocked
+                        }
+                        
+                        if (filteredMessages.size < newMessages.size) {
+                            Log.d(tag, "Filtered out ${newMessages.size - filteredMessages.size} messages from blocked users")
+                        }
+                        
                         if (refresh) {
                             // 刷新时替换所有消息
                             _messages.clear()
-                            _messages.addAll(newMessages.sortedBy { it.sendTime })
+                            _messages.addAll(filteredMessages.sortedBy { it.sendTime })
                         } else {
                             // 加载更多时添加到现有消息前面
-                            val sortedNewMessages = newMessages.sortedBy { it.sendTime }
+                            val sortedNewMessages = filteredMessages.sortedBy { it.sendTime }
                             _messages.addAll(0, sortedNewMessages)
                         }
 
@@ -905,6 +923,7 @@ class ChatViewModel @Inject constructor(
      * @param quoteMsgId 引用消息ID
      * @param quoteMsgText 引用消息文本
      * @param commandId 指令ID
+     * @param mentionedIds @的用户ID列表
      */
     fun sendMessage(
         text: String, 
@@ -912,6 +931,7 @@ class ChatViewModel @Inject constructor(
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
         commandId: Long? = null,
+        mentionedIds: List<String>? = null,
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
@@ -934,7 +954,8 @@ class ChatViewModel @Inject constructor(
                     8 -> "HTML"
                     else -> "文本"
                 }
-                Log.d(tag, "Sending $typeText message: $text${if (!quoteMsgId.isNullOrEmpty()) " (引用消息)" else ""}")
+                val mentionInfo = if (!mentionedIds.isNullOrEmpty()) " (@${mentionedIds.size}人)" else ""
+                Log.d(tag, "Sending $typeText message: $text${if (!quoteMsgId.isNullOrEmpty()) " (引用消息)" else ""}$mentionInfo")
                 
                 val result = messageRepository.sendMessage(
                     chatId = currentChatId,
@@ -943,7 +964,8 @@ class ChatViewModel @Inject constructor(
                     contentType = contentType,
                     quoteMsgId = quoteMsgId,
                     quoteMsgText = quoteMsgText,
-                    commandId = commandId
+                    commandId = commandId,
+                    mentionedIds = mentionedIds
                 )
 
                 result.fold(
@@ -1095,17 +1117,26 @@ class ChatViewModel @Inject constructor(
     fun addNewMessage(message: ChatMessage) {
         Log.d(tag, "Adding new message: ${message.msgId}")
         
-        // 检查消息是否已存在
-        val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
-        if (existingIndex != -1) {
-            // 消息已存在，更新它
-            _messages[existingIndex] = message
-            Log.d(tag, "Updated existing message: ${message.msgId}")
-        } else {
-            // 新消息，按时间排序插入
-            val insertIndex = _messages.indexOfLast { it.sendTime <= message.sendTime } + 1
-            _messages.add(insertIndex, message)
-            Log.d(tag, "Inserted new message at index: $insertIndex")
+        // 检查黑名单
+        viewModelScope.launch {
+            val isBlocked = blocklistRepository.isUserBlocked(message.sender.chatId)
+            if (isBlocked) {
+                Log.d(tag, "Message from blocked user ${message.sender.chatId}, ignored")
+                return@launch
+            }
+            
+            // 检查消息是否已存在
+            val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
+            if (existingIndex != -1) {
+                // 消息已存在，更新它
+                _messages[existingIndex] = message
+                Log.d(tag, "Updated existing message: ${message.msgId}")
+            } else {
+                // 新消息，按时间排序插入
+                val insertIndex = _messages.indexOfLast { it.sendTime <= message.sendTime } + 1
+                _messages.add(insertIndex, message)
+                Log.d(tag, "Inserted new message at index: $insertIndex")
+            }
         }
     }
     
@@ -1466,6 +1497,33 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "Button click reported successfully: msgId=$msgId, value=$buttonValue")
             } catch (e: Exception) {
                 Log.e(tag, "Failed to report button click", e)
+            }
+        }
+    }
+    
+    /**
+     * 屏蔽用户
+     */
+    fun blockUser(userId: String, userName: String, avatarUrl: String?) {
+        viewModelScope.launch {
+            try {
+                blocklistRepository.blockUser(
+                    userId = userId,
+                    userName = userName,
+                    avatarUrl = avatarUrl
+                )
+                Log.d(tag, "Blocked user: $userId ($userName)")
+                
+                // 从当前消息列表中移除该用户的所有消息
+                val beforeSize = _messages.size
+                _messages.removeAll { it.sender.chatId == userId }
+                val removedCount = beforeSize - _messages.size
+                if (removedCount > 0) {
+                    Log.d(tag, "Removed $removedCount messages from blocked user: $userId")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Failed to block user", e)
+                _uiState.value = _uiState.value.copy(error = "屏蔽用户失败: ${e.message}")
             }
         }
     }

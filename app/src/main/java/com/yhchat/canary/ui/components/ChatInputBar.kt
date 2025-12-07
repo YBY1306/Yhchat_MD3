@@ -68,7 +68,9 @@ fun ChatInputBar(
     selectedInstruction: com.yhchat.canary.data.model.Instruction? = null, // 选中的指令
     onClearInstruction: (() -> Unit)? = null, // 清除指令
     focusRequester: FocusRequester? = null, // 焦点请求器
-    shouldShowKeyboard: Boolean = false // 是否应该显示键盘
+    shouldShowKeyboard: Boolean = false, // 是否应该显示键盘
+    mentionedUsers: Map<String, String> = emptyMap(), // 被@的用户映射 (userId -> userName)
+    onAddMentionUser: ((String, String) -> Unit)? = null // 添加@用户回调 (userId, userName)
 ) {
     var showAttachMenu by remember { mutableStateOf(false) }
     var showExpressionPicker by remember { mutableStateOf(false) }
@@ -311,6 +313,9 @@ fun ChatInputBar(
                 onStickerClick = { stickerItem ->
                     onStickerClick?.invoke(stickerItem)
                     showExpressionPicker = false
+                },
+                onDefaultExpressionClick = { expressionName ->
+                    onTextChange(text + expressionName)
                 },
                 onDismiss = { showExpressionPicker = false }
             )

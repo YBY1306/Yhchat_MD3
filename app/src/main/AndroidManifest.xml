@@ -107,9 +107,17 @@
         <!-- 分区详情Activity -->
         <activity
             android:name=".ui.community.BoardDetailActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="云湖社区"
-            android:theme="@style/Theme.YhchatCanary" />
+            android:theme="@style/Theme.YhchatCanary">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yunhu" 
+                      android:host="alley-detail" />
+            </intent-filter>
+        </activity>
             
         <!-- 创建文章Activity -->
         <activity
@@ -409,6 +417,12 @@
             android:name=".ui.discover.BotDetailActivity"
             android:exported="false"
             android:label="机器人详情"
+            android:theme="@style/Theme.YhchatCanary" />
+        
+        <activity
+            android:name=".ui.blocklist.BlacklistActivity"
+            android:exported="false"
+            android:label="黑名单设置"
             android:theme="@style/Theme.YhchatCanary" />
 
             

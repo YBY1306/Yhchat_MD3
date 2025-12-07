@@ -119,6 +119,16 @@ class ChatAddActivity : ComponentActivity() {
                     return
                 }
             }
+
+            // 如果extras为空，尝试使用UnifiedLinkHandler解析
+            if (intent.data != null) {
+                val uriString = intent.dataString
+                if (uriString != null) {
+                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(this, uriString)
+                    finish()
+                    return
+                }
+            }
             
             // 如果都不匹配，关闭Activity
             android.util.Log.w("ChatAddActivity", "无效的参数")
@@ -214,7 +224,7 @@ fun ChatAddScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp),
-                            contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
                         }
@@ -239,7 +249,7 @@ fun ChatAddScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             chatAddInfo?.let { info ->
-                                OutlinedButton(onClick = { viewModel.loadChatInfo(info) }) {
+                                 OutlinedButton(onClick = { viewModel.loadChatInfo(info) }) {
                                     Text("重试")
                                 }
                             }

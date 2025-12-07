@@ -32,6 +32,10 @@ object ChatAddLinkHandler {
                 "post-detail" -> {
                     handlePostDetailLink(context, uri)
                 }
+                "jwznb.com" -> {
+                    // 处理 yunhu://jwznb.com?ct=x&id=...
+                    handleChatAddLink(context, uriString)
+                }
                 else -> {
                     Log.w(TAG, "未知的 Deep Link 类型: ${uri.host}")
                 }
@@ -67,6 +71,7 @@ object ChatAddLinkHandler {
     
     /**
      * 处理聊天添加链接 yunhu://chat-add?id=会话id&type=会话类型
+     * 或 yunhu://jwznb.com?ct=会话类型&id=会话id
      */
     private fun handleChatAddLink(context: Context, uriString: String) {
         val chatAddInfo = parseChatAddLink(uriString)
@@ -83,6 +88,7 @@ object ChatAddLinkHandler {
     
     /**
      * 解析 yunhu://chat-add?id=会话id&type=会话类型 链接
+     * 或 yunhu://jwznb.com?ct=会话类型&id=会话id
      */
     fun parseChatAddLink(uriString: String): ChatAddInfo? {
         return try {
@@ -90,37 +96,54 @@ object ChatAddLinkHandler {
             
             val uri = Uri.parse(uriString)
             
-            // 检查scheme和host
-            if (uri.scheme != "yunhu" || uri.host != "chat-add") {
-                Log.w(TAG, "Invalid scheme or host: scheme=${uri.scheme}, host=${uri.host}")
+            // 检查scheme
+            if (uri.scheme != "yunhu") {
+                Log.w(TAG, "Invalid scheme: ${uri.scheme}")
                 return null
             }
             
-            val id = uri.getQueryParameter("id")
-            val typeString = uri.getQueryParameter("type")
+            var id: String? = null
+            var type: ChatAddType? = null
+            
+            if (uri.host == "chat-add") {
+                // 格式: yunhu://chat-add?id=xxx&type=xxx
+                id = uri.getQueryParameter("id")
+                val typeString = uri.getQueryParameter("type")
+                
+                if (!typeString.isNullOrEmpty()) {
+                    type = when (typeString.lowercase()) {
+                        "user" -> ChatAddType.USER
+                        "group" -> ChatAddType.GROUP
+                        "bot" -> ChatAddType.BOT
+                        else -> null
+                    }
+                }
+            } else if (uri.host == "jwznb.com") {
+                // 格式: yunhu://jwznb.com?ct=x&id=xxx
+                id = uri.getQueryParameter("id")
+                val ctString = uri.getQueryParameter("ct")
+                
+                if (!ctString.isNullOrEmpty()) {
+                    type = when (ctString) {
+                        "1" -> ChatAddType.USER
+                        "2" -> ChatAddType.GROUP
+                        "3" -> ChatAddType.BOT
+                        else -> null
+                    }
+                }
+            }
             
             if (id.isNullOrEmpty()) {
                 Log.w(TAG, "Missing or empty id parameter")
                 return null
             }
             
-            if (typeString.isNullOrEmpty()) {
-                Log.w(TAG, "Missing or empty type parameter")
+            if (type == null) {
+                Log.w(TAG, "Invalid or missing type/ct parameter")
                 return null
             }
             
-            // 严格检查type参数，确保符合Deep Link类型映射规范
-            val type = when (typeString.lowercase()) {
-                "user" -> ChatAddType.USER   // chatType = 1
-                "group" -> ChatAddType.GROUP // chatType = 2  
-                "bot" -> ChatAddType.BOT     // chatType = 3
-                else -> {
-                    Log.w(TAG, "Invalid type parameter: $typeString")
-                    return null
-                }
-            }
-            
-            Log.d(TAG, "解析成功: id=$id, type=$typeString, chatType=${type.chatType}")
+            Log.d(TAG, "解析成功: id=$id, chatType=${type.chatType}")
             
             ChatAddInfo(
                 id = id,
@@ -142,7 +165,7 @@ object ChatAddLinkHandler {
         return try {
             Log.d(TAG, "检查 Deep Link: $uriString")
             val uri = Uri.parse(uriString)
-            val isValid = uri.scheme == "yunhu" && uri.host == "chat-add"
+            val isValid = uri.scheme == "yunhu" && (uri.host == "chat-add" || uri.host == "jwznb.com")
             Log.d(TAG, "Deep Link 有效性: $isValid")
             isValid
         } catch (e: Exception) {

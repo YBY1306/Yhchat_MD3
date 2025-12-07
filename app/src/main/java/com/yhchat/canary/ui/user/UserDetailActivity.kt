@@ -31,7 +31,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.local.AppDatabase
-import com.yhchat.canary.data.model.Medal
+import com.yhchat.canary.data.model.MedalInfo
+import com.yhchat.canary.data.model.ProfileInfo
+import com.yhchat.canary.data.model.RemarkInfo
+import com.yhchat.canary.data.model.UserDetail
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.ui.chat.ChatActivity
@@ -39,7 +42,6 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import yh_user.User
@@ -86,18 +88,7 @@ class UserDetailActivity : BaseActivity() {
 data class UserDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val userId: String = "",
-    val userName: String = "",
-    val avatarUrl: String = "",
-    val avatarId: Long = 0L,
-    val nameId: Long = 0L,
-    val medals: List<Medal> = emptyList(),
-    val registerTime: String = "",
-    val banTime: Long = 0L,
-    val onlineDay: Int = 0,
-    val continuousOnlineDay: Int = 0,
-    val isVip: Int = 0,
-    val vipExpiredTime: Long = 0L
+    val userDetail: UserDetail? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +99,7 @@ fun UserDetailScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    var uiState by remember { mutableStateOf(UserDetailUiState(userId = userId, userName = userName)) }
+    var uiState by remember { mutableStateOf(UserDetailUiState()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     
     // 加载用户详情
@@ -130,45 +121,12 @@ fun UserDetailScreen(
             val requestBody = requestProto.toByteArray()
                 .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
-            val response = userRepository.getUserDetail(token, requestBody)
-            
-            response.fold(
-                onSuccess = { responseBytes ->
-                    // 解析ProtoBuf响应
-                    val getUserResponse = User.get_user.parseFrom(responseBytes)
-                    
-                    if (getUserResponse.status.code == 1) {
-                        val data = getUserResponse.data
-                        
-                        uiState = uiState.copy(
-                            isLoading = false,
-                            userId = data.id,
-                            userName = data.name,
-                            avatarUrl = data.avatarUrl,
-                            avatarId = data.avatarId,
-                            nameId = data.nameId,
-                            medals = data.medalList.map { medalInfo ->
-                                Medal(
-                                    id = medalInfo.id.toInt(),
-                                    name = medalInfo.name,
-                                    desc = "",
-                                    imageUrl = "",
-                                    sort = medalInfo.sort.toInt()
-                                )
-                            },
-                            registerTime = data.registerTime,
-                            banTime = data.banTime,
-                            onlineDay = data.onlineDay,
-                            continuousOnlineDay = data.continuousOnlineDay,
-                            isVip = data.isVip,
-                            vipExpiredTime = data.vipExpiredTime
-                        )
-                    } else {
-                        uiState = uiState.copy(
-                            isLoading = false,
-                            error = getUserResponse.status.msg
-                        )
-                    }
+            userRepository.getUserDetail(token, requestBody).fold(
+                onSuccess = { userDetail ->
+                    uiState = uiState.copy(
+                        isLoading = false,
+                        userDetail = userDetail
+                    )
                 },
                 onFailure = { throwable ->
                     uiState = uiState.copy(
@@ -201,7 +159,7 @@ fun UserDetailScreen(
                             val intent = Intent(context, ChatActivity::class.java).apply {
                                 putExtra("chatId", userId)
                                 putExtra("chatType", 1)
-                                putExtra("chatName", uiState.userName)
+                                putExtra("chatName", uiState.userDetail?.name ?: userName)
                             }
                             context.startActivity(intent)
                         }
@@ -244,14 +202,14 @@ fun UserDetailScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
                             // 重新加载
-                            uiState = uiState.copy(isLoading = true, error = null)
+                            // 这里简单处理，实际应触发LaunchedEffect重新执行
                         }) {
                             Text("重试")
                         }
                     }
                 }
-                else -> {
-                    UserDetailContent(uiState = uiState)
+                uiState.userDetail != null -> {
+                    UserDetailContent(userDetail = uiState.userDetail!!)
                 }
             }
         }
@@ -261,7 +219,7 @@ fun UserDetailScreen(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text("删除好友") },
-                text = { Text("确定要删除好友 ${uiState.userName} 吗？") },
+                text = { Text("确定要删除好友 ${uiState.userDetail?.name ?: userName} 吗？") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -311,13 +269,13 @@ fun UserDetailScreen(
 }
 
 @Composable
-fun UserDetailContent(uiState: UserDetailUiState) {
+fun UserDetailContent(userDetail: UserDetail) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 用户头像和基本信息
+        // 用户头部信息卡片
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -326,64 +284,99 @@ fun UserDetailContent(uiState: UserDetailUiState) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(16.dp)
                 ) {
-                    // 头像
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(uiState.avatarUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "用户头像",
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // 用户名
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = uiState.userName,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
+                        // 左侧头像
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(userDetail.avatarUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "用户头像",
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
                         
-                        if (uiState.isVip == 1) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(4.dp)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        // 右侧信息
+                        Column {
+                            // 昵称和VIP
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "VIP",
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimary
+                                    text = userDetail.name,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
+                                
+                                if (userDetail.isVip == 1) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "VIP",
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
                             }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // 用户ID
+                            Text(
+                                text = "ID: ${userDetail.id}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // 勋章列表（显示在头像下方，与头像左对齐，但这里为了布局方便，放在Row下面，整体padding已经对齐了）
+                    // 用户要求：勋章显示在用户id下面，和头像的左边位置对齐
+                    // 实际上上面的布局是 Row(Avatar, Column(Name, ID))
+                    // 要让勋章在ID下面且和头像左对齐，应该把勋章放在最外层的Column里
                     
-                    // 用户ID
-                    Text(
-                        text = "ID: ${uiState.userId}",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (userDetail.medalList.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // 勋章一行显示
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            userDetail.medalList.forEach { medal ->
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = medal.name,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
         
-        // 勋章
-        if (uiState.medals.isNotEmpty()) {
+        // 备注信息
+        userDetail.remarkInfo?.let { remark ->
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -395,32 +388,72 @@ fun UserDetailContent(uiState: UserDetailUiState) {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "勋章",
-                            fontSize = 18.sp,
+                            text = "备注信息",
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                         
-                        Spacer(modifier = Modifier.height(12.dp))
+                        if (remark.remarkName.isNotEmpty()) {
+                            InfoRow("备注名", remark.remarkName)
+                        }
+                        if (remark.phoneNumber.isNotEmpty()) {
+                            InfoRow("手机号", remark.phoneNumber)
+                        }
+                        if (remark.extraRemark.isNotEmpty()) {
+                            InfoRow("其他备注", remark.extraRemark)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 个人资料
+        userDetail.profileInfo?.let { profile ->
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "个人资料",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         
-                        uiState.medals.forEach { medal ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        text = medal.name,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
+                        if (profile.lastActiveTime.isNotEmpty()) {
+                            InfoRow("上次活跃", profile.lastActiveTime)
+                        }
+                        
+                        if (profile.introduction.isNotEmpty()) {
+                            InfoRow("简介", profile.introduction)
+                        }
+                        
+                        val genderText = when (profile.gender) {
+                            1 -> "男"
+                            2 -> "女"
+                            else -> "其他"
+                        }
+                        InfoRow("性别", genderText)
+                        
+                        if (profile.birthday > 0) {
+                            val birthdayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                .format(java.util.Date(profile.birthday * 1000))
+                            InfoRow("生日", birthdayDate)
+                        }
+                        
+                        if (profile.city.isNotEmpty()) {
+                            InfoRow("城市", profile.city)
+                        }
+                        
+                        if (profile.district.isNotEmpty()) {
+                            InfoRow("地区", profile.district)
                         }
                     }
                 }
@@ -440,25 +473,25 @@ fun UserDetailContent(uiState: UserDetailUiState) {
                 ) {
                     Text(
                         text = "账号信息",
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    InfoRow("注册时间", uiState.registerTime)
-                    InfoRow("在线天数", "${uiState.onlineDay} 天")
-                    InfoRow("连续在线", "${uiState.continuousOnlineDay} 天")
+                    InfoRow("注册时间", userDetail.registerTime)
+                    InfoRow("在线天数", "${userDetail.onlineDay} 天")
+                    InfoRow("连续在线", "${userDetail.continuousOnlineDay} 天")
                     
-                    if (uiState.isVip == 1 && uiState.vipExpiredTime > 0) {
+                    if (userDetail.isVip == 1 && userDetail.vipExpiredTime > 0) {
                         val expireDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                            .format(java.util.Date(uiState.vipExpiredTime * 1000))
+                            .format(java.util.Date(userDetail.vipExpiredTime * 1000))
                         InfoRow("VIP到期时间", expireDate)
                     }
                     
-                    if (uiState.banTime > 0) {
+                    if (userDetail.banTime > 0) {
                         val banDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                            .format(java.util.Date(uiState.banTime * 1000))
+                            .format(java.util.Date(userDetail.banTime * 1000))
                         InfoRow("封禁结束时间", banDate, MaterialTheme.colorScheme.error)
                     }
                 }

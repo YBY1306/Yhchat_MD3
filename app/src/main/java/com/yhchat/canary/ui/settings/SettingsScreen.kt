@@ -117,6 +117,14 @@ fun SettingsScreen(
                                 val intent = ChangePasswordActivity.createIntent(context, userEmail)
                                 context.startActivity(intent)
                             }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Block,
+                            title = "黑名单",
+                            subtitle = "管理屏蔽的用户列表",
+                            onClick = {
+                                com.yhchat.canary.ui.blocklist.BlacklistActivity.start(context)
+                            }
                         )
                     )
                 )
@@ -294,6 +302,62 @@ private fun DisplaySettingsCard(
                         onCheckedChange = { checked ->
                             showStickyConversations = checked
                             prefs.edit().putBoolean("show_sticky_conversations", checked).apply()
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 内联表情显示开关
+            var showInlineExpressions by remember { 
+                mutableStateOf(prefs.getBoolean("show_inline_expressions", true)) 
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEmotions,
+                        contentDescription = "内联表情",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "显示内联表情",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "在聊天气泡中直接渲染 [.表情]",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Switch(
+                        checked = showInlineExpressions,
+                        onCheckedChange = { checked ->
+                            showInlineExpressions = checked
+                            prefs.edit().putBoolean("show_inline_expressions", checked).apply()
                         }
                     )
                 }

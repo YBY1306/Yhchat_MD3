@@ -150,7 +150,8 @@ class MessageRepository @Inject constructor(
         contentType: Int = 1, // 1-文本
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
-        commandId: Long? = null  // 指令ID
+        commandId: Long? = null,  // 指令ID
+        mentionedIds: List<String>? = null  // @的用户ID列表
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -169,6 +170,12 @@ class MessageRepository @Inject constructor(
             // 添加引用消息文本
             if (!quoteMsgText.isNullOrEmpty()) {
                 contentBuilder.setQuoteMsgText(quoteMsgText)
+            }
+            
+            // 添加@的用户ID列表
+            if (!mentionedIds.isNullOrEmpty()) {
+                contentBuilder.addAllMentionedId(mentionedIds)
+                Log.d(tag, "📢 发送消息@了 ${mentionedIds.size} 个用户: $mentionedIds")
             }
             
             val requestBuilder = send_message_send.newBuilder()

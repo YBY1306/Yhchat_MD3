@@ -28,6 +28,9 @@ object YunhuLinkHandler {
     // yunhu:// 链接的正则表达式
     private val YUNHU_LINK_PATTERN = Pattern.compile("yunhu://post-detail\\?id=(\\d+)")
     
+    // yunhu://alley-detail 链接的正则表达式
+    private val ALLEY_DETAIL_PATTERN = Pattern.compile("yunhu://alley-detail\\?id=(\\d+)")
+    
     // 网页文章链接的正则表达式
     private val WEB_ARTICLE_PATTERN = Pattern.compile("https://www\\.yhchat\\.com/c/p/(\\d+)")
     
@@ -35,7 +38,14 @@ object YunhuLinkHandler {
      * 解析yunhu链接和网页文章链接并跳转到相应页面
      */
     fun handleYunhuLink(context: Context, link: String): Boolean {
-        // 先尝试匹配 yunhu:// 链接
+        // 获取Token
+        val token = try {
+            com.yhchat.canary.data.local.SecureTokenStorage(context).getUserToken() ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+
+        // 先尝试匹配 yunhu://post-detail 链接
         val yunhuMatcher = YUNHU_LINK_PATTERN.matcher(link)
         if (yunhuMatcher.find()) {
             val postId = yunhuMatcher.group(1)?.toIntOrNull()
@@ -44,7 +54,23 @@ object YunhuLinkHandler {
                 val intent = Intent(context, PostDetailActivity::class.java).apply {
                     putExtra("post_id", postId)
                     putExtra("post_title", "文章详情")
-                    putExtra("token", "") // 可能需要从其他地方获取token
+                    putExtra("token", token)
+                }
+                context.startActivity(intent)
+                return true
+            }
+        }
+        
+        // 尝试匹配 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(link)
+        if (alleyMatcher.find()) {
+            val boardId = alleyMatcher.group(1)?.toIntOrNull()
+            if (boardId != null) {
+                // 跳转到分区详情页
+                val intent = Intent(context, com.yhchat.canary.ui.community.BoardDetailActivity::class.java).apply {
+                    putExtra("board_id", boardId)
+                    putExtra("board_name", "分区详情")
+                    putExtra("token", token) 
                 }
                 context.startActivity(intent)
                 return true
@@ -60,7 +86,7 @@ object YunhuLinkHandler {
                 val intent = Intent(context, PostDetailActivity::class.java).apply {
                     putExtra("post_id", postId)
                     putExtra("post_title", "文章详情")
-                    putExtra("token", "") // 可能需要从其他地方获取token
+                    putExtra("token", token)
                 }
                 context.startActivity(intent)
                 return true
@@ -86,6 +112,28 @@ object YunhuLinkHandler {
             val start = yunhuMatcher.start()
             val end = yunhuMatcher.end()
             val link = yunhuMatcher.group()
+            
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleYunhuLink(widget.context, link)
+                }
+            }
+            
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor), 
+                start, 
+                end, 
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        // 处理 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
+        while (alleyMatcher.find()) {
+            val start = alleyMatcher.start()
+            val end = alleyMatcher.end()
+            val link = alleyMatcher.group()
             
             val clickableSpan = object : ClickableSpan() {
                 override fun onClick(widget: View) {
@@ -132,7 +180,9 @@ object YunhuLinkHandler {
      * 检查文本是否包含yunhu链接或网页文章链接
      */
     fun containsYunhuLink(text: String): Boolean {
-        return YUNHU_LINK_PATTERN.matcher(text).find() || WEB_ARTICLE_PATTERN.matcher(text).find()
+        return YUNHU_LINK_PATTERN.matcher(text).find() || 
+               ALLEY_DETAIL_PATTERN.matcher(text).find() ||
+               WEB_ARTICLE_PATTERN.matcher(text).find()
     }
     
     /**
@@ -141,10 +191,16 @@ object YunhuLinkHandler {
     fun extractYunhuLinks(text: String): List<String> {
         val links = mutableListOf<String>()
         
-        // 提取 yunhu:// 链接
+        // 提取 yunhu://post-detail 链接
         val yunhuMatcher = YUNHU_LINK_PATTERN.matcher(text)
         while (yunhuMatcher.find()) {
             links.add(yunhuMatcher.group())
+        }
+        
+        // 提取 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
+        while (alleyMatcher.find()) {
+            links.add(alleyMatcher.group())
         }
         
         // 提取网页文章链接
@@ -160,10 +216,16 @@ object YunhuLinkHandler {
      * 从yunhu链接或网页文章链接中提取文章ID
      */
     fun extractPostIdFromLink(link: String): Int? {
-        // 先尝试 yunhu:// 链接
+        // 先尝试 yunhu://post-detail 链接
         val yunhuMatcher = YUNHU_LINK_PATTERN.matcher(link)
         if (yunhuMatcher.find()) {
             return yunhuMatcher.group(1)?.toIntOrNull()
+        }
+        
+        // 尝试 yunhu://alley-detail 链接 (这里返回的是boardId，但为了兼容性，也可以返回)
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(link)
+        if (alleyMatcher.find()) {
+            return alleyMatcher.group(1)?.toIntOrNull()
         }
         
         // 再尝试网页文章链接

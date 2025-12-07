@@ -10,8 +10,8 @@ import android.content.Context
  * 对于敏感数据如Token，我们将使用EncryptedSharedPreferences进行加密存储
  */
 @Database(
-    entities = [UserToken::class, CachedConversation::class, CachedMessage::class],
-    version = 2,
+    entities = [UserToken::class, CachedConversation::class, CachedMessage::class, BlockedUser::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,6 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userTokenDao(): UserTokenDao
     abstract fun cachedConversationDao(): CachedConversationDao
     abstract fun cachedMessageDao(): CachedMessageDao
+    abstract fun blockedUserDao(): BlockedUserDao
     
     companion object {
         @Volatile

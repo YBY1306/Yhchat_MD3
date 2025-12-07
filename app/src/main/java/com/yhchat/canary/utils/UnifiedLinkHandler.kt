@@ -40,11 +40,24 @@ object UnifiedLinkHandler {
                 url.startsWith("yunhu://post-detail") -> {
                     handlePostDetailLink(context, url)
                 }
+                url.startsWith("yunhu://alley-detail") -> {
+                    com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, url)
+                }
                 url.startsWith("https://yhfx.jwznb.com/share") -> {
                     handleYhfxShareLink(context, url)
                 }
                 url.startsWith("yunhu://jwznb.com") -> {
-                    handleYhfxShareLink(context, url)
+                    val uri = Uri.parse(url)
+                    val key = uri.getQueryParameter("key")
+                    val ts = uri.getQueryParameter("ts")
+                    
+                    if (!key.isNullOrEmpty() && !ts.isNullOrEmpty()) {
+                        handleYhfxShareLink(context, url)
+                    } else if (ChatAddLinkHandler.isChatAddLink(url)) {
+                        ChatAddLinkHandler.handleLink(context, url)
+                    } else {
+                        handleYhfxShareLink(context, url)
+                    }
                 }
                 url.contains("https://www.yhchat.com/c/p/") -> {
                     handleWebArticleLink(context, url)

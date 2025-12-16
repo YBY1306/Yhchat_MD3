@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import javax.inject.Inject
 
 /**
@@ -20,7 +22,9 @@ import javax.inject.Inject
 class PostDetailViewModel @Inject constructor(
     private val communityRepository: CommunityRepository,
     private val tokenRepository: TokenRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val friendRepository: com.yhchat.canary.data.repository.FriendRepository,
+    private val messageRepository: com.yhchat.canary.data.repository.MessageRepository
 ) : ViewModel() {
     
     private val _postDetailState = MutableStateFlow(PostDetailState())
@@ -28,6 +32,9 @@ class PostDetailViewModel @Inject constructor(
     
     private val _commentListState = MutableStateFlow(CommentListState())
     val commentListState: StateFlow<CommentListState> = _commentListState.asStateFlow()
+    
+    // Share sheet persistent state
+    var shareSheetSelectedTab by androidx.compose.runtime.mutableStateOf(0)
     
     /**
      * 使用TokenRepository获取token并加载文章详情
@@ -399,6 +406,52 @@ class PostDetailViewModel @Inject constructor(
      */
     suspend fun getTokenAsync(): String {
         return tokenRepository.getTokenSync() ?: ""
+    }
+    
+    /**
+     * 获取通讯录列表
+     */
+    suspend fun getAddressBookList(): Result<yh_user.User.address_book_list> {
+        return friendRepository.getAddressBookList()
+    }
+    
+    /**
+     * 分享文章给好友
+     */
+    fun sharePostToFriends(
+        contact: yh_user.User.address_book_list.Data.Data_list,
+        post: CommunityPost,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            // ... (rest of the unused method)
+        }
+    }
+    
+    /**
+     * 分享文章给好友 (带 chatType)
+     */
+    fun sharePostToFriend(
+        chatId: String,
+        chatType: Int,
+        post: CommunityPost,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            messageRepository.sendPostMessage(
+                chatId = chatId,
+                chatType = chatType,
+                postId = post.id.toString(),
+                postTitle = post.title,
+                postContent = if (post.content.length > 50) post.content.substring(0, 50) + "..." else post.content,
+                postType = post.contentType.toString() // 1-文本, 2-Markdown
+            ).fold(
+                onSuccess = { onSuccess() },
+                onFailure = { onError(it.message ?: "发送失败") }
+            )
+        }
     }
 }
 

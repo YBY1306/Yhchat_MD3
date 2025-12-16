@@ -55,6 +55,14 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.yhchat.canary.ui.components.ConversationMenuDialog
 import com.yhchat.canary.R
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.journeyapps.barcodescanner.ScanIntentResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.yhchat.canary.utils.UnifiedLinkHandler
+import com.yhchat.canary.utils.QRCodeUtil
+import android.net.Uri
 
 /**
  * 会话列表界面
@@ -118,6 +126,50 @@ fun ConversationScreen(
     
     // 添加菜单 BottomSheet 状态
     var showAddMenuBottomSheet by remember { mutableStateOf(false) }
+
+    // 扫一扫相关逻辑
+    // 处理扫描结果
+    val handleScanResult = remember(context) {
+        { text: String ->
+            if (text.isNotEmpty()) {
+                if (UnifiedLinkHandler.isHandleableLink(text)) {
+                    UnifiedLinkHandler.handleLink(context, text)
+                } else {
+                    // 尝试用浏览器打开
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(text))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "无法识别的内容: $text", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    // 扫码启动器
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result: ScanIntentResult ->
+        if (result.contents != null) {
+            handleScanResult(result.contents)
+        }
+    }
+
+    // 相册启动器
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val text = QRCodeUtil.decodeFromUri(context, uri)
+                if (text != null) {
+                    handleScanResult(text)
+                } else {
+                    android.widget.Toast.makeText(context, "未识别到二维码", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // 扫描方式选择弹窗状态
+    var showScanMethodDialog by remember { mutableStateOf(false) }
 
     // 移除置顶栏滚动控制逻辑
     
@@ -389,6 +441,41 @@ fun ConversationScreen(
         )
     }
     
+    // 扫描方式选择弹窗
+    if (showScanMethodDialog) {
+        AlertDialog(
+            onDismissRequest = { showScanMethodDialog = false },
+            title = { Text("扫一扫") },
+            text = { Text("请选择扫描方式") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showScanMethodDialog = false
+                        val options = ScanOptions()
+                        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        options.setPrompt("扫描二维码")
+                        options.setBeepEnabled(false)
+                        options.setBarcodeImageEnabled(true)
+                        options.setOrientationLocked(false)
+                        scanLauncher.launch(options)
+                    }
+                ) {
+                    Text("相机扫码")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showScanMethodDialog = false
+                        galleryLauncher.launch("image/*")
+                    }
+                ) {
+                    Text("从相册选取")
+                }
+            }
+        )
+    }
+
     // 添加菜单 BottomSheet
     if (showAddMenuBottomSheet) {
         androidx.compose.material3.ModalBottomSheet(
@@ -408,13 +495,7 @@ fun ConversationScreen(
                 },
                 onScan = {
                     showAddMenuBottomSheet = false
-                    // TODO: 扫一扫功能
-                    android.widget.Toast.makeText(context, "扫一扫功能待实现", android.widget.Toast.LENGTH_SHORT).show()
-                },
-                onSendFile = {
-                    showAddMenuBottomSheet = false
-                    // TODO: 传文件功能
-                    android.widget.Toast.makeText(context, "传文件功能待实现", android.widget.Toast.LENGTH_SHORT).show()
+                    showScanMethodDialog = true
                 }
             )
         }
@@ -428,8 +509,7 @@ fun ConversationScreen(
 private fun AddMenuBottomSheetContent(
     onAddUserGroupBot: () -> Unit,
     onCreateGroupBot: () -> Unit,
-    onScan: () -> Unit,
-    onSendFile: () -> Unit
+    onScan: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -488,21 +568,6 @@ private fun AddMenuBottomSheetContent(
                 )
             },
             modifier = Modifier.clickable(onClick = onScan)
-        )
-        
-        // 传文件
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("传文件") },
-            supportingContent = { Text("快速发送文件到指定联系人", style = MaterialTheme.typography.bodySmall) },
-            leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.AttachFile,
-                    contentDescription = "传文件",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            modifier = Modifier.clickable(onClick = onSendFile)
         )
     }
 }

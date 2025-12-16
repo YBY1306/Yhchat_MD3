@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.components.ImageViewer
+import com.yhchat.canary.ui.profile.UserProfileActivity
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.*
@@ -71,6 +73,7 @@ fun StickerPackDetailScreen(
 ) {
     val viewModel: StickerPackDetailViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     
     // 图片预览状态
     var showImageViewer by remember { mutableStateOf(false) }
@@ -127,13 +130,16 @@ fun StickerPackDetailScreen(
                 }
                 uiState.stickerPack != null -> {
                     val stickerPackData = uiState.stickerPack!!
-                    StickerPackDetailContent(
-                        stickerPackData = stickerPackData,
-                        onImageClick = { imageUrl ->
-                            currentImageUrl = imageUrl
-                            showImageViewer = true
-                        }
-                    )
+                        StickerPackDetailContent(
+                            stickerPackData = stickerPackData,
+                            onImageClick = { imageUrl ->
+                                currentImageUrl = imageUrl
+                                showImageViewer = true
+                            },
+                            onCreatorClick = { userId ->
+                                UserProfileActivity.start(context, userId)
+                            }
+                        )
                 }
             }
         }
@@ -154,7 +160,8 @@ fun StickerPackDetailScreen(
 @Composable
 fun StickerPackDetailContent(
     stickerPackData: com.yhchat.canary.data.model.StickerPackDetailData,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
+    onCreatorClick: (String) -> Unit = {}
 ) {
     val stickerPack = stickerPackData.stickerPack
     val creator = stickerPackData.user
@@ -184,7 +191,8 @@ fun StickerPackDetailContent(
                 // 创建者信息
                 if (creator != null) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onCreatorClick(creator.userId) }
                     ) {
                         AsyncImage(
                             model = creator.avatarUrl,
@@ -298,21 +306,39 @@ fun StickerItemView(
     
     Card(
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(0.8f) // Adjust aspect ratio to accommodate text
             .clickable {
                 // 点击打开图片预览器
                 onImageClick(imageUrl)
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = sticker.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = sticker.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            
+            Text(
+                text = sticker.name,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp)
             )
         }
     }

@@ -100,6 +100,14 @@ object RepositoryFactory {
     }
     
     /**
+     * 获取消息仓库实例
+     */
+    fun getMessageRepository(context: Context): com.yhchat.canary.data.repository.MessageRepository {
+        val cacheRepository = CacheRepository(context.applicationContext)
+        return com.yhchat.canary.data.repository.MessageRepository(apiService, getTokenRepository(context), cacheRepository)
+    }
+    
+    /**
      * 获取导航配置仓库实例
      */
     fun getNavigationRepository(context: Context): NavigationRepository {

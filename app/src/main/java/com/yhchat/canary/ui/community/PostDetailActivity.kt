@@ -134,7 +134,9 @@ class PostDetailActivity : BaseActivity() {
                     PostDetailViewModel(
                         communityRepository = RepositoryFactory.getCommunityRepository(this@PostDetailActivity),
                         tokenRepository = RepositoryFactory.getTokenRepository(this@PostDetailActivity),
-                        userRepository = RepositoryFactory.getUserRepository(this@PostDetailActivity)
+                        userRepository = RepositoryFactory.getUserRepository(this@PostDetailActivity),
+                        friendRepository = RepositoryFactory.getFriendRepository(this@PostDetailActivity),
+                        messageRepository = RepositoryFactory.getMessageRepository(this@PostDetailActivity)
                     )
                 }
                 
@@ -891,6 +893,7 @@ fun RewardDialog(
 fun ShareDialog(
     postId: Int,
     onDismiss: () -> Unit,
+    onShareToFriend: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -996,6 +999,34 @@ fun ShareDialog(
                         }
                     }
                 }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { 
+                        onDismiss()
+                        onShareToFriend()
+                    },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "分享给好友",
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "分享给好友",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1031,6 +1062,8 @@ fun PostDetailScreen(
     
     // 分享对话框状态
     var showShareDialog by remember { mutableStateOf(false) }
+    // 分享给好友BottomSheet状态
+    var showShareToFriendSheet by remember { mutableStateOf(false) }
     
     // Token状态
     var currentToken by remember { mutableStateOf("") }
@@ -1308,8 +1341,20 @@ fun PostDetailScreen(
             if (showShareDialog) {
                 ShareDialog(
                     postId = postId,
-                    onDismiss = { showShareDialog = false }
+                    onDismiss = { showShareDialog = false },
+                    onShareToFriend = { showShareToFriendSheet = true }
                 )
+            }
+
+            // 分享给好友BottomSheet
+            if (showShareToFriendSheet) {
+                postDetailState.post?.let { post ->
+                    ShareToFriendBottomSheet(
+                        post = post,
+                        viewModel = viewModel,
+                        onDismiss = { showShareToFriendSheet = false }
+                    )
+                }
             }
             
             // 上下文菜单

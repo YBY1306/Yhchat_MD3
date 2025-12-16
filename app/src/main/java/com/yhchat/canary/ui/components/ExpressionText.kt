@@ -67,9 +67,10 @@ fun ExpressionText(
                             placeholderVerticalAlign = PlaceholderVerticalAlign.Center
                         )
                     ) {
+                        val fileName = "$match.svg"
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(android.net.Uri.parse("file:///android_asset/fengtwemoji/").buildUpon().appendPath("$match.svg").build())
+                                .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(fileName)}")
                                 .decoderFactory(SvgDecoder.Factory())
                                 .crossfade(true)
                                 .build(),

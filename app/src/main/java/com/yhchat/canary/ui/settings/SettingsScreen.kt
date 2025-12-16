@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
@@ -54,23 +56,26 @@ fun SettingsScreen(
     
     var showLogoutDialog by remember { mutableStateOf(false) }
     
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // 顶部应用栏
-        TopAppBar(
-            title = {
-                Text(
-                    text = "设置",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        )
-        
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "设置",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+        },
+        contentWindowInsets = WindowInsets.safeDrawing
+    ) { innerPadding ->
         // 设置项列表
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -192,36 +197,36 @@ fun SettingsScreen(
                 )
             }
         }
-        
-        // 退出登录确认对话框
-        if (showLogoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showLogoutDialog = false },
-                title = {
-                    Text("确认退出登录")
-                },
-                text = {
-                    Text("退出登录后需要重新输入账号密码，确定要退出吗？")
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showLogoutDialog = false
-                            onLogout()
-                        }
-                    ) {
-                        Text("退出", color = MaterialTheme.colorScheme.error)
+    }
+
+    // 退出登录确认对话框
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text("确认退出登录")
+            },
+            text = {
+                Text("退出登录后需要重新输入账号密码，确定要退出吗？")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
                     }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showLogoutDialog = false }
-                    ) {
-                        Text("取消")
-                    }
+                ) {
+                    Text("退出", color = MaterialTheme.colorScheme.error)
                 }
-            )
-        }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLogoutDialog = false }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -372,6 +377,10 @@ private fun DisplaySettingsCard(
             
             // 全局组件大小（无极调节）
             GlobalScaleSettingItem(context = context)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            MemoryAutoCleanSettingItem(context = context)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -782,6 +791,136 @@ private fun GlobalScaleSettingItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoryAutoCleanSettingItem(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember {
+        context.getSharedPreferences("display_settings", Context.MODE_PRIVATE)
+    }
+
+    var enabled by remember {
+        mutableStateOf(prefs.getBoolean("memory_auto_clean_enabled", false))
+    }
+    var thresholdValueText by remember {
+        mutableStateOf(prefs.getFloat("memory_auto_clean_threshold_value", 512f).toString())
+    }
+    var unit by remember {
+        mutableStateOf(prefs.getString("memory_auto_clean_threshold_unit", "MB") ?: "MB")
+    }
+    var unitExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Memory,
+                    contentDescription = "内存自动清理",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "内存阈值自动清理",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (enabled) "达到阈值时自动清理缓存" else "关闭时不自动清理",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { checked ->
+                        enabled = checked
+                        prefs.edit().putBoolean("memory_auto_clean_enabled", checked).apply()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = thresholdValueText,
+                    onValueChange = { newValue ->
+                        thresholdValueText = newValue
+                        val parsed = newValue.toFloatOrNull()
+                        if (parsed != null) {
+                            prefs.edit().putFloat("memory_auto_clean_threshold_value", parsed).apply()
+                        }
+                    },
+                    enabled = enabled,
+                    singleLine = true,
+                    label = { Text("阈值") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Box {
+                    OutlinedButton(
+                        onClick = { unitExpanded = true },
+                        enabled = enabled
+                    ) {
+                        Text(unit)
+                    }
+
+                    DropdownMenu(
+                        expanded = unitExpanded,
+                        onDismissRequest = { unitExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("MB") },
+                            onClick = {
+                                unit = "MB"
+                                prefs.edit().putString("memory_auto_clean_threshold_unit", unit).apply()
+                                unitExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("GB") },
+                            onClick = {
+                                unit = "GB"
+                                prefs.edit().putString("memory_auto_clean_threshold_unit", unit).apply()
+                                unitExpanded = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }

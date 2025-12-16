@@ -637,9 +637,6 @@ fun ChatScreen(
                                     delay(100)
                                     shouldShowKeyboard = false
                                 }
-                                
-                                // 显示提示
-                                Toast.makeText(context, "已@$userName", Toast.LENGTH_SHORT).show()
                             },
                             onAddExpression = viewModel::addExpressionToFavorites,
                             onQuote = { msgId, msgText ->

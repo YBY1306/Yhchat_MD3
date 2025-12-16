@@ -734,8 +734,20 @@ class ChatViewModel @Inject constructor(
                     onSuccess = { newMessages ->
                         Log.d(tag, "Loaded ${newMessages.size} messages from position $msgId")
                         
+                        // 过滤被屏蔽用户的消息
+                        val filteredMessages = newMessages.filter { message ->
+                            val isBlocked = kotlin.runCatching {
+                                blocklistRepository.isUserBlocked(message.sender.chatId)
+                            }.getOrElse { false }
+                            !isBlocked
+                        }
+                        
+                        if (filteredMessages.size < newMessages.size) {
+                            Log.d(tag, "Filtered out ${newMessages.size - filteredMessages.size} messages from blocked users")
+                        }
+                        
                         _messages.clear()
-                        _messages.addAll(newMessages.sortedBy { it.sendTime })
+                        _messages.addAll(filteredMessages.sortedBy { it.sendTime })
 
                         // 更新最旧消息的序列号和ID
                         if (newMessages.isNotEmpty()) {
@@ -1507,6 +1519,8 @@ class ChatViewModel @Inject constructor(
     fun blockUser(userId: String, userName: String, avatarUrl: String?) {
         viewModelScope.launch {
             try {
+                blocklistRepository.setBlocklistEnabled(true)
+
                 blocklistRepository.blockUser(
                     userId = userId,
                     userName = userName,

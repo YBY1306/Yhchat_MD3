@@ -746,6 +746,79 @@ class MessageRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * 发送文章消息 (contentType=6)
+     */
+    suspend fun sendPostMessage(
+        chatId: String,
+        chatType: Int,
+        postId: String,
+        postTitle: String,
+        postContent: String,
+        postType: String, // 1-文本, 2-Markdown
+        quoteMsgId: String? = null
+    ): Result<Boolean> {
+        return try {
+            val tokenFlow = tokenRepository.getToken()
+            val token = tokenFlow.first()?.token
+            if (token.isNullOrEmpty()) {
+                Log.e(tag, "❌ Token为空")
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val msgId = UUID.randomUUID().toString().replace("-", "")
+            
+            Log.d(tag, "📤 ========== 发送文章消息 ==========")
+            Log.d(tag, "📤 msgId: $msgId")
+            Log.d(tag, "📤 chatId: $chatId")
+            Log.d(tag, "📤 chatType: $chatType")
+            Log.d(tag, "📤 postId: $postId")
+            
+            val contentBuilder = send_message_send.Content.newBuilder()
+                .setPostId(postId)
+                .setPostTitle(postTitle)
+                .setPostContent(postContent)
+                .setPostType(postType)
+            
+            val requestBuilder = send_message_send.newBuilder()
+                .setMsgId(msgId)
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(contentBuilder.build())
+                .setContentType(6) // 文章消息类型为6
+            
+            if (!quoteMsgId.isNullOrEmpty()) {
+                requestBuilder.setQuoteMsgId(quoteMsgId)
+            }
+            
+            val request = requestBuilder.build()
+            val requestBytes = request.toByteArray()
+            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
+            
+            val response = apiService.sendMessage(token, requestBody)
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val sendResponse = send_message.parseFrom(bytes)
+                    if (sendResponse.status.code == 1) {
+                        Log.d(tag, "✅ ========== 文章消息发送成功！ ==========")
+                        Result.success(true)
+                    } else {
+                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
+                        Result.failure(Exception(sendResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                Log.e(tag, "❌ HTTP错误: ${response.code()}")
+                Result.failure(Exception("发送失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 发送文章消息异常", e)
+            Result.failure(e)
+        }
+    }
     
     /**
      * 将Proto消息转换为应用内消息模型

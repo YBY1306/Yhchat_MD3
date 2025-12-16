@@ -16,7 +16,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "20.3"
+        versionName = "20.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -127,6 +127,10 @@ dependencies {
     ksp(libs.hilt.compiler)
     // Hilt Navigation for Compose (needed for hiltViewModel)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // QR Code Scanning
+    implementation(libs.zxing.android.embedded)
+    implementation(libs.zxing.core)
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

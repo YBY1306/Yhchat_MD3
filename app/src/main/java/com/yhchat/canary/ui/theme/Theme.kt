@@ -9,6 +9,12 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -66,12 +72,42 @@ fun YhchatCanaryTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val displayPrefs = context.getSharedPreferences("display_settings", android.content.Context.MODE_PRIVATE)
-    val themePrefs = context.getSharedPreferences("theme_settings", android.content.Context.MODE_PRIVATE)
-    val globalScale = displayPrefs.getFloat("global_scale", 1.0f)
+    val displayPrefs = remember(context) {
+        context.getSharedPreferences("display_settings", android.content.Context.MODE_PRIVATE)
+    }
+    val themePrefs = remember(context) {
+        context.getSharedPreferences("theme_settings", android.content.Context.MODE_PRIVATE)
+    }
+
+    var globalScale by remember(displayPrefs) {
+        mutableFloatStateOf(displayPrefs.getFloat("global_scale", 1.0f))
+    }
+    var customColorInt by remember(themePrefs) {
+        mutableIntStateOf(themePrefs.getInt("custom_primary_color", -1))
+    }
+
+    DisposableEffect(displayPrefs, themePrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            when (key) {
+                "global_scale" -> {
+                    globalScale = sharedPreferences.getFloat("global_scale", 1.0f)
+                }
+                "custom_primary_color" -> {
+                    customColorInt = sharedPreferences.getInt("custom_primary_color", -1)
+                }
+            }
+        }
+
+        displayPrefs.registerOnSharedPreferenceChangeListener(listener)
+        themePrefs.registerOnSharedPreferenceChangeListener(listener)
+
+        onDispose {
+            displayPrefs.unregisterOnSharedPreferenceChangeListener(listener)
+            themePrefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
     
     // 读取自定义主题颜色设置
-    val customColorInt = themePrefs.getInt("custom_primary_color", -1)
     val useCustomColor = customColorInt != -1 && customColorInt != 0xFF6200EE.toInt()
     val customPrimaryColor = if (useCustomColor) Color(customColorInt) else null
     

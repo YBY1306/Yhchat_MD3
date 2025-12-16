@@ -110,11 +110,11 @@ class StickerRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val body = response.body()
-                if (body != null && body.code == 200) {
+                if (body != null && body.code == 1) {
                     Log.d(TAG, "✅ 添加贴纸包成功")
                     Result.success(true)
                     } else {
-                    val error = "添加贴纸包失败: ${response.code().toString()}"
+                    val error = body?.message ?: "添加贴纸包失败: ${response.code()}"
                     Log.e(TAG, error)
                     Result.failure(Exception(error))
                     }
@@ -145,11 +145,11 @@ class StickerRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val body = response.body()
-                if (body != null && body.code == 200) {
+                if (body != null && body.code == 1) {
                     Log.d(TAG, "✅ 移除贴纸包成功")
                     Result.success(true)
                 } else {
-                    val error = "移除贴纸包失败: ${response.code().toString()}"
+                    val error = body?.message ?: "移除贴纸包失败: ${response.code()}"
                     Log.e(TAG, error)
                     Result.failure(Exception(error))
                 }
@@ -191,11 +191,11 @@ class StickerRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val body = response.body()
-                if (body != null && body.code == 200) {
+                if (body != null && body.code == 1) {
                     Log.d(TAG, "✅ 贴纸包排序成功")
                     Result.success(true)
                 } else {
-                    val error = "贴纸包排序失败: ${response.code().toString()}"
+                    val error = body?.message ?: "贴纸包排序失败: ${response.code()}"
                     Log.e(TAG, error)
                     Result.failure(Exception(error))
                 }

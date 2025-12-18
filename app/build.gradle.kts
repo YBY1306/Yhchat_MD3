@@ -90,6 +90,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation("io.coil-kt:coil-svg:2.5.0") // SVG支持
+
+    implementation("androidx.media:media:1.7.0")
     
     // 权限处理
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")

@@ -7,13 +7,22 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
+import androidx.media.app.NotificationCompat.MediaStyle
+import androidx.media.session.MediaButtonReceiver
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import com.yhchat.canary.MainActivity
 import com.yhchat.canary.R
 import kotlinx.coroutines.*
@@ -79,6 +88,10 @@ class AudioPlayerService : Service() {
     private var currentAudioUrl: String? = null
     private var isPlaying: Boolean = false
     private lateinit var audioCacheManager: AudioCacheManager
+    private var currentTitle: String = "语音消息"
+    private lateinit var audioManager: AudioManager
+    private var audioFocusGranted: Boolean = false
+    private lateinit var mediaSession: MediaSessionCompat
     
     inner class AudioPlayerBinder : Binder() {
         fun getService(): AudioPlayerService = this@AudioPlayerService
@@ -90,10 +103,42 @@ class AudioPlayerService : Service() {
         super.onCreate()
         createNotificationChannel()
         audioCacheManager = AudioCacheManager(this)
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        mediaSession = MediaSessionCompat(this, TAG).apply {
+            setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+                    MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+            )
+            setMediaButtonReceiver(
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this@AudioPlayerService,
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE
+                )
+            )
+            setCallback(object : MediaSessionCompat.Callback() {
+                override fun onPlay() {
+                    currentAudioUrl?.let { url ->
+                        playAudio(url, currentTitle)
+                    }
+                }
+
+                override fun onPause() {
+                    pauseAudio()
+                }
+
+                override fun onStop() {
+                    stopAudio()
+                }
+            })
+            isActive = true
+        }
         Log.d(TAG, "AudioPlayerService created")
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent != null) {
+            MediaButtonReceiver.handleIntent(mediaSession, intent)
+        }
         when (intent?.action) {
             ACTION_PLAY -> {
                 val audioUrl = intent.getStringExtra(EXTRA_AUDIO_URL)
@@ -111,6 +156,12 @@ class AudioPlayerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         releaseMediaPlayer()
+        runCatching {
+            if (this::mediaSession.isInitialized) {
+                mediaSession.isActive = false
+                mediaSession.release()
+            }
+        }
         serviceScope.cancel()
         Log.d(TAG, "AudioPlayerService destroyed")
     }
@@ -143,6 +194,9 @@ class AudioPlayerService : Service() {
         releaseMediaPlayer()
         
         currentAudioUrl = audioUrl
+        currentTitle = title
+
+        requestAudioFocus()
         
         // 开始前台服务
         startForeground(NOTIFICATION_ID, createNotification(title, "正在下载..."))
@@ -251,12 +305,19 @@ class AudioPlayerService : Service() {
     private suspend fun playAudioFile(audioFile: File, title: String) = withContext(Dispatchers.Main) {
         try {
             mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
                 setDataSource(audioFile.absolutePath)
                 prepareAsync()
                 
                 setOnPreparedListener {
                     start()
                     this@AudioPlayerService.isPlaying = true
+                    updatePlaybackState(true)
                     updateNotification(title, "正在播放")
                     Log.d(TAG, "开始播放音频")
                 }
@@ -265,6 +326,7 @@ class AudioPlayerService : Service() {
                     Log.d(TAG, "音频播放完成")
 
                     this@AudioPlayerService.isPlaying = false
+                    updatePlaybackState(false)
                     // 只清理临时文件，保留缓存文件
                     if (audioFile.name.startsWith("temp_audio_")) {
                         audioFile.delete()
@@ -276,6 +338,7 @@ class AudioPlayerService : Service() {
                 setOnErrorListener { _, what, extra ->
                     Log.e(TAG, "MediaPlayer错误: what=$what, extra=$extra")
                     this@AudioPlayerService.isPlaying = false
+                    updatePlaybackState(false)
                     // 只清理临时文件，保留缓存文件
                     if (audioFile.name.startsWith("temp_audio_")) {
                         audioFile.delete()
@@ -303,7 +366,8 @@ class AudioPlayerService : Service() {
             if (player.isPlaying) {
                 player.pause()
                 isPlaying = false
-                updateNotification("语音消息", "已暂停")
+                updatePlaybackState(false)
+                updateNotification(currentTitle, "已暂停")
             }
         }
     }
@@ -312,6 +376,7 @@ class AudioPlayerService : Service() {
         releaseMediaPlayer()
         isPlaying = false
         currentAudioUrl = null
+        updatePlaybackState(false)
         stopForeground(true)
         stopSelf()
     }
@@ -325,6 +390,55 @@ class AudioPlayerService : Service() {
         }
         mediaPlayer = null
     }
+
+    private fun requestAudioFocus() {
+        if (audioFocusGranted) return
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener(AudioManager.OnAudioFocusChangeListener { focusChange: Int ->
+                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        pauseAudio()
+                    }
+                })
+                .build()
+            audioManager.requestAudioFocus(focusRequest)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                { focusChange: Int ->
+                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        pauseAudio()
+                    }
+                },
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+            )
+        }
+        audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    private fun updatePlaybackState(playing: Boolean) {
+        val state = if (playing) {
+            PlaybackStateCompat.STATE_PLAYING
+        } else {
+            PlaybackStateCompat.STATE_PAUSED
+        }
+        val actions = PlaybackStateCompat.ACTION_PLAY or
+            PlaybackStateCompat.ACTION_PAUSE or
+            PlaybackStateCompat.ACTION_STOP
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .setActions(actions)
+                .build()
+        )
+    }
     
     private fun createNotification(title: String, content: String): Notification {
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -334,23 +448,83 @@ class AudioPlayerService : Service() {
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        
-        val stopIntent = Intent(this, AudioPlayerService::class.java).apply {
-            action = ACTION_STOP
+
+        val playPauseAction = if (isPlaying) {
+            NotificationCompat.Action(
+                R.drawable.ic_launcher_foreground,
+                "暂停",
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this,
+                    PlaybackStateCompat.ACTION_PAUSE
+                )
+            )
+        } else {
+            NotificationCompat.Action(
+                R.drawable.ic_launcher_foreground,
+                "播放",
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this,
+                    PlaybackStateCompat.ACTION_PLAY
+                )
+            )
         }
-        val stopPendingIntent = PendingIntent.getService(
-            this, 0, stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
+        val stopAction = NotificationCompat.Action(
+            R.drawable.ic_launcher_foreground,
+            "停止",
+            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                this,
+                PlaybackStateCompat.ACTION_STOP
+            )
         )
         
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(content)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "停止", stopPendingIntent)
+            .addAction(playPauseAction)
+            .addAction(stopAction)
+            .setStyle(
+                MediaStyle()
+                    .setMediaSession(mediaSession.sessionToken)
+                    .setShowActionsInCompactView(0, 1)
+            )
             .setOngoing(true)
-            .build()
+
+        maybeApplyFlymeLive(builder, title, content)
+        return builder.build()
+    }
+
+    private fun maybeApplyFlymeLive(builder: NotificationCompat.Builder, title: String, content: String) {
+        val manufacturer = Build.MANUFACTURER ?: ""
+        val display = Build.DISPLAY ?: ""
+        val isFlyme = manufacturer.contains("meizu", ignoreCase = true) || display.contains("flyme", ignoreCase = true)
+        if (!isFlyme) return
+
+        val capsuleBundle = Bundle().apply {
+            putInt("notification.live.capsuleStatus", 1)
+            putInt("notification.live.capsuleType", 5)
+            putString("notification.live.capsuleContent", content)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                putParcelable(
+                    "notification.live.capsuleIcon",
+                    Icon.createWithResource(this@AudioPlayerService, R.drawable.ic_launcher_foreground)
+                )
+            }
+        }
+
+        val liveBundle = Bundle().apply {
+            putBoolean("is_live", true)
+            putInt("notification.live.operation", 0)
+            putInt("notification.live.type", 2)
+            putBundle("notification.live.capsule", capsuleBundle)
+        }
+
+        builder
+            .addExtras(liveBundle)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(false)
     }
     
     private fun updateNotification(title: String, content: String) {

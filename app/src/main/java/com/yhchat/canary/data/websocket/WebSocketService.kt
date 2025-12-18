@@ -3,19 +3,25 @@ package com.yhchat.canary.data.websocket
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.IBinder
 import android.util.Log
+import androidx.core.app.TaskStackBuilder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.yhchat.canary.MainActivity
+import com.yhchat.canary.ui.chat.ChatActivity
+import com.yhchat.canary.R
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import com.yhchat.canary.MainActivity
-import com.yhchat.canary.R
 import com.yhchat.canary.data.model.ChatMessage
-import com.yhchat.canary.data.model.Conversation
-import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.CacheRepository
+import com.yhchat.canary.data.repository.TokenRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import com.yhchat.canary.proto.chat_ws_go.heartbeat_ack
 import com.yhchat.canary.proto.chat_ws_go.push_message
 import com.yhchat.canary.proto.chat_ws_go.edit_message
@@ -532,19 +538,21 @@ class WebSocketService @Inject constructor(
             // 确定会话名称 - 尝试从缓存获取真实名称
             val conversationTitle = getConversationTitle(targetChatId, targetChatType, senderName)
             
-            // 点击通知的Intent - 跳转到正确的会话
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                putExtra("chat_id", targetChatId)
-                putExtra("chat_type", targetChatType)
+            val chatIntent = Intent(context, ChatActivity::class.java).apply {
+                putExtra("chatId", targetChatId)
+                putExtra("chatType", targetChatType)
+                putExtra("chatName", conversationTitle)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
-            
-            val pendingIntent = PendingIntent.getActivity(
-                context, 
-                targetChatId.hashCode(),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+
+            val pendingIntent = TaskStackBuilder.create(context).run {
+                addNextIntent(Intent(context, MainActivity::class.java))
+                addNextIntent(chatIntent)
+                getPendingIntent(
+                    targetChatId.hashCode(),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
             
             // 构建通知
             val notification = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)

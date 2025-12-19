@@ -48,7 +48,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class AppInfoActivity : BaseActivity() {
     
     companion object {
-        const val APP_VERSION = "Canary 20.4"
+        const val APP_VERSION = "Canary 20.5"
         const val APP_NAME = "Yhchat Canary"
 
         const val DEVELOPER_NAME_1 = "Kauid323"
@@ -56,7 +56,7 @@ class AppInfoActivity : BaseActivity() {
         const val DEVELOPER_URL_1 = "https://github.com/Kauid323/"
         const val DEVELOPER_URL_2 = "yunhu://chat-add?id=8516939&type=user"
         const val GITHUB_REPO_URL = "https://github.com/Kauid323/Yhchat_md3"
-        const val DEFAULT_VERSION_TAG = "v0.0.20-4"
+        const val DEFAULT_VERSION_TAG = "v0.0.20-5"
         const val IS_LATEST_BUILD_PREVIEW = false
 
         fun start(context: Context) {

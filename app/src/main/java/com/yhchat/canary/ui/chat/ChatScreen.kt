@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.foundation.combinedClickable
@@ -58,6 +59,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -98,6 +101,12 @@ import org.json.JSONObject
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import android.content.ContentValues
+import android.provider.MediaStore
+import com.yhchat.canary.service.AudioCacheManager
+import java.io.IOException
 
 /**
  * 聊天界面
@@ -1013,6 +1022,7 @@ private fun MessageItem(
     memberPermission: Int? = null  // 群成员权限等级
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     var showContextMenu by remember { mutableStateOf(false) }
     
@@ -1268,6 +1278,22 @@ private fun MessageItem(
                     onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl)
                     showContextMenu = false
                 }
+            } else null,
+            onSaveAudio = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
+                {
+                    val audioUrl = message.content.audioUrl
+                    if (!audioUrl.isNullOrBlank()) {
+                        coroutineScope.launch {
+                            val saved = saveVoiceToSavedAudios(context, audioUrl)
+                            Toast.makeText(
+                                context,
+                                if (saved) "已保存语音" else "保存失败",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                    showContextMenu = false
+                }
             } else null
         )
     }
@@ -1285,7 +1311,8 @@ private fun MessageContextMenu(
     onRecall: () -> Unit,
     onEdit: (() -> Unit)? = null,
     onAddExpression: (() -> Unit)? = null,
-    onBlockUser: (() -> Unit)? = null
+    onBlockUser: (() -> Unit)? = null,
+    onSaveAudio: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1383,6 +1410,28 @@ private fun MessageContextMenu(
                         }
                     }
                 }
+
+                // 保存语音（仅对语音消息显示）
+                if (onSaveAudio != null && message.contentType == 11) {
+                    TextButton(
+                        onClick = onSaveAudio,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "保存语音",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("保存语音")
+                        }
+                    }
+                }
                 
                 // 屏蔽用户
                 if (onBlockUser != null) {
@@ -1442,6 +1491,74 @@ private fun MessageContextMenu(
             }
         }
     )
+}
+
+private suspend fun saveVoiceToSavedAudios(context: Context, audioUrl: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        val resolver = context.contentResolver
+        val cacheManager = AudioCacheManager(context)
+
+        val cachedFile = cacheManager.getCachedAudioFile(audioUrl)
+            ?.takeIf { it.exists() && cacheManager.verifyCachedFile(audioUrl) }
+
+        val data: ByteArray = if (cachedFile != null) {
+            cachedFile.readBytes()
+        } else {
+            val client = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request = chain.request().newBuilder()
+                        .addHeader("Referer", "https://myapp.jwznb.com")
+                        .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                        .build()
+                    chain.proceed(request)
+                }
+                .build()
+
+            val req = Request.Builder().url(audioUrl).build()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext false
+                resp.body?.bytes() ?: return@withContext false
+            }
+        }
+
+        val displayName = run {
+            val last = audioUrl.substringAfterLast('/').substringBefore('?').ifBlank { "voice_${System.currentTimeMillis()}" }
+            if (last.contains('.')) last else "$last.m4a"
+        }
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "audio/*")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/yhchat/audio/")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        }
+
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return@withContext false
+        try {
+            resolver.openOutputStream(uri)?.use { out ->
+                out.write(data)
+                out.flush()
+            } ?: return@withContext false
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val done = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }
+                resolver.update(uri, done, null, null)
+            }
+            true
+        } catch (e: Exception) {
+            // 清理失败项
+            runCatching { resolver.delete(uri, null, null) }
+            false
+        }
+    } catch (_: IOException) {
+        false
+    } catch (_: Exception) {
+        false
+    }
 }
 
 /**

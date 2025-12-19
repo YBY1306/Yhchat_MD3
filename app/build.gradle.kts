@@ -16,7 +16,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "20.4"
+        versionName = "20.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -78,6 +78,8 @@ dependencies {
 
     // 下拉刷新
     implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+
+    implementation("androidx.documentfile:documentfile:1.0.1")
     
     // 网络请求
     implementation(libs.retrofit)

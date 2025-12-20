@@ -147,6 +147,14 @@ fun SettingsScreen(
                             onClick = {
                                 HtmlSettingsActivity.start(context)
                             }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.GraphicEq,
+                            title = "已保存的语音",
+                            subtitle = "管理 Download/yhchat/audio/ 下的语音",
+                            onClick = {
+                                SavedAudiosActivity.start(context)
+                            }
                         )
                     )
                 )

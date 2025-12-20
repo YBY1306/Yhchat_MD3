@@ -19,6 +19,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     
     <!-- 通知权限 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -183,6 +184,12 @@
             android:name=".ui.settings.AppInfoActivity"
             android:exported="false"
             android:label="应用详情"
+            android:theme="@style/Theme.YhchatCanary" />
+
+        <activity
+            android:name=".ui.settings.SavedAudiosActivity"
+            android:exported="false"
+            android:label="已保存的语音"
             android:theme="@style/Theme.YhchatCanary" />
 
         <!-- 用户资料 Activity -->

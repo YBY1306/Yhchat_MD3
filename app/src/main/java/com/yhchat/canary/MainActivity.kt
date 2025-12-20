@@ -91,7 +91,7 @@ class MainActivity : BaseActivity() {
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
         val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
-        val visibleNavItems = navigationConfig.getVisibleItems()
+        val visibleNavItems = navigationConfig.items.filter { it.isVisible }.sortedBy { it.order }
 
         // 同步ViewModel状态到本地状态
         LaunchedEffect(savedToken) {
@@ -121,7 +121,7 @@ class MainActivity : BaseActivity() {
             !isLoggedIn -> {
                 // 未登录，显示登录界面
                 LoginScreen(
-                    onLoginSuccess = { loginToken, loginUserId ->
+                    onLoginSuccess = { loginToken, loginUserId -> 
                         token = loginToken
                         pendingLoginToken = loginToken
                         userId = loginUserId
@@ -141,7 +141,7 @@ class MainActivity : BaseActivity() {
                         onBackClick = {
                             currentScreen = "conversation"
                         },
-                        onAvatarClick =
+                        onAvatarClick = 
                             { userId, userName, chatType, currentUserPermission ->
                                 val isGroupAdmin = currentUserPermission >= 2
                                 val groupId = if (chatType == 2) currentChatId else null

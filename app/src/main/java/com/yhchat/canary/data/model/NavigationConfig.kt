@@ -2,6 +2,7 @@ package com.yhchat.canary.data.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.gson.annotations.SerializedName
 
@@ -10,137 +11,114 @@ import com.google.gson.annotations.SerializedName
  */
 data class NavigationItem(
     @SerializedName("id")
-    val id: String,
+    val id: String = "",
+    
+    @SerializedName("name")
+    val name: String = "",
     
     @SerializedName("title")
-    val title: String,
+    val title: String = "",
     
-    @SerializedName("iconName")
-    val iconName: String,
+    @SerializedName("icon")
+    val iconName: String = "",
     
-    @SerializedName("isVisible")
-    val isVisible: Boolean = true,
+    @SerializedName("route")
+    val route: String = "",
     
     @SerializedName("order")
-    val order: Int = 0
+    val order: Int = 0,
+    
+    @SerializedName("isVisible")
+    val isVisible: Boolean = true
 ) {
     /**
      * 根据iconName获取对应的Icon
      */
     fun getIcon(): ImageVector = when (iconName) {
-        "Chat" -> Icons.Filled.Chat
+        "Chat" -> Icons.AutoMirrored.Filled.Chat
         "People" -> Icons.Filled.People
         "Contacts" -> Icons.Filled.Contacts
         "Search" -> Icons.Filled.Search
         "Person" -> Icons.Filled.Person
         "Explore" -> Icons.Filled.Explore
-        "Notifications" -> Icons.Filled.Notifications
-        "Settings" -> Icons.Filled.Settings
-        else -> Icons.Filled.Home
+        else -> Icons.Filled.Home // 默认图标
     }
 }
 
 /**
- * 底部导航栏配置
+ * 导航配置数据类
  */
 data class NavigationConfig(
     @SerializedName("items")
-    val items: List<NavigationItem>
+    val items: List<NavigationItem> = emptyList()
 ) {
     companion object {
         /**
-         * 默认导航配置
+         * 获取默认导航配置
          */
         fun getDefault(): NavigationConfig {
-            return NavigationConfig(
-                items = listOf(
-                    NavigationItem(
-                        id = "conversation",
-                        title = "聊天",
-                        iconName = "Chat",
-                        isVisible = true,
-                        order = 0
-                    ),
-                    NavigationItem(
-                        id = "community",
-                        title = "社区",
-                        iconName = "People",
-                        isVisible = true,
-                        order = 1
-                    ),
-                    NavigationItem(
-                        id = "contacts",
-                        title = "通讯录",
-                        iconName = "Contacts",
-                        isVisible = true,
-                        order = 2
-                    ),
-                    NavigationItem(
-                        id = "discover",
-                        title = "发现",
-                        iconName = "Search",
-                        isVisible = true,
-                        order = 3
-                    ),
-                    NavigationItem(
-                        id = "profile",
-                        title = "我的",
-                        iconName = "Person",
-                        isVisible = true,
-                        order = 4
-                    )
-                )
-            )
-        }
-        
-        /**
-         * 获取所有可用的导航项（包括隐藏的）
-         */
-        fun getAllAvailableItems(): List<NavigationItem> {
-            return listOf(
+            val defaultItems = listOf(
                 NavigationItem(
                     id = "conversation",
-                    title = "聊天",
+                    name = "会话",
+                    title = "会话",
                     iconName = "Chat",
-                    isVisible = true,
-                    order = 0
+                    route = "conversation",
+                    order = 0,
+                    isVisible = true
                 ),
                 NavigationItem(
                     id = "community",
-                    title = "社区",
+                    name = "社群",
+                    title = "社群",
                     iconName = "People",
-                    isVisible = true,
-                    order = 1
+                    route = "community",
+                    order = 1,
+                    isVisible = true
                 ),
                 NavigationItem(
                     id = "contacts",
-                    title = "通讯录",
+                    name = "联系人",
+                    title = "联系人",
                     iconName = "Contacts",
-                    isVisible = true,
-                    order = 2
+                    route = "contacts",
+                    order = 2,
+                    isVisible = true
                 ),
                 NavigationItem(
                     id = "discover",
+                    name = "发现",
                     title = "发现",
-                    iconName = "Search",
-                    isVisible = true,
-                    order = 3
+                    iconName = "Explore",
+                    route = "discover",
+                    order = 3,
+                    isVisible = true
                 ),
                 NavigationItem(
                     id = "profile",
+                    name = "我的",
                     title = "我的",
                     iconName = "Person",
-                    isVisible = true,
-                    order = 4
+                    route = "profile",
+                    order = 4,
+                    isVisible = true
                 )
             )
+            return NavigationConfig(defaultItems)
+        }
+        
+        /**
+         * 获取所有可用的导航项
+         */
+        fun getAllAvailableItems(): List<NavigationItem> {
+            return getDefault().items
         }
     }
-    
-    /**
-     * 获取可见的导航项，按order排序
-     */
-    fun getVisibleItems(): List<NavigationItem> {
-        return items.filter { it.isVisible }.sortedBy { it.order }
-    }
+}
+
+/**
+ * 扩展函数：获取可见的导航项并按顺序排序
+ */
+fun NavigationConfig.getVisibleItems(): List<NavigationItem> {
+    return items.filter { it.isVisible }.sortedBy { it.order }
 }

@@ -111,7 +111,7 @@ fun ContactsScreen(
                                 count = uiState.friends.size,
                                 isExpanded = uiState.friendsExpanded,
                                 onToggle = { viewModel.toggleFriendsExpanded() },
-                                modifier = Modifier.animateItemPlacement()
+                                modifier = Modifier.animateItem()
                             )
                         }
                         
@@ -131,7 +131,7 @@ fun ContactsScreen(
                                         }
                                         context.startActivity(intent)
                                     },
-                                    modifier = Modifier.animateItemPlacement()
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                         }
@@ -143,7 +143,7 @@ fun ContactsScreen(
                                 count = uiState.groups.size,
                                 isExpanded = uiState.groupsExpanded,
                                 onToggle = { viewModel.toggleGroupsExpanded() },
-                                modifier = Modifier.animateItemPlacement()
+                                modifier = Modifier.animateItem()
                             )
                         }
                         
@@ -163,7 +163,7 @@ fun ContactsScreen(
                                         }
                                         context.startActivity(intent)
                                     },
-                                    modifier = Modifier.animateItemPlacement()
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                         }
@@ -175,7 +175,7 @@ fun ContactsScreen(
                                 count = uiState.bots.size,
                                 isExpanded = uiState.botsExpanded,
                                 onToggle = { viewModel.toggleBotsExpanded() },
-                                modifier = Modifier.animateItemPlacement()
+                                modifier = Modifier.animateItem()
                             )
                         }
                         
@@ -195,7 +195,7 @@ fun ContactsScreen(
                                         }
                                         context.startActivity(intent)
                                     },
-                                    modifier = Modifier.animateItemPlacement()
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                         }
@@ -207,7 +207,7 @@ fun ContactsScreen(
                                 count = uiState.myBots.size,
                                 isExpanded = uiState.myBotsExpanded,
                                 onToggle = { viewModel.toggleMyBotsExpanded() },
-                                modifier = Modifier.animateItemPlacement()
+                                modifier = Modifier.animateItem()
                             )
                         }
                         
@@ -226,7 +226,7 @@ fun ContactsScreen(
                                         }
                                         context.startActivity(intent)
                                     },
-                                    modifier = Modifier.animateItemPlacement()
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                         }

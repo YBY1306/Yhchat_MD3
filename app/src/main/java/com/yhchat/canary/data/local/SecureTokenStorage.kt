@@ -41,6 +41,31 @@ class SecureTokenStorage(context: Context) {
     }
     
     /**
+     * 保存指定用户的Token
+     */
+    fun saveAccountToken(userId: String, token: String) {
+        encryptedPrefs.edit()
+            .putString("token_$userId", token)
+            .apply()
+    }
+
+    /**
+     * 获取指定用户的Token
+     */
+    fun getAccountToken(userId: String): String? {
+        return encryptedPrefs.getString("token_$userId", null)
+    }
+
+    /**
+     * 删除指定用户的Token
+     */
+    fun removeAccountToken(userId: String) {
+        encryptedPrefs.edit()
+            .remove("token_$userId")
+            .apply()
+    }
+
+    /**
      * 保存用户Token
      */
     fun saveUserToken(token: String, userId: String) {
@@ -49,6 +74,11 @@ class SecureTokenStorage(context: Context) {
             .putString(KEY_USER_ID, userId)
             .putLong(KEY_LAST_LOGIN_TIME, System.currentTimeMillis())
             .apply()
+        
+        // 同时保存到账户列表Token中
+        if (userId.isNotEmpty()) {
+            saveAccountToken(userId, token)
+        }
     }
     
     /**

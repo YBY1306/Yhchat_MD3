@@ -82,6 +82,9 @@ fun YhchatCanaryTheme(
     var globalScale by remember(displayPrefs) {
         mutableFloatStateOf(displayPrefs.getFloat("global_scale", 1.0f))
     }
+    var fontScalePreference by remember(displayPrefs) {
+        mutableFloatStateOf(displayPrefs.getFloat("font_scale", 100f) / 100f)
+    }
     var customColorInt by remember(themePrefs) {
         mutableIntStateOf(themePrefs.getInt("custom_primary_color", -1))
     }
@@ -91,6 +94,9 @@ fun YhchatCanaryTheme(
             when (key) {
                 "global_scale" -> {
                     globalScale = sharedPreferences.getFloat("global_scale", 1.0f)
+                }
+                "font_scale" -> {
+                    fontScalePreference = sharedPreferences.getFloat("font_scale", 100f) / 100f
                 }
                 "custom_primary_color" -> {
                     customColorInt = sharedPreferences.getInt("custom_primary_color", -1)
@@ -134,7 +140,7 @@ fun YhchatCanaryTheme(
     val baseDensity = LocalDensity.current
     val scaledDensity = Density(
         density = baseDensity.density * globalScale,
-        fontScale = baseDensity.fontScale * globalScale
+        fontScale = baseDensity.fontScale * globalScale * fontScalePreference
     )
 
     CompositionLocalProvider(

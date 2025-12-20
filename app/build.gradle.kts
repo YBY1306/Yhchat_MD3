@@ -64,7 +64,6 @@ protobuf {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -129,6 +128,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
     // Hilt Navigation for Compose (needed for hiltViewModel)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 

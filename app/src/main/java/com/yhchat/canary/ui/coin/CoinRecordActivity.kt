@@ -12,7 +12,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +33,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
+data class CoinRecordUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val coinRecords: List<GoldCoinRecord> = emptyList(),
+    val postRewards: List<RewardRecord> = emptyList(),
+    val commentRewards: List<RewardRecord> = emptyList()
+)
 
 /**
  * 金币明细Activity
@@ -89,7 +97,7 @@ fun CoinRecordScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
                         )
                     }
@@ -272,16 +280,7 @@ private fun CoinRecordCard(record: GoldCoinRecord) {
                 )
                 Text(
                     text = dateFormat.format(date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            if (record.remark.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "备注: ${record.remark}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -300,7 +299,7 @@ private fun PostRewardList(rewards: List<RewardRecord>) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "暂无打赏记录",
+                text = "暂无文章打赏记录",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -314,7 +313,7 @@ private fun PostRewardList(rewards: List<RewardRecord>) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(rewards) { reward ->
-            RewardRecordCard(reward, isPost = true)
+            RewardRecordCard(reward)
         }
     }
 }
@@ -330,7 +329,7 @@ private fun CommentRewardList(rewards: List<RewardRecord>) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "暂无打赏记录",
+                text = "暂无评论打赏记录",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -344,13 +343,13 @@ private fun CommentRewardList(rewards: List<RewardRecord>) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(rewards) { reward ->
-            RewardRecordCard(reward, isPost = false)
+            RewardRecordCard(reward)
         }
     }
 }
 
 @Composable
-private fun RewardRecordCard(reward: RewardRecord, isPost: Boolean) {
+private fun RewardRecordCard(reward: RewardRecord) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     val date = Date(reward.createTime * 1000)
     
@@ -368,26 +367,16 @@ private fun RewardRecordCard(reward: RewardRecord, isPost: Boolean) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isPost) "打赏文章" else "打赏评论",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (reward.post != null) {
-                        Text(
-                            text = reward.post.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                }
                 Text(
-                    text = "-${reward.amount}",
+                    text = (reward.post?.title ?: "未命名"),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "+${reward.amount}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             
@@ -398,22 +387,22 @@ private fun RewardRecordCard(reward: RewardRecord, isPost: Boolean) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "打赏给: ${reward.sender?.nickname ?: "未知用户"}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "来自: ${reward.sender?.nickname ?: "未知用户"}",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = dateFormat.format(date),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            if (reward.reason.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+            if (reward.remark.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = reward.reason,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "备注: ${reward.remark}",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -422,7 +411,7 @@ private fun RewardRecordCard(reward: RewardRecord, isPost: Boolean) {
 }
 
 /**
- * 金币明细ViewModel
+ * 金币记录 ViewModel
  */
 class CoinRecordViewModel : ViewModel() {
     private lateinit var coinRepository: CoinRepository
@@ -497,12 +486,3 @@ class CoinRecordViewModel : ViewModel() {
         }
     }
 }
-
-data class CoinRecordUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val coinRecords: List<GoldCoinRecord> = emptyList(),
-    val postRewards: List<RewardRecord> = emptyList(),
-    val commentRewards: List<RewardRecord> = emptyList()
-)
-

@@ -34,6 +34,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+import com.yhchat.canary.data.repository.AccountRepository
+
 /**
  * 设置页面Activity
  */
@@ -75,6 +77,8 @@ class SettingsActivity : BaseActivity() {
             RepositoryFactory.getTokenRepository(this)
         } else null
         
+        val accountRepository = RepositoryFactory.getAccountRepository(this)
+        
         setContent {
             YhchatCanaryTheme {
                 Surface(
@@ -84,8 +88,12 @@ class SettingsActivity : BaseActivity() {
                     SettingsScreen(
                         navigationRepository = navigationRepository,
                         tokenRepository = tokenRepository,
+                        accountRepository = accountRepository,
                         onLogout = {
                             performLogout(this@SettingsActivity)
+                        },
+                        onBackClick = {
+                            finish()
                         },
                         modifier = Modifier.fillMaxSize()
                     )

@@ -23,6 +23,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.graphics.drawable.Icon
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.documentfile.provider.DocumentFile
@@ -881,6 +882,11 @@ class AudioPlayerService : Service() {
     }
     
     private fun createNotification(title: String, content: String): Notification {
+        // 检查是否为 Flyme 系统
+        if (isFlyme()) {
+            return createFlymeLiveNotification(title, content)
+        }
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -956,26 +962,69 @@ class AudioPlayerService : Service() {
             builder.setProgress(duration.toInt(), position.coerceAtMost(duration).toInt(), false)
         }
 
-        maybeApplyFlymeLive(builder, title, content)
         return builder.build()
     }
 
-    private fun maybeApplyFlymeLive(builder: NotificationCompat.Builder, title: String, content: String) {
+    private fun isFlyme(): Boolean {
         val manufacturer = Build.MANUFACTURER ?: ""
         val display = Build.DISPLAY ?: ""
-        val isFlyme = manufacturer.contains("meizu", ignoreCase = true) || display.contains("flyme", ignoreCase = true)
-        if (!isFlyme) return
+        return manufacturer.contains("meizu", ignoreCase = true) || display.contains("flyme", ignoreCase = true)
+    }
 
+    private fun createFlymeLiveNotification(title: String, content: String): Notification {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        fun servicePendingIntent(action: String): PendingIntent {
+            val i = Intent(this, AudioPlayerService::class.java).apply { this.action = action }
+            return PendingIntent.getService(
+                this,
+                action.hashCode(),
+                i,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        // 1. 创建胶囊视图
+        val capsuleView = android.widget.RemoteViews(packageName, R.layout.layout_live_audio_capsule).apply {
+            setTextViewText(R.id.tv_capsule_title, "$title - $content")
+            setImageViewResource(R.id.iv_capsule_icon, if (isPlaying) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause)
+        }
+
+        // 2. 创建展开视图
+        val expandedView = android.widget.RemoteViews(packageName, R.layout.layout_live_audio_expanded).apply {
+            setTextViewText(R.id.tv_title, title)
+            setTextViewText(R.id.tv_artist, content)
+            
+            // 设置按钮点击事件
+            setOnClickPendingIntent(R.id.btn_prev, servicePendingIntent(ACTION_PREV))
+            setOnClickPendingIntent(R.id.btn_next, servicePendingIntent(ACTION_NEXT))
+            
+            val playPauseIntent = if (isPlaying) servicePendingIntent(ACTION_PAUSE) else servicePendingIntent(ACTION_PLAY)
+            setOnClickPendingIntent(R.id.btn_play_pause, playPauseIntent)
+            
+            // 更新按钮图标
+            setImageViewResource(R.id.btn_play_pause, if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+        }
+
+        // 3. 构建 Flyme Live Bundle
         val capsuleBundle = Bundle().apply {
             putInt("notification.live.capsuleStatus", 1)
             putInt("notification.live.capsuleType", 5)
+            // 胶囊文本，当 layout_live_audio_capsule 未生效时可能使用此值
             putString("notification.live.capsuleContent", content)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                putParcelable(
-                    "notification.live.capsuleIcon",
-                    Icon.createWithResource(this@AudioPlayerService, R.drawable.ic_launcher_foreground)
-                )
-            }
+            // 胶囊自定义视图
+            putParcelable("notification.live.capsule.content.remote.view", capsuleView)
+            
+            // 胶囊背景颜色 (可选)
+            // putInt("notification.live.capsuleBgColor", getColor(R.color.some_color))
         }
 
         val liveBundle = Bundle().apply {
@@ -985,10 +1034,20 @@ class AudioPlayerService : Service() {
             putBundle("notification.live.capsule", capsuleBundle)
         }
 
-        builder
+        // 4. 构建通知
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setContentIntent(pendingIntent)
+            .setCustomContentView(expandedView) // 设置展开后的自定义视图
+            .setCustomBigContentView(expandedView) // 确保展开状态也使用该视图
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
             .addExtras(liveBundle)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setAutoCancel(false)
+
+        return builder.build()
     }
     
     private fun updateNotification(title: String, content: String) {

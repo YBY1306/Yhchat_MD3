@@ -5,13 +5,15 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.content.Context
 
+import com.yhchat.canary.data.model.SavedAccount
+
 /**
  * 应用数据库 - 普通存储（移除SQLCipher依赖）
  * 对于敏感数据如Token，我们将使用EncryptedSharedPreferences进行加密存储
  */
 @Database(
-    entities = [UserToken::class, CachedConversation::class, CachedMessage::class, BlockedUser::class],
-    version = 3,
+    entities = [UserToken::class, CachedConversation::class, CachedMessage::class, BlockedUser::class, SavedAccount::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -20,6 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedConversationDao(): CachedConversationDao
     abstract fun cachedMessageDao(): CachedMessageDao
     abstract fun blockedUserDao(): BlockedUserDao
+    abstract fun savedAccountDao(): SavedAccountDao
     
     companion object {
         @Volatile

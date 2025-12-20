@@ -91,7 +91,7 @@ class MainActivity : BaseActivity() {
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
         val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
-        val visibleNavItems = navigationConfig.getVisibleItems()
+        val visibleNavItems = navigationConfig.items.filter { it.isVisible }.sortedBy { it.order }
 
         // 同步ViewModel状态到本地状态
         LaunchedEffect(savedToken) {

@@ -35,6 +35,11 @@ class UpdateRepository @Inject constructor(
             .create(UpdateService::class.java)
     }
     
+    private fun normalizeTag(tag: String): String {
+        val t = tag.trim().removePrefix("refs/tags/")
+        return if (t.startsWith("v", ignoreCase = true)) t.replaceFirstChar { it.lowercaseChar() } else "v$t"
+    }
+    
     /**
      * 获取当前版本
      */
@@ -66,6 +71,8 @@ class UpdateRepository @Inject constructor(
                 // 这里需要传入默认版本，但在这个方法中我们无法直接访问 AppInfoActivity
                 // 所以我们需要通过参数传递或者其他方式获取
                 val currentVersion = getCurrentVersion(com.yhchat.canary.ui.settings.AppInfoActivity.DEFAULT_VERSION_TAG)
+                val latestTag = normalizeTag(latestRelease.tagName)
+                val currentTag = normalizeTag(currentVersion)
                 
                 // 检查是否有更新
                 val hasUpdate = if (isLatestBuildPreview) {
@@ -73,7 +80,7 @@ class UpdateRepository @Inject constructor(
                     true
                 } else {
                     // 正常检查更新逻辑
-                    latestRelease.tagName != currentVersion
+                    latestTag != currentTag
                 }
                 
                 // 查找 APK 文件
@@ -90,7 +97,7 @@ class UpdateRepository @Inject constructor(
                 
                 val updateInfo = UpdateInfo(
                     hasUpdate = hasUpdate,
-                    latestVersion = latestRelease.tagName,
+                    latestVersion = latestTag,
                     updateTitle = latestRelease.name,
                     updateContent = latestRelease.body,
                     publishTime = publishTime,

@@ -101,7 +101,7 @@ class NavigationRepository @Inject constructor(
      * 获取可见的导航项
      */
     fun getVisibleItems(): List<NavigationItem> {
-        return _navigationConfig.value.getVisibleItems()
+        return _navigationConfig.value.items.filter { it.isVisible }.sortedBy { it.order }
     }
     
     /**

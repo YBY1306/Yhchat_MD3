@@ -1,6 +1,8 @@
 package com.yhchat.canary.ui.settings
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,9 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,14 +23,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.lazy.items
+import coil.compose.AsyncImage
+import com.yhchat.canary.MainActivity
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.model.UserProfile
+
+import com.yhchat.canary.data.repository.AccountRepository
+import com.yhchat.canary.data.model.SavedAccount
+import com.yhchat.canary.ui.login.LoginActivity
+import kotlinx.coroutines.launch
 
 /**
  * 设置界面
@@ -36,14 +52,22 @@ import com.yhchat.canary.data.model.UserProfile
 fun SettingsScreen(
     navigationRepository: NavigationRepository? = null,
     tokenRepository: TokenRepository? = null,
+    accountRepository: AccountRepository? = null,
     onLogout: () -> Unit = {},
+    onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
+    val coroutineScope = rememberCoroutineScope()
+
     // 获取用户信息
     var userEmail by remember { mutableStateOf("") }
-    
+
+    val savedAccounts: List<SavedAccount> by (accountRepository?.getAllAccounts() ?: kotlinx.coroutines.flow.flowOf(emptyList()))
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val currentUserId: String? = accountRepository?.getCurrentUserId()
+    var showAccountSwitchSheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(tokenRepository) {
         tokenRepository?.let { tokenRepo: TokenRepository ->
             val userRepo: UserRepository = com.yhchat.canary.data.di.RepositoryFactory.getUserRepository(context)
@@ -55,18 +79,32 @@ fun SettingsScreen(
     }
     
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
                     Text(
                         text = "设置",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                scrollBehavior = scrollBehavior
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing
@@ -76,133 +114,163 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             // 底部导航栏设置
             item {
-                SettingsCard(
-                    title = "界面设置",
+                SettingsGroup(
+                    title = "界面",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Menu,
-                            title = "底部导航栏设置",
-                            subtitle = "自定义导航栏显示和排序",
-                            onClick = {
-                                navigationRepository?.let {
-                                    NavigationSettingsActivity.start(context, it)
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Menu,
+                                title = "底部导航栏设置",
+                                subtitle = "自定义导航栏显示和排序",
+                                onClick = {
+                                    navigationRepository?.let {
+                                        NavigationSettingsActivity.start(context, it)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     )
                 )
             }
             
             // 账户设置
             item {
-                SettingsCard(
-                    title = "账户设置",
+                SettingsGroup(
+                    title = "账户",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Devices,
-                            title = "在线设备",
-                            subtitle = "查看当前登录的设备",
-                            onClick = {
-                                tokenRepository?.let { tokenRepo ->
-                                    OnlineDevicesActivity.start(context, tokenRepo)
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Devices,
+                                title = "在线设备",
+                                subtitle = "查看当前登录的设备",
+                                onClick = {
+                                    tokenRepository?.let { tokenRepo ->
+                                        OnlineDevicesActivity.start(context, tokenRepo)
+                                    }
                                 }
-                            }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Lock,
-                            title = "修改密码",
-                            subtitle = "更改账户登录密码",
-                            onClick = {
-                                // 启动修改密码Activity，传递用户邮箱
-                                val intent = ChangePasswordActivity.createIntent(context, userEmail)
-                                context.startActivity(intent)
-                            }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Block,
-                            title = "黑名单",
-                            subtitle = "管理屏蔽的用户列表",
-                            onClick = {
-                                com.yhchat.canary.ui.blocklist.BlacklistActivity.start(context)
-                            }
-                        )
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.SwapHoriz,
+                                title = "切换账号",
+                                subtitle = "已添加 ${savedAccounts.size} 个账号",
+                                onClick = {
+                                    showAccountSwitchSheet = true
+                                }
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Lock,
+                                title = "修改密码",
+                                subtitle = "更改账户登录密码",
+                                onClick = {
+                                    // 启动修改密码Activity，传递用户邮箱
+                                    val intent = ChangePasswordActivity.createIntent(context, userEmail)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Block,
+                                title = "黑名单",
+                                subtitle = "管理屏蔽的用户列表",
+                                onClick = {
+                                    com.yhchat.canary.ui.blocklist.BlacklistActivity.start(context)
+                                }
+                            )
+                        }
                     )
                 )
             }
             
             // 内容设置
             item {
-                SettingsCard(
-                    title = "内容设置",
+                SettingsGroup(
+                    title = "内容",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Web,
-                            title = "HTML设置",
-                            subtitle = "网页内容显示设置",
-                            onClick = {
-                                HtmlSettingsActivity.start(context)
-                            }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.GraphicEq,
-                            title = "已保存的语音",
-                            subtitle = "管理 Download/yhchat/audio/ 下的语音",
-                            onClick = {
-                                SavedAudiosActivity.start(context)
-                            }
-                        )
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Web,
+                                title = "HTML设置",
+                                subtitle = "网页内容显示设置",
+                                onClick = {
+                                    HtmlSettingsActivity.start(context)
+                                }
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.GraphicEq,
+                                title = "已保存的语音",
+                                subtitle = "管理 Download/yhchat/audio/ 下的语音",
+                                onClick = {
+                                    SavedAudiosActivity.start(context)
+                                }
+                            )
+                        }
                     )
                 )
             }
             
             // 显示设置
             item {
-                DisplaySettingsCard(context = context)
+                DisplaySettingsGroup(context = context)
             }
             
             // 个性化设置
             item {
-                PersonalizationSettingsCard(context = context)
+                PersonalizationSettingsGroup(context = context)
             }
             
             // 关于应用
             item {
-                SettingsCard(
+                SettingsGroup(
                     title = "关于",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Info,
-                            title = "应用详情",
-                            subtitle = "查看应用版本和开发者信息",
-                            onClick = {
-                                AppInfoActivity.start(context)
-                            }
-                        )
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Info,
+                                title = "应用详情",
+                                subtitle = "查看应用版本和开发者信息",
+                                onClick = {
+                                    AppInfoActivity.start(context)
+                                }
+                            )
+                        }
                     )
                 )
             }
             
             // 账户设置
             item {
-                SettingsCard(
+                SettingsGroup(
                     title = "账户管理",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.ExitToApp,
-                            title = "退出登录",
-                            subtitle = "安全退出当前账户",
-                            onClick = {
-                                showLogoutDialog = true
-                            },
-                            isDestructive = true
-                        )
+                        {
+                            SettingsItemCell(
+                                icon = Icons.AutoMirrored.Filled.ExitToApp,
+                                title = "退出登录",
+                                subtitle = "安全退出当前账户",
+                                onClick = {
+                                    showLogoutDialog = true
+                                },
+                                isDestructive = true
+                            )
+                        }
                     )
                 )
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -212,10 +280,14 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = {
-                Text("确认退出登录")
+                Text(
+                    text = "确认退出登录"
+                )
             },
             text = {
-                Text("退出登录后需要重新输入账号密码，确定要退出吗？")
+                Text(
+                    text = "退出登录后需要重新输入账号密码，确定要退出吗？"
+                )
             },
             confirmButton = {
                 TextButton(
@@ -236,13 +308,176 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showAccountSwitchSheet) {
+        AccountSwitchBottomSheet(
+            currentUserId = currentUserId,
+            accounts = savedAccounts,
+            onDismiss = { showAccountSwitchSheet = false },
+            onAddAccount = {
+                showAccountSwitchSheet = false
+                LoginActivity.start(context)
+            },
+            onDeleteAccount = { userId ->
+                coroutineScope.launch {
+                    accountRepository?.deleteAccount(userId)
+                }
+            },
+            onSwitchAccount = { userId ->
+                val switched = accountRepository?.switchToAccount(userId) == true
+                if (switched) {
+                    showAccountSwitchSheet = false
+                    val intent = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    (context as? Activity)?.finish()
+                } else {
+                    android.widget.Toast
+                        .makeText(context, "切换失败：未找到该账号 token，请重新登录", android.widget.Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountSwitchBottomSheet(
+    currentUserId: String?,
+    accounts: List<SavedAccount>,
+    onDismiss: () -> Unit,
+    onAddAccount: () -> Unit,
+    onDeleteAccount: (String) -> Unit,
+    onSwitchAccount: (String) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "切换账号",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onAddAccount) {
+                    Text("添加账号")
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(accounts, key = { it.userId }) { account ->
+                    val isCurrent = account.userId == currentUserId
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSwitchAccount(account.userId) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!account.avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = account.avatarUrl,
+                                contentDescription = "头像",
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "头像",
+                                modifier = Modifier.size(44.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = account.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (isCurrent) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    AssistChip(
+                                        onClick = {},
+                                        label = { Text("当前") }
+                                    )
+                                }
+                            }
+                            Text(
+                                text = account.displayId,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { onDeleteAccount(account.userId) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "删除",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+
+                if (accounts.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "还没有添加账号",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(onClick = onAddAccount) {
+                                Text("添加账号")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
- * 显示设置卡片
+ * 显示设置组
  */
 @Composable
-private fun DisplaySettingsCard(
+private fun DisplaySettingsGroup(
     context: Context,
     modifier: Modifier = Modifier
 ) {
@@ -254,178 +489,67 @@ private fun DisplaySettingsCard(
         mutableStateOf(prefs.getBoolean("show_sticky_conversations", true)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "显示设置",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            
-            // 置顶会话显示开关
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = "置顶会话",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "显示置顶会话",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "在会话列表中显示置顶的会话",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Switch(
-                        checked = showStickyConversations,
-                        onCheckedChange = { checked ->
-                            showStickyConversations = checked
-                            prefs.edit().putBoolean("show_sticky_conversations", checked).apply()
-                        }
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 内联表情显示开关
-            var showInlineExpressions by remember { 
-                mutableStateOf(prefs.getBoolean("show_inline_expressions", true)) 
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEmotions,
-                        contentDescription = "内联表情",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "显示内联表情",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "在聊天气泡中直接渲染 [.表情]",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Switch(
-                        checked = showInlineExpressions,
-                        onCheckedChange = { checked ->
-                            showInlineExpressions = checked
-                            prefs.edit().putBoolean("show_inline_expressions", checked).apply()
-                        }
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // 字体大小调节
-            FontSizeSettingItem(context = context)
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // 全局组件大小（无极调节）
-            GlobalScaleSettingItem(context = context)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            MemoryAutoCleanSettingItem(context = context)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 省流量模式
-            DataSaverSettingItem(context = context)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // WebSocket 连接开关
-            WebSocketSettingItem(context = context)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 机器人看板显示开关
-            BotBoardSettingItem(context = context)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 菜单按钮栏显示开关
-            MenuButtonsSettingItem(context = context)
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // WebP压缩质量设置
-            WebPQualitySettingItem(context = context)
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // HTML消息显示原文开关
-            HtmlRawTextSettingItem(context = context)
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Markdown消息显示原文开关
-            MarkdownRawTextSettingItem(context = context)
-        }
+    // 内联表情显示开关
+    var showInlineExpressions by remember { 
+        mutableStateOf(prefs.getBoolean("show_inline_expressions", true)) 
     }
+
+    // 表情选择器点击后自动收回
+    var autoDismissExpressionPicker by remember {
+        mutableStateOf(prefs.getBoolean("auto_dismiss_expression_picker", true))
+    }
+
+    SettingsGroup(
+        title = "显示设置",
+        items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.PushPin,
+                    title = "显示置顶会话",
+                    subtitle = "在会话列表中显示置顶的会话",
+                    checked = showStickyConversations,
+                    onCheckedChange = { checked ->
+                        showStickyConversations = checked
+                        prefs.edit().putBoolean("show_sticky_conversations", checked).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.EmojiEmotions,
+                    title = "显示内联表情",
+                    subtitle = "在聊天气泡中直接渲染 [.表情]",
+                    checked = showInlineExpressions,
+                    onCheckedChange = { checked ->
+                        showInlineExpressions = checked
+                        prefs.edit().putBoolean("show_inline_expressions", checked).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.KeyboardArrowDown,
+                    title = "选择表情后自动收回",
+                    subtitle = if (autoDismissExpressionPicker) "点击表情后会自动关闭表情面板" else "点击表情后不会自动关闭表情面板",
+                    checked = autoDismissExpressionPicker,
+                    onCheckedChange = { checked ->
+                        autoDismissExpressionPicker = checked
+                        prefs.edit().putBoolean("auto_dismiss_expression_picker", checked).apply()
+                    }
+                )
+            },
+            { FontSizeSettingItem(context = context) },
+            { GlobalScaleSettingItem(context = context) },
+            { MemoryAutoCleanSettingItem(context = context) },
+            { DataSaverSettingItem(context = context) },
+            { WebSocketSettingItem(context = context) },
+            { BotBoardSettingItem(context = context) },
+            { MenuButtonsSettingItem(context = context) },
+            { WebPQualitySettingItem(context = context) },
+            { HtmlRawTextSettingItem(context = context) },
+            { MarkdownRawTextSettingItem(context = context) }
+        )
+    )
 }
 
 /**
@@ -444,175 +568,17 @@ private fun WebSocketSettingItem(
         mutableStateOf(prefs.getBoolean("disable_websocket", false)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.CloudOff,
-                contentDescription = "禁用 WebSocket",
-                modifier = Modifier.size(24.dp),
-                tint = if (disableWebSocket) 
-                    MaterialTheme.colorScheme.error 
-                else 
-                    MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "禁用 WebSocket",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (disableWebSocket) "已禁用实时消息推送，需重启应用生效" else "启用实时消息推送",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (disableWebSocket) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Switch(
-                checked = disableWebSocket,
-                onCheckedChange = { checked ->
-                    disableWebSocket = checked
-                    prefs.edit().putBoolean("disable_websocket", checked).apply()
-                }
-            )
-        }
-    }
-}
-
-/**
- * 设置项数据类
- */
-data class SettingsItem(
-    val icon: ImageVector,
-    val title: String,
-    val subtitle: String,
-    val onClick: () -> Unit,
-    val isDestructive: Boolean = false
-)
-
-/**
- * 设置卡片组件
- */
-@Composable
-private fun SettingsCard(
-    title: String,
-    items: List<SettingsItem>,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            
-            items.forEachIndexed { index, item ->
-                SettingsItemRow(
-                    item = item,
-                    showDivider = index < items.size - 1
-                )
-            }
-        }
-    }
-}
-
-/**
- * 设置项行组件
- */
-@Composable
-private fun SettingsItemRow(
-    item: SettingsItem,
-    showDivider: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Card(
-            onClick = item.onClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = item.title,
-                    modifier = Modifier.size(24.dp),
-                    tint = if (item.isDestructive) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = if (item.isDestructive) 
-                            MaterialTheme.colorScheme.error 
-                        else 
-                            MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = item.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = "前往",
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        
-        if (showDivider) {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
+    SettingsSwitchItem(
+        icon = Icons.Default.CloudOff,
+        title = "禁用 WebSocket",
+        subtitle = if (disableWebSocket) "已禁用实时消息推送，需重启应用生效" else "启用实时消息推送",
+        checked = disableWebSocket,
+        onCheckedChange = { checked ->
+            disableWebSocket = checked
+            prefs.edit().putBoolean("disable_websocket", checked).apply()
+        },
+        isError = disableWebSocket
+    )
 }
 
 /**
@@ -631,13 +597,7 @@ private fun FontSizeSettingItem(
         mutableStateOf(prefs.getFloat("font_scale", 100f)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCustomItem {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -654,15 +614,13 @@ private fun FontSizeSettingItem(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "字体大小",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "${fontScale.toInt()}% (重启应用生效)",
@@ -675,33 +633,34 @@ private fun FontSizeSettingItem(
             Spacer(modifier = Modifier.height(12.dp))
             
             // 滑动条
+            Slider(
+                value = fontScale,
+                onValueChange = { newValue ->
+                    fontScale = newValue
+                },
+                onValueChangeFinished = {
+                    // 保存设置
+                    prefs.edit()
+                        .putFloat("font_scale", fontScale)
+                        .apply()
+                },
+                valueRange = 1f..100f,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            // 质量说明
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "1%",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "小 (1%)",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Slider(
-                    value = fontScale,
-                    onValueChange = { newValue ->
-                        fontScale = newValue
-                        prefs.edit().putFloat("font_scale", newValue).apply()
-                    },
-                    valueRange = 1f..100f,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
                 Text(
-                    text = "100%",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "大 (100%)",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -725,13 +684,7 @@ private fun GlobalScaleSettingItem(
         mutableStateOf(prefs.getFloat("global_scale", 1.0f))
     }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCustomItem {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -748,15 +701,13 @@ private fun GlobalScaleSettingItem(
                     tint = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "组件大小",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = String.format("%.0f%% (部分界面需重启生效)", scale * 100f),
@@ -774,7 +725,7 @@ private fun GlobalScaleSettingItem(
             ) {
                 Text(
                     text = "50%",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -796,7 +747,7 @@ private fun GlobalScaleSettingItem(
 
                 Text(
                     text = "150%",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -824,13 +775,7 @@ private fun MemoryAutoCleanSettingItem(
     }
     var unitExpanded by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCustomItem {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -854,7 +799,7 @@ private fun MemoryAutoCleanSettingItem(
                 ) {
                     Text(
                         text = "内存阈值自动清理",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -950,54 +895,17 @@ private fun DataSaverSettingItem(
         mutableStateOf(prefs.getBoolean("data_saver", false))
     }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.DataSaverOn,
-                contentDescription = "省流量模式",
-                modifier = Modifier.size(24.dp),
-                tint = if (dataSaver) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "省流量模式",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (dataSaver) "不加载全局图片（头像/消息图片/背景等）" else "默认关闭",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Switch(
-                checked = dataSaver,
-                onCheckedChange = { checked ->
-                    dataSaver = checked
-                    prefs.edit().putBoolean("data_saver", checked).apply()
-                }
-            )
-        }
-    }
+    SettingsSwitchItem(
+        icon = Icons.Default.DataSaverOn,
+        title = "省流量模式",
+        subtitle = if (dataSaver) "不加载全局图片（头像/消息图片/背景等）" else "默认关闭",
+        checked = dataSaver,
+        onCheckedChange = { checked ->
+            dataSaver = checked
+            prefs.edit().putBoolean("data_saver", checked).apply()
+        },
+        isError = dataSaver
+    )
 }
 
 /**
@@ -1016,54 +924,16 @@ private fun BotBoardSettingItem(
         mutableStateOf(prefs.getBoolean("show_bot_board", true)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Dashboard,
-                contentDescription = "机器人看板",
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "显示机器人看板",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (showBotBoard) "在聊天界面显示群聊机器人看板和单机器人看板" else "隐藏所有机器人看板",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Switch(
-                checked = showBotBoard,
-                onCheckedChange = { checked ->
-                    showBotBoard = checked
-                    prefs.edit().putBoolean("show_bot_board", checked).apply()
-                }
-            )
+    SettingsSwitchItem(
+        icon = Icons.Default.Dashboard,
+        title = "显示机器人看板",
+        subtitle = if (showBotBoard) "在聊天界面显示群聊机器人看板和单机器人看板" else "隐藏所有机器人看板",
+        checked = showBotBoard,
+        onCheckedChange = { checked ->
+            showBotBoard = checked
+            prefs.edit().putBoolean("show_bot_board", checked).apply()
         }
-    }
+    )
 }
 
 /**
@@ -1082,145 +952,53 @@ private fun MenuButtonsSettingItem(
         mutableStateOf(prefs.getBoolean("show_menu_buttons", true)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Apps,
-                contentDescription = "菜单按钮栏",
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "显示菜单按钮栏",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (showMenuButtons) "在聊天输入框上方显示菜单按钮栏" else "隐藏菜单按钮栏",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Switch(
-                checked = showMenuButtons,
-                onCheckedChange = { checked ->
-                    showMenuButtons = checked
-                    prefs.edit().putBoolean("show_menu_buttons", checked).apply()
-                }
-            )
+    SettingsSwitchItem(
+        icon = Icons.Default.Apps,
+        title = "显示菜单按钮栏",
+        subtitle = if (showMenuButtons) "在聊天输入框上方显示菜单按钮栏" else "隐藏菜单按钮栏",
+        checked = showMenuButtons,
+        onCheckedChange = { checked ->
+            showMenuButtons = checked
+            prefs.edit().putBoolean("show_menu_buttons", checked).apply()
         }
-    }
+    )
 }
 
 /**
- * 个性化设置卡片
+ * 个性化设置组
  */
 @Composable
-private fun PersonalizationSettingsCard(
+private fun PersonalizationSettingsGroup(
     context: Context,
     modifier: Modifier = Modifier
 ) {
     var showColorPickerDialog by remember { mutableStateOf(false) }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "个性化",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            
-            // 聊天背景设置
-            Card(
-                onClick = {
-                    com.yhchat.canary.ui.background.ChatBackgroundActivity.start(
-                        context,
-                        "all",
-                        "全局"
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Wallpaper,
-                        contentDescription = "聊天背景",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "聊天背景",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "设置全局聊天背景",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+    SettingsGroup(
+        title = "个性化",
+        items = listOf(
+            {
+                SettingsItemCell(
+                    icon = Icons.Default.Wallpaper,
+                    title = "聊天背景",
+                    subtitle = "设置全局聊天背景",
+                    onClick = {
+                        com.yhchat.canary.ui.background.ChatBackgroundActivity.start(
+                            context,
+                            "all",
+                            "全局"
                         )
                     }
-                    
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "前往",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                )
+            },
+            {
+                ThemeColorSettingItem(
+                    context = context,
+                    onColorPickerClick = { showColorPickerDialog = true }
+                )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // 主题颜色设置
-            ThemeColorSettingItem(
-                context = context,
-                onColorPickerClick = { showColorPickerDialog = true }
-            )
-        }
-    }
+        )
+    )
     
     // 颜色选择对话框
     if (showColorPickerDialog) {
@@ -1248,14 +1026,7 @@ private fun ThemeColorSettingItem(
     val currentColor = Color(currentColorInt)
     val isCustomColor = currentColorInt != 0xFF6200EE.toInt()
     
-    Card(
-        onClick = onColorPickerClick,
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCustomItem(onClick = onColorPickerClick) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1276,7 +1047,7 @@ private fun ThemeColorSettingItem(
             ) {
                 Text(
                     text = "主题颜色",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -1554,13 +1325,7 @@ private fun WebPQualitySettingItem(
         mutableFloatStateOf(prefs.getInt("webp_quality", 95).toFloat()) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCustomItem {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1648,57 +1413,17 @@ private fun HtmlRawTextSettingItem(
         mutableStateOf(prefs.getBoolean("show_html_raw_text", false)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Code,
-                contentDescription = "HTML原文显示",
-                modifier = Modifier.size(24.dp),
-                tint = if (showHtmlRawText) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "HTML消息显示原文",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (showHtmlRawText) "显示HTML源代码而不是渲染后的网页" else "正常渲染HTML消息",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Switch(
-                checked = showHtmlRawText,
-                onCheckedChange = { checked ->
-                    showHtmlRawText = checked
-                    prefs.edit().putBoolean("show_html_raw_text", checked).apply()
-                }
-            )
-        }
-    }
+    SettingsSwitchItem(
+        icon = Icons.Default.Code,
+        title = "HTML消息显示原文",
+        subtitle = if (showHtmlRawText) "显示HTML源代码而不是渲染后的网页" else "正常渲染HTML消息",
+        checked = showHtmlRawText,
+        onCheckedChange = { checked ->
+            showHtmlRawText = checked
+            prefs.edit().putBoolean("show_html_raw_text", checked).apply()
+        },
+        isError = false
+    )
 }
 
 /**
@@ -1717,13 +1442,79 @@ private fun MarkdownRawTextSettingItem(
         mutableStateOf(prefs.getBoolean("show_markdown_raw_text", false)) 
     }
     
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsSwitchItem(
+        icon = Icons.Default.TextFields,
+        title = "Markdown消息显示原文",
+        subtitle = if (showMarkdownRawText) "显示Markdown源代码而不是渲染后的格式" else "正常渲染Markdown消息",
+        checked = showMarkdownRawText,
+        onCheckedChange = { checked ->
+            showMarkdownRawText = checked
+            prefs.edit().putBoolean("show_markdown_raw_text", checked).apply()
+        },
+        isError = false
+    )
+}
+
+/**
+ * 设置组容器 (SplicedColumnGroup 风格)
+ */
+@Composable
+fun SettingsGroup(
+    title: String? = null,
+    items: List<@Composable () -> Unit>,
+    modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) return
+    
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (!title.isNullOrEmpty()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
+        val cornerRadius = 24.dp
+        val smallRadius = 4.dp
+        
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+             items.forEachIndexed { index, item ->
+                val shape = when {
+                    items.size == 1 -> RoundedCornerShape(cornerRadius)
+                    index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = smallRadius, bottomEnd = smallRadius)
+                    index == items.size - 1 -> RoundedCornerShape(topStart = smallRadius, topEnd = smallRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
+                    else -> RoundedCornerShape(smallRadius)
+                }
+
+                Surface(
+                    shape = shape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item()
+                }
+             }
+        }
+    }
+}
+
+/**
+ * 标准设置项
+ */
+@Composable
+fun SettingsItemCell(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false
+) {
+    SettingsCustomItem(onClick = onClick) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1731,27 +1522,73 @@ private fun MarkdownRawTextSettingItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.TextFields,
-                contentDescription = "Markdown原文显示",
+                imageVector = icon,
+                contentDescription = title,
                 modifier = Modifier.size(24.dp),
-                tint = if (showMarkdownRawText) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
             )
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Markdown消息显示原文",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
+
+/**
+ * 带 Switch 的设置项
+ */
+@Composable
+fun SettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    isError: Boolean = false
+) {
+    SettingsCustomItem(onClick = { onCheckedChange(!checked) }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (showMarkdownRawText) "显示Markdown源代码而不是渲染后的格式" else "正常渲染Markdown消息",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1760,12 +1597,32 @@ private fun MarkdownRawTextSettingItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             Switch(
-                checked = showMarkdownRawText,
-                onCheckedChange = { checked ->
-                    showMarkdownRawText = checked
-                    prefs.edit().putBoolean("show_markdown_raw_text", checked).apply()
-                }
+                checked = checked,
+                onCheckedChange = null // Handled by parent click
             )
+        }
+    }
+}
+
+/**
+ * 自定义内容的设置项
+ */
+@Composable
+fun SettingsCustomItem(
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    if (onClick != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+        ) {
+            content()
+        }
+    } else {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            content()
         }
     }
 }

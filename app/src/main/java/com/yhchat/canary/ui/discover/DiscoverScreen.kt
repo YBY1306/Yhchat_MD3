@@ -29,6 +29,10 @@ import com.yhchat.canary.data.model.RecommendBot
 import com.yhchat.canary.ui.components.ImageUtils
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 发现界面
@@ -94,6 +98,23 @@ fun DiscoverScreen(
         }
     }
 
+    // 滚动到底部自动加载更多群聊
+    LaunchedEffect(listState, groups.size, hasMoreGroups, isLoadingMoreGroups) {
+        snapshotFlow {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            lastVisibleIndex to total
+        }
+            .distinctUntilChanged()
+            .filter { (_, total) -> total > 0 }
+            .map { (lastVisible, total) -> lastVisible >= total - 3 }
+            .distinctUntilChanged()
+            .filter { it }
+            .collectLatest {
+                loadMoreGroups()
+            }
+    }
+
     // 加载推荐机器人
     LaunchedEffect(Unit) {
         isLoadingBots = true
@@ -134,23 +155,30 @@ fun DiscoverScreen(
                         BotListActivity.start(context)
                     }
                 ) {
-                    if (bots.isNotEmpty()) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(bots) { bot ->
-                                BotDiscoverCard(
-                                    bot = bot,
-                                    onClick = { selectedBot = bot }
-                                )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (bots.isNotEmpty()) {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(bots) { bot ->
+                                    BotDiscoverCard(
+                                        bot = bot,
+                                        onClick = { selectedBot = bot }
+                                    )
+                                }
                             }
+                        } else if (!isLoadingBots) {
+                            Text(
+                                text = "暂无推荐机器人",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    } else if (!isLoadingBots) {
-                        Text(
-                            text = "暂无推荐机器人",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
@@ -222,15 +250,11 @@ fun DiscoverScreen(
                 // 加载更多指示器
                 if (hasMoreGroups) {
                     item {
-                        LaunchedEffect(Unit) {
-                            loadMoreGroups()
-                        }
-                        
                         if (isLoadingMoreGroups) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-            .padding(16.dp),
+                                    .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -245,8 +269,8 @@ fun DiscoverScreen(
                             .fillMaxWidth()
                             .height(100.dp),
                         contentAlignment = Alignment.Center
-    ) {
-        Text(
+                    ) {
+                        Text(
                             text = "暂无推荐群聊",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -412,7 +436,14 @@ fun DiscoverSectionCard(
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                 }
             } else {
-                content()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    content()
+                }
             }
         }
     }

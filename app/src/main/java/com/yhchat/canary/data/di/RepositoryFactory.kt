@@ -243,4 +243,20 @@ object RepositoryFactory {
     fun getUpdateRepository(context: Context): com.yhchat.canary.data.repository.UpdateRepository {
         return com.yhchat.canary.data.repository.UpdateRepository(context)
     }
+
+    
+    /**
+     * 获取黑名单仓库实例
+     */
+    fun getBlocklistRepository(context: Context): com.yhchat.canary.data.repository.BlocklistRepository {
+        return com.yhchat.canary.data.repository.BlocklistRepository(context)
+    }
+
+    /**
+     * 获取账号仓库实例
+     */
+    fun getAccountRepository(context: Context): com.yhchat.canary.data.repository.AccountRepository {
+        val database = AppDatabase.getDatabase(context)
+        return com.yhchat.canary.data.repository.AccountRepository(database.savedAccountDao(), context.applicationContext)
+    }
 }

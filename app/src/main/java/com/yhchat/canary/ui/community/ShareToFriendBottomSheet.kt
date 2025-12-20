@@ -92,7 +92,7 @@ fun ShareToFriendBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.97f)
+                .fillMaxHeight(0.95f)
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp)
         ) {

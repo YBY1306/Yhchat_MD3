@@ -49,6 +49,12 @@ fun ExpressionPicker(
 ) {
     val context = LocalContext.current
     val viewModel = remember { ExpressionPickerViewModel() }
+    val prefs = remember {
+        context.getSharedPreferences("display_settings", Context.MODE_PRIVATE)
+    }
+    val autoDismissAfterPick: Boolean = remember {
+        prefs.getBoolean("auto_dismiss_expression_picker", true)
+    }
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -193,6 +199,9 @@ fun ExpressionPicker(
                                         .aspectRatio(1f)
                                         .clickable {
                                             onDefaultExpressionClick(name)
+                                            if (autoDismissAfterPick) {
+                                                onDismiss()
+                                            }
                                         },
                                     contentScale = ContentScale.Fit
                                 )
@@ -231,7 +240,9 @@ fun ExpressionPicker(
                                         .size(80.dp)
                                         .clickable {
                                             onExpressionClick(expression)  // 传递完整的Expression对象
-                                            onDismiss()
+                                            if (autoDismissAfterPick) {
+                                                onDismiss()
+                                            }
                                         },
                                     contentScale = ContentScale.Fit
                                 )
@@ -269,7 +280,9 @@ fun ExpressionPicker(
                                         modifier = Modifier
                                             .clickable {
                                                 onStickerClick(stickerItem)
-                                                onDismiss()
+                                                if (autoDismissAfterPick) {
+                                                    onDismiss()
+                                                }
                                             }
                                     ) {
                                         AsyncImage(

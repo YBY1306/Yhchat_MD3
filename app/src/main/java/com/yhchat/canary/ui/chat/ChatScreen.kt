@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Environment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -100,7 +102,6 @@ import com.yhchat.canary.ui.community.PostDetailActivity
 import androidx.compose.foundation.border
 import org.json.JSONArray
 import org.json.JSONObject
-// pointerInput 相关扩展函数无需单独 import，consume 已废弃
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1368,8 +1369,12 @@ private fun MessageContextMenu(
             )
         },
         text = {
+            val scrollState = rememberScrollState()
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 复制全部
@@ -1884,47 +1889,37 @@ private fun MessageContentView(
                 content.text?.let { htmlContent ->
                     if (showHtmlRawText) {
                         // 显示HTML原文
-                        Text(
-                            text = htmlContent,
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = { },
                                     onLongClick = onLongClick
                                 )
-                        )
+                        ) {
+                            Text(
+                                text = htmlContent,
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     } else {
                         // 使用Box包裹，添加占位符以减少初始渲染压力
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 120.dp, max = 440.dp)
-                        ) {
-                        HtmlWebView(
-                            htmlContent = htmlContent,
-                            onImageClick = onImageClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = { },
                                     onLongClick = onLongClick
                                 )
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            event.changes.forEach { pointerInputChange ->
-                                                // 兼容旧Compose：手动判断down
-                                                if (!pointerInputChange.previousPressed && pointerInputChange.pressed) {
-                                                    pointerInputChange.consume()
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                        )
+                        ) {
+                            HtmlWebView(
+                                htmlContent = htmlContent,
+                                onImageClick = onImageClick,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -2035,35 +2030,43 @@ private fun MessageContentView(
                 content.text?.let { markdownText ->
                     if (showMarkdownRawText) {
                         // 显示Markdown原文
-                        Text(
-                            text = markdownText,
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = { },
                                     onLongClick = onLongClick
                                 )
-                        )
+                        ) {
+                            Text(
+                                text = markdownText,
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     } else {
                         // 正常渲染Markdown
-                        MarkdownText(
-                            markdown = markdownText,
-                            textColor = if (isMyMessage) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
-                            onImageClick = onImageClick,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = { },
                                     onLongClick = onLongClick
                                 )
-                        )
+                        ) {
+                            MarkdownText(
+                                markdown = markdownText,
+                                textColor = if (isMyMessage) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
+                                onImageClick = onImageClick,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }

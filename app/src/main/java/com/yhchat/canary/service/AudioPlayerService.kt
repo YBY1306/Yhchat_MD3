@@ -25,7 +25,6 @@ import android.util.Log
 import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
-import androidx.media.session.MediaButtonReceiver
 import androidx.documentfile.provider.DocumentFile
 import com.yhchat.canary.MainActivity
 import com.yhchat.canary.R
@@ -166,12 +165,6 @@ class AudioPlayerService : Service() {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
                     MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
             )
-            setMediaButtonReceiver(
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    this@AudioPlayerService,
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE
-                )
-            )
             setCallback(object : MediaSessionCompat.Callback() {
                 override fun onPlay() {
                     currentLocalPath?.let { path ->
@@ -228,15 +221,13 @@ class AudioPlayerService : Service() {
      }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            MediaButtonReceiver.handleIntent(mediaSession, intent)
-        }
         when (intent?.action) {
             ACTION_PLAY -> {
                 val title = intent.getStringExtra(EXTRA_AUDIO_TITLE) ?: "语音消息"
                 val localPath = intent.getStringExtra(EXTRA_LOCAL_AUDIO_PATH)
                 val contentUri = intent.getStringExtra(EXTRA_AUDIO_CONTENT_URI)
                 val isSaved = intent.getBooleanExtra(EXTRA_IS_SAVED_AUDIO, false)
+                val audioUrl = intent.getStringExtra(EXTRA_AUDIO_URL)
                 if (!contentUri.isNullOrBlank()) {
                     // 对于 contentUri：默认认为它可能来自“已保存音频”，因此尝试建立队列并判断
                     // 即使外部没有显式传 EXTRA_IS_SAVED_AUDIO，也能实现按文件夹顺序切歌
@@ -253,13 +244,15 @@ class AudioPlayerService : Service() {
                     currentContentUri = null
                     playLocalAudio(localPath, title)
                 } else {
-                    val audioUrl = intent.getStringExtra(EXTRA_AUDIO_URL)
-                    if (audioUrl != null) {
+                    if (!audioUrl.isNullOrBlank()) {
                         currentIsSavedAudio = false
                         currentLocalPath = null
                         currentContentUri = null
                         currentAudioUrl = audioUrl
                         playAudio(audioUrl, title)
+                    } else {
+                        // 通知栏“播放”按钮通常不会携带 extras，这里视为继续播放
+                        resumeAudio()
                     }
                 }
             }
@@ -300,17 +293,33 @@ class AudioPlayerService : Service() {
     private fun querySavedAudiosFromMediaStore(): List<SavedAudioItem> {
         val resolver = contentResolver
         val relativePath = "Download/yhchat/audio/"
-        val projection = arrayOf(
-            MediaStore.MediaColumns._ID,
-            MediaStore.MediaColumns.DISPLAY_NAME
-        )
-        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=?"
-        val selectionArgs = arrayOf(relativePath)
+        val legacyDirPrefix = legacySavedAudiosDirPrefix()
+        val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME
+            )
+        } else {
+            arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.DATA
+            )
+        }
+        val selection: String
+        val selectionArgs: Array<String>
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=?"
+            selectionArgs = arrayOf(relativePath)
+        } else {
+            selection = "${MediaStore.MediaColumns.DATA} LIKE ?"
+            selectionArgs = arrayOf("$legacyDirPrefix%")
+        }
         val sortOrder = "${MediaStore.MediaColumns.DISPLAY_NAME} COLLATE NOCASE ASC"
 
         val results = mutableListOf<SavedAudioItem>()
         resolver.query(
-            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            savedAudiosCollectionUri(),
             projection,
             selection,
             selectionArgs,
@@ -321,7 +330,7 @@ class AudioPlayerService : Service() {
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
                 val name = cursor.getString(nameIndex) ?: "语音"
-                val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                val uri = ContentUris.withAppendedId(savedAudiosCollectionUri(), id)
                 results.add(
                     SavedAudioItem(
                         contentUri = uri.toString(),
@@ -331,6 +340,21 @@ class AudioPlayerService : Service() {
             }
         }
         return results
+    }
+
+    private fun savedAudiosCollectionUri(): Uri {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Uri.parse("content://media/external/downloads")
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+    }
+
+    private fun legacySavedAudiosDirPrefix(): String {
+        val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+        val dir = java.io.File(downloadsDir, "yhchat/audio")
+        val path = dir.absolutePath
+        return if (path.endsWith("/")) path else "$path/"
     }
 
     private fun querySavedAudiosFromAuthorizedFolder(): List<SavedAudioItem> {
@@ -688,6 +712,18 @@ class AudioPlayerService : Service() {
         }
     }
     
+    private fun resumeAudio() {
+        val player = mediaPlayer ?: return
+        if (isPlaying) return
+        runCatching {
+            player.start()
+            isPlaying = true
+            updatePlaybackState(playing = true)
+            updateNotification(currentTitle, "正在播放")
+            startProgressUpdates()
+        }
+    }
+    
     private fun stopAudio() {
         saveProgressForCurrentAudio(getCurrentPositionMs())
         stopProgressUpdates()
@@ -849,61 +885,58 @@ class AudioPlayerService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this,
+            0,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val prevAction = NotificationCompat.Action(
-            R.drawable.ic_launcher_foreground,
-            "上一条",
-            MediaButtonReceiver.buildMediaButtonPendingIntent(
+        fun servicePendingIntent(action: String): PendingIntent {
+            val i = Intent(this, AudioPlayerService::class.java).apply { this.action = action }
+            return PendingIntent.getService(
                 this,
-                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                action.hashCode(),
+                i,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+        }
+
+        val prevAction = NotificationCompat.Action(
+            android.R.drawable.ic_media_previous,
+            "上一条",
+            servicePendingIntent(ACTION_PREV)
         )
 
         val playPauseAction = if (isPlaying) {
             NotificationCompat.Action(
-                R.drawable.ic_launcher_foreground,
+                android.R.drawable.ic_media_pause,
                 "暂停",
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    this,
-                    PlaybackStateCompat.ACTION_PAUSE
-                )
+                servicePendingIntent(ACTION_PAUSE)
             )
         } else {
             NotificationCompat.Action(
-                R.drawable.ic_launcher_foreground,
+                android.R.drawable.ic_media_play,
                 "播放",
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    this,
-                    PlaybackStateCompat.ACTION_PLAY
-                )
+                servicePendingIntent(ACTION_PLAY)
             )
         }
 
         val stopAction = NotificationCompat.Action(
-            R.drawable.ic_launcher_foreground,
+            android.R.drawable.ic_menu_close_clear_cancel,
             "停止",
-            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                this,
-                PlaybackStateCompat.ACTION_STOP
-            )
+            servicePendingIntent(ACTION_STOP)
         )
 
         val nextAction = NotificationCompat.Action(
-            R.drawable.ic_launcher_foreground,
+            android.R.drawable.ic_media_next,
             "下一条",
-            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                this,
-                PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-            )
+            servicePendingIntent(ACTION_NEXT)
         )
         
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(content)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(pendingIntent)
             .setOnlyAlertOnce(true)
             .addAction(prevAction)

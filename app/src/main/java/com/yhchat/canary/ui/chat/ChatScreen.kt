@@ -1,6 +1,8 @@
 package com.yhchat.canary.ui.chat
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Environment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.*
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -1025,6 +1028,8 @@ private fun MessageItem(
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     var showContextMenu by remember { mutableStateOf(false) }
+    var showFreeCopyDialog by remember { mutableStateOf(false) }
+    var freeCopyText by remember { mutableStateOf("") }
     
     // 检查是否为撤回消息
     if (message.msgDeleteTime != null) {
@@ -1149,7 +1154,9 @@ private fun MessageItem(
                     contentType = message.contentType,
                     isMyMessage = isMyMessage,
                     modifier = Modifier.padding(12.dp),
-                    onImageClick = onImageClick,
+                    onImageClick = { imageUrl ->
+                        onImageClick(imageUrl)
+                    },
                     onLongClick = { showContextMenu = true }
                 )
             }
@@ -1239,6 +1246,11 @@ private fun MessageItem(
                 }
                 showContextMenu = false
             },
+            onFreeCopy = {
+                freeCopyText = message.content.text ?: ""
+                showContextMenu = false
+                showFreeCopyDialog = true
+            },
             onQuote = {
                 // 设置引用消息，格式：发送者名称 : 内容
                 val senderName = message.sender.name
@@ -1297,6 +1309,38 @@ private fun MessageItem(
             } else null
         )
     }
+
+    if (showFreeCopyDialog) {
+        AlertDialog(
+            onDismissRequest = { showFreeCopyDialog = false },
+            title = { Text("自由复制") },
+            text = {
+                TextField(
+                    value = freeCopyText,
+                    onValueChange = { freeCopyText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val clip = android.content.ClipData.newPlainText("message", freeCopyText)
+                        clipboardManager.setPrimaryClip(clip)
+                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                        showFreeCopyDialog = false
+                    }
+                ) {
+                    Text("复制")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFreeCopyDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -1307,6 +1351,7 @@ private fun MessageContextMenu(
     message: ChatMessage,
     onDismiss: () -> Unit,
     onCopyAll: () -> Unit,
+    onFreeCopy: () -> Unit,
     onQuote: () -> Unit,
     onRecall: () -> Unit,
     onEdit: (() -> Unit)? = null,
@@ -1344,6 +1389,28 @@ private fun MessageContextMenu(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("复制全部")
+                    }
+                }
+
+                // 自由复制（仅对文本、Markdown、HTML消息显示）
+                if (message.contentType in listOf(1, 3, 8)) {
+                    TextButton(
+                        onClick = onFreeCopy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentPaste,
+                                contentDescription = "自由复制",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("自由复制")
+                        }
                     }
                 }
                 
@@ -1529,13 +1596,25 @@ private suspend fun saveVoiceToSavedAudios(context: Context, audioUrl: String): 
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, "audio/*")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/yhchat/audio/")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/yhchat/audio/")
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val targetDir = java.io.File(downloadsDir, "yhchat/audio")
+                if (!targetDir.exists()) targetDir.mkdirs()
+                val targetFile = java.io.File(targetDir, displayName)
+                put(MediaStore.MediaColumns.DATA, targetFile.absolutePath)
+            }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
         }
 
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return@withContext false
+        val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            resolver.insert(Uri.parse("content://media/external/downloads"), values)
+        } else {
+            resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+        } ?: return@withContext false
         try {
             resolver.openOutputStream(uri)?.use { out ->
                 out.write(data)

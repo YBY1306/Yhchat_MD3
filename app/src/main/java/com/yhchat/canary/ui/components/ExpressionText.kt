@@ -39,6 +39,13 @@ fun ExpressionText(
     val context = LocalContext.current
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
     val inlineContent = remember { mutableMapOf<String, InlineTextContent>() }
+
+    val assetFileNameMap = remember(context) {
+        runCatching {
+            val list = context.assets.list("fengtwemoji")?.toList().orEmpty()
+            list.associateBy { normalizeExpressionAssetFileName(it) }
+        }.getOrDefault(emptyMap())
+    }
     
     val annotatedString = remember(text) {
         buildAnnotatedString {
@@ -67,10 +74,11 @@ fun ExpressionText(
                             placeholderVerticalAlign = PlaceholderVerticalAlign.Center
                         )
                     ) {
-                        val fileName = "$match.svg"
+                        val desiredFileName = "$match.svg"
+                        val mapped = assetFileNameMap[normalizeExpressionAssetFileName(desiredFileName)] ?: desiredFileName
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(fileName)}")
+                                .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}")
                                 .decoderFactory(SvgDecoder.Factory())
                                 .crossfade(true)
                                 .build(),
@@ -124,4 +132,10 @@ fun ExpressionText(
         inlineContent = inlineContent,
         onTextLayout = { layoutResult.value = it }
     )
+}
+
+private fun normalizeExpressionAssetFileName(fileName: String): String {
+    return fileName
+        .replace(Regex("[\\u200B-\\u200D\\uFEFF\\uFE0E\\uFE0F]"), "")
+        .trim()
 }

@@ -10,12 +10,13 @@ import android.content.ServiceConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.IBinder
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.provider.OpenableColumns
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -541,9 +542,15 @@ private fun SavedAudiosScreen(
                         val ids = confirmDeleteIds
                         confirmDeleteIds = emptyList()
                         scope.launch {
+                            // SAF 列表项使用负 id，这些不能走 MediaStore 删除
+                            val mediaStoreIds = ids.filter { it >= 0L }
+                            if (mediaStoreIds.isEmpty()) {
+                                reload()
+                                return@launch
+                            }
                             val needsUserGrant = withContext(Dispatchers.IO) {
                                 runCatching {
-                                    deleteAudiosByIds(resolver, ids)
+                                    deleteAudiosByIds(resolver, mediaStoreIds)
                                     false
                                 }.getOrElse { e ->
                                     e is SecurityException && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
@@ -551,8 +558,8 @@ private fun SavedAudiosScreen(
                             }
 
                             if (needsUserGrant) {
-                                val uris = ids.map { id ->
-                                    ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                                val uris = mediaStoreIds.map { id ->
+                                    ContentUris.withAppendedId(savedAudiosCollectionUri(), id)
                                 }
                                 val request = MediaStore.createDeleteRequest(resolver, uris)
                                 intentSenderLauncher.launch(IntentSenderRequest.Builder(request).build())
@@ -666,20 +673,38 @@ private fun SavedAudioCard(
 
 private fun querySavedAudios(resolver: ContentResolver): List<SavedAudioUiItem> {
     val relativePath = "Download/yhchat/audio/"
-    val projection = arrayOf(
-        MediaStore.MediaColumns._ID,
-        MediaStore.MediaColumns.DISPLAY_NAME,
-        MediaStore.MediaColumns.DATE_ADDED,
-        MediaStore.MediaColumns.SIZE
-    )
+    val legacyDirPrefix = legacySavedAudiosDirPrefix()
+    val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.SIZE
+        )
+    } else {
+        arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATA
+        )
+    }
 
-    val selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=?"
-    val selectionArgs = arrayOf(relativePath)
+    val selection: String
+    val selectionArgs: Array<String>
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=?"
+        selectionArgs = arrayOf(relativePath)
+    } else {
+        selection = "${MediaStore.MediaColumns.DATA} LIKE ?"
+        selectionArgs = arrayOf("$legacyDirPrefix%")
+    }
     val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
 
     val results = mutableListOf<SavedAudioUiItem>()
     resolver.query(
-        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+        savedAudiosCollectionUri(),
         projection,
         selection,
         selectionArgs,
@@ -696,7 +721,7 @@ private fun querySavedAudios(resolver: ContentResolver): List<SavedAudioUiItem> 
             val dateAdded = cursor.getLong(dateIndex)
             val size = cursor.getLong(sizeIndex)
 
-            val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+            val uri = ContentUris.withAppendedId(savedAudiosCollectionUri(), id)
             results.add(
                 SavedAudioUiItem(
                     id = id,
@@ -764,9 +789,20 @@ private fun importAudioToSavedDir(context: Context, sourceUri: Uri) {
         put(MediaStore.MediaColumns.MIME_TYPE, resolver.getType(sourceUri) ?: "audio/*")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/yhchat/audio/")
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val targetDir = java.io.File(downloadsDir, "yhchat/audio")
+            if (!targetDir.exists()) targetDir.mkdirs()
+            val targetFile = java.io.File(targetDir, name)
+            put(MediaStore.MediaColumns.DATA, targetFile.absolutePath)
         }
     }
-    val outUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+
+    val outUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        resolver.insert(savedAudiosCollectionUri(), values)
+    } else {
+        resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+    }
         ?: throw IOException("insert MediaStore failed")
     try {
         resolver.openInputStream(sourceUri).use { input ->
@@ -807,7 +843,22 @@ private fun deleteAudiosByIds(resolver: ContentResolver, ids: List<Long>) {
     val placeholders = ids.joinToString(",") { "?" }
     val selection = "${MediaStore.MediaColumns._ID} IN ($placeholders)"
     val selectionArgs = ids.map { it.toString() }.toTypedArray()
-    resolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI, selection, selectionArgs)
+    resolver.delete(savedAudiosCollectionUri(), selection, selectionArgs)
+}
+
+private fun savedAudiosCollectionUri(): Uri {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        Uri.parse("content://media/external/downloads")
+    } else {
+        MediaStore.Files.getContentUri("external")
+    }
+}
+
+private fun legacySavedAudiosDirPrefix(): String {
+    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    val dir = java.io.File(downloadsDir, "yhchat/audio")
+    val path = dir.absolutePath
+    return if (path.endsWith("/")) path else "$path/"
 }
 
 private fun formatDateTime(dateAddedSeconds: Long): String {

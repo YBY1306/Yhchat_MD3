@@ -40,6 +40,89 @@ class CommunityRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun manageBoard(
+        token: String,
+        baId: Int,
+        visibleRange: Int,
+        publishAuthority: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = ManageBoardRequest(
+                baId = baId,
+                visibleRange = visibleRange,
+                publishAuthority = publishAuthority
+            )
+            val response = apiService.manageBoard(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun editBoard(
+        token: String,
+        baId: Int,
+        name: String,
+        avatar: String
+    ): Result<ApiStatus> {
+        return try {
+            val request = EditBoardRequest(
+                baId = baId,
+                name = name,
+                avatar = avatar
+            )
+            val response = apiService.editBoard(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteBoard(
+        token: String,
+        baId: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = DeleteBoardRequest(
+                baId = baId
+            )
+            val response = apiService.deleteBoard(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     
     /**
      * 获取关注的分区列表
@@ -136,6 +219,33 @@ class CommunityRepository @Inject constructor(
             val request = PostListRequest(typ = typ, baId = baId, size = size, page = page)
             val response = apiService.getPostList(token, request)
             
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.msg ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 获取我的收藏文章列表
+     */
+    suspend fun getCollectPostList(
+        token: String,
+        size: Int = 20,
+        page: Int = 1
+    ): Result<PostListResponse> {
+        return try {
+            val request = CollectPostListRequest(size = size, page = page)
+            val response = apiService.getCollectPostList(token, request)
+
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null && body.code == 1) {

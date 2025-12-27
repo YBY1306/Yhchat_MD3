@@ -594,7 +594,7 @@ fun ConversationItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp, vertical = 3.dp)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -604,7 +604,7 @@ fun ConversationItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 头像
@@ -621,7 +621,7 @@ fun ConversationItem(
                     },
                     contentDescription = "头像",
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
@@ -719,7 +719,7 @@ fun ConversationItem(
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

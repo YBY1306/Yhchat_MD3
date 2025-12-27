@@ -40,3 +40,4 @@ build/
 .app/release/
 
 local.properties
+yhapi/

@@ -2,6 +2,9 @@
 package com.yhchat.canary.ui.community
 
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -10,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -39,6 +43,12 @@ import com.yhchat.canary.data.model.CommunityPost
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.yhchat.canary.ui.settings.SettingsGroup
+import com.yhchat.canary.ui.settings.SettingsItemCell
+import com.yhchat.canary.ui.settings.SettingsCustomItem
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.yhchat.canary.utils.ImageUploadUtil
 
 /**
  * 社区标签页界面
@@ -150,6 +160,7 @@ fun CommunityTabScreen(
                 viewModel.loadBoardList(token)
                 viewModel.loadFollowingBoardList(token)
                 viewModel.loadAllBoardList(token)
+                viewModel.loadCreatedBoardList(token)
             }
         }
         
@@ -249,51 +260,203 @@ fun MoreTabContent(
     context: android.content.Context
 ) {
     var showCreateBoardDialog by remember { mutableStateOf(false) }
+
+    val createdBoardListState by viewModel.createdBoardListState.collectAsState()
+    var showManageBoardSheet by remember { mutableStateOf(false) }
+    var boardToManage by remember { mutableStateOf<CommunityBoard?>(null) }
+    var manageVisibleRange by remember { mutableStateOf(0) }
+    var managePublishAuthority by remember { mutableStateOf(0) }
+    var isManaging by remember { mutableStateOf(false) }
+    var manageError by remember { mutableStateOf<String?>(null) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isEditingBoard by remember { mutableStateOf(false) }
+    var editedBoardName by remember { mutableStateOf("") }
+    var editedAvatarUrl by remember { mutableStateOf("") }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
+    var editError by remember { mutableStateOf<String?>(null) }
+    var showDeleteBoardDialog by remember { mutableStateOf(false) }
+    var isDeletingBoard by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        val selected = uri ?: return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            isUploadingAvatar = true
+            editError = null
+            try {
+                val uploadToken = ImageUploadUtil.getQiniuUploadToken(context, token)
+                if (uploadToken.isNotEmpty()) {
+                    ImageUploadUtil.uploadImage(context, selected, uploadToken).fold(
+                        onSuccess = { response ->
+                            editedAvatarUrl = "https://chat-img.jwznb.com/${response.key}"
+                        },
+                        onFailure = { e ->
+                            editError = e.message ?: "图片上传失败"
+                        }
+                    )
+                } else {
+                    editError = "获取上传token失败"
+                }
+            } catch (e: Exception) {
+                editError = e.message ?: "图片上传失败"
+            } finally {
+                isUploadingAvatar = false
+            }
+        }
+    }
     
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
-            // 我的文章
-            MoreOptionCard(
-                title = "我的文章",
-                description = "查看和管理我发布的文章",
-                icon = Icons.Default.Person,
-                onClick = {
-                    val intent = Intent(context, MyPostsActivity::class.java).apply {
-                        putExtra("token", token)
+            SettingsGroup(
+                title = "更多",
+                items = listOf(
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Person,
+                            title = "我的文章",
+                            subtitle = "查看和管理我发布的文章",
+                            onClick = {
+                                val intent = Intent(context, MyPostsActivity::class.java).apply {
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+                    },
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Star,
+                            title = "我的收藏",
+                            subtitle = "查看我收藏的文章",
+                            onClick = {
+                                val intent = Intent(context, MyCollectPostsActivity::class.java).apply {
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+                    },
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Block,
+                            title = "被屏蔽的用户",
+                            subtitle = "管理已屏蔽的用户列表",
+                            onClick = {
+                                val intent = Intent(context, BlockedUsersActivity::class.java).apply {
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+                    },
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Add,
+                            title = "新建分区",
+                            subtitle = "创建一个新的文章分区",
+                            onClick = {
+                                showCreateBoardDialog = true
+                            }
+                        )
                     }
-                    context.startActivity(intent)
-                }
+                )
             )
         }
-        
+
         item {
-            // 被屏蔽的用户
-            MoreOptionCard(
-                title = "被屏蔽的用户",
-                description = "管理已屏蔽的用户列表",
-                icon = Icons.Default.Block,
-                onClick = {
-                    val intent = Intent(context, BlockedUsersActivity::class.java).apply {
-                        putExtra("token", token)
+            val boards = createdBoardListState.boards
+            SettingsGroup(
+                title = "我创建的分区",
+                items = boards.map { board ->
+                    {
+                        SettingsCustomItem(
+                            onClick = {
+                                val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                    putExtra("board_id", board.id)
+                                    putExtra("board_name", board.name)
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (board.avatar.isNotBlank()) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(board.avatar)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    } else {
+                                        Surface(
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = CircleShape
+                                        ) {}
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = board.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "ID: ${board.id}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        boardToManage = board
+                                        manageVisibleRange = 0
+                                        managePublishAuthority = 0
+                                        manageError = null
+                                        isEditingBoard = false
+                                        editedBoardName = board.name
+                                        editedAvatarUrl = board.avatar
+                                        editError = null
+                                        showManageBoardSheet = true
+                                    }
+                                ) {
+                                    Text(
+                                        text = "管理",
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
+                            }
+                        }
                     }
-                    context.startActivity(intent)
-                }
-            )
-        }
-        
-        item {
-            // 新建分区
-            MoreOptionCard(
-                title = "新建分区",
-                description = "创建一个新的讨论分区",
-                icon = Icons.Default.Add,
-                onClick = {
-                    showCreateBoardDialog = true
                 }
             )
         }
@@ -307,6 +470,350 @@ fun MoreTabContent(
             context = context,
             onDismiss = { showCreateBoardDialog = false }
         )
+    }
+
+    if (showManageBoardSheet && boardToManage != null) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showManageBoardSheet = false
+            }
+        ) {
+            val board = boardToManage
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "管理分区",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .clickable(enabled = isEditingBoard && !isUploadingAvatar) {
+                                imagePickerLauncher.launch("image/*")
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val avatarToShow = if (isEditingBoard) editedAvatarUrl else (board?.avatar ?: "")
+                        if (avatarToShow.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(avatarToShow)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = CircleShape
+                            ) {}
+                        }
+
+                        if (isUploadingAvatar) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isEditingBoard) editedBoardName else board?.name.orEmpty(),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "ID: ${board?.id ?: 0}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    TextButton(
+                        onClick = {
+                            val current = board ?: return@TextButton
+                            isEditingBoard = !isEditingBoard
+                            editedBoardName = current.name
+                            editedAvatarUrl = current.avatar
+                            editError = null
+                        }
+                    ) {
+                        Text(if (isEditingBoard) "取消修改" else "修改")
+                    }
+                }
+
+                if (isEditingBoard) {
+                    OutlinedTextField(
+                        value = editedBoardName,
+                        onValueChange = { input ->
+                            if (input.length <= 10) {
+                                editedBoardName = input
+                            }
+                        },
+                        label = { Text("分区名称") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isUploadingAvatar
+                    )
+
+                    editError?.let { err ->
+                        Text(
+                            text = err,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            val current = board ?: return@Button
+                            val name = editedBoardName.trim()
+                            val avatar = editedAvatarUrl.trim()
+                            if (name.isBlank()) {
+                                editError = "分区名称不能为空"
+                                return@Button
+                            }
+                            if (avatar.isBlank()) {
+                                editError = "分区头像不能为空"
+                                return@Button
+                            }
+                            isManaging = true
+                            viewModel.editBoard(
+                                token = token,
+                                baId = current.id,
+                                name = name,
+                                avatar = avatar,
+                                onSuccess = {
+                                    isManaging = false
+                                    isEditingBoard = false
+                                    boardToManage = current.copy(name = name, avatar = avatar)
+                                },
+                                onError = { msg ->
+                                    isManaging = false
+                                    editError = msg
+                                }
+                            )
+                        },
+                        enabled = !isManaging && !isUploadingAvatar,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isManaging) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("保存中")
+                        } else {
+                            Text("保存修改")
+                        }
+                    }
+                }
+
+                Divider()
+
+                Text(
+                    text = "可见范围",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = manageVisibleRange == 0,
+                            onClick = { manageVisibleRange = 0 }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("所有人可见")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = manageVisibleRange == 1,
+                            onClick = { manageVisibleRange = 1 }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("仅分区所有者可见")
+                    }
+                }
+
+                Text(
+                    text = "发布权限",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = managePublishAuthority == 0,
+                            onClick = { managePublishAuthority = 0 }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("所有人都可以发文章和评论")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = managePublishAuthority == 1,
+                            onClick = { managePublishAuthority = 1 }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("仅所有者发文章，任何人可评论")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = managePublishAuthority == 2,
+                            onClick = { managePublishAuthority = 2 }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("仅所有者发文章和评论")
+                    }
+                }
+
+                manageError?.let { err ->
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val board = boardToManage ?: return@Button
+                        isManaging = true
+                        viewModel.manageBoard(
+                            token = token,
+                            baId = board.id,
+                            visibleRange = manageVisibleRange,
+                            publishAuthority = managePublishAuthority,
+                            onSuccess = {
+                                isManaging = false
+                                showManageBoardSheet = false
+                            },
+                            onError = { msg ->
+                                isManaging = false
+                                manageError = msg
+                            }
+                        )
+                    },
+                    enabled = !isManaging && !isUploadingAvatar,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isManaging) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("提交中")
+                    } else {
+                        Text("保存")
+                    }
+                }
+
+                HorizontalDivider()
+
+                deleteError?.let { err ->
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        deleteError = null
+                        showDeleteBoardDialog = true
+                    },
+                    enabled = !isManaging && !isUploadingAvatar && !isDeletingBoard,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    if (isDeletingBoard) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onError
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("删除中", color = MaterialTheme.colorScheme.onError)
+                    } else {
+                        Text("删除分区", color = MaterialTheme.colorScheme.onError)
+                    }
+                }
+            }
+        }
+
+        if (showDeleteBoardDialog) {
+            val current = boardToManage
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isDeletingBoard) {
+                        showDeleteBoardDialog = false
+                    }
+                },
+                title = { Text("删除分区") },
+                text = {
+                    Text("确定要删除分区「${current?.name.orEmpty()}」吗？删除后不可恢复。")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val b = current ?: return@Button
+                            isDeletingBoard = true
+                            deleteError = null
+                            viewModel.deleteBoard(
+                                token = token,
+                                baId = b.id,
+                                onSuccess = {
+                                    isDeletingBoard = false
+                                    showDeleteBoardDialog = false
+                                    showManageBoardSheet = false
+                                    boardToManage = null
+                                },
+                                onError = { msg ->
+                                    isDeletingBoard = false
+                                    deleteError = msg
+                                }
+                            )
+                        },
+                        enabled = !isDeletingBoard,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("删除", color = MaterialTheme.colorScheme.onError)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDeleteBoardDialog = false },
+                        enabled = !isDeletingBoard
+                    ) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
     }
 }
 

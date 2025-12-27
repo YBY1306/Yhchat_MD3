@@ -617,11 +617,35 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: UnfollowBoardRequest
     ): Response<ApiStatus>
+
+    @POST("v1/community/ba/manage")
+    suspend fun manageBoard(
+        @Header("token") token: String,
+        @Body request: ManageBoardRequest
+    ): Response<ApiStatus>
+
+    @POST("v1/community/ba/edit")
+    suspend fun editBoard(
+        @Header("token") token: String,
+        @Body request: EditBoardRequest
+    ): Response<ApiStatus>
+
+    @POST("v1/community/ba/delete")
+    suspend fun deleteBoard(
+        @Header("token") token: String,
+        @Body request: DeleteBoardRequest
+    ): Response<ApiStatus>
     
     @POST("v1/community/posts/post-list")
     suspend fun getPostList(
         @Header("token") token: String,
         @Body request: PostListRequest
+    ): Response<com.yhchat.canary.data.model.PostListResponse>
+
+    @POST("v1/community/posts/post-collect-list")
+    suspend fun getCollectPostList(
+        @Header("token") token: String,
+        @Body request: CollectPostListRequest
     ): Response<com.yhchat.canary.data.model.PostListResponse>
     
     @POST("v1/community/posts/post-detail")
@@ -1248,6 +1272,13 @@ data class ListMessageEditRecordRequest(
     val page: Int = 1
 )
 
+data class CollectPostListRequest(
+    @SerializedName("size")
+    val size: Int = 20,
+    @SerializedName("page")
+    val page: Int = 1
+)
+
 /**
  * 文件下载记录请求
  */
@@ -1279,6 +1310,29 @@ data class BoardListRequest(
 data class BoardInfoRequest(
     @SerializedName("id")
     val id: Int
+)
+
+data class ManageBoardRequest(
+    @SerializedName("baId")
+    val baId: Int,
+    @SerializedName("visibleRange")
+    val visibleRange: Int,
+    @SerializedName("publishAuthority")
+    val publishAuthority: Int
+)
+
+data class EditBoardRequest(
+    @SerializedName("baId")
+    val baId: Int,
+    @SerializedName("name")
+    val name: String,
+    @SerializedName("avatar")
+    val avatar: String
+)
+
+data class DeleteBoardRequest(
+    @SerializedName("baId")
+    val baId: Int
 )
 
 /**

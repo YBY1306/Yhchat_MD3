@@ -30,10 +30,17 @@ class CommunityViewModel @Inject constructor(
     // 全部分区列表状态
     private val _allBoardListState = MutableStateFlow(BoardListState())
     val allBoardListState: StateFlow<BoardListState> = _allBoardListState.asStateFlow()
+
+    private val _createdBoardListState = MutableStateFlow(BoardListState())
+    val createdBoardListState: StateFlow<BoardListState> = _createdBoardListState.asStateFlow()
     
     // 我的文章列表状态
     private val _myPostListState = MutableStateFlow(MyPostListState())
     val myPostListState: StateFlow<MyPostListState> = _myPostListState.asStateFlow()
+
+    // 我的收藏文章列表状态
+    private val _collectPostListState = MutableStateFlow(CollectPostListState())
+    val collectPostListState: StateFlow<CollectPostListState> = _collectPostListState.asStateFlow()
     
     // 文章列表状态
     private val _postListState = MutableStateFlow(CommunityPostListState())
@@ -74,6 +81,165 @@ class CommunityViewModel @Inject constructor(
                     _boardListState.value = _boardListState.value.copy(
                         isLoading = false,
                         error = error.message ?: "加载分区列表失败"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * 加载我的收藏文章列表
+     */
+    fun loadCollectPostList(token: String, page: Int = 1, isRefresh: Boolean = false) {
+        viewModelScope.launch {
+            if (isRefresh) {
+                _collectPostListState.value = _collectPostListState.value.copy(isRefreshing = true, error = null)
+            } else {
+                _collectPostListState.value = _collectPostListState.value.copy(isLoading = true, error = null)
+            }
+
+            communityRepository.getCollectPostList(
+                token = token,
+                size = 20,
+                page = page
+            ).fold(
+                onSuccess = { response ->
+                    val newPosts = if (page == 1) {
+                        response.data.posts
+                    } else {
+                        _collectPostListState.value.posts + response.data.posts
+                    }
+
+                    _collectPostListState.value = _collectPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        posts = newPosts,
+                        total = response.data.total,
+                        currentPage = page,
+                        hasMore = newPosts.size < response.data.total
+                    )
+                },
+                onFailure = { error ->
+                    _collectPostListState.value = _collectPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = error.message ?: "加载我的收藏失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun loadMoreCollectPosts(token: String) {
+        val current = _collectPostListState.value
+        if (current.isLoading || !current.hasMore) return
+        loadCollectPostList(token, page = current.currentPage + 1, isRefresh = false)
+    }
+
+    fun refreshCollectPostList(token: String) {
+        loadCollectPostList(token, page = 1, isRefresh = true)
+    }
+
+    fun editBoard(
+        token: String,
+        baId: Int,
+        name: String,
+        avatar: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            communityRepository.editBoard(
+                token = token,
+                baId = baId,
+                name = name,
+                avatar = avatar
+            ).fold(
+                onSuccess = {
+                    onSuccess()
+                    refreshCreatedBoardList(token)
+                },
+                onFailure = { error ->
+                    onError(error.message ?: "编辑分区失败")
+                }
+            )
+        }
+    }
+
+    fun deleteBoard(
+        token: String,
+        baId: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            communityRepository.deleteBoard(
+                token = token,
+                baId = baId
+            ).fold(
+                onSuccess = {
+                    onSuccess()
+                    refreshCreatedBoardList(token)
+                },
+                onFailure = { error ->
+                    onError(error.message ?: "删除分区失败")
+                }
+            )
+        }
+    }
+
+    fun loadCreatedBoardList(token: String) {
+        viewModelScope.launch {
+            _createdBoardListState.value = _createdBoardListState.value.copy(isLoading = true, error = null)
+
+            communityRepository.getBoardList(
+                token = token,
+                typ = 3,
+                size = 1000,
+                page = 1
+            ).fold(
+                onSuccess = { response ->
+                    _createdBoardListState.value = _createdBoardListState.value.copy(
+                        isLoading = false,
+                        boards = response.data.boards,
+                        total = response.data.total,
+                        currentPage = 1,
+                        hasMore = false
+                    )
+                },
+                onFailure = { error ->
+                    _createdBoardListState.value = _createdBoardListState.value.copy(
+                        isLoading = false,
+                        error = error.message ?: "加载我创建的分区失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun refreshCreatedBoardList(token: String) {
+        viewModelScope.launch {
+            _createdBoardListState.value = _createdBoardListState.value.copy(isRefreshing = true, error = null)
+
+            communityRepository.getBoardList(
+                token = token,
+                typ = 3,
+                size = 1000,
+                page = 1
+            ).fold(
+                onSuccess = { response ->
+                    _createdBoardListState.value = _createdBoardListState.value.copy(
+                        isRefreshing = false,
+                        boards = response.data.boards,
+                        total = response.data.total,
+                        currentPage = 1,
+                        hasMore = false
+                    )
+                },
+                onFailure = { error ->
+                    _createdBoardListState.value = _createdBoardListState.value.copy(
+                        isRefreshing = false,
+                        error = error.message ?: "刷新我创建的分区失败"
                     )
                 }
             )
@@ -537,6 +703,7 @@ class CommunityViewModel @Inject constructor(
                             // 刷新分区列表
                             loadBoardList(token)
                             loadAllBoardList(token)
+                            loadCreatedBoardList(token)
                         } else {
                             onError(response.msg)
                         }
@@ -550,12 +717,40 @@ class CommunityViewModel @Inject constructor(
             }
         }
     }
+
+    fun manageBoard(
+        token: String,
+        baId: Int,
+        visibleRange: Int,
+        publishAuthority: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            communityRepository.manageBoard(
+                token = token,
+                baId = baId,
+                visibleRange = visibleRange,
+                publishAuthority = publishAuthority
+            ).fold(
+                onSuccess = {
+                    onSuccess()
+                    refreshCreatedBoardList(token)
+                },
+                onFailure = { error ->
+                    onError(error.message ?: "管理分区失败")
+                }
+            )
+        }
+    }
     
     fun clearError() {
         _boardListState.value = _boardListState.value.copy(error = null)
         _followingBoardListState.value = _followingBoardListState.value.copy(error = null)
         _allBoardListState.value = _allBoardListState.value.copy(error = null)
+        _createdBoardListState.value = _createdBoardListState.value.copy(error = null)
         _myPostListState.value = _myPostListState.value.copy(error = null)
+        _collectPostListState.value = _collectPostListState.value.copy(error = null)
         _postListState.value = _postListState.value.copy(error = null)
         _postDetailState.value = _postDetailState.value.copy(error = null)
         _commentListState.value = _commentListState.value.copy(error = null)
@@ -597,5 +792,15 @@ data class MyPostListState(
     val posts: List<CommunityPost> = emptyList(),
     val total: Int = 0,
     val currentPage: Int = 1,
+    val error: String? = null
+)
+
+data class CollectPostListState(
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val posts: List<CommunityPost> = emptyList(),
+    val total: Int = 0,
+    val currentPage: Int = 1,
+    val hasMore: Boolean = false,
     val error: String? = null
 )

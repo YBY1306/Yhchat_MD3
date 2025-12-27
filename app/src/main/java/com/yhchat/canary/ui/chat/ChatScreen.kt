@@ -579,17 +579,21 @@ fun ChatScreen(
                         key = { index -> 
                             // 使用多个字段组合确保key的唯一性，包括索引位置
                             val message = reversedMessages[index]
-                            "${message.msgId}_${message.sendTime}_${message.sender.chatId}_${index}_${System.nanoTime()}"
+                            if (message.msgId.isNotBlank()) {
+                                message.msgId
+                            } else {
+                                "${message.sendTime}_${message.sender.chatId}_$index"
+                            }
                         }
                     ) { index ->
                         val message = reversedMessages[index]
                         // 获取发送者的权限等级（仅群聊）
                         val memberPermission = uiState.groupMembers[message.sender.chatId]?.permissionLevel
-                        
-                        AnimatedMessageItem(
-                            message = message,
-                            isMyMessage = viewModel.isMyMessage(message),
-                            modifier = Modifier
+                        val isStreaming = viewModel.isMessageStreaming(message.msgId)
+                        val itemModifier = if (isStreaming) {
+                            Modifier.fillMaxWidth()
+                        } else {
+                            Modifier
                                 .fillMaxWidth()
                                 .animateItem(
                                     fadeInSpec = tween(
@@ -610,7 +614,13 @@ fun ChatScreen(
                                         durationMillis = 200,
                                         easing = FastOutSlowInEasing
                                     )
-                                ),
+                                )
+                        }
+                        
+                        AnimatedMessageItem(
+                            message = message,
+                            isMyMessage = viewModel.isMyMessage(message),
+                            modifier = itemModifier,
                             onImageClick = { imageUrl ->
                                 currentImageUrl = imageUrl
                                 showImageViewer = true

@@ -42,6 +42,7 @@ fun InviteToGroupDialog(
 ) {
     val context = LocalContext.current
     val viewModel = remember { InviteDialogViewModel() }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -63,111 +64,122 @@ fun InviteToGroupDialog(
         }
     }
     
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text("邀请好友加入 $groupName")
-        },
-        text = {
-            Column(
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.95f)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 500.dp)
+                    .padding(top = 8.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 搜索框
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("搜索好友...") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
-                    },
-                    singleLine = true
+                Text(
+                    text = "邀请好友加入 $groupName",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 内容区域
-                when {
-                    uiState.isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                TextButton(onClick = onDismiss) {
+                    Text("关闭")
+                }
+            }
+
+            // 搜索框
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("搜索好友...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                },
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 内容区域
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
-                    
-                    uiState.error != null -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = uiState.error ?: "加载失败",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                TextButton(onClick = { viewModel.loadFriends() }) {
-                                    Text("重试")
-                                }
-                            }
-                        }
-                    }
-                    
-                    filteredFriends.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (searchQuery.isBlank()) "暂无好友" else "未找到匹配的好友",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 400.dp),
+                }
+
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(filteredFriends) { friend ->
-                                FriendInviteItem(
-                                    friend = friend,
-                                    isInviting = uiState.invitingFriendId == friend.chatId,
-                                    onClick = {
-                                        viewModel.inviteFriend(
-                                            chatId = friend.chatId,
-                                            groupId = groupId,
-                                            onSuccess = onSuccess
-                                        )
-                                    }
-                                )
+                            Text(
+                                text = uiState.error ?: "加载失败",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            TextButton(onClick = { viewModel.loadFriends() }) {
+                                Text("重试")
                             }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+
+                filteredFriends.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (searchQuery.isBlank()) "暂无好友" else "未找到匹配的好友",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredFriends) { friend ->
+                            FriendInviteItem(
+                                friend = friend,
+                                isInviting = uiState.invitingFriendId == friend.chatId,
+                                onClick = {
+                                    viewModel.inviteFriend(
+                                        chatId = friend.chatId,
+                                        groupId = groupId,
+                                        onSuccess = onSuccess
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 /**

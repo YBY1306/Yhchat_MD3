@@ -244,7 +244,8 @@ object RepositoryFactory {
         return com.yhchat.canary.data.repository.UpdateRepository(context)
     }
 
-    
+
+
     /**
      * 获取黑名单仓库实例
      */

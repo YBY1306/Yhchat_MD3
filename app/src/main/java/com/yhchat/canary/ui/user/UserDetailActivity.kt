@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,7 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +40,10 @@ import com.yhchat.canary.data.model.RemarkInfo
 import com.yhchat.canary.data.model.UserDetail
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.data.repository.CommunityRepository
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.chat.ChatActivity
+import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,11 +60,13 @@ class UserDetailActivity : BaseActivity() {
     companion object {
         private const val EXTRA_USER_ID = "user_id"
         private const val EXTRA_USER_NAME = "user_name"
+        private const val EXTRA_GROUP_ID = "group_id"
         
-        fun start(context: Context, userId: String, userName: String = "") {
+        fun start(context: Context, userId: String, userName: String = "", groupId: String? = null) {
             val intent = Intent(context, UserDetailActivity::class.java).apply {
                 putExtra(EXTRA_USER_ID, userId)
                 putExtra(EXTRA_USER_NAME, userName)
+                groupId?.let { putExtra(EXTRA_GROUP_ID, it) }
             }
             context.startActivity(intent)
         }
@@ -69,12 +77,14 @@ class UserDetailActivity : BaseActivity() {
         
         val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
         val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
+        val groupId = intent.getStringExtra(EXTRA_GROUP_ID)
         
         setContent {
             YhchatCanaryTheme {
                 UserDetailScreen(
                     userId = userId,
                     userName = userName,
+                    groupId = groupId,
                     onBackClick = { finish() }
                 )
             }
@@ -88,7 +98,9 @@ class UserDetailActivity : BaseActivity() {
 data class UserDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val userDetail: UserDetail? = null
+    val userDetail: UserDetail? = null,
+    val createdBoards: List<com.yhchat.canary.data.model.BoardsByCreateItem> = emptyList(),
+    val isLoadingBoards: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,11 +108,22 @@ data class UserDetailUiState(
 fun UserDetailScreen(
     userId: String,
     userName: String,
+    groupId: String?,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
     var uiState by remember { mutableStateOf(UserDetailUiState()) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAddFriendDialog by remember { mutableStateOf(false) }
+    var addFriendRemark by remember { mutableStateOf("") }
+    var isAddingFriend by remember { mutableStateOf(false) }
+    var isInAddressBook by remember { mutableStateOf(false) }
+    var isCheckingAddressBook by remember { mutableStateOf(true) }
+    var token by remember { mutableStateOf("") }
+
+    var showMemberMenu by remember { mutableStateOf(false) }
+    var showGagMenu by remember { mutableStateOf(false) }
+    var isProcessingMemberAction by remember { mutableStateOf(false) }
+    var targetUserPermission by remember { mutableStateOf(0) }
     
     // 加载用户详情
     LaunchedEffect(userId) {
@@ -110,8 +133,25 @@ fun UserDetailScreen(
             val db = AppDatabase.getDatabase(context)
             val tokenRepository = TokenRepository(db.userTokenDao(), context)
             val userRepository = UserRepository(ApiClient.apiService, tokenRepository)
-            
-            val token = tokenRepository.getTokenSync() ?: ""
+            val communityRepository = CommunityRepository(ApiClient.apiService)
+            val friendRepository = RepositoryFactory.getFriendRepository(context)
+            val groupRepository = RepositoryFactory.getGroupRepository(context)
+
+            val localToken = tokenRepository.getTokenSync() ?: ""
+            token = localToken
+
+            isCheckingAddressBook = true
+            friendRepository.getAddressBookList().fold(
+                onSuccess = { addressBook ->
+                    val allIds = addressBook.dataList.flatMap { it.dataList }.map { it.chatId }.toSet()
+                    isInAddressBook = allIds.contains(userId)
+                    isCheckingAddressBook = false
+                },
+                onFailure = {
+                    isInAddressBook = false
+                    isCheckingAddressBook = false
+                }
+            )
             
             // 构建ProtoBuf请求
             val requestProto = User.get_user_send.newBuilder()
@@ -121,7 +161,7 @@ fun UserDetailScreen(
             val requestBody = requestProto.toByteArray()
                 .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
-            userRepository.getUserDetail(token, requestBody).fold(
+            userRepository.getUserDetail(localToken, requestBody).fold(
                 onSuccess = { userDetail ->
                     uiState = uiState.copy(
                         isLoading = false,
@@ -135,6 +175,42 @@ fun UserDetailScreen(
                     )
                 }
             )
+
+            uiState = uiState.copy(isLoadingBoards = true)
+            communityRepository.listBoardsByCreate(token = localToken, userId = userId).fold(
+                onSuccess = { resp ->
+                    uiState = uiState.copy(
+                        isLoadingBoards = false,
+                        createdBoards = resp.data.boards
+                    )
+                },
+                onFailure = { throwable ->
+                    uiState = uiState.copy(
+                        isLoadingBoards = false
+                    )
+                }
+            )
+
+            if (groupId != null) {
+                var page = 1
+                var hasMore = true
+                val allMembers = mutableListOf<com.yhchat.canary.data.model.GroupMemberInfo>()
+
+                while (hasMore) {
+                    groupRepository.getGroupMembers(groupId, page = page, size = 50).fold(
+                        onSuccess = { members ->
+                            allMembers.addAll(members)
+                            hasMore = members.size >= 50
+                            page++
+                        },
+                        onFailure = {
+                            hasMore = false
+                        }
+                    )
+                }
+
+                targetUserPermission = allMembers.find { it.userId == userId }?.permissionLevel ?: 0
+            }
         } catch (e: Exception) {
             uiState = uiState.copy(
                 isLoading = false,
@@ -153,27 +229,106 @@ fun UserDetailScreen(
                     }
                 },
                 actions = {
-                    // 发消息按钮
-                    IconButton(
-                        onClick = {
-                            val intent = Intent(context, ChatActivity::class.java).apply {
-                                putExtra("chatId", userId)
-                                putExtra("chatType", 1)
-                                putExtra("chatName", uiState.userDetail?.name ?: userName)
+                    if (groupId != null) {
+                        Box {
+                            IconButton(onClick = { showMemberMenu = true }) {
+                                Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多操作")
                             }
-                            context.startActivity(intent)
+                            DropdownMenu(
+                                expanded = showMemberMenu,
+                                onDismissRequest = { showMemberMenu = false }
+                            ) {
+                                if (targetUserPermission == 2) {
+                                    DropdownMenuItem(
+                                        text = { Text("卸任管理员") },
+                                        onClick = {
+                                            showMemberMenu = false
+                                            if (!isProcessingMemberAction) {
+                                                isProcessingMemberAction = true
+                                                CoroutineScope(Dispatchers.Main).launch {
+                                                    val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                                    groupRepository.setMemberRole(groupId, userId, 0)
+                                                    isProcessingMemberAction = false
+                                                }
+                                            }
+                                        },
+                                        enabled = !isProcessingMemberAction
+                                    )
+                                } else if (targetUserPermission == 0) {
+                                    DropdownMenuItem(
+                                        text = { Text("设为管理员") },
+                                        onClick = {
+                                            showMemberMenu = false
+                                            if (!isProcessingMemberAction) {
+                                                isProcessingMemberAction = true
+                                                CoroutineScope(Dispatchers.Main).launch {
+                                                    val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                                    groupRepository.setMemberRole(groupId, userId, 2)
+                                                    isProcessingMemberAction = false
+                                                }
+                                            }
+                                        },
+                                        enabled = !isProcessingMemberAction
+                                    )
+                                }
+
+                                DropdownMenuItem(
+                                    text = { Text("踢出群聊") },
+                                    onClick = {
+                                        showMemberMenu = false
+                                        if (!isProcessingMemberAction) {
+                                            isProcessingMemberAction = true
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                                groupRepository.removeMember(groupId, userId)
+                                                isProcessingMemberAction = false
+                                            }
+                                        }
+                                    },
+                                    enabled = !isProcessingMemberAction
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("禁言") },
+                                    onClick = {
+                                        showMemberMenu = false
+                                        showGagMenu = true
+                                    },
+                                    enabled = !isProcessingMemberAction
+                                )
+                            }
                         }
-                    ) {
-                        Icon(Icons.Default.Chat, "发消息")
                     }
-                    
-                    // 删除好友按钮
-                    IconButton(
-                        onClick = {
-                            showDeleteDialog = true
+
+                    if (isCheckingAddressBook) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else if (isInAddressBook) {
+                        IconButton(
+                            onClick = {
+                                FriendSettingsActivity.start(
+                                    context = context,
+                                    userId = userId,
+                                    userName = uiState.userDetail?.name ?: userName
+                                )
+                            }
+                        ) {
+                            Icon(Icons.Default.Settings, "设置")
                         }
-                    ) {
-                        Icon(Icons.Default.Delete, "删除好友")
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(context, ChatActivity::class.java).apply {
+                                    putExtra("chatId", userId)
+                                    putExtra("chatType", 1)
+                                    putExtra("chatName", uiState.userDetail?.name ?: userName)
+                                }
+                                context.startActivity(intent)
+                            }
+                        ) {
+                            Icon(Icons.Default.Chat, "发消息")
+                        }
+                    } else {
+                        IconButton(onClick = { showAddFriendDialog = true }) {
+                            Icon(Icons.Default.PersonAdd, "添加")
+                        }
                     }
                 }
             )
@@ -209,67 +364,142 @@ fun UserDetailScreen(
                     }
                 }
                 uiState.userDetail != null -> {
-                    UserDetailContent(userDetail = uiState.userDetail!!)
+                    UserDetailContent(
+                        userDetail = uiState.userDetail!!,
+                        createdBoards = uiState.createdBoards,
+                        isLoadingBoards = uiState.isLoadingBoards,
+                        token = token
+                    )
                 }
             }
         }
         
-        // 删除好友确认对话框
-        if (showDeleteDialog) {
+        if (showAddFriendDialog) {
             AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("删除好友") },
-                text = { Text("确定要删除好友 ${uiState.userDetail?.name ?: userName} 吗？") },
+                onDismissRequest = { if (!isAddingFriend) showAddFriendDialog = false },
+                title = { Text("添加好友") },
+                text = {
+                    Column {
+                        Text("确定要添加 ${uiState.userDetail?.name ?: userName} 为好友吗？")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = addFriendRemark,
+                            onValueChange = { addFriendRemark = it },
+                            label = { Text("申请备注（可选）") },
+                            singleLine = true,
+                            enabled = !isAddingFriend,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
                 confirmButton = {
-                    TextButton(
+                    Button(
                         onClick = {
-                            showDeleteDialog = false
-                            // 执行删除操作
+                            if (isAddingFriend) return@Button
+                            isAddingFriend = true
                             CoroutineScope(Dispatchers.Main).launch {
-                                try {
-                                    val db = AppDatabase.getDatabase(context)
-                                    val tokenRepository = TokenRepository(db.userTokenDao(), context)
-                                    val userRepository = UserRepository(ApiClient.apiService, tokenRepository)
-                                    
-                                    userRepository.deleteFriend(userId, 1).fold(
-                                        onSuccess = {
-                                            Toast.makeText(context, "已删除好友", Toast.LENGTH_SHORT).show()
-                                            // 返回上一页
-                                            (context as? ComponentActivity)?.finish()
-                                        },
-                                        onFailure = { throwable ->
-                                            Toast.makeText(
-                                                context,
-                                                "删除失败: ${throwable.message}",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    Toast.makeText(
-                                        context,
-                                        "删除失败: ${e.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                                val friendRepository = RepositoryFactory.getFriendRepository(context)
+                                val tokenRepository = RepositoryFactory.getTokenRepository(context)
+                                val localToken = tokenRepository.getTokenSync() ?: ""
+                                friendRepository.applyFriend(
+                                    token = localToken,
+                                    chatId = userId,
+                                    chatType = 1,
+                                    remark = addFriendRemark
+                                )
+                                isAddingFriend = false
+                                showAddFriendDialog = false
+                                Toast.makeText(context, "好友申请已发送", Toast.LENGTH_SHORT).show()
                             }
-                        }
+                        },
+                        enabled = !isAddingFriend
                     ) {
-                        Text("确定", color = MaterialTheme.colorScheme.error)
+                        if (isAddingFriend) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("添加")
+                        }
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
+                    TextButton(onClick = { showAddFriendDialog = false }, enabled = !isAddingFriend) {
                         Text("取消")
                     }
                 }
+            )
+        }
+
+        if (showGagMenu && groupId != null) {
+            GagMemberDialog(
+                userName = uiState.userDetail?.name ?: userName,
+                isLoading = isProcessingMemberAction,
+                onConfirm = { gagTime ->
+                    if (!isProcessingMemberAction) {
+                        isProcessingMemberAction = true
+                        CoroutineScope(Dispatchers.Main).launch {
+                            val groupRepository = RepositoryFactory.getGroupRepository(context)
+                            groupRepository.gagMember(groupId, userId, gagTime)
+                            isProcessingMemberAction = false
+                            showGagMenu = false
+                        }
+                    }
+                },
+                onDismiss = { if (!isProcessingMemberAction) showGagMenu = false }
             )
         }
     }
 }
 
 @Composable
-fun UserDetailContent(userDetail: UserDetail) {
+private fun GagMemberDialog(
+    userName: String,
+    isLoading: Boolean,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val gagOptions = listOf(
+        0 to "取消禁言",
+        600 to "禁言10分钟",
+        3600 to "禁言1小时",
+        21600 to "禁言6小时",
+        43200 to "禁言12小时",
+        1 to "永久禁言"
+    )
+
+    AlertDialog(
+        onDismissRequest = if (!isLoading) onDismiss else { {} },
+        title = { Text("禁言 $userName") },
+        text = {
+            Column {
+                Spacer(modifier = Modifier.height(8.dp))
+                gagOptions.forEach { (gagTime, label) ->
+                    TextButton(
+                        onClick = { onConfirm(gagTime) },
+                        enabled = !isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(label, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+fun UserDetailContent(
+    userDetail: UserDetail,
+    createdBoards: List<com.yhchat.canary.data.model.BoardsByCreateItem>,
+    isLoadingBoards: Boolean,
+    token: String
+) {
+    val context = LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -493,6 +723,75 @@ fun UserDetailContent(userDetail: UserDetail) {
                         val banDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
                             .format(java.util.Date(userDetail.banTime * 1000))
                         InfoRow("封禁结束时间", banDate, MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "创建的分区",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    when {
+                        isLoadingBoards -> {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                        createdBoards.isEmpty() -> {
+                            Text(
+                                text = "暂无",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        else -> {
+                            createdBoards.forEach { board ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                                putExtra("board_id", board.id)
+                                                putExtra("board_name", board.name)
+                                                putExtra("token", token)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(board.avatar)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = board.name,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

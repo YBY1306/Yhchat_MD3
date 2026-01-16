@@ -364,15 +364,93 @@ data class BoardInfoData(
 )
 
 /**
+ * 关注者列表响应
+ */
+data class BaFollowerListResponse(
+    @SerializedName("code")
+    val code: Int,
+    
+    @SerializedName("data")
+    val data: BaFollowerListData,
+    
+    @SerializedName("msg")
+    val msg: String
+)
+
+data class BaFollowerListData(
+    @SerializedName("followers")
+    val followers: List<BaFollowerItem>,
+    
+    @SerializedName("total")
+    val total: Int
+)
+
+data class BaFollowerItem(
+    @SerializedName("id")
+    val id: Int,
+    
+    @SerializedName("baId")
+    val baId: Int,
+    
+    @SerializedName("userId")
+    val userId: String,
+    
+    @SerializedName("delTime")
+    val delTime: Long,
+    
+    @SerializedName("followSource")
+    val followSource: Int,
+    
+    @SerializedName("createTime")
+    val createTime: Long,
+    
+    @SerializedName("userLevel")
+    val userLevel: Int,
+    
+    @SerializedName("nickname")
+    val nickname: String,
+    
+    @SerializedName("avatarUrl")
+    val avatarUrl: String,
+    
+    @SerializedName("vipUserid")
+    val vipUserid: String,
+    
+    @SerializedName("vipEndTime")
+    val vipEndTime: Long
+)
+
+data class BoardsByCreateResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("data")
+    val data: BoardsByCreateData,
+    @SerializedName("msg")
+    val msg: String
+)
+
+data class BoardsByCreateData(
+    @SerializedName("ba")
+    val boards: List<BoardsByCreateItem>
+)
+
+data class BoardsByCreateItem(
+    @SerializedName("id")
+    val id: Int,
+    @SerializedName("name")
+    val name: String,
+    @SerializedName("avatar")
+    val avatar: String
+)
+
+/**
  * 创建文章响应
  */
 data class CreatePostResponse(
     @SerializedName("code")
     val code: Int,
-    
     @SerializedName("data")
     val data: CreatePostData,
-    
     @SerializedName("msg")
     val msg: String
 )

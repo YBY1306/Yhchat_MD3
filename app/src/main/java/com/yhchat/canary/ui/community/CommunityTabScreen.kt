@@ -49,6 +49,7 @@ import com.yhchat.canary.ui.settings.SettingsCustomItem
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.utils.ImageUploadUtil
+import com.yhchat.canary.ui.community.FollowersListActivity
 
 /**
  * 社区标签页界面
@@ -268,6 +269,7 @@ fun MoreTabContent(
     var managePublishAuthority by remember { mutableStateOf(0) }
     var isManaging by remember { mutableStateOf(false) }
     var manageError by remember { mutableStateOf<String?>(null) }
+    var followersTotal by remember { mutableStateOf(0) }
 
     val coroutineScope = rememberCoroutineScope()
     var isEditingBoard by remember { mutableStateOf(false) }
@@ -479,6 +481,22 @@ fun MoreTabContent(
             }
         ) {
             val board = boardToManage
+
+            LaunchedEffect(showManageBoardSheet, board?.id) {
+                val id = board?.id ?: return@LaunchedEffect
+                if (!showManageBoardSheet) return@LaunchedEffect
+                viewModel.loadBaFollowerTotal(
+                    token = token,
+                    baId = id,
+                    onSuccess = { total ->
+                        followersTotal = total
+                    },
+                    onError = {
+                        followersTotal = 0
+                    }
+                )
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -545,6 +563,23 @@ fun MoreTabContent(
                             text = "ID: ${board?.id ?: 0}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Text(
+                            text = "关注列表 ${followersTotal} >",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .clickable {
+                                    val current = board ?: return@clickable
+                                    FollowersListActivity.start(
+                                        context = context,
+                                        token = token,
+                                        baId = current.id,
+                                        baName = current.name
+                                    )
+                                }
                         )
                     }
 

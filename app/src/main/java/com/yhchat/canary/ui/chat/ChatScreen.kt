@@ -76,6 +76,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.lazy.LazyItemScope
 import com.yhchat.canary.ui.bot.BotInfoActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.HtmlWebView
 import com.yhchat.canary.ui.components.ChatInputBar
@@ -625,17 +626,23 @@ fun ChatScreen(
                                 currentImageUrl = imageUrl
                                 showImageViewer = true
                             },
-                            onAvatarClick = { chatId, name, chatType ->
+                            onAvatarClick = { senderId, name, senderChatType ->
                                 // 处理头像点击事件
-                                if (chatType == 3) { // 机器人
+                                if (senderChatType == 3) { // 机器人
                                     val intent = Intent(context, BotInfoActivity::class.java).apply {
-                                        putExtra(BotInfoActivity.EXTRA_BOT_ID, chatId)
+                                        putExtra(BotInfoActivity.EXTRA_BOT_ID, senderId)
                                         putExtra(BotInfoActivity.EXTRA_BOT_NAME, name)
                                     }
                                     context.startActivity(intent)
+                                } else if (senderChatType == 1) {
+                                    UserDetailActivity.start(
+                                        context = context,
+                                        userId = senderId,
+                                        userName = name,
+                                        groupId = if (chatType == 2) chatId else null
+                                    )
                                 } else {
-                                    // 用户头像点击，传递给外部处理（UserProfileActivity）
-                                    onAvatarClick(chatId, name, chatType, currentUserPermission)
+                                    onAvatarClick(senderId, name, senderChatType, currentUserPermission)
                                 }
                             },
                             onAvatarLongClick = { userId, userName ->

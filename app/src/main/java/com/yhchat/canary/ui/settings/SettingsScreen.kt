@@ -538,6 +538,7 @@ private fun DisplaySettingsGroup(
                     }
                 )
             },
+            { LongPressSendMarkdownSettingItem(context = context) },
             { FontSizeSettingItem(context = context) },
             { GlobalScaleSettingItem(context = context) },
             { MemoryAutoCleanSettingItem(context = context) },
@@ -550,6 +551,99 @@ private fun DisplaySettingsGroup(
             { MarkdownRawTextSettingItem(context = context) }
         )
     )
+}
+
+@Composable
+private fun LongPressSendMarkdownSettingItem(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember {
+        context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
+    }
+
+    var enabled by remember {
+        mutableStateOf(prefs.getBoolean("long_press_send_markdown_enabled", false))
+    }
+
+    var seconds by remember {
+        mutableStateOf(prefs.getInt("long_press_send_markdown_seconds", 3).coerceIn(1, 10))
+    }
+
+    SettingsCustomItem {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "长按自动发送 Markdown",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "长按发送自动发 Markdown",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (enabled) "已开启：长按 ${seconds}s 后自动以 Markdown 发送" else "默认关闭",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { checked ->
+                        enabled = checked
+                        prefs.edit().putBoolean("long_press_send_markdown_enabled", checked).apply()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Slider(
+                value = seconds.toFloat(),
+                onValueChange = { seconds = it.toInt().coerceIn(1, 10) },
+                onValueChangeFinished = {
+                    prefs.edit().putInt("long_press_send_markdown_seconds", seconds).apply()
+                },
+                valueRange = 1f..10f,
+                steps = 8,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "1s",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "10s",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 /**

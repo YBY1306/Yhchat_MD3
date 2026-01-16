@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.chat
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -15,11 +16,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -153,6 +158,8 @@ fun ChatAddScreen(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activity = LocalContext.current as? Activity
+
     val uiState by viewModel.uiState.collectAsState()
     
     // 加载数据
@@ -280,6 +287,7 @@ private fun ChatDetailContent(
     onAddClick: () -> Unit
 ) {
     if (chatInfo == null) return
+    val activity = LocalContext.current as? Activity
     Column {
         // 头像和基本信息
         Row(
@@ -379,7 +387,10 @@ private fun ChatDetailContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { /* TODO: 取消 */ },
+                onClick = {
+                    activity?.finishAffinity()
+                    activity?.finish()
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("取消")

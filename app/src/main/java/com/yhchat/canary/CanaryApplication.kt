@@ -4,6 +4,9 @@ import android.app.Application
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Process
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +23,7 @@ class CanaryApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppForegroundTracker.init()
         startMemoryAutoCleanLoop()
     }
 
@@ -64,5 +68,31 @@ class CanaryApplication : Application() {
                 file.deleteRecursively()
             }
         }
+    }
+}
+
+object AppForegroundTracker {
+    @Volatile
+    var isInForeground: Boolean = false
+        private set
+
+    @Volatile
+    private var initialized: Boolean = false
+
+    fun init() {
+        if (initialized) return
+        initialized = true
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    isInForeground = true
+                }
+
+                override fun onStop(owner: LifecycleOwner) {
+                    isInForeground = false
+                }
+            }
+        )
     }
 }

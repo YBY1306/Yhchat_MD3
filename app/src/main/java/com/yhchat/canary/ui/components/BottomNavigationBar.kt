@@ -22,20 +22,23 @@ fun BottomNavigationBar(
 ) {
     NavigationBar(
         modifier = modifier
-            .padding(horizontal = 3.dp) // 减小水平间距
+            .padding(horizontal = 2.dp) // 减小水平间距
     ) {
         visibleItems.forEach { item ->
             NavigationBarItem(
+                modifier = Modifier.padding(horizontal = 2.dp),
                 icon = {
                     Icon(
                         imageVector = item.getIcon(),
-                        contentDescription = item.title
+                        contentDescription = item.title,
+                        modifier = Modifier.size(20.dp)
                     )
                 },
                 label = {
                     Text(item.title)
                 },
                 selected = currentScreen == item.id,
+                alwaysShowLabel = false,
                 onClick = {
                     onScreenChange(item.id)
                 }

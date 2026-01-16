@@ -179,6 +179,7 @@ fun PostContentCard(
     ) {
         // 作者信息
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -221,6 +222,12 @@ fun PostContentCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            TextButton(onClick = { showReportDialog = true }) {
+                Text("举报")
             }
         }
         
@@ -410,14 +417,6 @@ fun PostContentCard(
                     count = post.amountNum.toInt(),
                     isActive = post.isReward == 1,
                     onClick = onRewardClick
-                )
-                
-                ActionButton(
-                    icon = Icons.Filled.Report,
-                    text = "举报",
-                    count = 0, // 举报不显示数量
-                    isActive = false,
-                    onClick = { showReportDialog = true }
                 )
             }
         }

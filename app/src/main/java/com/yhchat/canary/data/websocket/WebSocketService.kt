@@ -13,6 +13,7 @@ import androidx.core.app.TaskStackBuilder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.yhchat.canary.MainActivity
+import com.yhchat.canary.AppForegroundTracker
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.R
 import com.google.gson.Gson
@@ -510,6 +511,11 @@ class WebSocketService @Inject constructor(
         try {
             // 不为自己的消息显示通知
             if (message.sender.chatId == currentUserId) {
+                return
+            }
+
+            // 应用在前台时不弹出系统通知
+            if (AppForegroundTracker.isInForeground) {
                 return
             }
             

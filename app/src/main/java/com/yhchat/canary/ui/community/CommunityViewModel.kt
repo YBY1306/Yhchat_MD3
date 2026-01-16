@@ -140,6 +140,30 @@ class CommunityViewModel @Inject constructor(
         loadCollectPostList(token, page = 1, isRefresh = true)
     }
 
+    fun loadBaFollowerTotal(
+        token: String,
+        baId: Int,
+        onSuccess: (Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            communityRepository.getBaFollowerList(
+                token = token,
+                baId = baId,
+                size = 1,
+                page = 1,
+                memberName = ""
+            ).fold(
+                onSuccess = { resp ->
+                    onSuccess(resp.data.total)
+                },
+                onFailure = { e ->
+                    onError(e.message ?: "获取关注者数量失败")
+                }
+            )
+        }
+    }
+
     fun editBoard(
         token: String,
         baId: Int,

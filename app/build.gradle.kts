@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,18 +13,53 @@ android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
 
+    val signingProps = Properties()
+    val signingPropsFile = rootProject.file("keystore.properties")
+    if (signingPropsFile.exists()) {
+        signingPropsFile.inputStream().use { signingProps.load(it) }
+    }
+
+    fun signingValue(key: String): String? =
+        signingProps.getProperty(key)?.takeIf { it.isNotBlank() }
+            ?: System.getenv(key)?.takeIf { it.isNotBlank() }
+
+    val releaseStoreFilePath = signingValue("CANARY_STORE_FILE") ?: "C:/Users/admin/Videos/canary.jks"
+    val releaseStorePassword = signingValue("CANARY_STORE_PASSWORD")
+    val releaseKeyAlias = signingValue("CANARY_KEY_ALIAS")
+    val releaseKeyPassword = signingValue("CANARY_KEY_PASSWORD")
+    val hasReleaseSigning = releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+
     defaultConfig {
         applicationId = "com.yhchat.canary"
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "20.7"
+        versionName = "20.8-260116"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFilePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -43,6 +80,7 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
     arg("room.expandProjection", "true")
+    arg("ksp.incremental", "true")
 }
 
 protobuf {
@@ -66,6 +104,7 @@ protobuf {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

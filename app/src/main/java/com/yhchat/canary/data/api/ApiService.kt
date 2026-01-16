@@ -2,6 +2,8 @@ package com.yhchat.canary.data.api
 
 import com.google.gson.annotations.SerializedName
 import com.yhchat.canary.data.model.*
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -635,6 +637,24 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: DeleteBoardRequest
     ): Response<ApiStatus>
+
+    @POST("v1/community/ba/follower-list")
+    suspend fun getBaFollowerList(
+        @Header("token") token: String,
+        @Body request: BaFollowerListRequest
+    ): Response<com.yhchat.canary.data.model.BaFollowerListResponse>
+
+    @POST("v1/community/ba/manage-setting")
+    suspend fun setBaManageSetting(
+        @Header("token") token: String,
+        @Body request: BaManageSettingRequest
+    ): Response<ApiStatus>
+
+    @POST("v1/community/ba/list-by-create")
+    suspend fun listBoardsByCreate(
+        @Header("token") token: String,
+        @Body request: BoardsByCreateRequest
+    ): Response<com.yhchat.canary.data.model.BoardsByCreateResponse>
     
     @POST("v1/community/posts/post-list")
     suspend fun getPostList(
@@ -1333,6 +1353,31 @@ data class EditBoardRequest(
 data class DeleteBoardRequest(
     @SerializedName("baId")
     val baId: Int
+)
+
+data class BaFollowerListRequest(
+    @SerializedName("id")
+    val id: Int,
+    @SerializedName("size")
+    val size: Int = 20,
+    @SerializedName("page")
+    val page: Int = 1,
+    @SerializedName("memberName")
+    val memberName: String = ""
+)
+
+data class BaManageSettingRequest(
+    @SerializedName("baId")
+    val baId: Int,
+    @SerializedName("userId")
+    val userId: String,
+    @SerializedName("userLevel")
+    val userLevel: Int
+)
+
+data class BoardsByCreateRequest(
+    @SerializedName("userId")
+    val userId: String
 )
 
 /**

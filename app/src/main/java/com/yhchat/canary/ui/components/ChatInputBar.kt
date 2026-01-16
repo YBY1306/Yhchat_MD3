@@ -31,16 +31,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
+import android.view.MotionEvent
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 聊天输入栏组件
@@ -76,6 +80,38 @@ fun ChatInputBar(
     var showExpressionPicker by remember { mutableStateOf(false) }
     var showInstructionPicker by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+
+    val chatPrefs = remember {
+        context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
+    }
+
+    var longPressSendMarkdownEnabled by remember {
+        mutableStateOf(chatPrefs.getBoolean("long_press_send_markdown_enabled", false))
+    }
+
+    var longPressSendMarkdownSeconds by remember {
+        mutableStateOf(chatPrefs.getInt("long_press_send_markdown_seconds", 3).coerceAtLeast(1))
+    }
+
+    DisposableEffect(chatPrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "long_press_send_markdown_enabled" -> {
+                    longPressSendMarkdownEnabled = chatPrefs.getBoolean("long_press_send_markdown_enabled", false)
+                }
+                "long_press_send_markdown_seconds" -> {
+                    longPressSendMarkdownSeconds = chatPrefs.getInt("long_press_send_markdown_seconds", 3).coerceAtLeast(1)
+                }
+            }
+        }
+        chatPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { chatPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    var longPressAutoSent by remember { mutableStateOf(false) }
+    val longPressScope = rememberCoroutineScope()
+    var longPressJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     
     // 监听键盘显示请求
     LaunchedEffect(shouldShowKeyboard) {
@@ -156,6 +192,11 @@ fun ChatInputBar(
                         .weight(1f)
                             .heightIn(min = 36.dp, max = 90.dp)
                             .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    showExpressionPicker = false
+                                }
+                            }
                             .let { modifier ->
                                 if (focusRequester != null) {
                                     modifier.focusRequester(focusRequester)
@@ -240,6 +281,10 @@ fun ChatInputBar(
                     // 发送按钮 - 圆形背景
                 IconButton(
                     onClick = {
+                        if (longPressAutoSent) {
+                            longPressAutoSent = false
+                            return@IconButton
+                        }
                         if (text.isNotBlank()) {
                             onSendMessage()
                         }
@@ -254,6 +299,32 @@ fun ChatInputBar(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             CircleShape
                         )
+                        .pointerInteropFilter { event ->
+                            if (!longPressSendMarkdownEnabled) return@pointerInteropFilter false
+                            val mtc = onMessageTypeChange ?: return@pointerInteropFilter false
+
+                            when (event.actionMasked) {
+                                MotionEvent.ACTION_DOWN -> {
+                                    longPressAutoSent = false
+                                    longPressJob?.cancel()
+                                    if (text.isNotBlank()) {
+                                        longPressJob = longPressScope.launch {
+                                            delay(longPressSendMarkdownSeconds.toLong() * 1000L)
+                                            if (text.isNotBlank()) {
+                                                longPressAutoSent = true
+                                                mtc.invoke(3)
+                                                onSendMessage()
+                                            }
+                                        }
+                                    }
+                                }
+                                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                    longPressJob?.cancel()
+                                    longPressJob = null
+                                }
+                            }
+                            false
+                        }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,

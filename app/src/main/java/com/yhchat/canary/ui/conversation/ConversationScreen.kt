@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material.icons.Icons
@@ -238,11 +239,14 @@ fun ConversationScreen(
         
         // 错误信息
         uiState.error?.let { error ->
-            Card(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
                     text = error,
@@ -292,8 +296,9 @@ fun ConversationScreen(
                                 // 置顶会话标题已移除
                                 
                                 // 置顶会话横向列表
-                                androidx.compose.foundation.lazy.LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                // 置顶会话横向列表
+                androidx.compose.foundation.lazy.LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
@@ -591,22 +596,26 @@ fun ConversationItem(
         dateFormat.format(Date(conversation.timestampMs))
     }
     
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .padding(horizontal = 4.dp, vertical = 3.dp)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             // 头像
             Box {
                 AsyncImage(
@@ -755,6 +764,12 @@ fun ConversationItem(
                     }
                 }
             }
+        }
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 70.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            )
         }
     }
 }

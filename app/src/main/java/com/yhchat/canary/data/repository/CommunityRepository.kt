@@ -41,6 +41,80 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    suspend fun listBoardsByCreate(
+        token: String,
+        userId: String
+    ): Result<BoardsByCreateResponse> {
+        return try {
+            val request = BoardsByCreateRequest(userId = userId)
+            val response = apiService.listBoardsByCreate(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.msg ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBaFollowerList(
+        token: String,
+        baId: Int,
+        size: Int = 20,
+        page: Int = 1,
+        memberName: String = ""
+    ): Result<BaFollowerListResponse> {
+        return try {
+            val request = BaFollowerListRequest(id = baId, size = size, page = page, memberName = memberName)
+            val response = apiService.getBaFollowerList(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.msg ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setBaManageSetting(
+        token: String,
+        baId: Int,
+        userId: String,
+        userLevel: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = BaManageSettingRequest(baId = baId, userId = userId, userLevel = userLevel)
+            val response = apiService.setBaManageSetting(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun manageBoard(
         token: String,
         baId: Int,

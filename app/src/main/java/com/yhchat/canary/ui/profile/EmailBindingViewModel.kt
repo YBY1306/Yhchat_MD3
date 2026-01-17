@@ -13,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * 邮箱绑定ViewModel
@@ -118,10 +120,8 @@ class EmailBindingViewModel(private val context: Context) : ViewModel() {
             val response = withContext(Dispatchers.IO) {
                 ApiClient.apiService.bindEmail(
                     token = token,
-                    request = okhttp3.RequestBody.create(
-                        "application/json".toMediaType(),
-                        requestBody.toString()
-                    )
+                    request = requestBody.toString()
+                        .toRequestBody("application/json".toMediaType())
                 )
             }
             

@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.user.UserDetailActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -314,11 +315,7 @@ private fun MemberItem(
             .fillMaxWidth()
             .clickable {
                 // 点击成员卡片跳转到用户详情页
-                com.yhchat.canary.ui.profile.UserProfileActivity.start(
-                    context = context,
-                    userId = member.userId,
-                    userName = member.name
-                )
+                UserDetailActivity.start(context = context, userId = member.userId, userName = member.name, groupId = groupId)
             },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

@@ -36,14 +36,16 @@ class WebViewActivity : BaseActivity() {
     companion object {
         private const val EXTRA_URL = "extra_url"
         private const val EXTRA_TITLE = "extra_title"
+        private const val EXTRA_TOKEN = "extra_token"
         
         /**
          * 启动 WebView Activity
          */
-        fun start(context: Context, url: String, title: String? = null) {
+        fun start(context: Context, url: String, title: String? = null, token: String? = null) {
             val intent = Intent(context, WebViewActivity::class.java).apply {
                 putExtra(EXTRA_URL, url)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_TOKEN, token)
             }
             context.startActivity(intent)
         }
@@ -55,6 +57,7 @@ class WebViewActivity : BaseActivity() {
         
         val url = intent.getStringExtra(EXTRA_URL) ?: ""
         val initialTitle = intent.getStringExtra(EXTRA_TITLE) ?: "网页"
+        val token = intent.getStringExtra(EXTRA_TOKEN)
         
         if (url.isEmpty()) {
             finish()
@@ -66,6 +69,7 @@ class WebViewActivity : BaseActivity() {
                 WebViewScreen(
                     url = url,
                     initialTitle = initialTitle,
+                    token = token,
                     onBackClick = { finish() }
                 )
             }
@@ -81,6 +85,7 @@ class WebViewActivity : BaseActivity() {
 fun WebViewScreen(
     url: String,
     initialTitle: String,
+    token: String? = null,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -90,6 +95,10 @@ fun WebViewScreen(
     var currentUrl by remember { mutableStateOf(url) }
     var isLoading by remember { mutableStateOf(true) }
     var showMenu by remember { mutableStateOf(false) }
+
+    val requestHeaders = remember(token) {
+        if (token.isNullOrEmpty()) emptyMap() else mapOf("token" to token)
+    }
     
     // 添加超时处理
     LaunchedEffect(isLoading) {
@@ -228,7 +237,13 @@ fun WebViewScreen(
                         }
                         
                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                            return false // 让 WebView 处理所有链接
+                            val nextUrl = request?.url?.toString() ?: return false
+                            return if (requestHeaders.isNotEmpty()) {
+                                view?.loadUrl(nextUrl, requestHeaders)
+                                true
+                            } else {
+                                false
+                            }
                         }
                         
                         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -272,7 +287,11 @@ fun WebViewScreen(
                 .weight(1f),
             update = { view ->
                 if (view.url.isNullOrEmpty()) {
-                    view.loadUrl(url)
+                    if (requestHeaders.isNotEmpty()) {
+                        view.loadUrl(url, requestHeaders)
+                    } else {
+                        view.loadUrl(url)
+                    }
                 }
                 webView = view
             }

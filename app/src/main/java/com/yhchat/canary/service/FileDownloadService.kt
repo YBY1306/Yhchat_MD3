@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Environment
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
@@ -131,9 +132,20 @@ class FileDownloadService : Service() {
         Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen)")
         
         // 创建下载目录
-        val downloadDir = File("/storage/emulated/0/Download/yhchat/")
+        val downloadDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "yhchat")
+        } else {
+            File("/storage/emulated/0/Download/yhchat/")
+        }
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
+        }
+
+        if (!downloadDir.exists() || !downloadDir.isDirectory) {
+            Log.e(TAG, "❌ Failed to create download directory: ${downloadDir.absolutePath}")
+            updateNotification(fileName, "下载失败: 无法创建下载目录", 0, 0, true)
+            stopSelf()
+            return
         }
         
         // 开始前台服务

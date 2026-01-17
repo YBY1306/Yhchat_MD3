@@ -38,6 +38,7 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.yhchat.canary.data.di.RepositoryFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,6 +157,7 @@ fun GroupInfoScreenRoot(
                             onSearchChatClick = onSearchChatClick,
                             onInviteClick = { showInviteDialog = true },
                             onExitClick = { showExitGroupDialog = true },
+                            onRefresh = { viewModel.loadGroupInfo(groupId) },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -268,8 +270,11 @@ private fun GroupInfoContent(
     onSearchChatClick: () -> Unit = {},
     onInviteClick: () -> Unit = {},
     onExitClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var isNoNotify by remember(groupInfo.doNotDisturb) { mutableStateOf(groupInfo.doNotDisturb) }
+    var isSettingNoNotify by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     
     // 检测滚动到底部并加载更多
@@ -437,6 +442,72 @@ private fun GroupInfoContent(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
+                }
+            }
+        }
+
+        // 免打扰
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        contentDescription = "免打扰",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "免打扰",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = if (isNoNotify) "已开启" else "已关闭",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isSettingNoNotify) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Switch(
+                            checked = isNoNotify,
+                            onCheckedChange = { checked ->
+                                if (isSettingNoNotify) return@Switch
+                                isNoNotify = checked
+                                isSettingNoNotify = true
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    val friendRepository = RepositoryFactory.getFriendRepository(currentContext)
+                                    friendRepository.setNoNotify(
+                                        chatId = currentGroupId,
+                                        noNotify = if (checked) 1 else 0
+                                    ).fold(
+                                        onSuccess = {
+                                            android.widget.Toast.makeText(currentContext, "设置成功", android.widget.Toast.LENGTH_SHORT).show()
+                                            onRefresh()
+                                        },
+                                        onFailure = { error ->
+                                            isNoNotify = !checked
+                                            android.widget.Toast.makeText(currentContext, "设置失败：${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                    isSettingNoNotify = false
+                                }
+                            },
+                            enabled = !isSettingNoNotify
+                        )
+                    }
                 }
             }
         }

@@ -44,6 +44,41 @@ class GroupRepository @Inject constructor(
     }
 
     /**
+     * 设置群聊消息自动销毁时间
+     * POST /v1/group/edit-auto-delete-message
+     */
+    suspend fun editAutoDeleteMessage(
+        groupId: String,
+        autoDeleteMessage: Int
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        val token = tokenRepository?.getTokenSync()
+        if (token.isNullOrEmpty()) {
+            return@withContext Result.failure(Exception("未登录"))
+        }
+
+        return@withContext try {
+            val request = com.yhchat.canary.data.api.EditAutoDeleteMessageRequest(
+                groupId = groupId,
+                autoDeleteMessage = autoDeleteMessage
+            )
+
+            val response = apiService.editAutoDeleteMessage(token, request)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(body?.message ?: "设置失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * 获取群聊信息
      */
     suspend fun getGroupInfo(groupId: String): Result<GroupDetail> = withContext(Dispatchers.IO) {
@@ -138,7 +173,8 @@ class GroupRepository @Inject constructor(
                 avatarId = data.avatarId,
                 recommendation = data.recommandation,
                 myGroupNickname = data.myGroupNickname.takeIf { it.isNotEmpty() },
-                groupCode = data.groupCode.takeIf { it.isNotEmpty() }
+                groupCode = data.groupCode.takeIf { it.isNotEmpty() },
+                autoDeleteMessage = data.autoDeleteMessage
             )
 
             Log.d(

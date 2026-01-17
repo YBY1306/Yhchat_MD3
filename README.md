@@ -37,6 +37,8 @@
 
 ### [FlymeLive](https://github.com/wsu2059q/FlymeLive)
 
+### [图标@星河间](https://github.com/Kauid323/Yhchat_MD3/issues/12)
+
 > 这个app经历Cursor Kiro Windsurf CodeFlicker VSCode里面的Copilot Antigravity AndroidStudio里面的Gemini 等AI IDE之手
 
 > 其实我觉得这么原生的应用启动占用却不像个原生应用，也挺屎了

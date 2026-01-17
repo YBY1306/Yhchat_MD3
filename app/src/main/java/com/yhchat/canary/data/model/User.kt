@@ -1367,7 +1367,8 @@ data class GroupDetail(
     val avatarId: Long? = null,
     val recommendation: Int? = null,
     val myGroupNickname: String? = null,
-    val groupCode: String? = null
+    val groupCode: String? = null,
+    val autoDeleteMessage: Long = 0L
 )
 
 /**

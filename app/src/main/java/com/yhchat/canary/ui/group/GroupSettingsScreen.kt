@@ -366,7 +366,46 @@ private fun GroupSettingsContent(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        
+
+                        fun autoDeleteMessageText(days: Long): String {
+                            return when (days.toInt()) {
+                                0 -> "永久不删"
+                                90 -> "2个月"
+                                365 -> "1年"
+                                730 -> "2年"
+                                else -> if (days <= 0) "永久不删" else "${days}天"
+                            }
+                        }
+
+                        // 消息自动销毁
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.showAutoDeleteMessageDialog() },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "消息自动销毁",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = autoDeleteMessageText(groupInfo.autoDeleteMessage),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "设置",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
                         // 消息类型限制
                         Row(
                             modifier = Modifier
@@ -572,6 +611,66 @@ private fun GroupSettingsContent(
             onToggleType = viewModel::toggleMessageType,
             onConfirm = viewModel::confirmMessageTypeLimit,
             onDismiss = viewModel::dismissMessageTypeLimitDialog
+        )
+    }
+
+    if (uiState.showAutoDeleteMessageDialog) {
+        val options = listOf(
+            0 to "永久不删",
+            90 to "2个月",
+            365 to "1年",
+            730 to "2年"
+        )
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!uiState.isSettingAutoDeleteMessage) {
+                    viewModel.dismissAutoDeleteMessageDialog()
+                }
+            },
+            title = { Text("消息自动销毁") },
+            text = {
+                Column {
+                    options.forEach { (value, label) ->
+                        TextButton(
+                            onClick = {
+                                if (!uiState.isSettingAutoDeleteMessage) {
+                                    viewModel.setAutoDeleteMessage(groupInfo.groupId, value)
+                                }
+                            },
+                            enabled = !uiState.isSettingAutoDeleteMessage,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(label)
+                                if (groupInfo.autoDeleteMessage.toInt() == value) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (uiState.isSettingAutoDeleteMessage) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.dismissAutoDeleteMessageDialog() },
+                    enabled = !uiState.isSettingAutoDeleteMessage
+                ) {
+                    Text("取消")
+                }
+            }
         )
     }
 }

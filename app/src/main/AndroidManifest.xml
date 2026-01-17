@@ -217,6 +217,20 @@
             android:exported="false"
             android:label="用户资料"
             android:theme="@style/Theme.YhchatCanary" />
+            
+        <!-- 邮箱修改 Activity -->
+        <activity
+            android:name=".ui.profile.EmailModificationActivity"
+            android:exported="false"
+            android:label="修改邮箱"
+            android:theme="@style/Theme.YhchatCanary" />
+            
+        <!-- 邮箱绑定 Activity -->
+        <activity
+            android:name=".ui.profile.EmailBindingActivity"
+            android:exported="false"
+            android:label="绑定邮箱"
+            android:theme="@style/Theme.YhchatCanary" />
         
         <!-- 用户详情 Activity -->
         <activity

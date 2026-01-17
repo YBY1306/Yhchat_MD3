@@ -81,6 +81,7 @@ message info {
         repeated Tag tag = 27;
         string my_group_nickname = 28; // 我的群昵称
         string group_code = 29; // 群口令
+        int64 auto_delete_message = 32; // 群聊消息自动销毁时间
        
 
         // 已使用标签信息

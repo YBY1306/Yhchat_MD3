@@ -33,7 +33,10 @@ data class GroupSettingsUiState(
     // 消息类型限制对话框
     val showMessageTypeLimitDialog: Boolean = false,
     val selectedMessageTypes: Set<Int> = emptySet(),
-    val isSettingMessageTypeLimit: Boolean = false
+    val isSettingMessageTypeLimit: Boolean = false,
+
+    val showAutoDeleteMessageDialog: Boolean = false,
+    val isSettingAutoDeleteMessage: Boolean = false
 )
 
 @HiltViewModel
@@ -49,6 +52,36 @@ class GroupSettingsViewModel @Inject constructor(
     
     init {
         groupRepository.setTokenRepository(tokenRepository)
+    }
+
+    fun showAutoDeleteMessageDialog() {
+        _uiState.value = _uiState.value.copy(showAutoDeleteMessageDialog = true)
+    }
+
+    fun dismissAutoDeleteMessageDialog() {
+        _uiState.value = _uiState.value.copy(showAutoDeleteMessageDialog = false)
+    }
+
+    fun setAutoDeleteMessage(groupId: String, autoDeleteMessage: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSettingAutoDeleteMessage = true)
+
+            groupRepository.editAutoDeleteMessage(groupId, autoDeleteMessage).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        isSettingAutoDeleteMessage = false,
+                        showAutoDeleteMessageDialog = false
+                    )
+                    loadGroupInfo(groupId)
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isSettingAutoDeleteMessage = false,
+                        error = error.message ?: "设置失败"
+                    )
+                }
+            )
+        }
     }
     
     /**

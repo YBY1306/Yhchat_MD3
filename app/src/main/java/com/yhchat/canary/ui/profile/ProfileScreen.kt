@@ -34,9 +34,12 @@ import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.settings.SettingsActivity
 import com.yhchat.canary.ui.settings.NavigationSettingsActivity
+import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.ui.webview.WebViewActivity
 import android.text.TextUtils
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
 
 /**
  * 我的界面
@@ -467,12 +470,27 @@ private fun UserProfileContent(
                 }
 
                 // 邮箱
-                if (!TextUtils.isEmpty(userProfile.
-                    email)) {
-                    ProfileInfoItem(
+                if (!TextUtils.isEmpty(userProfile.email)) {
+                    ProfileInfoItemWithButton(
                         icon = Icons.Default.Email,
                         label = "邮箱",
-                        value = userProfile.email!!
+                        value = userProfile.email!!,
+                        buttonText = "修改",
+                        onButtonClick = {
+                            val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailModificationActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    )
+                } else {
+                    ProfileInfoItemWithButton(
+                        icon = Icons.Default.Email,
+                        label = "邮箱",
+                        value = "未绑定",
+                        buttonText = "去绑定",
+                        onButtonClick = {
+                            val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailBindingActivity::class.java)
+                            context.startActivity(intent)
+                        }
                     )
                 }
 
@@ -491,6 +509,7 @@ private fun UserProfileContent(
                     
                     if (showCoinMenu) {
                         CoinMenuBottomSheet(
+                            tokenRepository = tokenRepository,
                             onDismiss = { showCoinMenu = false }
                         )
                     }
@@ -544,10 +563,12 @@ private fun UserProfileContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoinMenuBottomSheet(
+    tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState()
+    val coroutineScope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -595,6 +616,25 @@ private fun CoinMenuBottomSheet(
                     val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinRecordActivity::class.java)
                     context.startActivity(intent)
                     onDismiss()
+                }
+            )
+
+            // 云湖周周抽
+            CoinMenuItem(
+                icon = Icons.Default.Star,
+                label = "云湖周周抽",
+                onClick = {
+                    coroutineScope.launch {
+                        val repo = tokenRepository ?: RepositoryFactory.getTokenRepository(context)
+                        val token = repo.getTokenSync()
+                        WebViewActivity.start(
+                            context = context,
+                            url = "https://huodong.yhchat.com/zhouzhouchou/index",
+                            title = "云湖周周抽",
+                            token = token
+                        )
+                        onDismiss()
+                    }
                 }
             )
             

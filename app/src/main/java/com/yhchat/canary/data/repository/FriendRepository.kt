@@ -3,8 +3,10 @@ package com.yhchat.canary.data.repository
 import android.util.Log
 import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.api.ApiService
+import com.yhchat.canary.data.api.NoNotifyRequest
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
+import com.yhchat.canary.proto.friend.FriendProto
 import yh_user.User
 import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
@@ -107,6 +109,86 @@ class FriendRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "❌ 获取通讯录异常", e)
             e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getFriendRequestList(): Result<FriendProto.request_list> {
+        return try {
+            val token = tokenRepository.getToken().first()?.token
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val requestBody = ByteArray(0).toRequestBody("application/x-protobuf".toMediaType())
+            val response = apiService.getFriendRequestList(token, requestBody)
+
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val data = FriendProto.request_list.parseFrom(bytes)
+                    if (data.status.code == 1) {
+                        Result.success(data)
+                    } else {
+                        Result.failure(Exception(data.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                Result.failure(Exception("获取失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun agreeApply(
+        id: Long,
+        agree: Int = 1
+    ): Result<BaseResponse> {
+        return try {
+            val token = tokenRepository.getToken().first()?.token
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val response = apiService.agreeApply(token, AgreeApplyRequest(id = id, agree = agree))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception(body?.message ?: "处理失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setNoNotify(
+        chatId: String,
+        noNotify: Int
+    ): Result<ApiStatus> {
+        return try {
+            val token = tokenRepository.getToken().first()?.token
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val response = apiService.setNoNotify(token, NoNotifyRequest(chatId = chatId, noNotify = noNotify))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception(body?.message ?: "设置失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

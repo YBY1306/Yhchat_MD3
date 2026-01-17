@@ -64,6 +64,18 @@ interface ApiService {
         @Body request: EmailVerificationRequest
     ): Response<Map<String, Any>>
 
+    @POST("v1/user/bing-email")
+    suspend fun bindEmail(
+        @Header("token") token: String,
+        @Body request: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/user/change-email-check")
+    suspend fun changeEmail(
+        @Header("token") token: String,
+        @Body request: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
     @POST("v1/user/forget-password")
     suspend fun changePassword(
         @Body request: ChangePasswordRequest
@@ -867,6 +879,18 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody
     ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/friend/request-list")
+    suspend fun getFriendRequestList(
+        @Header("token") token: String,
+        @Body request: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/friend/no-notify")
+    suspend fun setNoNotify(
+        @Header("token") token: String,
+        @Body request: NoNotifyRequest
+    ): Response<ApiStatus>
     
     // ========== 表情相关API ==========
     
@@ -1033,6 +1057,12 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody
     ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/group/edit-auto-delete-message")
+    suspend fun editAutoDeleteMessage(
+        @Header("token") token: String,
+        @Body request: EditAutoDeleteMessageRequest
+    ): Response<ApiStatus>
     
     /**
      * 获取群指令列表（JSON API）
@@ -1378,6 +1408,20 @@ data class BaManageSettingRequest(
 data class BoardsByCreateRequest(
     @SerializedName("userId")
     val userId: String
+)
+
+data class EditAutoDeleteMessageRequest(
+    @SerializedName("groupId")
+    val groupId: String,
+    @SerializedName("autoDeleteMessage")
+    val autoDeleteMessage: Int
+)
+
+data class NoNotifyRequest(
+    @SerializedName("chatId")
+    val chatId: String,
+    @SerializedName("noNotify")
+    val noNotify: Int
 )
 
 /**

@@ -621,6 +621,7 @@ fun ChatScreen(
                         AnimatedMessageItem(
                             message = message,
                             isMyMessage = viewModel.isMyMessage(message),
+                            conversationChatType = chatType,
                             modifier = itemModifier,
                             onImageClick = { imageUrl ->
                                 currentImageUrl = imageUrl
@@ -1031,6 +1032,7 @@ fun ChatScreen(
 private fun MessageItem(
     message: ChatMessage,
     isMyMessage: Boolean,
+    conversationChatType: Int,
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
@@ -1254,6 +1256,7 @@ private fun MessageItem(
     if (showContextMenu) {
         MessageContextMenu(
             message = message,
+            showRecall = conversationChatType == 2,
             onDismiss = { showContextMenu = false },
             onCopyAll = {
                 val textToCopy = message.content.text ?: ""
@@ -1367,6 +1370,7 @@ private fun MessageItem(
 @Composable
 private fun MessageContextMenu(
     message: ChatMessage,
+    showRecall: Boolean,
     onDismiss: () -> Unit,
     onCopyAll: () -> Unit,
     onFreeCopy: () -> Unit,
@@ -1549,26 +1553,28 @@ private fun MessageContextMenu(
                 }
                 
                 // 撤回
-                TextButton(
-                    onClick = onRecall,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
+                if (showRecall) {
+                    TextButton(
+                        onClick = onRecall,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "撤回",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            "撤回",
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "撤回",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "撤回",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -3136,10 +3142,11 @@ fun MessageEditDialog(
 private fun AnimatedMessageItem(
     message: ChatMessage,
     isMyMessage: Boolean,
+    conversationChatType: Int,
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
-    onAvatarLongClick: (String, String) -> Unit = { _, _ -> },  // 长按头像@用户
+    onAvatarLongClick: (String, String) -> Unit = { _, _ -> },
     onAddExpression: (String) -> Unit = {},
     onQuote: (String, String) -> Unit = { _, _ -> },
     onRecall: (String) -> Unit = {},
@@ -3178,6 +3185,7 @@ private fun AnimatedMessageItem(
         MessageItem(
             message = message,
             isMyMessage = isMyMessage,
+            conversationChatType = conversationChatType,
             modifier = Modifier.fillMaxWidth(),
             onImageClick = onImageClick,
             onAvatarClick = onAvatarClick,

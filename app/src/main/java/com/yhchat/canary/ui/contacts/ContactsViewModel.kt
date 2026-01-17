@@ -33,6 +33,29 @@ data class ContactGroup(
     val contacts: List<Contact>
 )
 
+data class FriendRequestItem(
+    val requestId: Long,
+    val receiverName: String,
+    val receiverAvatar: String,
+    val name: String,
+    val avatar: String,
+    val groupName: String,
+    val groupAvatar: String,
+    val inviterId: String,
+    val sourceType: Int,
+    val targetType: Int,
+    val targetId: String,
+    val receiverId: String,
+    val result: Int,
+    val processedAt: Long,
+    val inviteAt: Long,
+    val inviteAtStr: String,
+    val botName: String,
+    val botAvatar: String,
+    val processorName: String,
+    val note: String
+)
+
 /**
  * 通讯录UI状态
  */
@@ -43,6 +66,13 @@ data class ContactsUiState(
     val groups: List<Contact> = emptyList(),
     val bots: List<Contact> = emptyList(),
     val myBots: List<Contact> = emptyList(),  // 我创建的机器人
+    val friendRequests: List<FriendRequestItem> = emptyList(),
+    val friendRequestTotal: Int = 0,
+    val friendRequestPending: Int = 0,
+    val friendRequestsLoading: Boolean = false,
+    val friendRequestsExpanded: Boolean = false,
+    val selectedFriendRequest: FriendRequestItem? = null,
+    val friendRequestProcessing: Boolean = false,
     val friendsExpanded: Boolean = false,  // 默认不展开
     val groupsExpanded: Boolean = false,  // 默认不展开
     val botsExpanded: Boolean = false,  // 默认不展开
@@ -172,6 +202,98 @@ class ContactsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             friendsExpanded = !_uiState.value.friendsExpanded
         )
+    }
+
+    fun toggleFriendRequestsExpanded() {
+        val newExpanded = !_uiState.value.friendRequestsExpanded
+        _uiState.value = _uiState.value.copy(friendRequestsExpanded = newExpanded)
+        if (newExpanded && !_uiState.value.friendRequestsLoading && _uiState.value.friendRequests.isEmpty()) {
+            loadFriendRequestList()
+        }
+    }
+
+    fun loadFriendRequestList() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(friendRequestsLoading = true)
+            friendRepository.getFriendRequestList().fold(
+                onSuccess = { resp ->
+                    val list = resp.requestsList.map { r ->
+                        FriendRequestItem(
+                            requestId = r.requestId.toLong(),
+                            receiverName = r.receiverName,
+                            receiverAvatar = r.receiverAvatar,
+                            name = r.name,
+                            avatar = r.avatar,
+                            groupName = r.groupName,
+                            groupAvatar = r.groupAvatar,
+                            inviterId = r.inviterId,
+                            sourceType = r.sourceType,
+                            targetType = r.targetType,
+                            targetId = r.targetId,
+                            receiverId = r.receiverId,
+                            result = r.result,
+                            processedAt = r.processedAt,
+                            inviteAt = r.inviteAt,
+                            inviteAtStr = r.inviteAtStr,
+                            botName = r.botName,
+                            botAvatar = r.botAvatar,
+                            processorName = r.processorName,
+                            note = r.note
+                        )
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        friendRequestsLoading = false,
+                        friendRequests = list,
+                        friendRequestTotal = resp.total,
+                        friendRequestPending = resp.pending
+                    )
+                },
+                onFailure = { e ->
+                    Log.e(tag, "❌ 请求/邀请列表加载失败", e)
+                    _uiState.value = _uiState.value.copy(friendRequestsLoading = false)
+                }
+            )
+        }
+    }
+
+    fun selectFriendRequest(item: FriendRequestItem?) {
+        _uiState.value = _uiState.value.copy(selectedFriendRequest = item)
+    }
+
+    fun agreeSelectedFriendRequest() {
+        val item = _uiState.value.selectedFriendRequest ?: return
+        if (_uiState.value.friendRequestProcessing) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(friendRequestProcessing = true)
+            friendRepository.agreeApply(id = item.requestId, agree = 1).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(friendRequestProcessing = false)
+                    loadFriendRequestList()
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(friendRequestProcessing = false)
+                }
+            )
+        }
+    }
+
+    fun rejectSelectedFriendRequest() {
+        val item = _uiState.value.selectedFriendRequest ?: return
+        if (_uiState.value.friendRequestProcessing) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(friendRequestProcessing = true)
+            friendRepository.agreeApply(id = item.requestId, agree = 2).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(friendRequestProcessing = false)
+                    loadFriendRequestList()
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(friendRequestProcessing = false)
+                }
+            )
+        }
     }
     
     /**

@@ -135,10 +135,13 @@ fun ChatScreen(
     onImagePickerClick: () -> Unit = {},  // 图片选择器点击回调
     onCameraClick: () -> Unit = {},  // 相机点击回调
     onFilePickerClick: () -> Unit = {},  // 文件选择器点击回调
+    onVideoPickerClick: () -> Unit = {},  // 视频选择器点击回调
     imageUriToSend: android.net.Uri? = null,  // 待发送的图片URI
     fileUriToSend: android.net.Uri? = null,  // 待发送的文件URI
+    videoUriToSend: android.net.Uri? = null,  // 待发送的视频URI
     onImageSent: () -> Unit = {},  // 图片发送完成回调
-    onFileSent: () -> Unit = {}  // 文件发送完成回调
+    onFileSent: () -> Unit = {},  // 文件发送完成回调
+    onVideoSent: () -> Unit = {}  // 视频发送完成回调
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -235,6 +238,24 @@ fun ChatScreen(
             quotedMessageText = null
             // 通知已发送
             onFileSent()
+        }
+    }
+    
+    // 监听待发送的视频
+    LaunchedEffect(videoUriToSend) {
+        videoUriToSend?.let { uri ->
+            android.util.Log.d("ChatScreen", "📹 收到待发送的视频URI: $uri")
+            viewModel.uploadAndSendVideo(
+                context = context,
+                videoUri = uri,
+                quoteMsgId = quotedMessageId,
+                quoteMsgText = quotedMessageText
+            )
+            // 清除引用状态
+            quotedMessageId = null
+            quotedMessageText = null
+            // 通知已发送
+            onVideoSent()
         }
     }
     
@@ -888,6 +909,10 @@ fun ChatScreen(
                 onFileClick = {
                     // 调用文件选择器
                     onFilePickerClick()
+                },
+                onVideoClick = {
+                    // 调用视频选择器
+                    onVideoPickerClick()
                 },
                 onDraftChange = { draftText ->
                     viewModel.sendDraftInput(draftText)

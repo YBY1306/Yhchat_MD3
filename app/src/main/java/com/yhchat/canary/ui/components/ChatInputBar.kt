@@ -60,6 +60,7 @@ fun ChatInputBar(
     onImageClick: (() -> Unit)? = null,
     onFileClick: (() -> Unit)? = null,
     onCameraClick: (() -> Unit)? = null,
+    onVideoClick: (() -> Unit)? = null,
     onDraftChange: ((String) -> Unit)? = null,
     selectedMessageType: Int = 1, // 1-文本, 3-Markdown, 8-HTML
     onMessageTypeChange: ((Int) -> Unit)? = null,
@@ -356,6 +357,10 @@ fun ChatInputBar(
                     },
                     onCameraClick = {
                         onCameraClick?.invoke()
+                        showAttachMenu = false
+                    },
+                    onVideoClick = {
+                        onVideoClick?.invoke()
                         showAttachMenu = false
                     },
                     onHtmlClick = {

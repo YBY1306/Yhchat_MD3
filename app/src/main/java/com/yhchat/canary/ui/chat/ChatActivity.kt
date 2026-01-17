@@ -47,6 +47,16 @@ class ChatActivity : BaseActivity() {
         }
     }
     
+    // 视频选择器
+    private val videoPickerLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            android.util.Log.d("ChatActivity", "📹 视频已选择: $selectedUri")
+            videoUriToSend = selectedUri
+        }
+    }
+    
     // 相机拍照
     private var cameraImageUri by mutableStateOf<android.net.Uri?>(null)
     private val cameraLauncher = registerForActivityResult(
@@ -62,6 +72,7 @@ class ChatActivity : BaseActivity() {
     
     private var imageUriToSend by mutableStateOf<android.net.Uri?>(null)
     private var fileUriToSend by mutableStateOf<android.net.Uri?>(null)
+    private var videoUriToSend by mutableStateOf<android.net.Uri?>(null)
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,8 +128,14 @@ class ChatActivity : BaseActivity() {
                             android.util.Log.d("ChatActivity", "📁 启动文件选择器")
                             filePickerLauncher.launch("*/*")
                         },
+                        onVideoPickerClick = {
+                            // 启动视频选择器 - 选择视频文件
+                            android.util.Log.d("ChatActivity", "📹 启动视频选择器")
+                            videoPickerLauncher.launch("video/*")
+                        },
                         imageUriToSend = imageUriToSend,
                         fileUriToSend = fileUriToSend,
+                        videoUriToSend = videoUriToSend,
                         onImageSent = {
                             // 图片发送后清空
                             imageUriToSend = null
@@ -128,6 +145,11 @@ class ChatActivity : BaseActivity() {
                             // 文件发送后清空
                             android.util.Log.d("ChatActivity", "📁 文件发送完成，清空URI")
                             fileUriToSend = null
+                        },
+                        onVideoSent = {
+                            // 视频发送后清空
+                            android.util.Log.d("ChatActivity", "📹 视频发送完成，清空URI")
+                            videoUriToSend = null
                         }
                     )
                 }

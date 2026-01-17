@@ -22,11 +22,9 @@ fun BottomNavigationBar(
 ) {
     NavigationBar(
         modifier = modifier
-            .padding(horizontal = 2.dp) // 减小水平间距
     ) {
         visibleItems.forEach { item ->
             NavigationBarItem(
-                modifier = Modifier.padding(horizontal = 2.dp),
                 icon = {
                     Icon(
                         imageVector = item.getIcon(),

@@ -955,6 +955,15 @@ interface ApiService {
         @Header("token") token: String
     ): Response<QiniuTokenResponse>
     
+    /**
+     * 获取视频上传token
+     * GET /v1/misc/qiniu-token-video
+     */
+    @GET("v1/misc/qiniu-token-video")
+    suspend fun getQiniuVideoToken(
+        @Header("token") token: String
+    ): Response<QiniuTokenResponse>
+    
     // ========== 群组标签相关API ==========
     
     /**

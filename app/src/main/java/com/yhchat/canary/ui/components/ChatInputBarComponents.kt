@@ -92,6 +92,7 @@ fun AttachmentMenu(
     onImageClick: (() -> Unit)?,
     onFileClick: (() -> Unit)?,
     onCameraClick: (() -> Unit)?,
+    onVideoClick: (() -> Unit)? = null,
     onHtmlClick: (() -> Unit)? = null,
     onMarkdownClick: (() -> Unit)? = null,
     selectedMessageType: Int = 1,
@@ -108,7 +109,7 @@ fun AttachmentMenu(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 第一行：图片、拍照、文件
+            // 第一行：图片、拍照、视频、文件
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -123,6 +124,12 @@ fun AttachmentMenu(
                     icon = Icons.Default.CameraAlt,
                     label = "拍照",
                     onClick = { onCameraClick?.invoke() }
+                )
+                
+                AttachmentMenuItem(
+                    icon = Icons.Default.VideoLibrary,
+                    label = "视频",
+                    onClick = { onVideoClick?.invoke() }
                 )
                 
                 AttachmentMenuItem(

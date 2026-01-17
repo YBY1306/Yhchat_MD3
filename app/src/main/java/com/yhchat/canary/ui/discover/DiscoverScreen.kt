@@ -214,7 +214,7 @@ fun DiscoverScreen(
                 }
             }
 
-            // 群聊网格
+            // 群聊列表 - 一行一个，居中显示
             if (isLoadingGroups) {
                 item {
                     Box(
@@ -227,23 +227,15 @@ fun DiscoverScreen(
                     }
                 }
             } else if (groups.isNotEmpty()) {
-                items(groups.chunked(2)) { rowGroups ->
-                    Row(
+                items(groups) { group ->
+                    Box(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        contentAlignment = Alignment.Center
                     ) {
-                        rowGroups.forEach { group ->
-                            Box(modifier = Modifier.weight(1f)) {
-                                GroupDiscoverCard(
-                                    group = group,
-                                    onClick = { selectedGroup = group }
-                                )
-                            }
-                        }
-                        // 如果这一行只有一个元素，添加一个空的占位符
-                        if (rowGroups.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                        GroupDiscoverCard(
+                            group = group,
+                            onClick = { selectedGroup = group }
+                        )
                     }
                 }
 
@@ -456,7 +448,7 @@ fun GroupDiscoverCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.width(280.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(

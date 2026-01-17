@@ -467,6 +467,97 @@ class ChatViewModel @Inject constructor(
     }
     
     /**
+     * 上传并发送视频
+     */
+    fun uploadAndSendVideo(
+        context: android.content.Context,
+        videoUri: android.net.Uri,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "📹 开始上传并发送视频: $videoUri")
+                
+                // 1. 获取七牛上传token
+                val token = tokenRepository.getTokenSync()
+                if (token.isNullOrEmpty()) {
+                    Log.e(tag, "❌ Token为空")
+                    _uiState.value = _uiState.value.copy(error = "未登录")
+                    return@launch
+                }
+                
+                Log.d(tag, "📤 获取七牛视频上传token...")
+                val tokenResponse = apiService.getQiniuVideoToken(token)
+                
+                if (!tokenResponse.isSuccessful || tokenResponse.body()?.code != 1) {
+                    Log.e(tag, "❌ 获取视频上传token失败: ${tokenResponse.code()}")
+                    _uiState.value = _uiState.value.copy(error = "获取视频上传token失败")
+                    return@launch
+                }
+                
+                val uploadToken = tokenResponse.body()?.data?.token ?: run {
+                    Log.e(tag, "❌ 视频上传token为空")
+                    _uiState.value = _uiState.value.copy(error = "获取视频上传token失败")
+                    return@launch
+                }
+                
+                Log.d(tag, "✅ 获取到视频上传token: ${uploadToken.take(20)}...")
+                
+                // 2. 上传视频到七牛云
+                Log.d(tag, "📤 开始上传视频到七牛云...")
+                val uploadResult = com.yhchat.canary.utils.VideoUploadUtil.uploadVideo(
+                    context = context,
+                    videoUri = videoUri,
+                    uploadToken = uploadToken
+                )
+                
+                uploadResult.fold(
+                    onSuccess = { uploadResponse ->
+                        Log.d(tag, "✅ 视频上传成功！")
+                        Log.d(tag, "   key: ${uploadResponse.key}")
+                        Log.d(tag, "   hash: ${uploadResponse.hash}")
+                        Log.d(tag, "   size: ${uploadResponse.fsize}")
+                        Log.d(tag, "   尺寸: ${uploadResponse.avinfo?.video?.width}x${uploadResponse.avinfo?.video?.height}")
+                        
+                        // 3. 发送视频消息
+                        Log.d(tag, "📤 发送视频消息...")
+                        val sendResult = messageRepository.sendVideoMessage(
+                            chatId = currentChatId,
+                            chatType = currentChatType,
+                            videoKey = uploadResponse.key,
+                            fileHash = uploadResponse.hash,
+                            fileSize = uploadResponse.fsize,
+                            quoteMsgId = quoteMsgId,
+                            quoteMsgText = quoteMsgText
+                        )
+                        
+                        sendResult.fold(
+                            onSuccess = {
+                                Log.d(tag, "✅ 视频消息发送成功！")
+                                // 刷新消息列表
+                                loadMessages(refresh = true)
+                            },
+                            onFailure = { error ->
+                                Log.e(tag, "❌ 发送视频消息失败", error)
+                                _uiState.value = _uiState.value.copy(error = "发送视频失败: ${error.message}")
+                            }
+                        )
+                    },
+                    onFailure = { error ->
+                        Log.e(tag, "❌ 上传视频失败", error)
+                        _uiState.value = _uiState.value.copy(error = "上传视频失败: ${error.message}")
+                    }
+                )
+                
+            } catch (e: Exception) {
+                Log.e(tag, "❌ 上传并发送视频异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送视频失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
      * 上传并发送文件
      */
     fun uploadAndSendFile(

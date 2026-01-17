@@ -566,6 +566,107 @@ class MessageRepository @Inject constructor(
     }
     
     /**
+     * 发送视频消息
+     * contentType = 10
+     */
+    suspend fun sendVideoMessage(
+        chatId: String,
+        chatType: Int,
+        videoKey: String,  // 七牛云返回的key，格式：xxx.mp4
+        fileHash: String,  // 七牛云返回的hash
+        fileSize: Long,    // 文件大小
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null
+    ): Result<Boolean> {
+        return try {
+            val tokenFlow = tokenRepository.getToken()
+            val token = tokenFlow.first()?.token
+            if (token.isNullOrEmpty()) {
+                Log.e(tag, "❌ Token为空")
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val msgId = UUID.randomUUID().toString().replace("-", "")
+            
+            Log.d(tag, "📤 ========== 发送视频消息 ==========")
+            Log.d(tag, "📤 msgId: $msgId")
+            Log.d(tag, "📤 chatId: $chatId")
+            Log.d(tag, "📤 chatType: $chatType")
+            Log.d(tag, "📤 videoKey: $videoKey")
+            Log.d(tag, "📤 fileHash: $fileHash")
+            Log.d(tag, "📤 fileSize: $fileSize bytes")
+            
+            // 构建protobuf请求 - 视频消息需要设置content.video和media字段
+            val contentBuilder = send_message_send.Content.newBuilder()
+                .setVideo(videoKey)  // 设置视频key，例如：f812a79eca05dfa884c9e89d54b2bca5.mp4
+            
+            // 添加引用消息文本
+            if (!quoteMsgText.isNullOrEmpty()) {
+                contentBuilder.setQuoteMsgText(quoteMsgText)
+                Log.d(tag, "📤 引用消息: $quoteMsgText")
+            }
+            
+            // 构建media字段 - 视频消息需要media信息
+            val mediaBuilder = send_message_send.Media.newBuilder()
+                .setFileKey(videoKey)
+                .setFileHash(fileHash)
+                .setFileType("video/mp4")
+                .setFileSize(fileSize)
+                .setFileKey2(videoKey)  // 据说不写会报错
+                .setFileSuffix("mp4")
+            
+            val requestBuilder = send_message_send.newBuilder()
+                .setMsgId(msgId)
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(contentBuilder.build())
+                .setContentType(10) // 视频消息类型为10
+                .setMedia(mediaBuilder.build())
+            
+            if (!quoteMsgId.isNullOrEmpty()) {
+                requestBuilder.setQuoteMsgId(quoteMsgId)
+                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
+            }
+            
+            val request = requestBuilder.build()
+            val requestBytes = request.toByteArray()
+            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
+
+            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
+            
+            val response = apiService.sendMessage(token, requestBody)
+            
+            Log.d(tag, "📥 服务器响应码: ${response.code()}")
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val sendResponse = send_message.parseFrom(bytes)
+                    
+                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
+                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
+                    
+                    if (sendResponse.status.code == 1) {
+                        Log.d(tag, "✅ ========== 视频消息发送成功！ ==========")
+                        Result.success(true)
+                    } else {
+                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
+                        Result.failure(Exception(sendResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
+                Result.failure(Exception("发送失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 发送视频消息异常", e)
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    /**
      * 发送表情消息 (contentType=7)
      * @param expression 表情对象，包含id、url等信息
      */

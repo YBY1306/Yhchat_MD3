@@ -123,6 +123,9 @@ fun SettingsScreen(
                     title = "界面",
                     items = listOf(
                         {
+                            ThemeSettingItem(context = context)
+                        },
+                        {
                             SettingsItemCell(
                                 icon = Icons.Default.Menu,
                                 title = "底部导航栏设置",
@@ -1718,5 +1721,77 @@ fun SettingsCustomItem(
         Box(modifier = Modifier.fillMaxWidth()) {
             content()
         }
+    }
+}
+
+/**
+ * 主题设置项
+ */
+@Composable
+fun ThemeSettingItem(context: Context) {
+    val prefs = remember { context.getSharedPreferences("app_settings", Context.MODE_PRIVATE) }
+    var currentTheme by remember { 
+        mutableStateOf(prefs.getString("app_theme", "system") ?: "system") 
+    }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    
+    val themeOptions = listOf(
+        "light" to "浅色主题",
+        "dark" to "深色主题", 
+        "system" to "跟随系统"
+    )
+    
+    val currentThemeLabel = themeOptions.find { it.first == currentTheme }?.second ?: "跟随系统"
+    
+    SettingsItemCell(
+        icon = Icons.Default.Palette,
+        title = "主题设置",
+        subtitle = "当前: $currentThemeLabel",
+        onClick = { showThemeDialog = true }
+    )
+    
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("选择主题") },
+            text = {
+                Column {
+                    themeOptions.forEach { (value, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    currentTheme = value
+                                    prefs.edit().putString("app_theme", value).apply()
+                                    showThemeDialog = false
+                                    
+                                    // 重启应用以应用主题
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                    context.startActivity(intent)
+                                    (context as? Activity)?.finish()
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentTheme == value,
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }

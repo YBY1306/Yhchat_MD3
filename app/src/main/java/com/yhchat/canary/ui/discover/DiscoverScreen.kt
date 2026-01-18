@@ -228,15 +228,10 @@ fun DiscoverScreen(
                 }
             } else if (groups.isNotEmpty()) {
                 items(groups) { group ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        GroupDiscoverCard(
-                            group = group,
-                            onClick = { selectedGroup = group }
-                        )
-                    }
+                    GroupDiscoverCard(
+                        group = group,
+                        onClick = { selectedGroup = group }
+                    )
                 }
 
                 // 加载更多指示器
@@ -448,12 +443,14 @@ fun GroupDiscoverCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.width(280.dp),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // 群聊头像
             if (!group.avatarUrl.isNullOrEmpty()) {
@@ -481,21 +478,35 @@ fun GroupDiscoverCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Text(
-                text = group.nickname,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.nickname,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Text(
-                text = "${group.headcount}人",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                if (!group.introduction.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = group.introduction,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "${group.headcount}人",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -550,7 +561,7 @@ fun BotDiscoverCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-        Text(
+            Text(
                 text = "${bot.headcount}人使用",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

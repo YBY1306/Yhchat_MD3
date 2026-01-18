@@ -265,6 +265,16 @@ interface ApiService {
     ): Response<com.yhchat.canary.data.model.BaseResponse>
 
     /**
+     * 获取机器人私聊指令（ProtoBuf）
+     * POST /v1/instruction/list
+     */
+    @POST("v1/instruction/list")
+    suspend fun getBotInstructionListProto(
+        @Header("token") token: String,
+        @Body request: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
+    /**
      * 获取机器人事件订阅设置
      */
     @POST("v1/event/list")

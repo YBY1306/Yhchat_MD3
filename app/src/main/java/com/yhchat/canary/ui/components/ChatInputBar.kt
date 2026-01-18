@@ -70,6 +70,7 @@ fun ChatInputBar(
     onStickerClick: ((com.yhchat.canary.data.model.StickerItem) -> Unit)? = null,  // 表情包贴纸点击回调
     onInstructionClick: ((com.yhchat.canary.data.model.Instruction) -> Unit)? = null,  // 指令点击回调
     groupId: String? = null,  // 群聊ID，用于加载指令
+    botId: String? = null,  // 机器人私聊ID，用于加载指令
     selectedInstruction: com.yhchat.canary.data.model.Instruction? = null, // 选中的指令
     onClearInstruction: (() -> Unit)? = null, // 清除指令
     focusRequester: FocusRequester? = null, // 焦点请求器
@@ -231,8 +232,8 @@ fun ChatInputBar(
                         }
                     )
                     
-                    // 指令按钮 - 只在群聊中显示
-                    if (groupId != null && onInstructionClick != null) {
+                    // 指令按钮 - 群聊 或 机器人私聊
+                    if (onInstructionClick != null && (groupId != null || botId != null)) {
                         IconButton(
                             onClick = { 
                                 showInstructionPicker = !showInstructionPicker
@@ -398,9 +399,10 @@ fun ChatInputBar(
         }
         
         // 指令选择器（在Surface外面）
-        if (showInstructionPicker && onInstructionClick != null && groupId != null) {
+        if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null)) {
             InstructionPicker(
                 groupId = groupId,
+                botId = botId,
                 onInstructionClick = { instruction ->
                     onInstructionClick?.invoke(instruction)
                     showInstructionPicker = false

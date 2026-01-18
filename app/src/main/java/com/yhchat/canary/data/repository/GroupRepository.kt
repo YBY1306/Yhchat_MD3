@@ -13,6 +13,8 @@ import com.yhchat.canary.proto.group.edit_group_send
 import com.yhchat.canary.proto.group.bot_list_send
 import com.yhchat.canary.proto.group.bot_list
 import com.yhchat.canary.proto.group.Bot_data
+import com.yhchat.canary.proto.instruction.get_bot_instruction
+import com.yhchat.canary.proto.instruction.instruction_list
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -41,6 +43,64 @@ class GroupRepository @Inject constructor(
 
     fun setTokenRepository(tokenRepository: TokenRepository) {
         this.tokenRepository = tokenRepository
+    }
+
+    /**
+     * 获取机器人私聊指令列表（ProtoBuf API）
+     */
+    suspend fun getBotInstructionList(botId: String): Result<List<com.yhchat.canary.data.model.Instruction>> {
+        return try {
+            val token = tokenRepository?.getTokenSync()
+            if (token == null) {
+                return Result.failure(Exception("未登录"))
+            }
+
+            val request = get_bot_instruction.newBuilder()
+                .setId(botId)
+                .build()
+
+            val requestBody = RequestBody.create(
+                "application/x-protobuf".toMediaTypeOrNull(),
+                request.toByteArray()
+            )
+
+            val response = apiService.getBotInstructionListProto(token, requestBody)
+
+            if (response.isSuccessful) {
+                val responseBody = response.body()?.bytes()
+                if (responseBody != null) {
+                    val parsed = instruction_list.parseFrom(responseBody)
+                    if (parsed.status.code == 1L) {
+                        val instructions = parsed.dataList.map { item ->
+                            com.yhchat.canary.data.model.Instruction(
+                                botId = item.botId,
+                                botName = "",
+                                name = item.commandName,
+                                desc = "",
+                                id = item.commandId.toLong(),
+                                sort = 0,
+                                auth = 0,
+                                type = item.instructionType.toInt(),
+                                hintText = "",
+                                defaultText = item.defaultText,
+                                form = item.botSettingsJson
+                            )
+                        }
+                        Log.d(tag, "✅ 从ProtoBuf获取到机器人指令 ${instructions.size} 条")
+                        Result.success(instructions)
+                    } else {
+                        Result.failure(Exception(parsed.status.msg))
+                    }
+                } else {
+                    Result.failure(Exception("响应体为空"))
+                }
+            } else {
+                Result.failure(Exception("请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "获取机器人私聊指令失败", e)
+            Result.failure(e)
+        }
     }
 
     /**

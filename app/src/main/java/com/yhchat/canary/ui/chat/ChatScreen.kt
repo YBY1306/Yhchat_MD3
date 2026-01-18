@@ -34,6 +34,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.*
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -62,9 +66,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -75,6 +82,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.composed
 import com.yhchat.canary.ui.bot.BotInfoActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
@@ -994,6 +1003,7 @@ fun ChatScreen(
                     }
                 },
                 groupId = if (chatType == 2) chatId else null,  // 只在群聊中传递groupId
+                botId = if (chatType == 3) chatId else null,  // 机器人私聊传递botId
                 selectedInstruction = selectedInstruction,  // 传递选中的指令
                 onClearInstruction = {
                     selectedInstruction = null
@@ -1838,6 +1848,23 @@ private fun SenderNameAndTags(
     }
 }
 
+private fun Modifier.passThroughLongPress(onLongClick: () -> Unit): Modifier = composed {
+    val viewConfig = LocalViewConfiguration.current
+    pointerInput(onLongClick) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            val up = withTimeoutOrNull(viewConfig.longPressTimeoutMillis) {
+                waitForUpOrCancellation()
+            }
+            if (up == null) {
+                onLongClick()
+                // 等待抬手，避免一次长按触发多次
+                waitForUpOrCancellation()
+            }
+        }
+    }
+}
+
 /**
  * 撤回消息项
  */
@@ -1940,10 +1967,7 @@ private fun MessageContentView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { },
-                                    onLongClick = onLongClick
-                                )
+                                .passThroughLongPress(onLongClick)
                         ) {
                             Text(
                                 text = htmlContent,
@@ -1958,10 +1982,7 @@ private fun MessageContentView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 120.dp, max = 440.dp)
-                                .combinedClickable(
-                                    onClick = { },
-                                    onLongClick = onLongClick
-                                )
+                                .passThroughLongPress(onLongClick)
                         ) {
                             HtmlWebView(
                                 htmlContent = htmlContent,
@@ -2081,10 +2102,7 @@ private fun MessageContentView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { },
-                                    onLongClick = onLongClick
-                                )
+                                .passThroughLongPress(onLongClick)
                         ) {
                             Text(
                                 text = markdownText,
@@ -2098,10 +2116,7 @@ private fun MessageContentView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { },
-                                    onLongClick = onLongClick
-                                )
+                                .passThroughLongPress(onLongClick)
                         ) {
                             MarkdownText(
                                 markdown = markdownText,

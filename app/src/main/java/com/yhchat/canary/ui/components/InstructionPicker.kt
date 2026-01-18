@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionPicker(
-    groupId: String,
+    groupId: String? = null,
+    botId: String? = null,
     onInstructionClick: (Instruction) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -37,9 +38,12 @@ fun InstructionPicker(
     val context = LocalContext.current
     val viewModel = remember { InstructionPickerViewModel() }
     
-    LaunchedEffect(groupId) {
+    LaunchedEffect(groupId, botId) {
         viewModel.init(context)
-        viewModel.loadInstructions(groupId)
+        when {
+            groupId != null -> viewModel.loadGroupInstructions(groupId)
+            botId != null -> viewModel.loadBotInstructions(botId)
+        }
     }
     
     val uiState by viewModel.uiState.collectAsState()
@@ -75,7 +79,12 @@ fun InstructionPicker(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            TextButton(onClick = { viewModel.loadInstructions(groupId) }) {
+                            TextButton(onClick = {
+                                when {
+                                    groupId != null -> viewModel.loadGroupInstructions(groupId)
+                                    botId != null -> viewModel.loadBotInstructions(botId)
+                                }
+                            }) {
                                 Text("重试")
                             }
                         }
@@ -212,7 +221,7 @@ class InstructionPickerViewModel : ViewModel() {
         groupRepository = RepositoryFactory.getGroupRepository(context)
     }
     
-    fun loadInstructions(groupId: String) {
+    fun loadGroupInstructions(groupId: String) {
         viewModelScope.launch {
             Log.d(TAG, "📋 开始加载群指令，groupId: $groupId")
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -267,6 +276,30 @@ class InstructionPickerViewModel : ViewModel() {
                     ?: jsonResult.exceptionOrNull()?.message 
                     ?: "获取指令失败"
                 Log.e(TAG, "❌ 指令加载失败: $error")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = error
+                )
+            }
+        }
+    }
+
+    fun loadBotInstructions(botId: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "🤖 开始加载机器人私聊指令，botId: $botId")
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            val result = groupRepository.getBotInstructionList(botId)
+            val instructions = result.getOrNull() ?: emptyList()
+
+            if (instructions.isNotEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    instructions = instructions
+                )
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "获取指令失败"
+                Log.e(TAG, "❌ 机器人指令加载失败: $error")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = error

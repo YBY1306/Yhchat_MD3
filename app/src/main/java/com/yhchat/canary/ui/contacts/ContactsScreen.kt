@@ -590,7 +590,7 @@ private fun FriendRequestDetailBottomSheet(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = item.receiverName.ifBlank { "ID: ${item.receiverId}" },
+                                text = item.receiverName.ifBlank { "ID: ${item.requestId}" },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -602,7 +602,7 @@ private fun FriendRequestDetailBottomSheet(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     InfoLine(label = "请求ID", value = item.requestId.toString())
-                    InfoLine(label = "申请加入的群聊ID", value = item.targetId)
+                    InfoLine(label = "申请添加的会话ID", value = item.targetId)
                     InfoLine(label = "处理结果", value = item.result.toString())
                     if (item.inviteAtStr.isNotBlank()) {
                         InfoLine(label = "时间", value = item.inviteAtStr)

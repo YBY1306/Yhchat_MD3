@@ -81,7 +81,10 @@ message info {
         repeated Tag tag = 27;
         string my_group_nickname = 28; // 我的群昵称
         string group_code = 29; // 群口令
+        uint64 hide_group_members = 30; // 隐藏群成员（开启时为1）
         int64 auto_delete_message = 32; // 群聊消息自动销毁时间
+        uint64 deny_members_upload_to_group_disk = 33; // 禁止群成员上传文件到群云盘（开启时为1）
+
        
 
         // 已使用标签信息

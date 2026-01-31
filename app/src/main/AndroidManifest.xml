@@ -238,12 +238,6 @@
             android:exported="false"
             android:label="用户详情"
             android:theme="@style/Theme.YhchatCanary" />
-
-        <activity
-            android:name=".ui.user.FriendSettingsActivity"
-            android:exported="false"
-            android:label="好友设置"
-            android:theme="@style/Theme.YhchatCanary" />
         
         <!-- 表情包详情 -->
         <activity

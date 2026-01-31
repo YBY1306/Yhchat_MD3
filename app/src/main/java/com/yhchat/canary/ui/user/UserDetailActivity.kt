@@ -16,10 +16,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,8 +49,10 @@ import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.CommunityRepository
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.community.BoardDetailActivity
+import com.yhchat.canary.ui.components.ReportDialog
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -124,6 +133,13 @@ fun UserDetailScreen(
     var showGagMenu by remember { mutableStateOf(false) }
     var isProcessingMemberAction by remember { mutableStateOf(false) }
     var targetUserPermission by remember { mutableStateOf(0) }
+
+    var showMoreSheet by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showDeleteFriendDialog by remember { mutableStateOf(false) }
+
+    var isNoNotify by remember { mutableStateOf(false) }
+    var isSettingNoNotify by remember { mutableStateOf(false) }
     
     // 加载用户详情
     LaunchedEffect(userId) {
@@ -139,6 +155,11 @@ fun UserDetailScreen(
 
             val localToken = tokenRepository.getTokenSync() ?: ""
             token = localToken
+
+            val cachedConversation = CacheRepository(context)
+                .getCachedConversationsSync()
+                .firstOrNull { it.chatId == userId && it.chatType == 1 }
+            isNoNotify = cachedConversation?.doNotDisturb == 1
 
             isCheckingAddressBook = true
             friendRepository.getAddressBookList().fold(
@@ -229,90 +250,9 @@ fun UserDetailScreen(
                     }
                 },
                 actions = {
-                    if (groupId != null) {
-                        Box {
-                            IconButton(onClick = { showMemberMenu = true }) {
-                                Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多操作")
-                            }
-                            DropdownMenu(
-                                expanded = showMemberMenu,
-                                onDismissRequest = { showMemberMenu = false }
-                            ) {
-                                if (targetUserPermission == 2) {
-                                    DropdownMenuItem(
-                                        text = { Text("卸任管理员") },
-                                        onClick = {
-                                            showMemberMenu = false
-                                            if (!isProcessingMemberAction) {
-                                                isProcessingMemberAction = true
-                                                CoroutineScope(Dispatchers.Main).launch {
-                                                    val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                                    groupRepository.setMemberRole(groupId, userId, 0)
-                                                    isProcessingMemberAction = false
-                                                }
-                                            }
-                                        },
-                                        enabled = !isProcessingMemberAction
-                                    )
-                                } else if (targetUserPermission == 0) {
-                                    DropdownMenuItem(
-                                        text = { Text("设为管理员") },
-                                        onClick = {
-                                            showMemberMenu = false
-                                            if (!isProcessingMemberAction) {
-                                                isProcessingMemberAction = true
-                                                CoroutineScope(Dispatchers.Main).launch {
-                                                    val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                                    groupRepository.setMemberRole(groupId, userId, 2)
-                                                    isProcessingMemberAction = false
-                                                }
-                                            }
-                                        },
-                                        enabled = !isProcessingMemberAction
-                                    )
-                                }
-
-                                DropdownMenuItem(
-                                    text = { Text("踢出群聊") },
-                                    onClick = {
-                                        showMemberMenu = false
-                                        if (!isProcessingMemberAction) {
-                                            isProcessingMemberAction = true
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                                groupRepository.removeMember(groupId, userId)
-                                                isProcessingMemberAction = false
-                                            }
-                                        }
-                                    },
-                                    enabled = !isProcessingMemberAction
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("禁言") },
-                                    onClick = {
-                                        showMemberMenu = false
-                                        showGagMenu = true
-                                    },
-                                    enabled = !isProcessingMemberAction
-                                )
-                            }
-                        }
-                    }
-
                     if (isCheckingAddressBook) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else if (isInAddressBook) {
-                        IconButton(
-                            onClick = {
-                                FriendSettingsActivity.start(
-                                    context = context,
-                                    userId = userId,
-                                    userName = uiState.userDetail?.name ?: userName
-                                )
-                            }
-                        ) {
-                            Icon(Icons.Default.Settings, "设置")
-                        }
                         IconButton(
                             onClick = {
                                 val intent = Intent(context, ChatActivity::class.java).apply {
@@ -329,6 +269,10 @@ fun UserDetailScreen(
                         IconButton(onClick = { showAddFriendDialog = true }) {
                             Icon(Icons.Default.PersonAdd, "添加")
                         }
+                    }
+
+                    IconButton(onClick = { showMoreSheet = true }) {
+                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
                 }
             )
@@ -447,7 +391,288 @@ fun UserDetailScreen(
                 onDismiss = { if (!isProcessingMemberAction) showGagMenu = false }
             )
         }
+
+        if (showMoreSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showMoreSheet = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    SheetSectionHeader(title = "互动")
+
+                    SheetActionItem(
+                        icon = Icons.Default.Report,
+                        title = "举报",
+                        onClick = {
+                            showMoreSheet = false
+                            showReportDialog = true
+                        }
+                    )
+
+                    SheetActionItem(
+                        icon = Icons.Default.Wallpaper,
+                        title = "聊天背景",
+                        onClick = {
+                            showMoreSheet = false
+                            com.yhchat.canary.ui.background.ChatBackgroundActivity.start(
+                                context,
+                                userId,
+                                uiState.userDetail?.name ?: userName
+                            )
+                        }
+                    )
+
+                    ListItem(
+                        headlineContent = { Text("免打扰") },
+                        supportingContent = {
+                            Text(if (isNoNotify) "已开启" else "未开启")
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = if (isNoNotify) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        trailingContent = {
+                            if (isSettingNoNotify) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Switch(
+                                    checked = isNoNotify,
+                                    onCheckedChange = { checked ->
+                                        if (isSettingNoNotify) return@Switch
+                                        isNoNotify = checked
+                                        isSettingNoNotify = true
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            val friendRepository = RepositoryFactory.getFriendRepository(context)
+                                            friendRepository.setNoNotify(
+                                                chatId = userId,
+                                                noNotify = if (checked) 1 else 0
+                                            ).fold(
+                                                onSuccess = {
+                                                    CacheRepository(context).updateConversationDoNotDisturb(
+                                                        chatId = userId,
+                                                        doNotDisturb = if (checked) 1 else 0
+                                                    )
+                                                    Toast.makeText(context, "设置成功", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onFailure = { error ->
+                                                    isNoNotify = !checked
+                                                    Toast.makeText(context, "设置失败：${error.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
+                                            isSettingNoNotify = false
+                                        }
+                                    },
+                                    enabled = !isSettingNoNotify
+                                )
+                            }
+                        },
+                        colors = ListItemDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                    if (!isCheckingAddressBook && isInAddressBook) {
+                        SheetActionItem(
+                            icon = Icons.Default.Delete,
+                            title = "删除好友",
+                            isDestructive = true,
+                            onClick = {
+                                showMoreSheet = false
+                                showDeleteFriendDialog = true
+                            }
+                        )
+                    }
+
+                    if (groupId != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SheetSectionHeader(title = "群聊管理")
+
+                        if (targetUserPermission == 2) {
+                            SheetActionItem(
+                                icon = Icons.Default.AdminPanelSettings,
+                                title = "卸任管理员",
+                                enabled = !isProcessingMemberAction,
+                                onClick = {
+                                    showMoreSheet = false
+                                    if (!isProcessingMemberAction) {
+                                        isProcessingMemberAction = true
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                            groupRepository.setMemberRole(groupId, userId, 0)
+                                            isProcessingMemberAction = false
+                                        }
+                                    }
+                                }
+                            )
+                        } else if (targetUserPermission == 0) {
+                            SheetActionItem(
+                                icon = Icons.Default.AdminPanelSettings,
+                                title = "设为管理员",
+                                enabled = !isProcessingMemberAction,
+                                onClick = {
+                                    showMoreSheet = false
+                                    if (!isProcessingMemberAction) {
+                                        isProcessingMemberAction = true
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                            groupRepository.setMemberRole(groupId, userId, 2)
+                                            isProcessingMemberAction = false
+                                        }
+                                    }
+                                }
+                            )
+                        }
+
+                        SheetActionItem(
+                            icon = Icons.Default.Delete,
+                            title = "踢出群聊",
+                            enabled = !isProcessingMemberAction,
+                            isDestructive = true,
+                            onClick = {
+                                showMoreSheet = false
+                                if (!isProcessingMemberAction) {
+                                    isProcessingMemberAction = true
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        val groupRepository = RepositoryFactory.getGroupRepository(context)
+                                        groupRepository.removeMember(groupId, userId)
+                                        isProcessingMemberAction = false
+                                    }
+                                }
+                            }
+                        )
+                        SheetActionItem(
+                            icon = Icons.Default.Block,
+                            title = "禁言",
+                            enabled = !isProcessingMemberAction,
+                            onClick = {
+                                showMoreSheet = false
+                                showGagMenu = true
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+
+        if (showDeleteFriendDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteFriendDialog = false },
+                title = {
+                    Text(
+                        text = "删除好友",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("确定要删除好友「${uiState.userDetail?.name ?: userName}」吗？")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteFriendDialog = false
+                            val userRepository = RepositoryFactory.getUserRepository(context)
+                            CoroutineScope(Dispatchers.Main).launch {
+                                userRepository.deleteFriend(userId, 1).fold(
+                                    onSuccess = {
+                                        Toast.makeText(context, "已删除好友", Toast.LENGTH_SHORT).show()
+                                        onBackClick()
+                                    },
+                                    onFailure = { exception: Throwable ->
+                                        Toast.makeText(context, "删除好友失败: ${exception.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("删除", color = MaterialTheme.colorScheme.onError)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteFriendDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+
+        if (showReportDialog) {
+            ReportDialog(
+                chatId = userId,
+                chatType = 1,
+                chatName = uiState.userDetail?.name ?: userName,
+                onDismiss = { showReportDialog = false },
+                onSuccess = {
+                    Toast.makeText(context, "举报已提交", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
+}
+
+@Composable
+private fun SheetSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun SheetActionItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    isDestructive: Boolean = false
+) {
+    val containerColor = MaterialTheme.colorScheme.surface
+    val baseTextColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val baseIconColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val alpha = if (enabled) 1f else 0.45f
+
+    ListItem(
+        headlineContent = {
+            Text(
+                text = title,
+                color = baseTextColor.copy(alpha = alpha)
+            )
+        },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = baseIconColor.copy(alpha = alpha)
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onClick() },
+        colors = ListItemDefaults.colors(
+            containerColor = containerColor
+        ),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 }
 
 @Composable
@@ -547,20 +772,33 @@ fun UserDetailContent(
                                 )
                                 
                                 if (userDetail.isVip == 1) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = "VIP",
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    }
-                                }
-                            }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(16.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "VIP",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "VIP",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        
                             
                             Spacer(modifier = Modifier.height(4.dp))
                             

@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -31,7 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.focus.FocusRequester
@@ -42,9 +45,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
-import android.view.MotionEvent
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 聊天输入栏组件
@@ -83,9 +85,17 @@ fun ChatInputBar(
     var showInstructionPicker by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     val chatPrefs = remember {
         context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
+    }
+
+    var defaultSendMessageType by remember {
+        mutableStateOf(
+            chatPrefs.getInt("default_send_message_type", 1)
+                .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+        )
     }
 
     var longPressSendMarkdownEnabled by remember {
@@ -105,6 +115,10 @@ fun ChatInputBar(
                 "long_press_send_markdown_seconds" -> {
                     longPressSendMarkdownSeconds = chatPrefs.getInt("long_press_send_markdown_seconds", 3).coerceAtLeast(1)
                 }
+                "default_send_message_type" -> {
+                    defaultSendMessageType = chatPrefs.getInt("default_send_message_type", 1)
+                        .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+                }
             }
         }
         chatPrefs.registerOnSharedPreferenceChangeListener(listener)
@@ -112,9 +126,7 @@ fun ChatInputBar(
     }
 
     var longPressAutoSent by remember { mutableStateOf(false) }
-    val longPressScope = rememberCoroutineScope()
-    var longPressJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    
+
     // 监听键盘显示请求
     LaunchedEffect(shouldShowKeyboard) {
         if (shouldShowKeyboard) {
@@ -282,15 +294,7 @@ fun ChatInputBar(
                     
                     // 发送按钮 - 圆形背景
                 IconButton(
-                    onClick = {
-                        if (longPressAutoSent) {
-                            longPressAutoSent = false
-                            return@IconButton
-                        }
-                        if (text.isNotBlank()) {
-                            onSendMessage()
-                        }
-                    },
+                    onClick = { },
                     enabled = text.isNotBlank(),
                     modifier = Modifier
                             .size(32.dp)
@@ -301,31 +305,44 @@ fun ChatInputBar(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             CircleShape
                         )
-                        .pointerInteropFilter { event ->
-                            if (!longPressSendMarkdownEnabled) return@pointerInteropFilter false
-                            val mtc = onMessageTypeChange ?: return@pointerInteropFilter false
+                        .pointerInput(longPressSendMarkdownEnabled, longPressSendMarkdownSeconds, text, selectedMessageType) {
+                            val mtc = onMessageTypeChange
 
-                            when (event.actionMasked) {
-                                MotionEvent.ACTION_DOWN -> {
-                                    longPressAutoSent = false
-                                    longPressJob?.cancel()
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+
+                                if (text.isBlank()) {
+                                    waitForUpOrCancellation()
+                                    return@awaitEachGesture
+                                }
+
+                                val releasedBeforeTimeout = if (longPressSendMarkdownEnabled && mtc != null) {
+                                    withTimeoutOrNull(longPressSendMarkdownSeconds.toLong() * 1000L) {
+                                        waitForUpOrCancellation()
+                                    } != null
+                                } else {
+                                    waitForUpOrCancellation()
+                                    true
+                                }
+
+                                if (releasedBeforeTimeout) {
                                     if (text.isNotBlank()) {
-                                        longPressJob = longPressScope.launch {
-                                            delay(longPressSendMarkdownSeconds.toLong() * 1000L)
-                                            if (text.isNotBlank()) {
-                                                longPressAutoSent = true
-                                                mtc.invoke(3)
-                                                onSendMessage()
-                                            }
+                                        onSendMessage()
+                                    }
+                                } else {
+                                    val previousType = selectedMessageType
+                                    coroutineScope.launch {
+                                        if (previousType != 3) {
+                                            mtc?.invoke(3)
+                                        }
+                                        onSendMessage()
+                                        if (previousType != 3) {
+                                            mtc?.invoke(previousType)
                                         }
                                     }
-                                }
-                                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                                    longPressJob?.cancel()
-                                    longPressJob = null
+                                    waitForUpOrCancellation()
                                 }
                             }
-                            false
                         }
                 ) {
                     Icon(
@@ -364,6 +381,10 @@ fun ChatInputBar(
                         onVideoClick?.invoke()
                         showAttachMenu = false
                     },
+                    onTextClick = {
+                        onMessageTypeChange?.invoke(1)
+                        showAttachMenu = false
+                    },
                     onHtmlClick = {
                         onMessageTypeChange?.invoke(8)
                         showAttachMenu = false
@@ -371,6 +392,11 @@ fun ChatInputBar(
                     onMarkdownClick = {
                         onMessageTypeChange?.invoke(3)
                         showAttachMenu = false
+                    },
+                    defaultMessageType = defaultSendMessageType,
+                    onDefaultMessageTypeChange = { newDefaultType ->
+                        defaultSendMessageType = newDefaultType
+                        chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
                     },
                     selectedMessageType = selectedMessageType,
                     modifier = Modifier

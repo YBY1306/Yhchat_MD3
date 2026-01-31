@@ -33,7 +33,7 @@ import okhttp3.OkHttpClient
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.conversation.ConversationViewModel
-import com.yhchat.canary.ui.profile.UserProfileActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.ui.chat.ChatAddActivity
@@ -141,18 +141,15 @@ class MainActivity : BaseActivity() {
                         onBackClick = {
                             currentScreen = "conversation"
                         },
-                        onAvatarClick = 
-                            { userId, userName, chatType, currentUserPermission ->
-                                val isGroupAdmin = currentUserPermission >= 2
-                                val groupId = if (chatType == 2) currentChatId else null
-                                UserProfileActivity.start(
-                                    this@MainActivity,
-                                    userId,
-                                    userName,
-                                    groupId,
-                                    isGroupAdmin
-                                )
-                            },
+                        onAvatarClick = { userId, userName, chatType, currentUserPermission ->
+                            val groupId = if (chatType == 2) currentChatId else null
+                            UserDetailActivity.start(
+                                context = this@MainActivity,
+                                userId = userId,
+                                userName = userName,
+                                groupId = groupId
+                            )
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -263,14 +260,12 @@ class MainActivity : BaseActivity() {
                                         currentScreen = "conversation"
                                     },
                                     onAvatarClick = { userId, userName, chatType, currentUserPermission ->
-                                        val isGroupAdmin = currentUserPermission >= 2
                                         val groupId = if (chatType == 2) currentChatId else null
-                                        UserProfileActivity.start(
-                                            this@MainActivity,
-                                            userId,
-                                            userName,
-                                            groupId,
-                                            isGroupAdmin
+                                        UserDetailActivity.start(
+                                            context = this@MainActivity,
+                                            userId = userId,
+                                            userName = userName,
+                                            groupId = groupId
                                         )
                                     },
                                     modifier = Modifier.fillMaxSize()

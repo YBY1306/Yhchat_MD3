@@ -194,10 +194,10 @@ private fun ComprehensiveSearchScreen(
                     isLoading = uiState.isLoading,
                     onUserClick = { user ->
                         // 直接跳转到用户资料页面
-                        com.yhchat.canary.ui.profile.UserProfileActivity.start(
-                            context,
-                            user.userId ?: "",
-                            user.nickname
+                        com.yhchat.canary.ui.user.UserDetailActivity.start(
+                            context = context,
+                            userId = user.userId ?: "",
+                            userName = user.nickname ?: ""
                         )
                     }
                 )
@@ -225,7 +225,7 @@ private fun ComprehensiveSearchScreen(
         )
     }
     
-    // 用户搜索结果现在直接跳转到 UserProfileActivity，不再显示弹窗
+    // 用户搜索结果现在直接跳转到 UserDetailActivity，不再显示弹窗
     
     if (uiState.showBotDialog) {
         BotInfoDialog(

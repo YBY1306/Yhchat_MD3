@@ -39,4 +39,7 @@ interface CachedConversationDao {
     @Query("UPDATE cached_conversations SET unreadMessage = unreadMessage + 1, chatContent = :lastMessage, timestampMs = :timestamp WHERE chatId = :chatId")
     suspend fun updateLastMessage(chatId: String, lastMessage: String, timestamp: Long)
 
+    @Query("UPDATE cached_conversations SET doNotDisturb = :doNotDisturb WHERE chatId = :chatId")
+    suspend fun updateDoNotDisturb(chatId: String, doNotDisturb: Int)
+
 }

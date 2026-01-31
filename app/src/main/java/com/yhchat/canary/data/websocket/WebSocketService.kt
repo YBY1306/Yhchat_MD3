@@ -3,7 +3,6 @@ package com.yhchat.canary.data.websocket
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -518,6 +517,31 @@ class WebSocketService @Inject constructor(
             if (AppForegroundTracker.isInForeground) {
                 return
             }
+
+            // 使用与会话列表一致的逻辑确定目标会话
+            val isPrivateChat = message.chatId == message.recvId
+            val targetChatId = if (isPrivateChat) {
+                message.sender.chatId
+            } else {
+                message.chatId ?: message.sender.chatId
+            }
+            val targetChatType = if (isPrivateChat) {
+                message.sender.chatType
+            } else {
+                message.chatType ?: message.sender.chatType
+            }
+
+            // 免打扰：不弹出该会话的系统通知
+            val isMuted = runBlocking {
+                val cacheRepository = CacheRepository(context)
+                cacheRepository.getCachedConversationsSync()
+                    .firstOrNull { it.chatId == targetChatId && it.chatType == targetChatType }
+                    ?.doNotDisturb == 1
+            }
+            if (isMuted) {
+                Log.d(tag, "Conversation is muted (doNotDisturb==1), skip notification: chatId=$targetChatId")
+                return
+            }
             
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             
@@ -536,10 +560,6 @@ class WebSocketService @Inject constructor(
                     else -> "[消息]"
                 }
             }
-            
-            // 使用正确的chatId和chatType来确定会话
-            val targetChatId = message.chatId ?: message.sender.chatId
-            val targetChatType = message.chatType ?: message.sender.chatType
             
             // 确定会话名称 - 尝试从缓存获取真实名称
             val conversationTitle = getConversationTitle(targetChatId, targetChatType, senderName)

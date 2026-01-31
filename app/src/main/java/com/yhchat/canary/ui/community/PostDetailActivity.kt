@@ -50,7 +50,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.data.model.CommunityComment
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.ui.profile.UserProfileActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.util.YunhuLinkHandler
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import androidx.compose.ui.viewinterop.AndroidView
@@ -188,7 +188,7 @@ fun PostContentCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clickable {
-                        UserProfileActivity.start(context, post.senderId, post.senderNickname)
+                        UserDetailActivity.start(context = context, userId = post.senderId, userName = post.senderNickname)
                     },
                 contentScale = ContentScale.Crop
             )
@@ -516,7 +516,7 @@ fun CommentItem(
                     modifier = Modifier
                         .size(32.dp)
                         .clickable {
-                            UserProfileActivity.start(context, comment.senderId, comment.senderNickname)
+                            UserDetailActivity.start(context = context, userId = comment.senderId, userName = comment.senderNickname)
                         },
                     contentScale = ContentScale.Crop
                 )
@@ -660,7 +660,7 @@ fun CommentReplyItem(
             modifier = Modifier
                 .size(24.dp)
                 .clickable {
-                    UserProfileActivity.start(context, reply.senderId, reply.senderNickname)
+                    UserDetailActivity.start(context = context, userId = reply.senderId, userName = reply.senderNickname)
                 },
             contentScale = ContentScale.Crop
         )
@@ -1307,6 +1307,7 @@ fun PostDetailScreen(
                                         if (commentText.isNotBlank()) {
                                             // 处理换行符：保持原始换行符
                                             val processedContent = commentText.trim()
+                                            android.util.Log.d("PostDetail", "发送评论: postId=$postId, content=$processedContent")
                                             viewModel.commentPostWithToken(postId, processedContent)
                                             commentText = ""
                                             showCommentInput = false

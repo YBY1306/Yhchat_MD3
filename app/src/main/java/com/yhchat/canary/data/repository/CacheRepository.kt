@@ -100,6 +100,13 @@ class CacheRepository @Inject constructor(
     suspend fun updateConversationLastMessage(chatId: String, lastMessage: String, timestamp: Long) {
         conversationDao.updateLastMessage(chatId, lastMessage, timestamp)
     }
+
+    /**
+     * 更新会话免打扰状态
+     */
+    suspend fun updateConversationDoNotDisturb(chatId: String, doNotDisturb: Int) {
+        conversationDao.updateDoNotDisturb(chatId, doNotDisturb)
+    }
     
     /**
      * 增加未读数量

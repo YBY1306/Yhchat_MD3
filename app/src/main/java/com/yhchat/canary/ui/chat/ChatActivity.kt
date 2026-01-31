@@ -18,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import com.yhchat.canary.ui.user.UserDetailActivity
 
 @AndroidEntryPoint
 class ChatActivity : BaseActivity() {
@@ -99,13 +100,11 @@ class ChatActivity : BaseActivity() {
                         onAvatarClick = { userId, userName, chatType, currentUserPermission ->
                             if (chatType != 3) {
                                 // 如果是群聊环境，传递群聊信息和当前用户权限
-                                val isGroupAdmin = currentUserPermission >= 2
-                                com.yhchat.canary.ui.profile.UserProfileActivity.start(
-                                    context = this@ChatActivity, 
-                                    userId = userId, 
+                                UserDetailActivity.start(
+                                    context = this@ChatActivity,
+                                    userId = userId,
                                     userName = userName,
-                                    groupId = if (this@ChatActivity.chatType == 2) this@ChatActivity.chatId else null,
-                                    isGroupAdmin = isGroupAdmin
+                                    groupId = if (this@ChatActivity.chatType == 2) this@ChatActivity.chatId else null
                                 )
                             }
                         },

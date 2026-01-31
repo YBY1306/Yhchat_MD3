@@ -375,7 +375,7 @@ fun MoreTabContent(
         item {
             val boards = createdBoardListState.boards
             SettingsGroup(
-                title = "我创建的分区",
+                title = "我管理的分区",
                 items = boards.map { board ->
                     {
                         SettingsCustomItem(

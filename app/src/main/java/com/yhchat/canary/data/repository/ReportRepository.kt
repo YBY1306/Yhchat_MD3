@@ -28,7 +28,8 @@ class ReportRepository @Inject constructor(
         chatType: Int,
         chatName: String,
         content: String,
-        imageUrl: String = ""
+        imageUrl: String = "",
+        reason: String = ""
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         return@withContext try {
             val token = tokenRepository.getTokenSync()
@@ -42,10 +43,11 @@ class ReportRepository @Inject constructor(
                 chatType = chatType,
                 chatName = chatName,
                 content = content,
-                url = imageUrl
+                url = imageUrl,
+                reason = reason
             )
             
-            Log.d(TAG, "提交举报: chatId=$chatId, chatType=$chatType, content=$content")
+            Log.d(TAG, "提交举报: chatId=$chatId, chatType=$chatType, content=$content, reason=$reason")
             
             val response = apiService.submitReport(token, request)
             

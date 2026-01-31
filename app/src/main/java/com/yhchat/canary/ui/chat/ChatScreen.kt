@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.*
@@ -69,7 +70,6 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -83,7 +83,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.composed
 import com.yhchat.canary.ui.bot.BotInfoActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -164,8 +163,32 @@ fun ChatScreen(
     } else {
         0
     }
+    val chatIdLong = remember(chatId) {
+        try {
+            chatId.toLong()
+        } catch (e: Exception) {
+            0
+        }
+    }
     var inputText by remember { mutableStateOf("") }
-    var selectedMessageType by remember { mutableStateOf(1) } // 1-文本, 3-Markdown, 8-HTML
+    val chatPrefs = remember { context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE) }
+    var defaultSendMessageType by remember {
+        mutableStateOf(
+            chatPrefs.getInt("default_send_message_type", 1)
+                .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+        )
+    }
+    DisposableEffect(chatPrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "default_send_message_type") {
+                defaultSendMessageType = chatPrefs.getInt("default_send_message_type", 1)
+                    .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+            }
+        }
+        chatPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { chatPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    var selectedMessageType by remember { mutableStateOf(defaultSendMessageType) } // 1-文本, 3-Markdown, 8-HTML
     var selectedInstruction by remember { mutableStateOf<com.yhchat.canary.data.model.Instruction?>(null) } // 选中的指令
     val listState = rememberLazyListState()
     
@@ -417,9 +440,7 @@ fun ChatScreen(
                         com.yhchat.canary.ui.user.UserDetailActivity.start(
                             context = context,
                             userId = chatId,
-                            userName = chatName,
-                            groupId = null,
-                            isGroupAdmin = false
+                            userName = chatName
                         )
                     }) {
                         Icon(
@@ -669,7 +690,7 @@ fun ChatScreen(
                                     }
                                     context.startActivity(intent)
                                 } else if (senderChatType == 1) {
-                                    UserDetailActivity.start(
+                                    com.yhchat.canary.ui.user.UserDetailActivity.start(
                                         context = context,
                                         userId = senderId,
                                         userName = name,
@@ -891,8 +912,8 @@ fun ChatScreen(
                                 inputText = ""
                                 // 清除@用户映射
                                 mentionedUsers = emptyMap()
-                                // 发送后重置为文本类型
-                                selectedMessageType = 1
+                                // 发送后重置为默认类型
+                                selectedMessageType = defaultSendMessageType
                                 // 清除引用状态
                                 quotedMessageId = null
                                 quotedMessageText = null
@@ -1294,7 +1315,7 @@ private fun MessageItem(
     if (showContextMenu) {
         MessageContextMenu(
             message = message,
-            showRecall = conversationChatType == 2,
+            showRecall = isMyMessage && conversationChatType in listOf(1, 2, 3) && message.msgDeleteTime == null,
             onDismiss = { showContextMenu = false },
             onCopyAll = {
                 val textToCopy = message.content.text ?: ""
@@ -1852,14 +1873,11 @@ private fun SenderNameAndTags(
 }
 
 private fun Modifier.passThroughLongPress(onLongClick: () -> Unit): Modifier = composed {
-    val viewConfig = LocalViewConfiguration.current
     pointerInput(onLongClick) {
         awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
-            val up = withTimeoutOrNull(viewConfig.longPressTimeoutMillis) {
-                waitForUpOrCancellation()
-            }
-            if (up == null) {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val longPress = awaitLongPressOrCancellation(down.id)
+            if (longPress != null) {
                 onLongClick()
                 // 等待抬手，避免一次长按触发多次
                 waitForUpOrCancellation()

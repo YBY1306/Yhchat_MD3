@@ -27,7 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BlockedUser
 import com.yhchat.canary.ui.components.ImageUtils
-import com.yhchat.canary.ui.profile.UserProfileActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -136,7 +136,7 @@ fun BlockedUsersScreen(
                         user = user,
                         onClick = {
                             // 跳转到用户详情页面
-                            UserProfileActivity.start(
+                            UserDetailActivity.start(
                                 context = context,
                                 userId = user.userId,
                                 userName = user.nickname

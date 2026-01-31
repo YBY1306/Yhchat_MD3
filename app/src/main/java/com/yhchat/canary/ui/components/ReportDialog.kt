@@ -46,6 +46,21 @@ fun ReportDialog(
     val uiState by viewModel.uiState.collectAsState()
     var reportContent by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val reportReasons = remember {
+        listOf(
+            "色情低俗",
+            "时政不实消息",
+            "垃圾广告",
+            "青少年不宜",
+            "辱骂攻击",
+            "侵犯权益",
+            "违法犯罪",
+            "开盒网暴",
+            "其他"
+        )
+    }
+    var selectedReason by remember { mutableStateOf(reportReasons.first()) }
+    var reasonMenuExpanded by remember { mutableStateOf(false) }
     
     // 图片选择器
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -84,11 +99,49 @@ fun ReportDialog(
                     text = "举报对象: $chatName",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
+                ExposedDropdownMenuBox(
+                    expanded = reasonMenuExpanded,
+                    onExpandedChange = { expanded ->
+                        if (!uiState.isLoading) {
+                            reasonMenuExpanded = expanded
+                        }
+                    }
+                ) {
+                    OutlinedTextField(
+                        value = selectedReason,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("举报原因") },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        enabled = !uiState.isLoading,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonMenuExpanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = reasonMenuExpanded,
+                        onDismissRequest = { reasonMenuExpanded = false }
+                    ) {
+                        reportReasons.forEach { reason ->
+                            DropdownMenuItem(
+                                text = { Text(reason) },
+                                onClick = {
+                                    selectedReason = reason
+                                    reasonMenuExpanded = false
+                                },
+                                enabled = !uiState.isLoading
+                            )
+                        }
+                    }
+                }
                 
                 OutlinedTextField(
                     value = reportContent,
                     onValueChange = { reportContent = it },
-                    label = { Text("举报原因") },
+                    label = { Text("举报内容") },
                     placeholder = { Text("请描述举报原因...") },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -155,7 +208,8 @@ fun ReportDialog(
                             chatType = chatType,
                             chatName = chatName,
                             content = reportContent,
-                            imageUrl = uiState.imageUrl ?: ""
+                            imageUrl = uiState.imageUrl ?: "",
+                            reason = selectedReason
                         )
                     }
                 },
@@ -269,7 +323,8 @@ class ReportViewModel : ViewModel() {
         chatType: Int,
         chatName: String,
         content: String,
-        imageUrl: String = ""
+        imageUrl: String = "",
+        reason: String = ""
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -279,7 +334,8 @@ class ReportViewModel : ViewModel() {
                 chatType = chatType,
                 chatName = chatName,
                 content = content,
-                imageUrl = imageUrl
+                imageUrl = imageUrl,
+                reason = reason
             ).fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(

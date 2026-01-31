@@ -30,7 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.components.ImageViewer
-import com.yhchat.canary.ui.profile.UserProfileActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.*
@@ -137,7 +137,7 @@ fun StickerPackDetailScreen(
                                 showImageViewer = true
                             },
                             onCreatorClick = { userId ->
-                                UserProfileActivity.start(context, userId)
+                                UserDetailActivity.start(context = context, userId = userId)
                             }
                         )
                 }

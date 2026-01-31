@@ -19,6 +19,9 @@ data class ReportRequest(
     val content: String,  // 举报内容
     
     @SerializedName("url")
-    val url: String = ""  // 举报提交的图片（可选）
+    val url: String = "",  // 举报提交的图片（可选）
+
+    @SerializedName("reason")
+    val reason: String = "" // 举报原因
 )
 

@@ -93,8 +93,11 @@ fun AttachmentMenu(
     onFileClick: (() -> Unit)?,
     onCameraClick: (() -> Unit)?,
     onVideoClick: (() -> Unit)? = null,
+    onTextClick: (() -> Unit)? = null,
     onHtmlClick: (() -> Unit)? = null,
     onMarkdownClick: (() -> Unit)? = null,
+    defaultMessageType: Int = 1,
+    onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1,
     modifier: Modifier = Modifier
 ) {
@@ -140,11 +143,18 @@ fun AttachmentMenu(
             }
             
             // 第二行：HTML、Markdown
-            if (onHtmlClick != null && onMarkdownClick != null) {
+            if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
+                    MessageTypeMenuItem(
+                        icon = Icons.Default.TextFields,
+                        label = "文本",
+                        isSelected = selectedMessageType == 1,
+                        onClick = { onTextClick.invoke() }
+                    )
+
                     MessageTypeMenuItem(
                         icon = Icons.Default.Code,
                         label = "HTML",
@@ -161,6 +171,34 @@ fun AttachmentMenu(
                     
                     // 占位，保持对齐
                     Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
+            if (onDefaultMessageTypeChange != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    MessageTypeMenuItem(
+                        icon = Icons.Default.TextFields,
+                        label = "默认文本",
+                        isSelected = defaultMessageType == 1,
+                        onClick = { onDefaultMessageTypeChange.invoke(1) }
+                    )
+
+                    MessageTypeMenuItem(
+                        icon = Icons.Default.Article,
+                        label = "默认Markdown",
+                        isSelected = defaultMessageType == 3,
+                        onClick = { onDefaultMessageTypeChange.invoke(3) }
+                    )
+
+                    MessageTypeMenuItem(
+                        icon = Icons.Default.Code,
+                        label = "默认HTML",
+                        isSelected = defaultMessageType == 8,
+                        onClick = { onDefaultMessageTypeChange.invoke(8) }
+                    )
                 }
             }
         }

@@ -33,7 +33,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.ui.profile.UserProfileActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -187,7 +187,7 @@ fun GroupTagDetailScreen(
                                 member = member,
                                 onClick = {
                                     // 跳转到用户资料页面
-                                    UserProfileActivity.start(context, member.userId, member.name)
+                                    UserDetailActivity.start(context = context, userId = member.userId, userName = member.name, groupId = groupId)
                                 },
                                 onRemoveClick = {
                                     viewModel.removeTagFromUser(member.userId, tagId, groupId)

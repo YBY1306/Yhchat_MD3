@@ -27,6 +27,8 @@ import com.yhchat.canary.data.model.*
 import com.yhchat.canary.data.repository.CoinRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import androidx.compose.ui.platform.LocalContext
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +39,8 @@ import java.util.*
 data class CoinRecordUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
+    val loadingPage: Int? = null,
+    val errorPage: Int? = null,
     val coinRecords: List<GoldCoinRecord> = emptyList(),
     val postRewards: List<RewardRecord> = emptyList(),
     val commentRewards: List<RewardRecord> = emptyList()
@@ -73,14 +77,12 @@ fun CoinRecordScreen(
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
+        // 首次进入默认加载一次当前页数据
+        viewModel.loadForPage(pagerState.currentPage, force = false)
     }
     
     LaunchedEffect(pagerState.currentPage) {
-        when (pagerState.currentPage) {
-            0 -> viewModel.loadCoinIncreaseDecreaseRecord()
-            1 -> viewModel.loadPostRewardRecord()
-            2 -> viewModel.loadCommentRewardRecord()
-        }
+        viewModel.loadForPage(pagerState.currentPage, force = false)
     }
     
     val uiState by viewModel.uiState.collectAsState()
@@ -145,54 +147,57 @@ fun CoinRecordScreen(
             }
             
             // 内容区域
-            // 内容区域
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                when {
-                    uiState.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    
-                    uiState.error != null -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                val isRefreshing = uiState.loadingPage == page && uiState.isLoading
+
+                SwipeRefresh(
+                    state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                    onRefresh = { viewModel.loadForPage(page, force = true) },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    when {
+                        uiState.loadingPage == page && uiState.isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = uiState.error ?: "加载失败",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                TextButton(
-                                    onClick = {
-                                        when (page) {
-                                            0 -> viewModel.loadCoinIncreaseDecreaseRecord()
-                                            1 -> viewModel.loadPostRewardRecord()
-                                            2 -> viewModel.loadCommentRewardRecord()
-                                        }
-                                    }
+                                CircularProgressIndicator()
+                            }
+                        }
+                        
+                        uiState.error != null && uiState.errorPage == page -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text("重试")
+                                    Text(
+                                        text = uiState.error ?: "加载失败",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.loadForPage(page, force = true)
+                                        }
+                                    ) {
+                                        Text("重试")
+                                    }
                                 }
                             }
                         }
-                    }
-                    
-                    else -> {
-                        when (page) {
-                            0 -> CoinIncreaseDecreaseList(uiState.coinRecords)
-                            1 -> PostRewardList(uiState.postRewards)
-                            2 -> CommentRewardList(uiState.commentRewards)
+                        
+                        else -> {
+                            when (page) {
+                                0 -> CoinIncreaseDecreaseList(uiState.coinRecords)
+                                1 -> PostRewardList(uiState.postRewards)
+                                2 -> CommentRewardList(uiState.commentRewards)
+                            }
                         }
                     }
                 }
@@ -416,70 +421,97 @@ private fun RewardRecordCard(reward: RewardRecord) {
 class CoinRecordViewModel : ViewModel() {
     private lateinit var coinRepository: CoinRepository
     
+    private var loadedCoin = false
+    private var loadedPost = false
+    private var loadedComment = false
+    
     private val _uiState = MutableStateFlow(CoinRecordUiState())
     val uiState: StateFlow<CoinRecordUiState> = _uiState.asStateFlow()
     
     fun init(context: android.content.Context) {
         coinRepository = RepositoryFactory.getCoinRepository(context)
     }
+
+    fun loadForPage(page: Int, force: Boolean) {
+        when (page) {
+            0 -> loadCoinIncreaseDecreaseRecord(force = force)
+            1 -> loadPostRewardRecord(force = force)
+            2 -> loadCommentRewardRecord(force = force)
+        }
+    }
     
-    fun loadCoinIncreaseDecreaseRecord() {
+    fun loadCoinIncreaseDecreaseRecord(force: Boolean = false) {
+        if (loadedCoin && !force) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadingPage = 0, errorPage = null)
             
             coinRepository.getCoinIncreaseDecreaseRecord(page = 1, size = 100).fold(
                 onSuccess = { records ->
+                    loadedCoin = true
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        loadingPage = null,
                         coinRecords = records
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = error.message
+                        loadingPage = null,
+                        error = error.message,
+                        errorPage = 0
                     )
                 }
             )
         }
     }
     
-    fun loadPostRewardRecord() {
+    fun loadPostRewardRecord(force: Boolean = false) {
+        if (loadedPost && !force) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadingPage = 1, errorPage = null)
             
             coinRepository.getRewardRecord(type = "post", page = 1, size = 100).fold(
                 onSuccess = { rewards ->
+                    loadedPost = true
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        loadingPage = null,
                         postRewards = rewards
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = error.message
+                        loadingPage = null,
+                        error = error.message,
+                        errorPage = 1
                     )
                 }
             )
         }
     }
     
-    fun loadCommentRewardRecord() {
+    fun loadCommentRewardRecord(force: Boolean = false) {
+        if (loadedComment && !force) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadingPage = 2, errorPage = null)
             
             coinRepository.getRewardRecord(type = "comment", page = 1, size = 100).fold(
                 onSuccess = { rewards ->
+                    loadedComment = true
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        loadingPage = null,
                         commentRewards = rewards
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = error.message
+                        loadingPage = null,
+                        error = error.message,
+                        errorPage = 2
                     )
                 }
             )

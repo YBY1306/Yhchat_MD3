@@ -11,7 +11,6 @@ import com.yhchat.canary.data.model.QiniuUploadResponse
 import com.yhchat.canary.utils.AudioUtils
 import com.yhchat.canary.data.repository.TokenRepository
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -226,7 +225,7 @@ class VoiceMessageViewModel(
             val qiniuToken = tokenResponse.body()!!.data.token
             Log.d(tag, "qiniuToken prefix=${qiniuToken.split(":").firstOrNull()}")
             
-            // 2. 获取上传域名
+            // 2. 获取上传域名 (从 token 提取 ak 并请求查询)
             val accessKey = qiniuToken.split(":").firstOrNull()
             if (accessKey.isNullOrEmpty()) {
                 _voiceState.value = _voiceState.value.copy(
@@ -250,7 +249,7 @@ class VoiceMessageViewModel(
                 return
             }
             
-            // 3. 上传文件
+            // 3. 上传文件 (Multipart: token, key, file)
             val uploadResponse = AudioUtils.uploadAudioToQiniu(file, qiniuToken, uploadDomain)
             if (uploadResponse == null) {
                 Log.w(tag, "uploadAudioToQiniu failed")
@@ -291,7 +290,7 @@ class VoiceMessageViewModel(
     }
     
     /**
-     * 发送语音消息
+     * 发送语音消息 (按用户指定 proto 结构)
      */
     private suspend fun sendVoiceMessage(
         chatId: String,
@@ -306,104 +305,79 @@ class VoiceMessageViewModel(
         try {
             val token = tokenRepository.getTokenSync()
             if (token.isNullOrEmpty()) {
-                _voiceState.value = _voiceState.value.copy(
-                    isUploading = false,
-                    isProcessing = false,
-                    error = "用户未登录"
-                )
+                _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false, error = "用户未登录")
                 return
             }
             
-            // 构造 protobuf 消息
-            val msgId = UUID.randomUUID().toString()
+            val msgId = UUID.randomUUID().toString().replace("-", "")
 
+            // 构造 Content (对应 proto 中的 Content 消息，标签为 5)
             val contentData = com.yhchat.canary.proto.send_message_send.Content.newBuilder()
                 .setAudio(fileKey)
                 .setAudioTime(duration)
                 .build()
 
-            val audioSuffix = fileExtension.lowercase(Locale.getDefault())
-
+            // 构造 Media (标签为 9)
             val media = com.yhchat.canary.proto.send_message_send.Media.newBuilder()
                 .setFileKey(fileKey)
                 .setFileHash(fileHash)
-                .setFileType("video/mp4")
+                .setFileType("video/mp4") // 必须固定为 video/mp4 才会显示音频
                 .setFileSize(fileSize)
                 .setFileKey2(fileKey)
-                .setFileSuffix(audioSuffix)
+                .setFileSuffix(fileExtension.lowercase(Locale.getDefault()))
                 .build()
 
+            // 构造完整的发送消息请求
             val sendMessage = com.yhchat.canary.proto.send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType)
                 .setContent(contentData)
-                .setContentType(11) // 语音消息类型
+                .setContentType(11) // 11 为语音消息
                 .setMedia(media)
                 .build()
 
-            val requestBody = sendMessage.toByteArray()
-                .toRequestBody("application/x-protobuf".toMediaType())
+            val requestBody = sendMessage.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
             
+            Log.d(tag, "Sending voice message: chatId=$chatId, key=$fileKey, msgId=$msgId")
             val response = apiService.sendMessage(token, requestBody)
+            
             if (!response.isSuccessful) {
-                Log.w(tag, "sendMessage failed http=${response.code()} msg=${response.message()}")
-                _voiceState.value = _voiceState.value.copy(
-                    isUploading = false,
-                    isProcessing = false,
-                    error = "发送消息失败"
-                )
+                _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false, error = "发送请求失败: ${response.code()}")
                 return
             }
 
-            val respBytes = try {
-                response.body()?.bytes()
+            // 解析响应 (send_message -> status -> code/msg)
+            val respBytes = response.body()?.bytes()
+            val sendResp = try {
+                if (respBytes != null) com.yhchat.canary.proto.send_message.parseFrom(respBytes) else null
             } catch (e: Exception) {
-                Log.e(tag, "read sendMessage response body failed", e)
+                Log.e(tag, "Parse response failed", e)
                 null
             }
 
-            val status = try {
-                if (respBytes != null) com.yhchat.canary.proto.Status.parseFrom(respBytes) else null
-            } catch (e: Exception) {
-                Log.e(tag, "parse sendMessage response as protobuf Status failed", e)
-                null
-            }
-
+            val status = sendResp?.status
             if (status != null) {
-                Log.d(tag, "sendMessage response status code=${status.code} msg=${status.msg}")
-                if (status.code != 1) {
-                    _voiceState.value = _voiceState.value.copy(
-                        isUploading = false,
-                        isProcessing = false,
-                        error = "发送消息失败(${status.code}): ${status.msg}"
-                    )
-                    return
+                Log.d(tag, "Response status: code=${status.code}, msg=${status.msg}")
+                if (status.code == 1) {
+                    Log.d(tag, "Voice message sent successfully")
+                    _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false)
+                    onSuccess(fileKey, fileHash, fileSize, duration)
+                } else {
+                    val errMsg = if (status.msg.isNullOrEmpty()) "发送失败(code=${status.code})" else status.msg
+                    _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false, error = errMsg)
                 }
             } else {
-                Log.w(tag, "sendMessage response status is null (fallback treat as success)")
+                Log.w(tag, "sendMessage response has no status, treating as error")
+                _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false, error = "解析响应失败")
             }
-
-            Log.d(tag, "sendMessage ok")
-            _voiceState.value = _voiceState.value.copy(
-                isUploading = false,
-                isProcessing = false
-            )
-            onSuccess(fileKey, fileHash, fileSize, duration)
             
         } catch (e: Exception) {
-            Log.e(tag, "sendVoiceMessage failed", e)
-            _voiceState.value = _voiceState.value.copy(
-                isUploading = false,
-                isProcessing = false,
-                error = "发送消息失败: ${e.message}"
-            )
+            Log.e(tag, "sendVoiceMessage fatal error", e)
+            _voiceState.value = _voiceState.value.copy(isUploading = false, isProcessing = false, error = "发送错误: ${e.message}")
         }
     }
-    
-    /**
-     * 清除错误状态
-     */
+
     fun clearError() {
         _voiceState.value = _voiceState.value.copy(error = null)
     }

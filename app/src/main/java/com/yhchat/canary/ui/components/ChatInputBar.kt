@@ -196,15 +196,14 @@ fun ChatInputBar(
         onDispose { chatPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    var longPressAutoSent by remember { mutableStateOf(false) }
+    // 使用 rememberUpdatedState 保证 pointerInput 内部逻辑捕获最新状态，且不触发 pointerInput 重启
+    val currentText by rememberUpdatedState(text)
+    val currentOnSendMessage by rememberUpdatedState(onSendMessage)
+    val currentMtc by rememberUpdatedState(onMessageTypeChange)
+    val currentSelectedMessageType by rememberUpdatedState(selectedMessageType)
+    val currentLongPressSendMarkdownEnabled by rememberUpdatedState(longPressSendMarkdownEnabled)
+    val currentLongPressSendMarkdownSeconds by rememberUpdatedState(longPressSendMarkdownSeconds)
 
-    // 监听键盘显示请求
-    LaunchedEffect(shouldShowKeyboard) {
-        if (shouldShowKeyboard) {
-            keyboardController?.show()
-        }
-    }
-    
     Column {
         // 主输入栏容器
         Column(
@@ -363,7 +362,7 @@ fun ChatInputBar(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(
-                                1.dp,
+                                1.dp, 
                                 if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
                             )
                         ) {
@@ -535,12 +534,10 @@ fun ChatInputBar(
                         )
                     }
                     
-                    // 发送按钮 - 圆形背景
-                IconButton(
-                    onClick = { },
-                    enabled = text.isNotBlank(),
+                // 发送按钮 - 圆形背景
+                Box(
                     modifier = Modifier
-                            .size(32.dp)
+                        .size(32.dp)
                         .background(
                             if (text.isNotBlank()) 
                                 MaterialTheme.colorScheme.primary 
@@ -548,46 +545,38 @@ fun ChatInputBar(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             CircleShape
                         )
-                        .pointerInput(longPressSendMarkdownEnabled, longPressSendMarkdownSeconds, text, selectedMessageType) {
-                            val mtc = onMessageTypeChange
+                        .clip(CircleShape)
+                        .pointerInput(currentLongPressSendMarkdownEnabled, currentLongPressSendMarkdownSeconds) {
                             detectTapGestures(
-                                onPress = {
-                                    if (text.isBlank()) {
-                                        tryAwaitRelease()
-                                        return@detectTapGestures
+                                onTap = {
+                                    if (currentText.isNotBlank()) {
+                                        Log.d("ChatInputBar", "Send button tapped")
+                                        currentOnSendMessage()
                                     }
-
-                                    if (!longPressSendMarkdownEnabled || mtc == null) {
-                                        val released = tryAwaitRelease()
-                                        if (released && text.isNotBlank()) {
-                                            onSendMessage()
-                                        }
-                                        return@detectTapGestures
-                                    }
-
-                                    val startMs = System.currentTimeMillis()
-                                    val released = tryAwaitRelease()
-                                    if (!released) return@detectTapGestures
-
-                                    val elapsedMs = System.currentTimeMillis() - startMs
-                                    val thresholdMs = longPressSendMarkdownSeconds.toLong() * 1000L
-                                    if (elapsedMs >= thresholdMs) {
-                                        val previousType = selectedMessageType
+                                },
+                                onLongPress = {
+                                    val mtc = currentMtc
+                                    if (currentText.isNotBlank() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                        Log.d("ChatInputBar", "Send button long pressed -> Markdown")
+                                        val previousType = currentSelectedMessageType
                                         coroutineScope.launch {
                                             if (previousType != 3) {
                                                 mtc.invoke(3)
                                             }
-                                            onSendMessage()
+                                            currentOnSendMessage()
                                             if (previousType != 3) {
                                                 mtc.invoke(previousType)
                                             }
                                         }
-                                    } else {
-                                        onSendMessage()
+                                    } else if (currentText.isNotBlank()) {
+                                        // 如果没开启长按发送 Markdown，则长按也作为普通发送
+                                        Log.d("ChatInputBar", "Send button long pressed (normal send)")
+                                        currentOnSendMessage()
                                     }
                                 }
                             )
-                        }
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,
@@ -596,9 +585,9 @@ fun ChatInputBar(
                             MaterialTheme.colorScheme.onPrimary 
                         else 
                             MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp)
                     )
-                    }
+                }
                 }
             }
             

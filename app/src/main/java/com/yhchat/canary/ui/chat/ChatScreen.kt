@@ -417,7 +417,9 @@ fun ChatScreen(
                         com.yhchat.canary.ui.user.UserDetailActivity.start(
                             context = context,
                             userId = chatId,
-                            userName = chatName
+                            userName = chatName,
+                            groupId = null,
+                            isGroupAdmin = false
                         )
                     }) {
                         Icon(

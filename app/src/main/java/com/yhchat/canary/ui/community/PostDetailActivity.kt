@@ -77,6 +77,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.components.CommentInputBar
+import com.yhchat.canary.ui.components.BottomCommentInputBar
 import com.yhchat.canary.data.model.CommunityBoard
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1101,6 +1103,20 @@ fun PostDetailScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            // 底部评论输入栏
+            BottomCommentInputBar(
+                commentText = commentText,
+                onCommentTextChange = { commentText = it },
+                onSendComment = { content ->
+                    viewModel.commentPostWithToken(postId, content)
+                    commentText = ""
+                    showCommentInput = false
+                },
+                isVisible = showCommentInput,
+                placeholder = "写下你的评论..."
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -1263,66 +1279,6 @@ fun PostDetailScreen(
                         }
                     }
                     
-                    // 评论输入框
-                    if (showCommentInput) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.Bottom
-                            ) {
-                                OutlinedTextField(
-                                    value = commentText,
-                                    onValueChange = { commentText = it },
-                                    modifier = Modifier.weight(1f),
-                                    placeholder = { Text("写下你的评论...") },
-                                    minLines = 1,
-                                    maxLines = 5,
-                                    keyboardOptions = KeyboardOptions(
-                                        imeAction = ImeAction.Send,
-                                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onSend = {
-                                            if (commentText.isNotBlank()) {
-                                                // 处理换行符：保持原始换行符
-                                                val processedContent = commentText.trim()
-                                                android.util.Log.d("PostDetail", "发送评论: postId=$postId, content=$processedContent")
-                                                viewModel.commentPostWithToken(postId, processedContent)
-                                                commentText = ""
-                                                showCommentInput = false
-                                            }
-                                        }
-                                    )
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                IconButton(
-                                    onClick = {
-                                        if (commentText.isNotBlank()) {
-                                            // 处理换行符：保持原始换行符
-                                            val processedContent = commentText.trim()
-                                            android.util.Log.d("PostDetail", "发送评论: postId=$postId, content=$processedContent")
-                                            viewModel.commentPostWithToken(postId, processedContent)
-                                            commentText = ""
-                                            showCommentInput = false
-                                        }
-                                    },
-                                    enabled = commentText.isNotBlank()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Send,
-                                        contentDescription = "发送评论"
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
             

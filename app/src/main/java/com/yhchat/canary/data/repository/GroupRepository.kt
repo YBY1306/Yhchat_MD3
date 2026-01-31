@@ -10,6 +10,7 @@ import com.yhchat.canary.proto.group.list_member
 import com.yhchat.canary.proto.group.list_member_send
 import com.yhchat.canary.proto.group.edit_group
 import com.yhchat.canary.proto.group.edit_group_send
+import org.json.JSONObject
 import com.yhchat.canary.proto.group.bot_list_send
 import com.yhchat.canary.proto.group.bot_list
 import com.yhchat.canary.proto.group.Bot_data
@@ -43,6 +44,106 @@ class GroupRepository @Inject constructor(
 
     fun setTokenRepository(tokenRepository: TokenRepository) {
         this.tokenRepository = tokenRepository
+    }
+
+    /**
+     * 设置隐藏群成员
+     * POST /v1/group/edit-group (protobuf)
+     */
+    suspend fun setHideGroupMembers(
+        groupInfo: GroupDetail,
+        hide: Boolean
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        Log.d(tag, "🙈 Setting hideGroupMembers for group: ${groupInfo.groupId} => $hide")
+        val token = tokenRepository?.getTokenSync()
+        if (token.isNullOrEmpty()) {
+            return@withContext Result.failure(Exception("未登录"))
+        }
+
+        return@withContext try {
+            val requestData = edit_group_send.newBuilder()
+                .setGroupId(groupInfo.groupId)
+                .setName(groupInfo.name)
+                .setIntroduction(groupInfo.introduction)
+                .setAvatarUrl(groupInfo.avatarUrl)
+                .setDirectJoin(if (groupInfo.directJoin) 1 else 0)
+                .setHistoryMsg(if (groupInfo.historyMsgEnabled) 1 else 0)
+                .setCategoryName(groupInfo.categoryName)
+                .setCategoryId(groupInfo.categoryId)
+                .setPrivate(if (groupInfo.isPrivate) 1 else 0)
+                .setHideGroupMembers(if (hide) 1 else 0)
+                .build()
+
+            val requestBody = requestData.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$baseUrl/v1/group/edit-group")
+                .addHeader("token", token)
+                .post(requestBody)
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("网络请求失败: ${response.code}"))
+            }
+
+            val responseBytes = response.body?.bytes() ?: return@withContext Result.failure(Exception("响应为空"))
+            val editResponse = edit_group.parseFrom(responseBytes)
+            if (editResponse.status.code == 1) {
+                Result.success(true)
+            } else {
+                Result.failure(Exception(editResponse.status.msg))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ Failed to set hideGroupMembers", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 设置禁止群成员上传到群云盘
+     * POST /v1/group/edit-stop-member-upload-group-file (json)
+     */
+    suspend fun setDenyMembersUploadToGroupDisk(
+        groupId: String,
+        deny: Boolean
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        Log.d(tag, "📁 Setting denyMembersUploadToGroupDisk for group: $groupId => $deny")
+        val token = tokenRepository?.getTokenSync()
+        if (token.isNullOrEmpty()) {
+            return@withContext Result.failure(Exception("未登录"))
+        }
+
+        return@withContext try {
+            val json = JSONObject()
+                .put("groupId", groupId)
+                .put("stopMemberUploadGroupFile", if (deny) 1 else 0)
+
+            val request = Request.Builder()
+                .url("$baseUrl/v1/group/edit-stop-member-upload-group-file")
+                .addHeader("token", token)
+                .post(json.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val bodyText = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("网络请求失败: ${response.code}"))
+            }
+
+            val obj = runCatching { JSONObject(bodyText) }.getOrNull()
+            val code = obj?.optInt("code", 0) ?: 0
+            val msg = obj?.optString("msg", "") ?: ""
+            if (code == 1) {
+                Result.success(true)
+            } else {
+                Result.failure(Exception(if (msg.isNotEmpty()) msg else "设置失败"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ Failed to set denyMembersUploadToGroupDisk", e)
+            Result.failure(e)
+        }
     }
 
     /**
@@ -224,6 +325,8 @@ class GroupRepository @Inject constructor(
                 categoryId = data.categoryId,
                 isPrivate = data.private == 1,
                 doNotDisturb = data.doNotDisturb == 1,
+                hideGroupMembers = data.hideGroupMembers == 1L,
+                denyMembersUploadToGroupDisk = data.denyMembersUploadToGroupDisk == 1L,
                 communityId = data.communityId,
                 communityName = data.communityName,
                 isTop = data.top == 1,

@@ -69,13 +69,11 @@ fun GroupSettingsScreenRoot(
                             }
                         }
                     } else {
-                        if (viewModel.isAdminOrOwner()) {
-                            IconButton(onClick = { viewModel.startEditing() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "编辑"
-                                )
-                            }
+                        IconButton(onClick = { viewModel.startEditing() }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "编辑"
+                            )
                         }
                     }
                 },
@@ -134,7 +132,6 @@ private fun GroupSettingsContent(
 ) {
     val context = LocalContext.current
     val groupInfo = uiState.groupInfo!!
-    val isAdminOrOwner = viewModel.isAdminOrOwner()
     
     LazyColumn(
         modifier = modifier,
@@ -171,7 +168,7 @@ private fun GroupSettingsContent(
                             onValueChange = viewModel::updateEditedName,
                             label = { Text("群聊名称") },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = isAdminOrOwner
+                            enabled = true
                         )
                     } else {
                         Text(
@@ -188,7 +185,7 @@ private fun GroupSettingsContent(
                             onValueChange = viewModel::updateEditedIntroduction,
                             label = { Text("群聊简介") },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = isAdminOrOwner,
+                            enabled = true,
                             maxLines = 3
                         )
                     } else if (groupInfo.introduction.isNotEmpty()) {
@@ -223,7 +220,7 @@ private fun GroupSettingsContent(
                         subtitle = "允许用户直接加入群聊，无需审核",
                         checked = if (uiState.isEditing) uiState.editedDirectJoin else groupInfo.directJoin,
                         onCheckedChange = viewModel::updateEditedDirectJoin,
-                        enabled = uiState.isEditing && isAdminOrOwner
+                        enabled = uiState.isEditing
                     )
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -234,7 +231,7 @@ private fun GroupSettingsContent(
                         subtitle = "允许新成员查看群聊历史消息",
                         checked = if (uiState.isEditing) uiState.editedHistoryMsg else groupInfo.historyMsgEnabled,
                         onCheckedChange = viewModel::updateEditedHistoryMsg,
-                        enabled = uiState.isEditing && isAdminOrOwner
+                        enabled = uiState.isEditing
                     )
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -245,7 +242,7 @@ private fun GroupSettingsContent(
                         subtitle = "设置为私有群聊",
                         checked = if (uiState.isEditing) uiState.editedPrivate else groupInfo.isPrivate,
                         onCheckedChange = viewModel::updateEditedPrivate,
-                        enabled = uiState.isEditing && isAdminOrOwner
+                        enabled = uiState.isEditing
                     )
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -257,7 +254,7 @@ private fun GroupSettingsContent(
                             onValueChange = viewModel::updateEditedCategoryName,
                             label = { Text("群聊分类") },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = isAdminOrOwner
+                            enabled = true
                         )
                     } else {
                         SettingTextItem(
@@ -352,20 +349,19 @@ private fun GroupSettingsContent(
             }
         }
         
-        // 消息类型限制（仅管理员/群主可见）
-        if (isAdminOrOwner) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "消息管理",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+        // 消息管理
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "消息管理",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
                         fun autoDeleteMessageText(days: Long): String {
                             return when (days.toInt()) {
@@ -377,163 +373,182 @@ private fun GroupSettingsContent(
                             }
                         }
 
-                        // 消息自动销毁
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.showAutoDeleteMessageDialog() },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "消息自动销毁",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = autoDeleteMessageText(groupInfo.autoDeleteMessage),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "设置",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.showAutoDeleteMessageDialog() },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "消息自动销毁",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = autoDeleteMessageText(groupInfo.autoDeleteMessage),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "设置",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        // 消息类型限制
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.showMessageTypeLimitDialog() 
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "消息类型限制",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = if (groupInfo.limitedMsgType.isEmpty()) "未设置限制" else "已限制 ${groupInfo.limitedMsgType.split(",").size} 种消息类型",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "设置",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.showMessageTypeLimitDialog()
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "消息类型限制",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (groupInfo.limitedMsgType.isEmpty()) "未设置限制" else "已限制 ${groupInfo.limitedMsgType.split(",").size} 种消息类型",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "设置",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    SettingSwitchItem(
+                        title = "隐藏群成员",
+                        subtitle = "开启后，群成员列表将对普通成员隐藏",
+                        checked = groupInfo.hideGroupMembers,
+                        onCheckedChange = { checked ->
+                            viewModel.setHideGroupMembers(checked)
+                        },
+                        enabled = !uiState.isSettingHideGroupMembers
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    SettingSwitchItem(
+                        title = "锁定群云盘",
+                        subtitle = "开启后，群成员无法上传文件到群云盘",
+                        checked = groupInfo.denyMembersUploadToGroupDisk,
+                        onCheckedChange = { checked ->
+                            viewModel.setDenyMembersUploadToGroupDisk(checked)
+                        },
+                        enabled = !uiState.isSettingDenyMembersUploadToGroupDisk
+                    )
+                }
+            }
+        }
+
+        // 标签管理
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "标签管理",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                        
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                GroupTagManagementActivity.start(
+                                    context,
+                                    groupInfo.groupId,
+                                    groupInfo.name
+                                )
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "群组标签",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "管理群组成员标签",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "管理",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
-            
-            // 标签管理
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "标签管理",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+        }
+
+        // 机器人管理
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "机器人管理",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                         
-                        // 群组标签管理
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    GroupTagManagementActivity.start(
-                                        context,
-                                        groupInfo.groupId,
-                                        groupInfo.name
-                                    )
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "群组标签",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                GroupBotManagementActivity.start(
+                                    context,
+                                    groupInfo.groupId,
+                                    groupInfo.name
                                 )
-                                Text(
-                                    text = "管理群组成员标签",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "管理",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "群聊机器人",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "查看和管理群聊中的机器人",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                }
-            }
-            
-            // 机器人管理（所有群成员可见，但只有管理员可以移除）
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "机器人管理",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "查看",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        
-                        // 群聊机器人列表
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    GroupBotManagementActivity.start(
-                                        context,
-                                        groupInfo.groupId,
-                                        groupInfo.name
-                                    )
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "群聊机器人",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "查看和管理群聊中的机器人",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "查看",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
             }

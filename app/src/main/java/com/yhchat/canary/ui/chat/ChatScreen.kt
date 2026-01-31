@@ -118,6 +118,9 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import android.content.ContentValues
+import com.yhchat.canary.data.api.ApiClient
+import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.ui.components.VoiceMessageViewModel
 import android.provider.MediaStore
 import com.yhchat.canary.service.AudioCacheManager
 import java.io.IOException
@@ -153,6 +156,13 @@ fun ChatScreen(
     onVideoSent: () -> Unit = {}  // 视频发送完成回调
 ) {
     val context = LocalContext.current
+
+    val voiceMessageViewModel = remember {
+        VoiceMessageViewModel(
+            apiService = ApiClient.apiService,
+            tokenRepository = RepositoryFactory.getTokenRepository(context)
+        )
+    }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val messages = viewModel.messages
     
@@ -947,6 +957,12 @@ fun ChatScreen(
                     // 调用视频选择器
                     onVideoPickerClick()
                 },
+                onVoiceMessageSend = { fileKey, fileHash, fileSize, audioDuration ->
+                    android.util.Log.w(
+                        "ChatScreen",
+                        "🎤 voice message sent: chatId=$chatId chatType=$chatType key=$fileKey hash=$fileHash size=$fileSize duration=$audioDuration"
+                    )
+                },
                 onDraftChange = { draftText ->
                     viewModel.sendDraftInput(draftText)
                 },
@@ -1035,6 +1051,9 @@ fun ChatScreen(
                 },
                 focusRequester = inputFocusRequester,  // 传递焦点请求器
                 shouldShowKeyboard = shouldShowKeyboard,  // 传递键盘显示状态
+                chatId = chatId,
+                chatType = chatType.toLong(),
+                voiceViewModel = voiceMessageViewModel,
                 modifier = Modifier
                     .navigationBarsPadding()  // 自适应导航栏
                     .padding(

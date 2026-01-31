@@ -38,6 +38,44 @@ class UserRepository @Inject constructor(
     suspend fun getTokenSync(): String? {
         return tokenRepository?.getTokenSync()
     }
+
+    suspend fun getUserData(): Result<UserData> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("未登录"))
+            val response = apiService.getUserData(token)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1 && body.data?.data != null) {
+                    Result.success(body.data.data)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取个人信息失败"))
+                }
+            } else {
+                Result.failure(Exception("获取个人信息失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun saveUserData(request: SaveUserDataRequest): Result<Unit> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("未登录"))
+            val response = apiService.saveUserData(token, request)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body?.message ?: "保存个人信息失败"))
+                }
+            } else {
+                Result.failure(Exception("保存个人信息失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     
     /**
      * 获取用户信息
@@ -443,6 +481,8 @@ class UserRepository @Inject constructor(
                         categoryId = 0,
                         isPrivate = false,
                         doNotDisturb = false,
+                        hideGroupMembers = false,
+                        denyMembersUploadToGroupDisk = false,
                         communityId = 0,
                         communityName = "",
                         isTop = false,

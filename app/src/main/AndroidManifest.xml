@@ -13,6 +13,9 @@
     <!-- 文件下载权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     
+    <!-- 录音权限 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
     <!-- 存储权限用于保存图片和文件 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
@@ -123,6 +126,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.community.RecommendPostsActivity"
+            android:exported="false"
+            android:label="推荐文章"
+            android:theme="@style/Theme.YhchatCanary" />
         
         <!-- 分区详情Activity -->
         <activity

@@ -3,6 +3,8 @@ package com.yhchat.canary.ui.profile
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.model.SaveUserDataRequest
+import com.yhchat.canary.data.model.UserData
 import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +40,12 @@ class ProfileViewModel(
     private val _betaState = MutableStateFlow(BetaState())
     val betaState: StateFlow<BetaState> = _betaState.asStateFlow()
 
+    private val _userDataState = MutableStateFlow(UserDataState())
+    val userDataState: StateFlow<UserDataState> = _userDataState.asStateFlow()
+
+    private val _saveUserDataState = MutableStateFlow(SaveUserDataState())
+    val saveUserDataState: StateFlow<SaveUserDataState> = _saveUserDataState.asStateFlow()
+
     /**
      * 加载用户个人资料
      */
@@ -64,6 +72,50 @@ class ProfileViewModel(
                 }
             )
         }
+    }
+
+    fun loadUserData() {
+        viewModelScope.launch {
+            _userDataState.value = _userDataState.value.copy(isLoading = true, error = null)
+            userRepository.getUserData().fold(
+                onSuccess = { data ->
+                    _userDataState.value = _userDataState.value.copy(
+                        isLoading = false,
+                        userData = data,
+                        error = null
+                    )
+                },
+                onFailure = { e ->
+                    _userDataState.value = _userDataState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "获取个人信息失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun saveUserData(request: SaveUserDataRequest) {
+        viewModelScope.launch {
+            _saveUserDataState.value = _saveUserDataState.value.copy(isLoading = true, error = null, isSuccess = false)
+            userRepository.saveUserData(request).fold(
+                onSuccess = {
+                    _saveUserDataState.value = _saveUserDataState.value.copy(isLoading = false, error = null, isSuccess = true)
+                    loadUserData()
+                },
+                onFailure = { e ->
+                    _saveUserDataState.value = _saveUserDataState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "保存个人信息失败",
+                        isSuccess = false
+                    )
+                }
+            )
+        }
+    }
+
+    fun resetSaveUserDataState() {
+        _saveUserDataState.value = SaveUserDataState()
     }
     
     /**
@@ -303,5 +355,17 @@ data class ChangeAvatarState(
 data class BetaState(
     val isLoading: Boolean = false,
     val betaInfo: com.yhchat.canary.data.model.BetaInfo? = null,
+    val error: String? = null
+)
+
+data class UserDataState(
+    val isLoading: Boolean = false,
+    val userData: UserData? = null,
+    val error: String? = null
+)
+
+data class SaveUserDataState(
+    val isLoading: Boolean = false,
+    val isSuccess: Boolean = false,
     val error: String? = null
 )

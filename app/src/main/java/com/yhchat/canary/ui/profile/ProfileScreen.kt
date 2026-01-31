@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.yhchat.canary.data.model.SaveUserDataRequest
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.settings.SettingsActivity
@@ -65,6 +66,8 @@ fun ProfileScreen(
     val changeNicknameState by viewModel.changeNicknameState.collectAsStateWithLifecycle()
     val changeAvatarState by viewModel.changeAvatarState.collectAsStateWithLifecycle()
     val betaState by viewModel.betaState.collectAsStateWithLifecycle()
+    val userDataState by viewModel.userDataState.collectAsStateWithLifecycle()
+    val saveUserDataState by viewModel.saveUserDataState.collectAsStateWithLifecycle()
     
     // 修改邀请码弹窗状态
     var showChangeInviteCodeDialog by remember { mutableStateOf(false) }
@@ -72,6 +75,8 @@ fun ProfileScreen(
     var showChangeNicknameDialog by remember { mutableStateOf(false) }
     // 图片选择器状态
     var showImagePicker by remember { mutableStateOf(false) }
+
+    var showUserDataDialog by remember { mutableStateOf(false) }
     
     // 图片选择器
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -99,6 +104,21 @@ fun ProfileScreen(
         changeAvatarState.error?.let { error ->
             android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
             viewModel.resetChangeAvatarState()
+        }
+    }
+
+    LaunchedEffect(saveUserDataState.isSuccess) {
+        if (saveUserDataState.isSuccess) {
+            android.widget.Toast.makeText(context, "保存成功", android.widget.Toast.LENGTH_SHORT).show()
+            showUserDataDialog = false
+            viewModel.resetSaveUserDataState()
+        }
+    }
+
+    LaunchedEffect(saveUserDataState.error) {
+        saveUserDataState.error?.let { error ->
+            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.resetSaveUserDataState()
         }
     }
 
@@ -182,6 +202,22 @@ fun ProfileScreen(
                         navigationRepository = navigationRepository,
                         tokenRepository = tokenRepository,
                         viewModel = viewModel,
+                        userDataState = userDataState,
+                        saveUserDataState = saveUserDataState,
+                        showUserDataDialog = showUserDataDialog,
+                        onShowUserDataDialog = {
+                            showUserDataDialog = true
+                            viewModel.loadUserData()
+                        },
+                        onDismissUserDataDialog = {
+                            if (!saveUserDataState.isLoading) {
+                                showUserDataDialog = false
+                                viewModel.resetSaveUserDataState()
+                            }
+                        },
+                        onSaveUserData = { req ->
+                            viewModel.saveUserData(req)
+                        },
                         onShowChangeInviteCodeDialog = { showChangeInviteCodeDialog = true },
                         onShowChangeNicknameDialog = { showChangeNicknameDialog = true },
                         imagePickerLauncher = imagePickerLauncher,
@@ -240,7 +276,13 @@ private fun UserProfileContent(
     userProfile: com.yhchat.canary.data.model.UserProfile,
     navigationRepository: NavigationRepository? = null,
     tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
-    viewModel: ProfileViewModel? = null,
+    viewModel: ProfileViewModel,
+    userDataState: UserDataState,
+    saveUserDataState: SaveUserDataState,
+    showUserDataDialog: Boolean,
+    onShowUserDataDialog: () -> Unit,
+    onDismissUserDataDialog: () -> Unit,
+    onSaveUserData: (SaveUserDataRequest) -> Unit,
     onShowChangeInviteCodeDialog: () -> Unit = {},
     onShowChangeNicknameDialog: () -> Unit = {},
     imagePickerLauncher: androidx.activity.result.ActivityResultLauncher<String>,
@@ -455,6 +497,29 @@ private fun UserProfileContent(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
+
+                ProfileInfoItemWithButton(
+                    icon = Icons.Default.Person,
+                    label = "个人信息",
+                    value = userDataState.userData?.introduction?.takeIf { !it.isNullOrBlank() } ?: "未设置",
+                    buttonText = "编辑",
+                    onButtonClick = {
+                        onShowUserDataDialog()
+                    }
+                )
+
+                if (showUserDataDialog) {
+                    UserDataEditDialog(
+                        userDataState = userDataState,
+                        saveUserDataState = saveUserDataState,
+                        onDismiss = {
+                            onDismissUserDataDialog()
+                        },
+                        onSave = { req ->
+                            onSaveUserData(req)
+                        }
+                    )
+                }
                 
                 // 手机号（带显示/隐藏切换）
                 if (!TextUtils.isEmpty(userProfile.phone)) {
@@ -670,6 +735,152 @@ private fun CoinMenuItem(
             color = MaterialTheme.colorScheme.onSurface
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UserDataEditDialog(
+    userDataState: UserDataState,
+    saveUserDataState: SaveUserDataState,
+    onDismiss: () -> Unit,
+    onSave: (SaveUserDataRequest) -> Unit
+) {
+    var introduction by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("3") }
+    var birthday by remember { mutableStateOf("0") }
+    var province by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var district by remember { mutableStateOf("") }
+    var locationCode by remember { mutableStateOf("") }
+
+    LaunchedEffect(userDataState.userData) {
+        val data = userDataState.userData
+        if (data != null) {
+            introduction = data.introduction ?: ""
+            gender = (data.gender ?: 3).toString()
+            birthday = (data.birthday ?: 0L).toString()
+            province = data.province ?: ""
+            city = data.city ?: ""
+            district = data.district ?: ""
+            locationCode = data.locationCode ?: ""
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!saveUserDataState.isLoading) onDismiss() },
+        title = {
+            Text(
+                text = "个人信息",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (userDataState.isLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
+                userDataState.error?.let { error ->
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                OutlinedTextField(
+                    value = introduction,
+                    onValueChange = { introduction = it },
+                    label = { Text("个人简介") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading
+                )
+
+                OutlinedTextField(
+                    value = gender,
+                    onValueChange = { gender = it },
+                    label = { Text("性别(1男/2女/3其他)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = birthday,
+                    onValueChange = { birthday = it },
+                    label = { Text("生日时间戳(秒)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = province,
+                    onValueChange = { province = it },
+                    label = { Text("省份") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it },
+                    label = { Text("城市") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = district,
+                    onValueChange = { district = it },
+                    label = { Text("城区") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = locationCode,
+                    onValueChange = { locationCode = it },
+                    label = { Text("邮政编码") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saveUserDataState.isLoading,
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val req = SaveUserDataRequest(
+                        introduction = introduction,
+                        gender = gender.toIntOrNull() ?: 3,
+                        birthday = birthday.toLongOrNull() ?: 0L,
+                        province = province,
+                        city = city,
+                        district = district,
+                        locationCode = locationCode
+                    )
+                    onSave(req)
+                },
+                enabled = !saveUserDataState.isLoading
+            ) {
+                if (saveUserDataState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(text = if (saveUserDataState.isLoading) "保存中..." else "保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !saveUserDataState.isLoading) {
+                Text(text = "取消")
+            }
+        }
+    )
 }
 
 /**

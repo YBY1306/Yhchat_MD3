@@ -334,6 +334,19 @@ fun MoreTabContent(
                     },
                     {
                         SettingsItemCell(
+                            icon = Icons.Default.ThumbUp,
+                            title = "查看推荐文章",
+                            subtitle = "浏览社区推荐文章列表",
+                            onClick = {
+                                val intent = Intent(context, RecommendPostsActivity::class.java).apply {
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+                    },
+                    {
+                        SettingsItemCell(
                             icon = Icons.Default.Star,
                             title = "我的收藏",
                             subtitle = "查看我收藏的文章",

@@ -41,6 +41,30 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    suspend fun getRecommendPostList(
+        token: String,
+        size: Int = 20,
+        page: Int = 1
+    ): Result<com.yhchat.canary.data.model.PostListResponse> {
+        return try {
+            val request = RecommendPostListRequest(size = size, page = page)
+            val response = apiService.getRecommendPostList(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.msg ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun listBoardsByCreate(
         token: String,
         userId: String

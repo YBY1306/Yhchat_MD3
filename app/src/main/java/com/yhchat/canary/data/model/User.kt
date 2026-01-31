@@ -583,6 +583,139 @@ data class ApiStatus(
     val message: String
 )
 
+data class UserDataResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("data")
+    val data: UserDataOuter? = null,
+    @SerializedName("msg")
+    val msg: String
+)
+
+data class UserDataOuter(
+    @SerializedName("data")
+    val data: UserData? = null
+)
+
+data class UserData(
+    @SerializedName("id")
+    val id: Long,
+    @SerializedName("userId")
+    val userId: String,
+    @SerializedName("lastLoginTime")
+    val lastLoginTime: Long,
+    @SerializedName("update_time")
+    val updateTime: Long,
+    @SerializedName("introduction")
+    val introduction: String? = null,
+    @SerializedName("gender")
+    val gender: Int? = null,
+    @SerializedName("birthday")
+    val birthday: Long? = null,
+    @SerializedName("province")
+    val province: String? = null,
+    @SerializedName("city")
+    val city: String? = null,
+    @SerializedName("district")
+    val district: String? = null,
+    @SerializedName("locationCode")
+    val locationCode: String? = null
+)
+
+data class SaveUserDataRequest(
+    @SerializedName("introduction")
+    val introduction: String,
+    @SerializedName("gender")
+    val gender: Int,
+    @SerializedName("birthday")
+    val birthday: Long,
+    @SerializedName("province")
+    val province: String,
+    @SerializedName("city")
+    val city: String,
+    @SerializedName("district")
+    val district: String,
+    @SerializedName("locationCode")
+    val locationCode: String
+)
+
+/**
+ * 七牛云音频上传 token 响应
+ */
+data class QiniuTokenResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("data")
+    val data: QiniuTokenData,
+    @SerializedName("msg")
+    val msg: String
+)
+
+data class QiniuTokenData(
+    @SerializedName("token")
+    val token: String
+)
+
+/**
+ * 七牛云上传域名查询响应
+ */
+data class QiniuHostsResponse(
+    @SerializedName("hosts")
+    val hosts: List<QiniuHost>,
+    @SerializedName("ttl")
+    val ttl: Long
+)
+
+data class QiniuHost(
+    @SerializedName("region")
+    val region: String,
+    @SerializedName("ttl")
+    val ttl: Long,
+    @SerializedName("up")
+    val up: QiniuUploadDomains
+)
+
+data class QiniuUploadDomains(
+    @SerializedName("domains")
+    val domains: List<String>
+)
+
+/**
+ * 七牛云上传响应
+ */
+data class QiniuUploadResponse(
+    @SerializedName("key")
+    val key: String,
+    @SerializedName("hash")
+    val hash: String,
+    @SerializedName("fsize")
+    val fsize: Long,
+    @SerializedName("avinfo")
+    val avinfo: QiniuAudioInfo?
+)
+
+data class QiniuAudioInfo(
+    @SerializedName("format")
+    val format: QiniuAudioFormat?
+)
+
+data class QiniuAudioFormat(
+    @SerializedName("duration")
+    val duration: String?
+)
+
+/**
+ * 语音消息发送响应
+ */
+data class SendMessageResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("msg")
+    val msg: String,
+    @SerializedName("data")
+    val data: Any?
+)
+
 /**
  * 撤回消息请求
  */
@@ -1358,6 +1491,8 @@ data class GroupDetail(
     val categoryId: Long,
     val isPrivate: Boolean,
     val doNotDisturb: Boolean,
+    val hideGroupMembers: Boolean,
+    val denyMembersUploadToGroupDisk: Boolean,
     val communityId: Long,
     val communityName: String,
     val isTop: Boolean,

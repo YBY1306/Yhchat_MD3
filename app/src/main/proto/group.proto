@@ -125,6 +125,7 @@ message edit_group_send {
     string category_name = 8; // 分类名
     int64 category_id = 9; // 分类ID
     int32 private = 10; // 是否私有,1为私有，0为关闭
+    uint64 hide_group_members = 11; // 是否隐藏群成员,1为隐藏
 }
 
 message edit_group {

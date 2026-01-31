@@ -44,6 +44,8 @@ class ComprehensiveSearchViewModel(application: Application) : AndroidViewModel(
                             categoryId = 0,
                             isPrivate = false,
                             doNotDisturb = false,
+                            hideGroupMembers = false,
+                            denyMembersUploadToGroupDisk = false,
                             communityId = 0,
                             communityName = "",
                             isTop = false,

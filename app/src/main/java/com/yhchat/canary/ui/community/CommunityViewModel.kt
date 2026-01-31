@@ -45,6 +45,9 @@ class CommunityViewModel @Inject constructor(
     // 文章列表状态
     private val _postListState = MutableStateFlow(CommunityPostListState())
     val postListState: StateFlow<CommunityPostListState> = _postListState.asStateFlow()
+
+    private val _recommendPostListState = MutableStateFlow(RecommendPostListState())
+    val recommendPostListState: StateFlow<RecommendPostListState> = _recommendPostListState.asStateFlow()
     
     // 文章详情状态
     private val _postDetailState = MutableStateFlow(PostDetailState())
@@ -85,6 +88,52 @@ class CommunityViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun loadRecommendPostList(token: String, page: Int = 1, isRefresh: Boolean = false) {
+        viewModelScope.launch {
+            if (isRefresh) {
+                _recommendPostListState.value = _recommendPostListState.value.copy(isRefreshing = true, error = null)
+            } else {
+                _recommendPostListState.value = _recommendPostListState.value.copy(isLoading = true, error = null)
+            }
+
+            communityRepository.getRecommendPostList(
+                token = token,
+                size = 20,
+                page = page
+            ).fold(
+                onSuccess = { response ->
+                    val newPosts = if (page == 1) {
+                        response.data.posts
+                    } else {
+                        _recommendPostListState.value.posts + response.data.posts
+                    }
+                    _recommendPostListState.value = _recommendPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        posts = newPosts,
+                        total = response.data.total,
+                        currentPage = page,
+                        hasMore = newPosts.size < response.data.total,
+                        error = null
+                    )
+                },
+                onFailure = { error ->
+                    _recommendPostListState.value = _recommendPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = error.message ?: "加载推荐文章失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun loadMoreRecommendPosts(token: String) {
+        val current = _recommendPostListState.value
+        if (current.isLoading || !current.hasMore) return
+        loadRecommendPostList(token, page = current.currentPage + 1, isRefresh = false)
     }
 
     /**
@@ -776,10 +825,21 @@ class CommunityViewModel @Inject constructor(
         _myPostListState.value = _myPostListState.value.copy(error = null)
         _collectPostListState.value = _collectPostListState.value.copy(error = null)
         _postListState.value = _postListState.value.copy(error = null)
+        _recommendPostListState.value = _recommendPostListState.value.copy(error = null)
         _postDetailState.value = _postDetailState.value.copy(error = null)
         _commentListState.value = _commentListState.value.copy(error = null)
     }
 }
+
+data class RecommendPostListState(
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val posts: List<CommunityPost> = emptyList(),
+    val total: Int = 0,
+    val currentPage: Int = 1,
+    val hasMore: Boolean = false,
+    val error: String? = null
+)
 
 /**
  * 分区列表状态

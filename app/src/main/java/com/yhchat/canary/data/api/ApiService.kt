@@ -41,6 +41,30 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody
     ): Response<ResponseBody>
+
+    @POST("v1/user/get-user-data")
+    suspend fun getUserData(
+        @Header("token") token: String
+    ): Response<UserDataResponse>
+
+    @POST("v1/user/save-user-data")
+    suspend fun saveUserData(
+        @Header("token") token: String,
+        @Body request: SaveUserDataRequest
+    ): Response<ApiStatus>
+    
+    // 获取七牛云音频上传 token
+    @GET("v1/misc/qiniu-token-audio")
+    suspend fun getQiniuAudioToken(
+        @Header("token") token: String
+    ): Response<QiniuTokenResponse>
+    
+    // 发送语音消息
+    @POST("v1/msg/send-message")
+    suspend fun sendVoiceMessage(
+        @Header("token") token: String,
+        @Body request: ByteArray
+    ): Response<SendMessageResponse>
     
     /**
      * 获取用户统计数据
@@ -684,6 +708,12 @@ interface ApiService {
         @Body request: PostListRequest
     ): Response<com.yhchat.canary.data.model.PostListResponse>
 
+    @POST("v1/community/posts/post-list-recommend")
+    suspend fun getRecommendPostList(
+        @Header("token") token: String,
+        @Body request: RecommendPostListRequest
+    ): Response<com.yhchat.canary.data.model.PostListResponse>
+
     @POST("v1/community/posts/post-collect-list")
     suspend fun getCollectPostList(
         @Header("token") token: String,
@@ -1201,6 +1231,16 @@ interface ApiService {
         @Body request: com.yhchat.canary.data.model.MountSettingDeleteRequest
     ): Response<com.yhchat.canary.data.model.ApiStatus>
 }
+
+// ==================== 社区相关请求模型（JSON） ====================
+
+data class RecommendPostListRequest(
+    @SerializedName("size")
+    val size: Int = 20,
+
+    @SerializedName("page")
+    val page: Int = 1
+)
 
 /**
  * 列表消息请求

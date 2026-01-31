@@ -36,7 +36,10 @@ data class GroupSettingsUiState(
     val isSettingMessageTypeLimit: Boolean = false,
 
     val showAutoDeleteMessageDialog: Boolean = false,
-    val isSettingAutoDeleteMessage: Boolean = false
+    val isSettingAutoDeleteMessage: Boolean = false,
+
+    val isSettingHideGroupMembers: Boolean = false,
+    val isSettingDenyMembersUploadToGroupDisk: Boolean = false
 )
 
 @HiltViewModel
@@ -78,6 +81,46 @@ class GroupSettingsViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         isSettingAutoDeleteMessage = false,
                         error = error.message ?: "设置失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun setHideGroupMembers(hide: Boolean) {
+        val groupInfo = _uiState.value.groupInfo ?: return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSettingHideGroupMembers = true)
+
+            groupRepository.setHideGroupMembers(groupInfo, hide).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isSettingHideGroupMembers = false)
+                    loadGroupInfo(groupInfo.groupId)
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isSettingHideGroupMembers = false,
+                        saveError = error.message ?: "设置失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun setDenyMembersUploadToGroupDisk(deny: Boolean) {
+        val groupInfo = _uiState.value.groupInfo ?: return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSettingDenyMembersUploadToGroupDisk = true)
+
+            groupRepository.setDenyMembersUploadToGroupDisk(groupInfo.groupId, deny).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isSettingDenyMembersUploadToGroupDisk = false)
+                    loadGroupInfo(groupInfo.groupId)
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isSettingDenyMembersUploadToGroupDisk = false,
+                        saveError = error.message ?: "设置失败"
                     )
                 }
             )

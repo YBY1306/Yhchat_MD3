@@ -12,10 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
@@ -26,6 +23,10 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +48,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
+import android.content.Intent
+import android.Manifest
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.util.Log
 
 /**
  * 聊天输入栏组件
@@ -78,17 +90,76 @@ fun ChatInputBar(
     focusRequester: FocusRequester? = null, // 焦点请求器
     shouldShowKeyboard: Boolean = false, // 是否应该显示键盘
     mentionedUsers: Map<String, String> = emptyMap(), // 被@的用户映射 (userId -> userName)
-    onAddMentionUser: ((String, String) -> Unit)? = null // 添加@用户回调 (userId, userName)
+    onAddMentionUser: ((String, String) -> Unit)? = null, // 添加@用户回调 (userId, userName)
+    onVoiceMessageSend: ((String, String, Long, Long) -> Unit)? = null, // 语音消息发送回调 (fileKey, fileHash, fileSize, audioDuration)
+    chatId: String? = null, // 聊天ID
+    chatType: Long = 1L, // 聊天类型：1-用户，2-群聊，3-机器人
+    voiceViewModel: VoiceMessageViewModel? = null // 语音消息 ViewModel
 ) {
+    val ctx = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     var showAttachMenu by remember { mutableStateOf(false) }
     var showExpressionPicker by remember { mutableStateOf(false) }
     var showInstructionPicker by remember { mutableStateOf(false) }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val context = LocalContext.current
+    var isVoiceMode by remember { mutableStateOf(false) }
+    
+    // 语音相关状态
+    val voiceState = voiceViewModel?.voiceState?.collectAsState()?.value
+    val isRecording = voiceState?.isRecording ?: false
+    val isProcessing = voiceState?.isProcessing ?: false
+    val isUploading = voiceState?.isUploading ?: false
+    
+    // 文件选择器
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            if (voiceViewModel != null && chatId != null) {
+                Log.d("ChatInputBar", "audioPicker result uri=$uri")
+                voiceViewModel.selectAudioFromStorage(
+                    context = ctx,
+                    uri = uri,
+                    chatId = chatId,
+                    chatType = chatType,
+                    onSuccess = { fileKey, fileHash, fileSize, duration ->
+                        onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
+                        isVoiceMode = false
+                    }
+                )
+            } else {
+                Log.w(
+                    "ChatInputBar",
+                    "audioPicker ignored: voiceViewModel=${voiceViewModel != null} chatId=$chatId chatType=$chatType groupId=$groupId botId=$botId isVoiceMode=$isVoiceMode",
+                    Throwable("ChatInputBar missing voice params")
+                )
+                Toast.makeText(ctx, "语音功能参数缺失", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    // 权限请求
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted && voiceViewModel != null) {
+            voiceViewModel.startRecording(ctx)
+        } else {
+            Toast.makeText(ctx, "需要麦克风权限才能录音", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // 监听错误状态
+    LaunchedEffect(voiceState?.error) {
+        voiceState?.error?.let { error ->
+            Toast.makeText(ctx, error, Toast.LENGTH_SHORT).show()
+            voiceViewModel?.clearError()
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
 
     val chatPrefs = remember {
-        context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
+        ctx.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
     }
 
     var defaultSendMessageType by remember {
@@ -176,34 +247,205 @@ fun ChatInputBar(
                 IconButton(
                     onClick = { 
                         showAttachMenu = !showAttachMenu
-                            showExpressionPicker = false
-                            showInstructionPicker = false
+                        showExpressionPicker = false
+                        showInstructionPicker = false
+                        isVoiceMode = false
                         if (showAttachMenu) {
                             keyboardController?.hide()
                         }
                     },
-                        modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "附件",
-                            tint = if (showAttachMenu) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    
-                    // 输入框 - 无边框，融入背景
-                    BasicTextField(
-                    value = text,
-                        onValueChange = { newText: String ->
-                        onTextChange(newText)
-                        onDraftChange?.invoke(newText)
+                        tint = if (showAttachMenu) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                // 麦克风按钮
+                IconButton(
+                    onClick = {
+                        isVoiceMode = !isVoiceMode
+                        showAttachMenu = false
+                        showExpressionPicker = false
+                        showInstructionPicker = false
+                        if (isVoiceMode) {
+                            keyboardController?.hide()
+                        }
                     },
-                    modifier = Modifier
-                        .weight(1f)
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isVoiceMode) Icons.Default.MicOff else Icons.Default.Mic,
+                        contentDescription = if (isVoiceMode) "关闭语音" else "语音",
+                        tint = if (isVoiceMode) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                    
+                // 输入框或语音按钮区域
+                if (isVoiceMode) {
+                    // 语音模式：显示"长按说话"和"从存储选取"按钮
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 长按说话按钮
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            Log.d("ChatInputBar", "voice press down")
+
+                                            if (isProcessing || isUploading) {
+                                                Log.d("ChatInputBar", "voice press ignored: isProcessing=$isProcessing isUploading=$isUploading")
+                                                return@detectTapGestures
+                                            }
+
+                                            if (voiceViewModel == null || chatId == null) {
+                                                Log.w(
+                                                    "ChatInputBar",
+                                                    "press ignored: voiceViewModel=${voiceViewModel != null} chatId=$chatId chatType=$chatType groupId=$groupId botId=$botId isVoiceMode=$isVoiceMode",
+                                                    Throwable("ChatInputBar missing voice params")
+                                                )
+                                                Toast.makeText(ctx, "语音功能参数缺失", Toast.LENGTH_SHORT).show()
+                                                return@detectTapGestures
+                                            }
+
+                                            val hasPermission = ContextCompat.checkSelfPermission(
+                                                ctx,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+
+                                            if (!hasPermission) {
+                                                Log.d("ChatInputBar", "request RECORD_AUDIO permission")
+                                                Toast.makeText(ctx, "请授予麦克风权限", Toast.LENGTH_SHORT).show()
+                                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                return@detectTapGestures
+                                            }
+
+                                            Log.d("ChatInputBar", "startRecording")
+                                            voiceViewModel.startRecording(ctx)
+
+                                            val released = tryAwaitRelease()
+                                            if (released) {
+                                                Log.d("ChatInputBar", "stopRecordingAndUpload")
+                                                voiceViewModel.stopRecordingAndUpload(
+                                                    context = ctx,
+                                                    chatId = chatId,
+                                                    chatType = chatType,
+                                                    onSuccess = { fileKey, fileHash, fileSize, duration ->
+                                                        onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
+                                                        isVoiceMode = false
+                                                    }
+                                                )
+                                            } else {
+                                                Log.d("ChatInputBar", "cancelRecording")
+                                                voiceViewModel.cancelRecording()
+                                            }
+                                        }
+                                    )
+                                },
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = when {
+                                            isRecording -> "正在录制..."
+                                            isUploading -> "上传中..."
+                                            isProcessing -> "处理中..."
+                                            else -> "长按说话"
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = when {
+                                            isRecording -> MaterialTheme.colorScheme.error
+                                            isUploading || isProcessing -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // 从存储选取按钮
+                        Button(
+                            onClick = {
+                                audioPickerLauncher.launch("audio/*")
+                            },
+                            enabled = !isProcessing && !isUploading && !isRecording,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            border = BorderStroke(
+                                1.dp, 
+                                if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            ),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = if (isProcessing || isUploading) "处理中..." else "从存储选取",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // 文本模式：显示输入框
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { newText: String ->
+                            onTextChange(newText)
+                            onDraftChange?.invoke(newText)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
                             .heightIn(min = 36.dp, max = 90.dp)
                             .padding(horizontal = 8.dp, vertical = 8.dp)
                             .onFocusChanged { state ->
@@ -233,7 +475,7 @@ fun ChatInputBar(
                                             selectedInstruction.hintText
                                         else -> placeholder
                                     }
-                        Text(
+                                    Text(
                                         text = effectivePlaceholder,
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -243,6 +485,7 @@ fun ChatInputBar(
                             }
                         }
                     )
+                }
                     
                     // 指令按钮 - 群聊 或 机器人私聊
                     if (onInstructionClick != null && (groupId != null || botId != null)) {
@@ -307,42 +550,43 @@ fun ChatInputBar(
                         )
                         .pointerInput(longPressSendMarkdownEnabled, longPressSendMarkdownSeconds, text, selectedMessageType) {
                             val mtc = onMessageTypeChange
+                            detectTapGestures(
+                                onPress = {
+                                    if (text.isBlank()) {
+                                        tryAwaitRelease()
+                                        return@detectTapGestures
+                                    }
 
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
+                                    if (!longPressSendMarkdownEnabled || mtc == null) {
+                                        val released = tryAwaitRelease()
+                                        if (released && text.isNotBlank()) {
+                                            onSendMessage()
+                                        }
+                                        return@detectTapGestures
+                                    }
 
-                                if (text.isBlank()) {
-                                    waitForUpOrCancellation()
-                                    return@awaitEachGesture
-                                }
+                                    val startMs = System.currentTimeMillis()
+                                    val released = tryAwaitRelease()
+                                    if (!released) return@detectTapGestures
 
-                                val releasedBeforeTimeout = if (longPressSendMarkdownEnabled && mtc != null) {
-                                    withTimeoutOrNull(longPressSendMarkdownSeconds.toLong() * 1000L) {
-                                        waitForUpOrCancellation()
-                                    } != null
-                                } else {
-                                    waitForUpOrCancellation()
-                                    true
-                                }
-
-                                if (releasedBeforeTimeout) {
-                                    if (text.isNotBlank()) {
+                                    val elapsedMs = System.currentTimeMillis() - startMs
+                                    val thresholdMs = longPressSendMarkdownSeconds.toLong() * 1000L
+                                    if (elapsedMs >= thresholdMs) {
+                                        val previousType = selectedMessageType
+                                        coroutineScope.launch {
+                                            if (previousType != 3) {
+                                                mtc.invoke(3)
+                                            }
+                                            onSendMessage()
+                                            if (previousType != 3) {
+                                                mtc.invoke(previousType)
+                                            }
+                                        }
+                                    } else {
                                         onSendMessage()
                                     }
-                                } else {
-                                    val previousType = selectedMessageType
-                                    coroutineScope.launch {
-                                        if (previousType != 3) {
-                                            mtc?.invoke(3)
-                                        }
-                                        onSendMessage()
-                                        if (previousType != 3) {
-                                            mtc?.invoke(previousType)
-                                        }
-                                    }
-                                    waitForUpOrCancellation()
                                 }
-                            }
+                            )
                         }
                 ) {
                     Icon(

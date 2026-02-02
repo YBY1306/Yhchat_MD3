@@ -1334,7 +1334,11 @@ private fun MessageItem(
     if (showContextMenu) {
         MessageContextMenu(
             message = message,
-            showRecall = isMyMessage && conversationChatType in listOf(1, 2, 3) && message.msgDeleteTime == null,
+            showRecall = when (conversationChatType) {
+                2 -> message.msgDeleteTime == null
+                1, 3 -> isMyMessage && message.msgDeleteTime == null
+                else -> false
+            },
             onDismiss = { showContextMenu = false },
             onCopyAll = {
                 val textToCopy = message.content.text ?: ""

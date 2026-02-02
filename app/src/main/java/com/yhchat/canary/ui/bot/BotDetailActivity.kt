@@ -481,6 +481,7 @@ private fun BotDetailContent(
     modifier: Modifier = Modifier,
     onAvatarClick: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -507,8 +508,8 @@ private fun BotDetailContent(
                 Surface(
                     modifier = Modifier.size(120.dp),
                     shape = CircleShape,
-                    shadowElevation = 8.dp,
-                    tonalElevation = 4.dp
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp
                 ) {
                     AsyncImage(
                         model = if (botInfo.data.avatarUrl.isNotBlank()) {
@@ -546,7 +547,13 @@ private fun BotDetailContent(
                 // 机器人ID - 美化样式
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.clickable {
+                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("botId", botInfo.data.botId)
+                        clipboardManager.setPrimaryClip(clip)
+                        Toast.makeText(context, "已复制机器人ID", Toast.LENGTH_SHORT).show()
+                    }
                 ) {
                     Text(
                         text = "ID: ${botInfo.data.botId}",

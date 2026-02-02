@@ -348,7 +348,13 @@ private fun GroupInfoContent(
                         Text(
                             text = "ID: ${groupInfo.groupId}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable {
+                                val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("groupId", groupInfo.groupId)
+                                clipboardManager.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(context, "已复制群聊ID", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         )
                         Text(
                             text = "${groupInfo.memberCount} 名成员",

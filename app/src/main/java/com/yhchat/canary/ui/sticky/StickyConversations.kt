@@ -106,6 +106,17 @@ fun StickyConversationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val avatarUrl72 = remember(stickyItem.avatarUrl) {
+        val url = stickyItem.avatarUrl
+        if (url.isNullOrBlank()) {
+            url
+        } else if (url.contains("?")) {
+            url
+        } else {
+            url + "?imageView2/2/w/72/h/72"
+        }
+    }
+
     Column(
         modifier = modifier
             .width(64.dp)
@@ -117,7 +128,7 @@ fun StickyConversationItem(
         Box {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(stickyItem.avatarUrl)
+                    .data(avatarUrl72)
                     .addHeader("Referer", "https://myapp.jwznb.com")
                     .crossfade(true)
                     .build(),

@@ -587,6 +587,17 @@ fun ConversationItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    val avatarUrl72 = remember(conversation.avatarUrl) {
+        val url = conversation.avatarUrl
+        if (url.isNullOrBlank()) {
+            url
+        } else if (url.contains("?")) {
+            url
+        } else {
+            url + "?imageView2/2/w/72/h/72"
+        }
+    }
+
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateFormat = SimpleDateFormat("MM-dd", Locale.getDefault())
     val now = System.currentTimeMillis()
@@ -621,7 +632,7 @@ fun ConversationItem(
                 AsyncImage(
                     model = if (conversation.avatarUrl != null) {
                         ImageRequest.Builder(LocalContext.current)
-                            .data(conversation.avatarUrl)
+                            .data(avatarUrl72)
                             .addHeader("Referer", "https://myapp.jwznb.com")
                             .crossfade(true)
                             .build()

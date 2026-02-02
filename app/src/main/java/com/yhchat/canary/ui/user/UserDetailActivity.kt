@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -396,9 +398,11 @@ fun UserDetailScreen(
             ModalBottomSheet(
                 onDismissRequest = { showMoreSheet = false }
             ) {
+                val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(scrollState)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     SheetSectionHeader(title = "互动")
@@ -806,7 +810,13 @@ fun UserDetailContent(
                             Text(
                                 text = "ID: ${userDetail.id}",
                                 fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable {
+                                    val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("userId", userDetail.id)
+                                    clipboardManager.setPrimaryClip(clip)
+                                    Toast.makeText(context, "已复制用户ID", Toast.LENGTH_SHORT).show()
+                                }
                             )
                         }
                     }

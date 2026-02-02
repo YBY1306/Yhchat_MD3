@@ -404,7 +404,13 @@ private fun UserProfileContent(
                 Text(
                     text = "ID: ${userProfile.userId}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable {
+                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("userId", userProfile.userId)
+                        clipboardManager.setPrimaryClip(clip)
+                        android.widget.Toast.makeText(context, "已复制用户ID", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 )
                 
                 // VIP 标识和内测标识
@@ -501,7 +507,7 @@ private fun UserProfileContent(
                 ProfileInfoItemWithButton(
                     icon = Icons.Default.Person,
                     label = "个人信息",
-                    value = userDataState.userData?.introduction?.takeIf { !it.isNullOrBlank() } ?: "未设置",
+                    value = "个人信息",
                     buttonText = "编辑",
                     onButtonClick = {
                         onShowUserDataDialog()
@@ -747,7 +753,8 @@ private fun UserDataEditDialog(
 ) {
     var introduction by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("3") }
-    var birthday by remember { mutableStateOf("0") }
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
+    var selectedMonth by remember { mutableStateOf<Int?>(null) }
     var province by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var district by remember { mutableStateOf("") }
@@ -758,7 +765,17 @@ private fun UserDataEditDialog(
         if (data != null) {
             introduction = data.introduction ?: ""
             gender = (data.gender ?: 3).toString()
-            birthday = (data.birthday ?: 0L).toString()
+            val birthdaySec = data.birthday ?: 0L
+            if (birthdaySec > 0) {
+                val cal = java.util.Calendar.getInstance().apply {
+                    timeInMillis = birthdaySec * 1000L
+                }
+                selectedYear = cal.get(java.util.Calendar.YEAR)
+                selectedMonth = cal.get(java.util.Calendar.MONTH) + 1
+            } else {
+                selectedYear = null
+                selectedMonth = null
+            }
             province = data.province ?: ""
             city = data.city ?: ""
             district = data.district ?: ""
@@ -776,7 +793,13 @@ private fun UserDataEditDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 if (userDataState.isLoading) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -797,23 +820,125 @@ private fun UserDataEditDialog(
                     enabled = !saveUserDataState.isLoading
                 )
 
-                OutlinedTextField(
-                    value = gender,
-                    onValueChange = { gender = it },
-                    label = { Text("性别(1男/2女/3其他)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
+                Text(
+                    text = "性别",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                OutlinedTextField(
-                    value = birthday,
-                    onValueChange = { birthday = it },
-                    label = { Text("生日时间戳(秒)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = gender == "1",
+                            onClick = { if (!saveUserDataState.isLoading) gender = "1" },
+                            enabled = !saveUserDataState.isLoading
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("男")
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = gender == "2",
+                            onClick = { if (!saveUserDataState.isLoading) gender = "2" },
+                            enabled = !saveUserDataState.isLoading
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("女")
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = gender == "3",
+                            onClick = { if (!saveUserDataState.isLoading) gender = "3" },
+                            enabled = !saveUserDataState.isLoading
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("其他")
+                    }
+                }
+
+                Text(
+                    text = "生日（年 / 月）",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+
+                val nowCal = remember { java.util.Calendar.getInstance() }
+                val currentYear = nowCal.get(java.util.Calendar.YEAR)
+                val yearOptions = remember(currentYear) { (1900..currentYear).toList().reversed() }
+                val monthOptions = remember { (1..12).toList() }
+                var yearExpanded by remember { mutableStateOf(false) }
+                var monthExpanded by remember { mutableStateOf(false) }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = yearExpanded,
+                        onExpandedChange = { if (!saveUserDataState.isLoading) yearExpanded = !yearExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedYear?.toString() ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("年") },
+                            enabled = !saveUserDataState.isLoading,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = yearExpanded,
+                            onDismissRequest = { yearExpanded = false }
+                        ) {
+                            yearOptions.forEach { y ->
+                                DropdownMenuItem(
+                                    text = { Text(y.toString()) },
+                                    onClick = {
+                                        selectedYear = y
+                                        yearExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    ExposedDropdownMenuBox(
+                        expanded = monthExpanded,
+                        onExpandedChange = { if (!saveUserDataState.isLoading) monthExpanded = !monthExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedMonth?.toString() ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("月") },
+                            enabled = !saveUserDataState.isLoading,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = monthExpanded,
+                            onDismissRequest = { monthExpanded = false }
+                        ) {
+                            monthOptions.forEach { m ->
+                                DropdownMenuItem(
+                                    text = { Text(m.toString()) },
+                                    onClick = {
+                                        selectedMonth = m
+                                        monthExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = province,
@@ -855,10 +980,27 @@ private fun UserDataEditDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val genderInt = gender.toIntOrNull() ?: 3
+
+                    val birthdaySec = if (selectedYear != null && selectedMonth != null) {
+                        val cal = java.util.Calendar.getInstance().apply {
+                            set(java.util.Calendar.YEAR, selectedYear!!)
+                            set(java.util.Calendar.MONTH, selectedMonth!! - 1)
+                            set(java.util.Calendar.DAY_OF_MONTH, 1)
+                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                            set(java.util.Calendar.MINUTE, 0)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }
+                        cal.timeInMillis / 1000L
+                    } else {
+                        0L
+                    }
+
                     val req = SaveUserDataRequest(
                         introduction = introduction,
-                        gender = gender.toIntOrNull() ?: 3,
-                        birthday = birthday.toLongOrNull() ?: 0L,
+                        gender = genderInt,
+                        birthday = birthdaySec,
                         province = province,
                         city = city,
                         district = district,
@@ -869,15 +1011,24 @@ private fun UserDataEditDialog(
                 enabled = !saveUserDataState.isLoading
             ) {
                 if (saveUserDataState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
+                    Text("保存中...")
+                } else {
+                    Text("保存")
                 }
-                Text(text = if (saveUserDataState.isLoading) "保存中..." else "保存")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !saveUserDataState.isLoading) {
-                Text(text = "取消")
+            TextButton(
+                onClick = onDismiss,
+                enabled = !saveUserDataState.isLoading
+            ) {
+                Text("取消")
             }
         }
     )

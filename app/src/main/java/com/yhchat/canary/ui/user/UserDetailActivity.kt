@@ -265,7 +265,7 @@ fun UserDetailScreen(
                                 context.startActivity(intent)
                             }
                         ) {
-                            Icon(Icons.Default.Chat, "发消息")
+                            Icon(Icons.AutoMirrored.Filled.Chat, "发消息")
                         }
                     } else {
                         IconButton(onClick = { showAddFriendDialog = true }) {

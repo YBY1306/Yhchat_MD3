@@ -66,6 +66,13 @@ class ChatViewModel @Inject constructor(
     private var oldestMsgId: String? = null
 
     private val tag = "ChatViewModel"
+    
+    // 内存优化：限制消息列表最大数量
+    companion object {
+        private const val MAX_MESSAGES_IN_MEMORY = 200  // 内存中最多保留200条消息
+        private const val MESSAGES_TRIM_THRESHOLD = 250  // 超过250条时触发清理
+        private const val MAX_STREAMING_CACHE_SIZE = 20  // 最多缓存20个流式消息
+    }
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -329,8 +336,46 @@ class ChatViewModel @Inject constructor(
                 if (message.sender.chatType == 3) {
                     streamingMessages[message.msgId] = message.content.text ?: ""
                     Log.d(tag, "Initialized streaming cache for bot message: ${message.msgId}")
+                    trimStreamingCache()
                 }
+                
+                // 内存优化：检查并清理旧消息
+                trimOldMessagesIfNeeded()
             }
+        }
+    }
+    
+    /**
+     * 内存优化：清理旧消息
+     * 当消息数量超过阈值时，保留最新的消息
+     */
+    private fun trimOldMessagesIfNeeded() {
+        if (_messages.size > MESSAGES_TRIM_THRESHOLD) {
+            val messagesToRemove = _messages.size - MAX_MESSAGES_IN_MEMORY
+            if (messagesToRemove > 0) {
+                // 移除最旧的消息（列表开头的消息）
+                repeat(messagesToRemove) {
+                    if (_messages.isNotEmpty()) {
+                        _messages.removeAt(0)
+                    }
+                }
+                // 更新hasMoreMessages标记，因为我们删除了一些消息
+                hasMoreMessages = true
+                Log.d(tag, "Memory optimization: trimmed $messagesToRemove old messages, remaining: ${_messages.size}")
+            }
+        }
+    }
+    
+    /**
+     * 内存优化：清理流式消息缓存
+     */
+    private fun trimStreamingCache() {
+        if (streamingMessages.size > MAX_STREAMING_CACHE_SIZE) {
+            // 找到不在当前消息列表中的流式缓存并清理
+            val currentMsgIds = _messages.map { it.msgId }.toSet()
+            val keysToRemove = streamingMessages.keys.filter { it !in currentMsgIds }
+            keysToRemove.forEach { streamingMessages.remove(it) }
+            Log.d(tag, "Memory optimization: cleared ${keysToRemove.size} stale streaming caches")
         }
     }
     
@@ -664,7 +709,6 @@ class ChatViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 Log.e(tag, "❌ 上传并发送文件异常", e)
-                e.printStackTrace()
                 _uiState.value = _uiState.value.copy(error = "发送文件失败: ${e.message}")
             }
         }
@@ -933,6 +977,9 @@ class ChatViewModel @Inject constructor(
                             val sortedNewMessages = filteredMessages.sortedBy { it.sendTime }
                             _messages.addAll(0, sortedNewMessages)
                         }
+                        
+                        // 内存优化：限制消息总数
+                        trimOldMessagesIfNeeded()
 
                         // 更新最旧消息的序列号和ID
                         if (newMessages.isNotEmpty()) {
@@ -1634,12 +1681,20 @@ class ChatViewModel @Inject constructor(
     }
     
     /**
-     * ViewModel被清理时保存读取位置
+     * ViewModel被清理时保存读取位置并释放资源
      */
     override fun onCleared() {
         super.onCleared()
         // 保存当前读取位置，防止用户从后台直接结束应用
         saveCurrentReadPosition()
-        Log.d(tag, "ChatViewModel cleared, read position saved")
+        
+        // 内存优化：清理所有缓存数据
+        _messages.clear()
+        streamingMessages.clear()
+        
+        // 清理UIState中的大对象
+        _uiState.value = ChatUiState()
+        
+        Log.d(tag, "ChatViewModel cleared, read position saved, memory released")
     }
 }

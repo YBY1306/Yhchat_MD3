@@ -97,7 +97,7 @@ fun ExpressionPicker(
                     text = { Text("已收藏表情") }
                 )
                 
-                // 表情包 tabs
+                // 表情包 tabs - 内存优化：限制图标尺寸
                 uiState.stickerPacks.forEachIndexed { index, stickerPack ->
                     val tabIndex = index + 2
                     Tab(
@@ -113,7 +113,8 @@ fun ExpressionPicker(
                             AsyncImage(
                                 model = ImageUtils.createStickerImageRequest(
                                     context = context,
-                                    url = firstSticker.getFullUrl()
+                                    url = firstSticker.getFullUrl(),
+                                    size = ImageUtils.ImageSize.AVATAR_SMALL // 限制为48px
                                 ),
                                 contentDescription = stickerPack.name,
                                 modifier = Modifier
@@ -211,7 +212,7 @@ fun ExpressionPicker(
                 }
 
                 selectedTab == 1 -> {
-                    // 我的表情
+                    // 我的表情 - 内存优化：限制加载尺寸
                     if (uiState.expressions.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -234,7 +235,11 @@ fun ExpressionPicker(
                         ) {
                             items(uiState.expressions) { expression ->
                                 AsyncImage(
-                                    model = expression.getFullUrl(),
+                                    model = ImageUtils.createStickerImageRequest(
+                                        context = context,
+                                        url = expression.getFullUrl(),
+                                        size = ImageUtils.ImageSize.STICKER_MEDIUM // 限制为96px
+                                    ),
                                     contentDescription = "表情",
                                     modifier = Modifier
                                         .size(80.dp)
@@ -252,7 +257,7 @@ fun ExpressionPicker(
                 }
                 
                 selectedTab > 1 -> {
-                    // 表情包内容
+                    // 表情包内容 - 内存优化：限制加载尺寸
                     val selectedStickerPack = uiState.stickerPacks.getOrNull(selectedStickerPackIndex)
                     if (selectedStickerPack != null) {
                         if (selectedStickerPack.stickerItems.isEmpty()) {
@@ -288,7 +293,8 @@ fun ExpressionPicker(
                                         AsyncImage(
                                             model = ImageUtils.createStickerImageRequest(
                                                 context = context,
-                                                url = stickerItem.getFullUrl()
+                                                url = stickerItem.getFullUrl(),
+                                                size = ImageUtils.ImageSize.STICKER_SMALL // 限制为64px
                                             ),
                                             contentDescription = stickerItem.name,
                                             modifier = Modifier

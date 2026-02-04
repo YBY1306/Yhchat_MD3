@@ -6,8 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent
-    .TimeUnit
+import java.util.concurrent.TimeUnit
 
 /**
  * API客户端配置
@@ -21,7 +20,7 @@ object ApiClient {
     
     private val gson: Gson by lazy {
         GsonBuilder()
-            .setLenient()
+            .setStrictness(com.google.gson.Strictness.LENIENT)
             .create()
     }
     

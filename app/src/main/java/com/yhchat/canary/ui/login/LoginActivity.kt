@@ -106,8 +106,7 @@ class LoginActivity : BaseActivity() {
                     startActivity(intent)
                     finish()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
                 // Proceed anyway
                 val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

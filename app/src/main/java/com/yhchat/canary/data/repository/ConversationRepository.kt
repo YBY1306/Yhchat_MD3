@@ -15,107 +15,49 @@ class ConversationRepository @Inject constructor(
     private val apiService: ApiService,
     private val cacheRepository: CacheRepository
 ) {
-
     private var tokenRepository: TokenRepository? = null
 
     fun setTokenRepository(tokenRepository: TokenRepository) {
         this.tokenRepository = tokenRepository
     }
     
-    private suspend fun getToken(): String? {
-        return tokenRepository?.getTokenSync()
-    }
+    private suspend fun getToken() = tokenRepository?.getTokenSync()
     
-    /**
-     * 获取会话列表
-     */
-    suspend fun getConversations(): Result<List<Conversation>> {
-        return try {
-            val token = getToken() ?: return Result.failure(Exception("未登录"))
+    private suspend inline fun <T> withToken(action: (String) -> Result<T>): Result<T> =
+        getToken()?.let { action(it) } ?: Result.failure(Exception("未登录"))
+    
+    suspend fun getConversations(): Result<List<Conversation>> = withToken { token ->
+        runCatching {
             val response = apiService.listConversations(token)
             if (response.isSuccessful) {
-                val responseBody = response.body()
-                if (responseBody != null) {
-                    val protoBytes = responseBody.bytes()
-                    ConversationProtoParser.parseConversationList(protoBytes)
-                } else {
-                    Result.failure(Exception("响应体为空"))
-                }
+                response.body()?.bytes()?.let { ConversationProtoParser.parseConversationList(it) }
+                    ?.getOrThrow() ?: throw Exception("响应体为空")
             } else {
-                Result.failure(Exception("获取会话列表失败: ${response.code()}"))
+                throw Exception("获取会话列表失败: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
     
-    /**
-     * 设置会话为已读
-     */
-    suspend fun dismissNotification(chatId: String): Result<Boolean> {
-        return try {
-            val token = getToken() ?: return Result.failure(Exception("未登录"))
-            val request = DismissNotificationRequest(chatId = chatId)
-            val response = apiService.dismissNotification(token, request)
-            if (response.isSuccessful) {
-                val dismissResponse = response.body()
-                if (dismissResponse?.code == 1) {
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception(dismissResponse?.message ?: "设置已读失败"))
-                }
-            } else {
-                Result.failure(Exception("设置已读失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+    suspend fun dismissNotification(chatId: String): Result<Boolean> = withToken { token ->
+        runCatching {
+            val response = apiService.dismissNotification(token, DismissNotificationRequest(chatId))
+            if (response.isSuccessful && response.body()?.code == 1) true
+            else throw Exception(response.body()?.message ?: "设置已读失败: ${response.code()}")
         }
     }
     
-    /**
-     * 删除会话
-     */
-    suspend fun removeConversation(chatId: String): Result<Boolean> {
-        return try {
-            val token = getToken() ?: return Result.failure(Exception("未登录"))
-            val request = RemoveConversationRequest(chatId = chatId)
-            val response = apiService.removeConversation(token, request)
-            if (response.isSuccessful) {
-                val removeResponse = response.body()
-                if (removeResponse?.code == 1) {
-                    // 从缓存中删除会话
-                    try {
-                        cacheRepository.deleteConversationFromCache(chatId)
-                    } catch (e: Exception) {
-                        Log.w("ConversationRepository", "Failed to delete conversation from cache", e)
-                    }
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception(removeResponse?.message ?: "删除会话失败"))
-                }
-            } else {
-                Result.failure(Exception("删除会话失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+    suspend fun removeConversation(chatId: String): Result<Boolean> = withToken { token ->
+        runCatching {
+            val response = apiService.removeConversation(token, RemoveConversationRequest(chatId))
+            if (response.isSuccessful && response.body()?.code == 1) {
+                runCatching { cacheRepository.deleteConversationFromCache(chatId) }
+                true
+            } else throw Exception(response.body()?.message ?: "删除会话失败: ${response.code()}")
         }
     }
     
-    /**
-     * 更新会话的最后消息信息
-     */
-    suspend fun updateLastMessage(
-        chatId: String,
-        chatType: Int,
-        lastMessage: String,
-        lastMessageTime: Long,
-        unreadCount: Int?
-    ) {
-        try {
-            cacheRepository.updateConversationLastMessage(chatId, lastMessage, lastMessageTime)
-        } catch (e: Exception) {
-            // 日志记录错误，但不抛出异常
-            Log.e("ConversationRepository", "Error updating last message", e)
-        }
+    suspend fun updateLastMessage(chatId: String, chatType: Int, lastMessage: String, lastMessageTime: Long, unreadCount: Int?) {
+        runCatching { cacheRepository.updateConversationLastMessage(chatId, lastMessage, lastMessageTime) }
+            .onFailure { Log.e("ConversationRepository", "Error updating last message", it) }
     }
 }

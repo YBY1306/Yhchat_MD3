@@ -285,7 +285,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 撤回消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -359,7 +358,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 编辑消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -463,7 +461,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送图片消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -560,7 +557,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送文件消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -661,7 +657,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送视频消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -751,7 +746,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送表情消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -843,7 +837,6 @@ class MessageRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送表情包贴纸消息异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }

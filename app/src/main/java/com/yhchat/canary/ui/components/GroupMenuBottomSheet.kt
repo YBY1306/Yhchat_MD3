@@ -98,7 +98,7 @@ fun GroupMenuBottomSheet(
     
     val dangerousItems = remember {
         listOf(
-            MenuItemData(Icons.Default.ExitToApp, "退出群聊") { showExitGroupDialog = true }
+            MenuItemData(Icons.AutoMirrored.Filled.ExitToApp, "退出群聊") { showExitGroupDialog = true }
         )
     }
     

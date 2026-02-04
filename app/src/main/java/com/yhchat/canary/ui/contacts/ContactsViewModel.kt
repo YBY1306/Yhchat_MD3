@@ -111,64 +111,35 @@ class ContactsViewModel @Inject constructor(
                     onSuccess = { data ->
                         Log.d(tag, "✅ 通讯录加载成功，总分组数: ${data.dataCount}")
                         
-                        // 解析protobuf数据
-                        val friends = mutableListOf<Contact>()
-                        val groups = mutableListOf<Contact>()
-                        val bots = mutableListOf<Contact>()
+                        // 解析protobuf数据 - 根据分组名映射chatType
+                        val chatTypeMap = mapOf(
+                            "好友" to 1, "用户" to 1,
+                            "我加入的群聊" to 2,
+                            "机器人" to 3
+                        )
                         
-                        Log.d(tag, "开始解析分组数据...")
-                        data.dataList.forEachIndexed { index, group ->
-                            Log.d(tag, "处理分组[$index]: ${group.listName}, 成员数: ${group.dataCount}")
-                        }
-                        
-                        data.dataList.forEach { group ->
-                            when (group.listName) {
-                                "好友", "用户" -> {
-                                    group.dataList.forEach { item ->
-                                        friends.add(
-                                            Contact(
-                                                chatId = item.chatId,
-                                                name = item.name,
-                                                avatarUrl = item.avatarUrl,
-                                                permissionLevel = item.permissonLevel,
-                                                noDisturb = item.noDisturb,
-                                                chatType = 1 // 用户
-                                            )
-                                        )
-                                    }
-                                }
-                                "我加入的群聊" -> {
-                                    group.dataList.forEach { item ->
-                                        groups.add(
-                                            Contact(
-                                                chatId = item.chatId,
-                                                name = item.name,
-                                                avatarUrl = item.avatarUrl,
-                                                permissionLevel = item.permissonLevel,
-                                                noDisturb = item.noDisturb,
-                                                chatType = 2 // 群聊
-                                            )
-                                        )
-                                    }
-                                }
-                                "机器人" -> {
-                                    group.dataList.forEach { item ->
-                                        bots.add(
-                                            Contact(
-                                                chatId = item.chatId,
-                                                name = item.name,
-                                                avatarUrl = item.avatarUrl,
-                                                permissionLevel = item.permissonLevel,
-                                                noDisturb = item.noDisturb,
-                                                chatType = 3 // 机器人
-                                            )
-                                        )
-                                    }
+                        val contactsByType = data.dataList
+                            .filter { chatTypeMap.containsKey(it.listName) }
+                            .flatMap { group ->
+                                val chatType = chatTypeMap[group.listName] ?: 1
+                                group.dataList.map { item ->
+                                    Contact(
+                                        chatId = item.chatId,
+                                        name = item.name,
+                                        avatarUrl = item.avatarUrl,
+                                        permissionLevel = item.permissonLevel,
+                                        noDisturb = item.noDisturb,
+                                        chatType = chatType
+                                    )
                                 }
                             }
-                        }
+                            .groupBy { it.chatType }
                         
-                        Log.d(tag, "好友数量: ${friends.size}, 群聊数量: ${groups.size}, 机器人数量: ${bots.size}")
+                        val friends = contactsByType[1] ?: emptyList()
+                        val groups = contactsByType[2] ?: emptyList()
+                        val bots = contactsByType[3] ?: emptyList()
+                        
+                        Log.d(tag, "好友: ${friends.size}, 群聊: ${groups.size}, 机器人: ${bots.size}")
                         
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,

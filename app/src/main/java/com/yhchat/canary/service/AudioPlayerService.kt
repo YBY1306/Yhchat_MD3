@@ -162,6 +162,7 @@ class AudioPlayerService : Service() {
         audioCacheManager = AudioCacheManager(this)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         mediaSession = MediaSessionCompat(this, TAG).apply {
+            @Suppress("DEPRECATION")
             setFlags(
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
                     MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -734,7 +735,7 @@ class AudioPlayerService : Service() {
         currentLocalPath = null
         currentContentUri = null
         updatePlaybackState(playing = false)
-        stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
     

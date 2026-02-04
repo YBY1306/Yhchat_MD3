@@ -126,8 +126,7 @@ private fun performLogout(context: Context) {
                     context.finish()
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             // 如果清除token失败，仍然跳转到登录界面
             CoroutineScope(Dispatchers.Main).launch {
                 val intent = Intent(context, MainActivity::class.java).apply {

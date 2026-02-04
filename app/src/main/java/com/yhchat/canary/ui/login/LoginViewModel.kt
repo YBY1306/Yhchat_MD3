@@ -94,9 +94,6 @@ class LoginViewModel @Inject constructor(
                         error = null,
                         smsSuccess = isSuccess
                     )
-                    if (isSuccess) {
-                        println("短信验证码发送成功")
-                    }
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -122,8 +119,6 @@ class LoginViewModel @Inject constructor(
             
             userRepository.verificationLogin(mobile, captcha, generateDeviceId())
                 .onSuccess { loginData ->
-                    println("登录成功: $loginData")
-                    // 保存Token到数据库
                     tokenRepository?.saveToken(loginData.token)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -132,7 +127,6 @@ class LoginViewModel @Inject constructor(
                     )
                 }
                 .onFailure { error ->
-                    println("登录失败: ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = "登录失败: ${error.message}"
@@ -155,8 +149,6 @@ class LoginViewModel @Inject constructor(
             
             userRepository.emailLogin(email, password, generateDeviceId())
                 .onSuccess { loginData ->
-                    println("邮箱登录成功: $loginData")
-                    // 保存Token到数据库
                     tokenRepository?.saveToken(loginData.token)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -165,7 +157,6 @@ class LoginViewModel @Inject constructor(
                     )
                 }
                 .onFailure { error ->
-                    println("邮箱登录失败: ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = "登录失败: ${error.message}"

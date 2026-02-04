@@ -107,10 +107,8 @@ class MainActivity : BaseActivity() {
                 userRepository?.getUserInfo()?.onSuccess { user ->
                     userId = user.id
                     mainViewModel.onLoginSuccess(loginToken, user.id)
-                }?.onFailure { error ->
-                    // 获取用户信息失败，显示错误并保持登录状态无效
-                    println("获取用户信息失败: ${error.message}")
-                    // 不设置userId，保持登录失败状态
+                }?.onFailure { _ ->
+                    // 获取用户信息失败，保持登录失败状态
                 }
                 pendingLoginToken = null
             }
@@ -334,9 +332,22 @@ class MainActivity : BaseActivity() {
     
     
     /**
-     * 配置 ImageLoader
+     * 配置 ImageLoader - 优化内存占用
      */
     private fun setupImageLoader() {
+        // 获取可用内存，动态配置缓存大小
+        val activityManager = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        
+        // 内存缓存: 使用可用内存的 12.5%，最大128MB，最小32MB
+        val availableMemoryMb = memoryInfo.availMem / (1024 * 1024)
+        val memoryCacheSizeMb = (availableMemoryMb * 0.125).toLong().coerceIn(32L, 128L)
+        val memoryCacheSizeBytes = memoryCacheSizeMb * 1024 * 1024
+        
+        // 磁盘缓存: 使用256MB
+        val diskCacheSizeBytes = 256L * 1024 * 1024
+        
         val imageLoader = ImageLoader.Builder(this)
             .components {
                 // 添加GIF支持
@@ -345,7 +356,8 @@ class MainActivity : BaseActivity() {
                 } else {
                     add(coil.decode.GifDecoder.Factory())
                 }
-                // WebP支持已经内置在Coil中
+                // SVG支持
+                add(coil.decode.SvgDecoder.Factory())
             }
             .okHttpClient {
                 OkHttpClient.Builder()
@@ -354,9 +366,10 @@ class MainActivity : BaseActivity() {
                         val url = request.url.toString()
                         
                         // 为chat-img.jwznb.com的请求添加Referer
-                        if (url.contains("chat-img.jwznb.com")) {
+                        if (url.contains("chat-img.jwznb.com") || url.contains("jwznb.com")) {
                             val newRequest = request.newBuilder()
                                 .addHeader("Referer", "https://myapp.jwznb.com")
+                                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
                                 .build()
                             chain.proceed(newRequest)
                         } else {
@@ -365,11 +378,31 @@ class MainActivity : BaseActivity() {
                     }
                     .build()
             }
+            // 内存缓存配置 - 限制大小
+            .memoryCache {
+                coil.memory.MemoryCache.Builder(this)
+                    .maxSizeBytes(memoryCacheSizeBytes.toInt())
+                    .strongReferencesEnabled(true)
+                    .weakReferencesEnabled(true)
+                    .build()
+            }
+            // 磁盘缓存配置 - 限制大小
+            .diskCache {
+                coil.disk.DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(diskCacheSizeBytes)
+                    .build()
+            }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
+            // 尊重图片原始尺寸与目标尺寸的比例，自动缩放
+            .allowRgb565(true) // 对于不透明图片使用RGB_565格式，减少50%内存
+            .crossfade(true)
             .build()
         
         Coil.setImageLoader(imageLoader)
+        
+        android.util.Log.d("ImageLoader", "内存缓存: ${memoryCacheSizeMb}MB, 磁盘缓存: 256MB")
     }
 }
 

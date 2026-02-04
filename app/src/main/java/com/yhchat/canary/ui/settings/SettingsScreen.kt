@@ -551,6 +551,7 @@ private fun DisplaySettingsGroup(
             { WebSocketSettingItem(context = context) },
             { BotBoardSettingItem(context = context) },
             { MenuButtonsSettingItem(context = context) },
+            { WebPCompressionSettingItem(context = context) },
             { WebPQualitySettingItem(context = context) },
             { HtmlRawTextSettingItem(context = context) },
             { MarkdownRawTextSettingItem(context = context) }
@@ -663,7 +664,7 @@ private fun LongPressSendMarkdownSettingItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "长按自动发送 Markdown",
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -1486,6 +1487,34 @@ private fun ColorPickerDialog(
 }
 
 /**
+ * WebP压缩开关设置项
+ */
+@Composable
+private fun WebPCompressionSettingItem(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember { 
+        context.getSharedPreferences("image_settings", Context.MODE_PRIVATE) 
+    }
+    
+    var useWebpCompression by remember { 
+        mutableStateOf(prefs.getBoolean("use_webp_compression", true)) 
+    }
+    
+    SettingsSwitchItem(
+        icon = Icons.Default.Compress,
+        title = "上传图片使用WebP压缩",
+        subtitle = if (useWebpCompression) "上传前将图片转换为WebP格式（文件更小）" else "上传原始格式图片（保持原始质量）",
+        checked = useWebpCompression,
+        onCheckedChange = { checked ->
+            useWebpCompression = checked
+            prefs.edit().putBoolean("use_webp_compression", checked).apply()
+        }
+    )
+}
+
+/**
  * WebP压缩质量设置项
  */
 @Composable
@@ -1495,6 +1524,10 @@ private fun WebPQualitySettingItem(
 ) {
     val prefs = remember { 
         context.getSharedPreferences("image_settings", Context.MODE_PRIVATE) 
+    }
+    
+    var useWebpCompression by remember { 
+        mutableStateOf(prefs.getBoolean("use_webp_compression", true)) 
     }
     
     var webpQuality by remember { 
@@ -1515,7 +1548,7 @@ private fun WebPQualitySettingItem(
                     imageVector = Icons.Default.Image,
                     contentDescription = "图片压缩",
                     modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (useWebpCompression) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1524,10 +1557,15 @@ private fun WebPQualitySettingItem(
                     Text(
                         text = "WebP压缩质量",
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = if (useWebpCompression) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "当前: ${webpQuality.toInt()}% (数值越高质量越好，文件越大)",
+                        text = if (useWebpCompression) {
+                            "当前: ${webpQuality.toInt()}% (数值越高质量越好，文件越大)"
+                        } else {
+                            "请先开启WebP压缩"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1550,7 +1588,8 @@ private fun WebPQualitySettingItem(
                 },
                 valueRange = 10f..100f,
                 steps = 17, // 10-100，每5一个步长，共18个值，所以17个步长
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = useWebpCompression
             )
             
             // 质量说明

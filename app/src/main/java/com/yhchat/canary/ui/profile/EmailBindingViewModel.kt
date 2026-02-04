@@ -49,8 +49,7 @@ class EmailBindingViewModel(private val context: Context) : ViewModel() {
                 } else {
                     onResult("", null)
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
                 onResult("", null)
             }
         }
@@ -88,7 +87,6 @@ class EmailBindingViewModel(private val context: Context) : ViewModel() {
                 onError("网络请求失败")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             onError("获取验证码失败: ${e.message}")
         }
     }
@@ -139,7 +137,6 @@ class EmailBindingViewModel(private val context: Context) : ViewModel() {
                 onError("网络请求失败")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             onError("邮箱绑定失败: ${e.message}")
         }
     }
@@ -158,8 +155,7 @@ class EmailBindingViewModel(private val context: Context) : ViewModel() {
             
             val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
             BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             null
         }
     }

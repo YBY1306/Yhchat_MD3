@@ -108,7 +108,6 @@ class FriendRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(tag, "❌ 获取通讯录异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }

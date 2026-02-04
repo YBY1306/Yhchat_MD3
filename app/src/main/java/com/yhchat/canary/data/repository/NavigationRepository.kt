@@ -18,96 +18,44 @@ import javax.inject.Singleton
  */
 @Singleton
 class NavigationRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext context: Context
 ) {
-    private val sharedPreferences: SharedPreferences = 
-        context.getSharedPreferences("navigation_config", Context.MODE_PRIVATE)
-    
+    private val prefs = context.getSharedPreferences("navigation_config", Context.MODE_PRIVATE)
     private val gson = Gson()
     
     private val _navigationConfig = MutableStateFlow(loadNavigationConfig())
     val navigationConfig: StateFlow<NavigationConfig> = _navigationConfig.asStateFlow()
     
     companion object {
-        private const val KEY_NAVIGATION_CONFIG = "navigation_config"
+        private const val KEY = "navigation_config"
     }
     
-    /**
-     * 加载导航配置
-     */
-    private fun loadNavigationConfig(): NavigationConfig {
-        val configJson = sharedPreferences.getString(KEY_NAVIGATION_CONFIG, null)
-        return if (configJson != null) {
-            try {
-                gson.fromJson(configJson, NavigationConfig::class.java)
-            } catch (e: Exception) {
-                NavigationConfig.getDefault()
-            }
-        } else {
-            NavigationConfig.getDefault()
-        }
-    }
+    private fun loadNavigationConfig(): NavigationConfig = runCatching {
+        prefs.getString(KEY, null)?.let { gson.fromJson(it, NavigationConfig::class.java) }
+    }.getOrNull() ?: NavigationConfig.getDefault()
     
-    /**
-     * 保存导航配置
-     */
     fun saveNavigationConfig(config: NavigationConfig) {
-        val configJson = gson.toJson(config)
-        sharedPreferences.edit()
-            .putString(KEY_NAVIGATION_CONFIG, configJson)
-            .apply()
-        
+        prefs.edit().putString(KEY, gson.toJson(config)).apply()
         _navigationConfig.value = config
     }
     
-    /**
-     * 更新导航项的可见性
-     */
     fun updateItemVisibility(itemId: String, isVisible: Boolean) {
-        val currentConfig = _navigationConfig.value
-        val updatedItems = currentConfig.items.map { item ->
-            if (item.id == itemId) {
-                item.copy(isVisible = isVisible)
-            } else {
-                item
-            }
-        }
-        
-        val updatedConfig = currentConfig.copy(items = updatedItems)
-        saveNavigationConfig(updatedConfig)
+        val config = _navigationConfig.value
+        saveNavigationConfig(config.copy(
+            items = config.items.map { if (it.id == itemId) it.copy(isVisible = isVisible) else it }
+        ))
     }
     
-    /**
-     * 更新导航项的顺序
-     */
     fun updateItemsOrder(orderedItems: List<NavigationItem>) {
-        val updatedItems = orderedItems.mapIndexed { index, item ->
-            item.copy(order = index)
-        }
-        
-        val currentConfig = _navigationConfig.value
-        val updatedConfig = currentConfig.copy(items = updatedItems)
-        saveNavigationConfig(updatedConfig)
+        val config = _navigationConfig.value
+        saveNavigationConfig(config.copy(
+            items = orderedItems.mapIndexed { index, item -> item.copy(order = index) }
+        ))
     }
     
-    /**
-     * 重置为默认配置
-     */
-    fun resetToDefault() {
-        saveNavigationConfig(NavigationConfig.getDefault())
-    }
+    fun resetToDefault() = saveNavigationConfig(NavigationConfig.getDefault())
     
-    /**
-     * 获取可见的导航项
-     */
-    fun getVisibleItems(): List<NavigationItem> {
-        return _navigationConfig.value.items.filter { it.isVisible }.sortedBy { it.order }
-    }
+    fun getVisibleItems() = _navigationConfig.value.items.filter { it.isVisible }.sortedBy { it.order }
     
-    /**
-     * 获取所有可用的导航项
-     */
-    fun getAllAvailableItems(): List<NavigationItem> {
-        return NavigationConfig.getAllAvailableItems()
-    }
+    fun getAllAvailableItems() = NavigationConfig.getAllAvailableItems()
 }

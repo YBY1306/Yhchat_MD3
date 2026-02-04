@@ -106,70 +106,22 @@ object YunhuLinkHandler {
     ) {
         val spannable = SpannableStringBuilder(text)
         
-        // 处理 yunhu:// 链接
-        val yunhuMatcher = YUNHU_LINK_PATTERN.matcher(text)
-        while (yunhuMatcher.find()) {
-            val start = yunhuMatcher.start()
-            val end = yunhuMatcher.end()
-            val link = yunhuMatcher.group()
-            
-            val clickableSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    handleYunhuLink(widget.context, link)
-                }
+        // 统一处理所有链接类型
+        listOf(YUNHU_LINK_PATTERN, ALLEY_DETAIL_PATTERN, WEB_ARTICLE_PATTERN).forEach { pattern ->
+            val matcher = pattern.matcher(text)
+            while (matcher.find()) {
+                val start = matcher.start()
+                val end = matcher.end()
+                val link = matcher.group()
+                
+                spannable.setSpan(
+                    object : ClickableSpan() {
+                        override fun onClick(widget: View) = handleYunhuLink(widget.context, link).let {}
+                    },
+                    start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                spannable.setSpan(ForegroundColorSpan(linkColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
-            
-            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(
-                ForegroundColorSpan(linkColor), 
-                start, 
-                end, 
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        
-        // 处理 yunhu://alley-detail 链接
-        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
-        while (alleyMatcher.find()) {
-            val start = alleyMatcher.start()
-            val end = alleyMatcher.end()
-            val link = alleyMatcher.group()
-            
-            val clickableSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    handleYunhuLink(widget.context, link)
-                }
-            }
-            
-            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(
-                ForegroundColorSpan(linkColor), 
-                start, 
-                end, 
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        
-        // 处理网页文章链接
-        val webMatcher = WEB_ARTICLE_PATTERN.matcher(text)
-        while (webMatcher.find()) {
-            val start = webMatcher.start()
-            val end = webMatcher.end()
-            val link = webMatcher.group()
-            
-            val clickableSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    handleYunhuLink(widget.context, link)
-                }
-            }
-            
-            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(
-                ForegroundColorSpan(linkColor), 
-                start, 
-                end, 
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
         }
         
         textView.text = spannable
@@ -188,28 +140,11 @@ object YunhuLinkHandler {
     /**
      * 提取文本中的所有yunhu链接和网页文章链接
      */
-    fun extractYunhuLinks(text: String): List<String> {
-        val links = mutableListOf<String>()
-        
-        // 提取 yunhu://post-detail 链接
-        val yunhuMatcher = YUNHU_LINK_PATTERN.matcher(text)
-        while (yunhuMatcher.find()) {
-            links.add(yunhuMatcher.group())
+    fun extractYunhuLinks(text: String): List<String> = buildList {
+        listOf(YUNHU_LINK_PATTERN, ALLEY_DETAIL_PATTERN, WEB_ARTICLE_PATTERN).forEach { pattern ->
+            val matcher = pattern.matcher(text)
+            while (matcher.find()) add(matcher.group())
         }
-        
-        // 提取 yunhu://alley-detail 链接
-        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
-        while (alleyMatcher.find()) {
-            links.add(alleyMatcher.group())
-        }
-        
-        // 提取网页文章链接
-        val webMatcher = WEB_ARTICLE_PATTERN.matcher(text)
-        while (webMatcher.find()) {
-            links.add(webMatcher.group())
-        }
-        
-        return links
     }
     
     /**

@@ -681,7 +681,7 @@ private fun CoinMenuBottomSheet(
             
             // 金币明细
             CoinMenuItem(
-                icon = Icons.Default.ArrowForward,
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
                 label = "金币明细",
                 onClick = {
                     val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinRecordActivity::class.java)
@@ -1079,7 +1079,7 @@ private fun ProfileInfoItemClickable(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "查看详情",
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1178,7 +1178,7 @@ private fun ProfileSettingItem(
             }
             
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "前往",
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant

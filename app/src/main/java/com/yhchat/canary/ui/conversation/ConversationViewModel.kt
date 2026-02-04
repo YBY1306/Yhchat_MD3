@@ -32,13 +32,12 @@ class ConversationViewModel @Inject constructor(
     private val readPositionStore: ReadPositionStore
 ) : ViewModel() {
 
-    // 分页参数
+    // 分页参数 - 优化：移除冗余的allLoadedConversations
     private val pageSize = 20
     private var currentPage = 1
     private var hasMore = true
     private val _pagedConversations = MutableStateFlow<List<Conversation>>(emptyList())
     val pagedConversations: StateFlow<List<Conversation>> = _pagedConversations.asStateFlow()
-    private var allLoadedConversations: List<Conversation> = emptyList()
 
     init {
         observeWebSocketMessages()
@@ -93,7 +92,6 @@ class ConversationViewModel @Inject constructor(
             conversationRepository.getConversations()
                 .onSuccess { conversationList ->
                     _conversations.value = conversationList
-                    allLoadedConversations = conversationList
                     _pagedConversations.value = conversationList.take(pageSize)
                     hasMore = conversationList.size > pageSize
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -104,7 +102,6 @@ class ConversationViewModel @Inject constructor(
                     val cachedConversations = cacheRepository.getCachedConversationsSync()
                     if (cachedConversations.isNotEmpty()) {
                         _conversations.value = cachedConversations
-                        allLoadedConversations = cachedConversations
                         _pagedConversations.value = cachedConversations.take(pageSize)
                         hasMore = cachedConversations.size > pageSize
                         _uiState.value = _uiState.value.copy(isLoading = false)
@@ -122,14 +119,13 @@ class ConversationViewModel @Inject constructor(
         if (!hasMore || _uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
+            val allConversations = _conversations.value
             val nextPage = currentPage + 1
-            val from = (nextPage - 1) * pageSize
-            val to = (nextPage * pageSize).coerceAtMost(allLoadedConversations.size)
-            if (from < to) {
-                val more = allLoadedConversations.subList(0, to)
-                _pagedConversations.value = more
+            val to = (nextPage * pageSize).coerceAtMost(allConversations.size)
+            if (to > _pagedConversations.value.size) {
+                _pagedConversations.value = allConversations.take(to)
                 currentPage = nextPage
-                hasMore = to < allLoadedConversations.size
+                hasMore = to < allConversations.size
             } else {
                 hasMore = false
             }
@@ -266,7 +262,6 @@ class ConversationViewModel @Inject constructor(
             _conversations.value = currentConversations
             
             // 同步更新分页显示的会话列表
-            allLoadedConversations = currentConversations
             _pagedConversations.value = currentConversations.take(currentPage * pageSize)
             
             Log.d("ConversationViewModel", "Updated conversation list, total: ${currentConversations.size}, displayed: ${_pagedConversations.value.size}")
@@ -290,7 +285,6 @@ class ConversationViewModel @Inject constructor(
             _conversations.value = currentConversations
             
             // 同步更新分页显示的会话列表
-            allLoadedConversations = currentConversations
             _pagedConversations.value = currentConversations.take(currentPage * pageSize)
         }
     }
@@ -299,43 +293,16 @@ class ConversationViewModel @Inject constructor(
      * 获取消息预览文本
      */
     private fun getMessagePreview(message: com.yhchat.canary.data.model.ChatMessage): String {
-        // 获取消息内容预览
-        val contentPreview = when {
-            !message.content.text.isNullOrEmpty() -> message.content.text
+        return when {
+            !message.content.text.isNullOrEmpty() -> message.content.text!!
             !message.content.imageUrl.isNullOrEmpty() -> "[图片]"
-            !message.content.fileUrl.isNullOrEmpty() -> {
-                if (!message.content.fileName.isNullOrEmpty()) {
-                    "[文件]${message.content.fileName}"
-                } else {
-                    "[文件]"
-                }
-            }
+            !message.content.fileUrl.isNullOrEmpty() -> 
+                message.content.fileName?.let { "[文件]$it" } ?: "[文件]"
             !message.content.audioUrl.isNullOrEmpty() -> "语音消息"
             !message.content.videoUrl.isNullOrEmpty() -> "视频消息"
             !message.content.stickerUrl.isNullOrEmpty() -> "表情消息"
             !message.content.postTitle.isNullOrEmpty() -> "文章消息${message.content.postTitle}"
             else -> "[消息]"
-        }
-        
-        // 确定目标会话类型
-        val isPrivateChat = message.chatId == message.recvId
-        val targetChatType = if (isPrivateChat) message.sender.chatType else (message.chatType ?: 1)
-        
-        // 确保返回非空字符串
-        val nonNullContentPreview = contentPreview ?: "[消息]"
-        
-        Log.d("ConversationViewModel", "Message preview - chatType: $targetChatType, sender: ${message.sender.name}, content: $nonNullContentPreview")
-        
-        // 根据会话类型决定显示格式
-        return when (targetChatType) {
-            2, 3 -> {
-                // 群聊(2)或机器人会话(3)：直接显示内容
-                nonNullContentPreview
-            }
-            else -> {
-                // 私聊(1)或其他：直接显示内容
-                nonNullContentPreview
-            }
         }
     }
     

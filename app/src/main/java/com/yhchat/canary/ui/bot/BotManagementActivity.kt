@@ -250,7 +250,7 @@ private fun BotManagementScreen(
                     
                     // 进入聊天
                     ManagementOption(
-                        icon = Icons.Default.Chat,
+                        icon = Icons.AutoMirrored.Filled.Chat,
                         title = "进入聊天",
                         subtitle = "与机器人对话",
                         onClick = {

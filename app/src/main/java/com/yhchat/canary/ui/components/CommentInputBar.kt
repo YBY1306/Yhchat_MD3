@@ -77,7 +77,7 @@ fun CommentInputBar(
                     enabled = commentText.isNotBlank() && isEnabled
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送评论",
                         tint = if (commentText.isNotBlank() && isEnabled) 
                             MaterialTheme.colorScheme.primary 
@@ -166,7 +166,7 @@ fun BottomCommentInputBar(
                         MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送评论",
                         modifier = Modifier.size(24.dp)
                     )

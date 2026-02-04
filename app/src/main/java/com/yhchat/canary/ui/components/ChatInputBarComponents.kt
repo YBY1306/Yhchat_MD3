@@ -163,7 +163,7 @@ fun AttachmentMenu(
                     )
                     
                     MessageTypeMenuItem(
-                        icon = Icons.Default.Article,
+                        icon = Icons.AutoMirrored.Filled.Article,
                         label = "Markdown",
                         isSelected = selectedMessageType == 3,
                         onClick = { onMarkdownClick.invoke() }
@@ -187,7 +187,7 @@ fun AttachmentMenu(
                     )
 
                     MessageTypeMenuItem(
-                        icon = Icons.Default.Article,
+                        icon = Icons.AutoMirrored.Filled.Article,
                         label = "默认Markdown",
                         isSelected = defaultMessageType == 3,
                         onClick = { onDefaultMessageTypeChange.invoke(3) }

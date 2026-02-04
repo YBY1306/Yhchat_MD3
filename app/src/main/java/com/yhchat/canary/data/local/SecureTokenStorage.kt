@@ -3,7 +3,7 @@ package com.yhchat.canary.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
 /**
  * 安全的Token存储管理器
@@ -22,14 +22,16 @@ class SecureTokenStorage(context: Context) {
     
     init {
         try {
-            // 创建或获取主密钥
-            val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+            // 创建或获取主密钥（使用新的 MasterKey API）
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
             
             // 创建加密的SharedPreferences
             encryptedPrefs = EncryptedSharedPreferences.create(
-                PREFS_NAME,
-                masterKeyAlias,
                 context,
+                PREFS_NAME,
+                masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
@@ -40,91 +42,32 @@ class SecureTokenStorage(context: Context) {
         }
     }
     
-    /**
-     * 保存指定用户的Token
-     */
-    fun saveAccountToken(userId: String, token: String) {
-        encryptedPrefs.edit()
-            .putString("token_$userId", token)
-            .apply()
-    }
+    fun saveAccountToken(userId: String, token: String) = 
+        encryptedPrefs.edit().putString("token_$userId", token).apply()
 
-    /**
-     * 获取指定用户的Token
-     */
-    fun getAccountToken(userId: String): String? {
-        return encryptedPrefs.getString("token_$userId", null)
-    }
+    fun getAccountToken(userId: String): String? = encryptedPrefs.getString("token_$userId", null)
 
-    /**
-     * 删除指定用户的Token
-     */
-    fun removeAccountToken(userId: String) {
-        encryptedPrefs.edit()
-            .remove("token_$userId")
-            .apply()
-    }
+    fun removeAccountToken(userId: String) = encryptedPrefs.edit().remove("token_$userId").apply()
 
-    /**
-     * 保存用户Token
-     */
     fun saveUserToken(token: String, userId: String) {
         encryptedPrefs.edit()
             .putString(KEY_USER_TOKEN, token)
             .putString(KEY_USER_ID, userId)
             .putLong(KEY_LAST_LOGIN_TIME, System.currentTimeMillis())
             .apply()
-        
-        // 同时保存到账户列表Token中
-        if (userId.isNotEmpty()) {
-            saveAccountToken(userId, token)
-        }
+        if (userId.isNotEmpty()) saveAccountToken(userId, token)
     }
     
-    /**
-     * 获取用户Token
-     */
-    fun getUserToken(): String? {
-        return encryptedPrefs.getString(KEY_USER_TOKEN, null)
-    }
+    fun getUserToken(): String? = encryptedPrefs.getString(KEY_USER_TOKEN, null)
     
-    /**
-     * 获取用户ID
-     */
-    fun getUserId(): String? {
-        return encryptedPrefs.getString(KEY_USER_ID, null)
-    }
+    fun getUserId(): String? = encryptedPrefs.getString(KEY_USER_ID, null)
     
-    /**
-     * 获取最后登录时间
-     */
-    fun getLastLoginTime(): Long {
-        return encryptedPrefs.getLong(KEY_LAST_LOGIN_TIME, 0L)
-    }
+    fun getLastLoginTime(): Long = encryptedPrefs.getLong(KEY_LAST_LOGIN_TIME, 0L)
     
-    /**
-     * 检查Token是否存在
-     */
-    fun hasValidToken(): Boolean {
-        val token = getUserToken()
-        return !token.isNullOrEmpty()
-    }
+    fun hasValidToken() = !getUserToken().isNullOrEmpty()
     
-    /**
-     * 清除所有Token数据
-     */
-    fun clearTokens() {
-        encryptedPrefs.edit()
-            .remove(KEY_USER_TOKEN)
-            .remove(KEY_USER_ID)
-            .remove(KEY_LAST_LOGIN_TIME)
-            .apply()
-    }
+    fun clearTokens() = encryptedPrefs.edit()
+        .remove(KEY_USER_TOKEN).remove(KEY_USER_ID).remove(KEY_LAST_LOGIN_TIME).apply()
     
-    /**
-     * 清除所有数据
-     */
-    fun clearAll() {
-        encryptedPrefs.edit().clear().apply()
-    }
+    fun clearAll() = encryptedPrefs.edit().clear().apply()
 }

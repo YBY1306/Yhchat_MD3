@@ -194,7 +194,6 @@ object FileUploadUtil {
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 上传异常", e)
-            e.printStackTrace()
             Result.failure(e)
         }
     }

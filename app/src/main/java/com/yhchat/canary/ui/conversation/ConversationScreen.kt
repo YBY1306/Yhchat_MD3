@@ -14,8 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -114,8 +114,7 @@ fun ConversationScreen(
     var refreshing by remember(key1 = "refreshing") { mutableStateOf(false) }
 
     // 下拉刷新状态
-    val swipeRefreshState =
-        rememberSwipeRefreshState(isRefreshing = refreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // 协程作用域
     val coroutineScope = rememberCoroutineScope()
@@ -259,8 +258,8 @@ fun ConversationScreen(
         // 移除单独的置顶会话组件，将在列表中集成显示
 
         // 会话列表（支持下拉刷新）
-        SwipeRefresh(
-            state = swipeRefreshState,
+        PullToRefreshBox(
+            isRefreshing = refreshing,
             onRefresh = {
                 // 只有用户主动下拉刷新时才重新加载数据
                 refreshing = true
@@ -270,7 +269,8 @@ fun ConversationScreen(
                     kotlinx.coroutines.delay(500)
                     refreshing = false
                 }
-            }
+            },
+            state = pullToRefreshState
         ) {
             if (uiState.isLoading) {
                 Box(
@@ -578,7 +578,8 @@ private fun AddMenuBottomSheetContent(
 }
 
 /**
- * 会话项
+ * 会话项 - 内存优化版
+ * 使用七牛云服务端缩略图 + 本地尺寸限制双重优化
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -587,15 +588,13 @@ fun ConversationItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    // 使用ImageUtils的七牛云缩略图工具，确保服务端返回小图
     val avatarUrl72 = remember(conversation.avatarUrl) {
-        val url = conversation.avatarUrl
-        if (url.isNullOrBlank()) {
-            url
-        } else if (url.contains("?")) {
-            url
-        } else {
-            url + "?imageView2/2/w/72/h/72"
-        }
+        com.yhchat.canary.ui.components.ImageUtils.appendQiniuThumbnail(
+            conversation.avatarUrl, 
+            72, 
+            72
+        )
     }
 
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -627,7 +626,7 @@ fun ConversationItem(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-            // 头像
+            // 头像 - 内存优化：使用小尺寸加载
             Box {
                 AsyncImage(
                     model = if (conversation.avatarUrl != null) {
@@ -635,6 +634,8 @@ fun ConversationItem(
                             .data(avatarUrl72)
                             .addHeader("Referer", "https://myapp.jwznb.com")
                             .crossfade(true)
+                            .size(88) // 限制本地加载尺寸为2倍显示尺寸（44dp * 2）
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build()
                     } else {
                         null
@@ -724,7 +725,7 @@ fun ConversationItem(
                         if (conversation.doNotDisturb == 1) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                imageVector = Icons.Default.VolumeOff,
+                                imageVector = Icons.AutoMirrored.Filled.VolumeOff,
                                 contentDescription = "免打扰",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -805,6 +806,7 @@ fun ChatTypeIcon(chatType: Int) {
 
 /**
  * 置顶会话卡片 - 小尺寸横向滑动样式
+ * 内存优化：使用七牛云缩略图 + 本地尺寸限制
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -814,6 +816,15 @@ fun StickyConversationCard(
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // 使用七牛云服务端缩略图
+    val optimizedAvatarUrl = remember(stickyItem.avatarUrl) {
+        com.yhchat.canary.ui.components.ImageUtils.appendQiniuThumbnail(
+            stickyItem.avatarUrl, 
+            80, 
+            80
+        )
+    }
+    
     Column(
         modifier = modifier
             .width(56.dp)
@@ -825,9 +836,15 @@ fun StickyConversationCard(
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 头像 - 优化GIF性能
+        // 头像 - 内存优化：限制加载尺寸
         AsyncImage(
-            model = stickyItem.avatarUrl,
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(optimizedAvatarUrl)
+                .addHeader("Referer", "https://myapp.jwznb.com")
+                .size(80) // 限制本地加载尺寸为2倍显示尺寸
+                .crossfade(true)
+                .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                .build(),
             contentDescription = stickyItem.chatName,
             modifier = Modifier
                 .size(40.dp)
@@ -840,7 +857,7 @@ fun StickyConversationCard(
 }
 
 /**
- * 集成的置顶会话项
+ * 集成的置顶会话项 - 内存优化版
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -850,6 +867,15 @@ fun IntegratedStickyItem(
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // 使用七牛云服务端缩略图
+    val optimizedAvatarUrl = remember(stickyItem.avatarUrl) {
+        com.yhchat.canary.ui.components.ImageUtils.appendQiniuThumbnail(
+            stickyItem.avatarUrl, 
+            84, 
+            84
+        )
+    }
+    
     Column(
         modifier = modifier
             .width(64.dp)
@@ -860,13 +886,15 @@ fun IntegratedStickyItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // 头像
+        // 头像 - 内存优化：限制加载尺寸
         Box {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(stickyItem.avatarUrl)
+                    .data(optimizedAvatarUrl)
                     .addHeader("Referer", "https://myapp.jwznb.com")
                     .crossfade(true)
+                    .size(84) // 限制本地加载尺寸为2倍显示尺寸
+                    .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                     .build(),
                 contentDescription = "头像",
                 modifier = Modifier

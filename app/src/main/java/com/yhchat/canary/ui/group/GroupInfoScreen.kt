@@ -674,7 +674,7 @@ private fun GroupInfoContent(
                     
                     // 退出群聊 (危险操作)
                     FunctionMenuItem(
-                        icon = Icons.Default.ExitToApp,
+                        icon = Icons.AutoMirrored.Filled.ExitToApp,
                         text = "退出群聊",
                         onClick = onExitClick,
                         isDangerous = true

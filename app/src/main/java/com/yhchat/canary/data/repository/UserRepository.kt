@@ -145,10 +145,7 @@ class UserRepository @Inject constructor(
      */
     suspend fun getCaptcha(): Result<CaptchaData> {
         return try {
-            println("开始获取验证码...")
             val response = apiService.getCaptcha()
-            println("验证码API响应状态: ${response.code()}")
-            println("验证码API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val captchaResponse = response.body()
                 if (captchaResponse?.code == 1 && captchaResponse.data != null) {
@@ -157,10 +154,9 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(captchaResponse?.message ?: "获取验证码失败"))
                 }
             } else {
-                Result.failure(Exception("获取验证码失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("获取验证码失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("获取验证码异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -217,14 +213,8 @@ class UserRepository @Inject constructor(
      */
     suspend fun getSmsCaptcha(mobile: String, captchaCode: String, captchaId: String): Result<Boolean> {
         return try {
-            val request = SmsCaptchaRequest(
-                mobile = mobile,
-                code = captchaCode,
-                id = captchaId
-            )
+            val request = SmsCaptchaRequest(mobile = mobile, code = captchaCode, id = captchaId)
             val response = apiService.getSmsCaptcha(request)
-            println("短信验证码API响应状态: ${response.code()}")
-            println("短信验证码API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val smsResponse = response.body()
                 if (smsResponse?.get("code") == 1) {
@@ -233,10 +223,9 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(smsResponse?.get("msg")?.toString() ?: "获取短信验证码失败"))
                 }
             } else {
-                Result.failure(Exception("获取短信验证码失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("获取短信验证码失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("获取短信验证码异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -246,19 +235,9 @@ class UserRepository @Inject constructor(
      */
     suspend fun homeSearch(word: String): Result<com.yhchat.canary.data.model.SearchData> {
         return try {
-            val token = getToken()
-            println("搜索前获取到的token: $token")
-            if (token == null) {
-                println("token为空，返回未登录错误")
-                return Result.failure(Exception("未登录"))
-            }
-            println("使用token进行搜索: $token")
-            val request = com.yhchat.canary.data.model.SearchRequest(
-                word = word
-            )
+            val token = getToken() ?: return Result.failure(Exception("未登录"))
+            val request = com.yhchat.canary.data.model.SearchRequest(word = word)
             val response = apiService.homeSearch(token, request)
-            println("搜索API响应状态: ${response.code()}")
-            println("搜索API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val searchResponse = response.body()
                 if (searchResponse?.code == 1 && searchResponse.data != null) {
@@ -267,10 +246,9 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(searchResponse?.msg ?: "搜索失败"))
                 }
             } else {
-                Result.failure(Exception("搜索失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("搜索失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("搜索异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -282,8 +260,6 @@ class UserRepository @Inject constructor(
         return try {
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             val response = apiService.getStickyList(token)
-            println("置顶会话API响应状态: ${response.code()}")
-            println("置顶会话API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val stickyResponse = response.body()
                 if (stickyResponse?.code == 1 && stickyResponse.data != null) {
@@ -292,10 +268,9 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(stickyResponse?.message ?: "获取置顶会话失败"))
                 }
             } else {
-                Result.failure(Exception("获取置顶会话失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("获取置顶会话失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("获取置顶会话异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -308,19 +283,12 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             val request = StickyOperationRequest(chatId = chatId, chatType = chatType)
             val response = apiService.addSticky(token, request)
-            println("添加置顶会话API响应状态: ${response.code()}")
-            if (response.isSuccessful) {
-                val apiResponse = response.body()
-                if (apiResponse?.get("code") == 1) {
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception(apiResponse?.get("msg")?.toString() ?: "添加置顶会话失败"))
-                }
+            if (response.isSuccessful && response.body()?.get("code") == 1) {
+                Result.success(true)
             } else {
-                Result.failure(Exception("添加置顶会话失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception(response.body()?.get("msg")?.toString() ?: "添加置顶会话失败"))
             }
         } catch (e: Exception) {
-            println("添加置顶会话异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -333,19 +301,12 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             val request = StickyOperationRequest(chatId = chatId, chatType = chatType)
             val response = apiService.deleteSticky(token, request)
-            println("删除置顶会话API响应状态: ${response.code()}")
-            if (response.isSuccessful) {
-                val apiResponse = response.body()
-                if (apiResponse?.get("code") == 1) {
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception(apiResponse?.get("msg")?.toString() ?: "删除置顶会话失败"))
-                }
+            if (response.isSuccessful && response.body()?.get("code") == 1) {
+                Result.success(true)
             } else {
-                Result.failure(Exception("删除置顶会话失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception(response.body()?.get("msg")?.toString() ?: "删除置顶会话失败"))
             }
         } catch (e: Exception) {
-            println("删除置顶会话异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -358,19 +319,12 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             val request = StickyTopRequest(id = id)
             val response = apiService.topSticky(token, request)
-            println("置顶会话API响应状态: ${response.code()}")
-            if (response.isSuccessful) {
-                val apiResponse = response.body()
-                if (apiResponse?.get("code") == 1) {
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception(apiResponse?.get("msg")?.toString() ?: "置顶会话失败"))
-                }
+            if (response.isSuccessful && response.body()?.get("code") == 1) {
+                Result.success(true)
             } else {
-                Result.failure(Exception("置顶会话失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception(response.body()?.get("msg")?.toString() ?: "置顶会话失败"))
             }
         } catch (e: Exception) {
-            println("置顶会话异常: ${e.message}")
             Result.failure(e)
         }
     }
@@ -558,15 +512,8 @@ class UserRepository @Inject constructor(
      */
     suspend fun verificationLogin(mobile: String, captcha: String, deviceId: String): Result<LoginData> {
         return try {
-            val request = LoginRequest(
-                mobile = mobile,
-                captcha = captcha,
-                deviceId = deviceId,
-                platform = "android"
-            )
+            val request = LoginRequest(mobile = mobile, captcha = captcha, deviceId = deviceId, platform = "android")
             val response = apiService.verificationLogin(request)
-            println("API响应状态: ${response.code()}")
-            println("API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val loginResponse = response.body()
                 if (loginResponse?.code == 1 && loginResponse.data != null) {
@@ -575,7 +522,7 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(loginResponse?.message ?: "登录失败"))
                 }
             } else {
-                Result.failure(Exception("登录失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("登录失败: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -587,15 +534,8 @@ class UserRepository @Inject constructor(
      */
     suspend fun emailLogin(email: String, password: String, deviceId: String): Result<LoginData> {
         return try {
-            val request = LoginRequest(
-                email = email,
-                password = password,
-                deviceId = deviceId,
-                platform = "android"
-            )
+            val request = LoginRequest(email = email, password = password, deviceId = deviceId, platform = "android")
             val response = apiService.emailLogin(request)
-            println("邮箱登录API响应状态: ${response.code()}")
-            println("邮箱登录API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val loginResponse = response.body()
                 if (loginResponse?.code == 1 && loginResponse.data != null) {
@@ -604,7 +544,7 @@ class UserRepository @Inject constructor(
                     Result.failure(Exception(loginResponse?.message ?: "登录失败"))
                 }
             } else {
-                Result.failure(Exception("登录失败: ${response.code()} - ${response.message()}"))
+                Result.failure(Exception("登录失败: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -723,8 +663,6 @@ class UserRepository @Inject constructor(
                 Result.failure(Exception("网络请求失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("获取消息列表异常: ${e.message}")
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -736,31 +674,24 @@ class UserRepository @Inject constructor(
         return try {
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             
-            // 生成消息ID
-            val msgId = java.util.UUID.randomUUID().toString()
-            
-            // 构建protobuf请求
-            val contentBuilder = com.yhchat.canary.proto.send_message_send.Content.newBuilder()
-            contentBuilder.text = text
+            val content = com.yhchat.canary.proto.send_message_send.Content.newBuilder()
+                .setText(text)
+                .build()
 
-            val requestBuilder = com.yhchat.canary.proto.send_message_send.newBuilder()
-            requestBuilder.msgId = msgId
-            requestBuilder.chatId = chatId
-            requestBuilder.chatType = chatType.toLong()
-            requestBuilder.content = contentBuilder.build()
-            requestBuilder.contentType = 1 // 文本消息
+            val request = com.yhchat.canary.proto.send_message_send.newBuilder()
+                .setMsgId(UUID.randomUUID().toString())
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(content)
+                .setContentType(1)
+                .build()
 
-            val requestBytes = requestBuilder.build().toByteArray()
-            val requestBody = requestBytes.toRequestBody(
-                "application/x-protobuf".toMediaType()
-            ) as okhttp3.RequestBody
-
+            val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
             val response = apiService.sendMessage(token, requestBody)
 
             if (response.isSuccessful) {
                 val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
                 val sendResponse = com.yhchat.canary.proto.send_message.parseFrom(responseBytes)
-                
                 if (sendResponse.status.code == 1) {
                     Result.success(true)
                 } else {
@@ -770,8 +701,6 @@ class UserRepository @Inject constructor(
                 Result.failure(Exception("网络请求失败: ${response.code()}"))
             }
         } catch (e: Exception) {
-            println("发送消息异常: ${e.message}")
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -879,12 +808,6 @@ class UserRepository @Inject constructor(
         }
     }
     
-    /**
-     * 删除好友/群聊/机器人
-     */
-    /**
-     * 获取用户详细信息
-     */
     /**
      * 获取用户详细信息
      */

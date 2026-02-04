@@ -2039,16 +2039,18 @@ private fun MessageContentView(
 
             }
             2 -> {
-                // 图片消息
+                // 图片消息 - 内存优化：限制缩略图尺寸
                 content.imageUrl?.let { imageUrl ->
                         AsyncImage(
                         model = ImageUtils.createImageRequest(
                             context = LocalContext.current,
-                            url = imageUrl
+                            url = imageUrl,
+                            maxSize = ImageUtils.ImageSize.THUMBNAIL // 限制为280px缩略图
                         ),
                             contentDescription = "图片",
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(max = 280.dp) // 限制最大高度
                             .clip(RoundedCornerShape(8.dp))
                             .combinedClickable(
                                 onClick = { onImageClick(imageUrl) },
@@ -2189,7 +2191,7 @@ private fun MessageContentView(
                 )
             }
             7 -> {
-                // 表情消息 (包括表情包和个人收藏表情)
+                // 表情消息 (包括表情包和个人收藏表情) - 内存优化：限制表情尺寸
                 val context = LocalContext.current
                 val stickerPackId = content.stickerPackId
                 val expressionId = content.expressionId
@@ -2202,7 +2204,8 @@ private fun MessageContentView(
                     AsyncImage(
                         model = ImageUtils.createStickerImageRequest(
                             context = context,
-                            url = imageUrl
+                            url = imageUrl,
+                            size = 120 // 限制加载尺寸为120px
                         ),
                         contentDescription = when {
                             isPersonalExpression -> "个人收藏表情"
@@ -2244,7 +2247,8 @@ private fun MessageContentView(
                         AsyncImage(
                             model = ImageUtils.createStickerImageRequest(
                                 context = context,
-                                url = fullUrl
+                                url = fullUrl,
+                                size = 120 // 限制加载尺寸为120px
                             ),
                             contentDescription = "表情",
                             modifier = Modifier

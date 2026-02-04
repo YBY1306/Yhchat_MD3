@@ -198,7 +198,7 @@ private fun UserStatsContent(
         // 今日注册用户统计卡片
         StatsCard(
             title = "今日注册用户",
-            icon = Icons.Default.TrendingUp,
+            icon = Icons.AutoMirrored.Filled.TrendingUp,
             iconColor = MaterialTheme.colorScheme.secondary,
             current = userStats.currentNumberDay,
             target = userStats.targetNumberDay,

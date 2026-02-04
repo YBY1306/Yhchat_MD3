@@ -579,7 +579,7 @@ fun ChatInputBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
                         tint = if (text.isNotBlank()) 
                             MaterialTheme.colorScheme.onPrimary 

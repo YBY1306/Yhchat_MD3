@@ -44,49 +44,33 @@ class UserProfileViewModel @Inject constructor(
 
     /**
      * 加载用户资料
-     * 调用 GET /v1/user/homepage?userId={userId}
      */
     fun loadUserProfile(userId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            println("UserProfileViewModel: 开始加载用户资料, userId = $userId")
-
             try {
                 val response = webApiService.getUserHomepage(userId)
-                println("UserProfileViewModel: API响应 - isSuccessful: ${response.isSuccessful}, code: ${response.code()}")
-                
                 if (response.isSuccessful) {
                     val homepageResponse = response.body()
-                    println("UserProfileViewModel: 响应体 - code: ${homepageResponse?.code}, msg: ${homepageResponse?.msg}")
-                    
                     if (homepageResponse?.code == 1) {
                         _userProfile.value = homepageResponse.data.user
                         _uiState.value = _uiState.value.copy(isLoading = false)
-                        println("UserProfileViewModel: 用户资料加载成功 - ${homepageResponse.data.user.nickname}")
                     } else {
-                        val errorMsg = homepageResponse?.msg ?: "获取用户资料失败"
-                        println("UserProfileViewModel: API返回错误 - $errorMsg")
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = errorMsg
+                            error = homepageResponse?.msg ?: "获取用户资料失败"
                         )
                     }
                 } else {
-                    val errorMsg = "网络请求失败: ${response.code()}"
-                    println("UserProfileViewModel: 网络请求失败 - $errorMsg")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = errorMsg
+                        error = "网络请求失败: ${response.code()}"
                     )
                 }
             } catch (e: Exception) {
-                val errorMsg = e.message ?: "未知错误"
-                println("UserProfileViewModel: 异常 - $errorMsg")
-                e.printStackTrace()
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = errorMsg
+                    error = e.message ?: "未知错误"
                 )
             }
         }

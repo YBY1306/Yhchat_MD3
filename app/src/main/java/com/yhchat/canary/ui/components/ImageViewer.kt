@@ -45,9 +45,9 @@ import java.net.URL
 import kotlin.math.abs
 
 /**
- * MD3风格的图片预览器
+ * MD3风格的图片预览器 - 内存优化版
  * 支持双指缩放、拖拽、旋转等手势操作
- * 完全使用Compose实现，无需第三方库
+ * 使用渐进式加载：先加载缩略图，再加载原图
  */
 @Composable
 fun ImageViewer(
@@ -63,6 +63,16 @@ fun ImageViewer(
     var offsetY by remember { mutableFloatStateOf(0f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     
+    // 渐进式加载状态：先显示缩略图，放大时再加载原图
+    var loadFullImage by remember { mutableStateOf(false) }
+    
+    // 当缩放超过1.5倍时，加载原图以获得更好的清晰度
+    LaunchedEffect(scale) {
+        if (scale > 1.5f && !loadFullImage) {
+            loadFullImage = true
+        }
+    }
+    
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -76,19 +86,13 @@ fun ImageViewer(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.scrim) // 使用MD3黑色蒙版
         ) {
-            // 图片显示区域
+            // 图片显示区域 - 使用优化的图片请求
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .apply {
-                        // 只对 jwznb.com 域名的图片添加 Referer
-                        if (imageUrl.contains(".jwznb.com")) {
-                            setHeader("Referer", "https://myapp.jwznb.com")
-                            setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-                        }
-                    }
-                    .crossfade(true)
-                    .build(),
+                model = ImageUtils.createPreviewImageRequest(
+                    context = context,
+                    url = imageUrl,
+                    forThumbnail = !loadFullImage // 根据状态决定加载缩略图还是原图
+                ),
                 contentDescription = "预览图片",
                 modifier = Modifier
                     .fillMaxSize()
@@ -103,7 +107,7 @@ fun ImageViewer(
                         detectTransformGestures(
                             onGesture = { _, pan, zoom, rotate ->
                                 // 支持无限缩放，从0.1到20倍
-                                scale = (scale * zoom).coerceIn(0.1f, 100f)
+                                scale = (scale * zoom).coerceIn(0.1f, 20f)
                                 rotation += rotate
                                 
                                 // 跟手拖动 - 根据缩放比例动态调整拖动范围
@@ -220,7 +224,7 @@ fun ImageViewer(
 }
 
 /**
- * 轻量级图片预览组件
+ * 轻量级图片预览组件 - 内存优化版
  * 不支持手势操作，但加载速度更快
  * 适用于简单的图片预览场景
  */
@@ -246,19 +250,13 @@ fun SimpleImageViewer(
                 .background(MaterialTheme.colorScheme.scrim)
                 .clickable { onDismiss() }
         ) {
-            // 使用 Coil 的 AsyncImagePainter
+            // 使用 Coil 的 AsyncImagePainter - 优化版本，限制预览尺寸
             val painter = rememberAsyncImagePainter(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .apply {
-                        // 只对 jwznb.com 域名的图片添加 Referer
-                        if (imageUrl.contains(".jwznb.com")) {
-                            setHeader("Referer", "https://myapp.jwznb.com")
-                            setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-                        }
-                    }
-                    .crossfade(true)
-                    .build()
+                model = ImageUtils.createPreviewImageRequest(
+                    context = context,
+                    url = imageUrl,
+                    forThumbnail = true // 简单预览使用缩略图即可
+                )
             )
             
             when (painter.state) {
@@ -332,8 +330,9 @@ fun SimpleImageViewer(
 }
 
 /**
- * 高级图片预览器
+ * 高级图片预览器 - 内存优化版
  * 支持更多手势操作和高级功能
+ * 使用渐进式加载：先加载缩略图，放大时再加载原图
  */
 @Composable
 fun AdvancedImageViewer(
@@ -353,6 +352,16 @@ fun AdvancedImageViewer(
     // UI状态
     var showControls by remember { mutableStateOf(true) }
     
+    // 渐进式加载状态
+    var loadFullImage by remember { mutableStateOf(false) }
+    
+    // 当缩放超过1.5倍时，加载原图
+    LaunchedEffect(scale) {
+        if (scale > 1.5f && !loadFullImage) {
+            loadFullImage = true
+        }
+    }
+    
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -366,19 +375,13 @@ fun AdvancedImageViewer(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.scrim)
         ) {
-            // 图片显示
+            // 图片显示 - 使用优化的图片请求
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .apply {
-                        // 只对 jwznb.com 域名的图片添加 Referer
-                        if (imageUrl.contains(".jwznb.com")) {
-                            setHeader("Referer", "https://myapp.jwznb.com")
-                            setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-                        }
-                    }
-                    .crossfade(true)
-                    .build(),
+                model = ImageUtils.createPreviewImageRequest(
+                    context = context,
+                    url = imageUrl,
+                    forThumbnail = !loadFullImage
+                ),
                 contentDescription = "预览图片",
                 modifier = Modifier
                     .fillMaxSize()
@@ -531,38 +534,38 @@ fun AdvancedImageViewer(
  * 下载图片到相册
  */
 private fun downloadImageToGallery(context: Context, imageUrl: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // 创建目标目录
-                val picturesDir = File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // 创建目标目录
+            val picturesDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
                 "云湖"
-                )
-                if (!picturesDir.exists()) {
-                    picturesDir.mkdirs()
-                }
-                
-                // 获取文件名
-                var fileName = imageUrl.substringAfterLast("/", "image_${System.currentTimeMillis()}.jpg")
+            )
+            if (!picturesDir.exists()) {
+                picturesDir.mkdirs()
+            }
+            
+            // 获取文件名
+            var fileName = imageUrl.substringAfterLast("/", "image_${System.currentTimeMillis()}.jpg")
                 .substringBefore("?")
-                
-                // 确保文件名有合适的扩展名
-                if (!fileName.contains(".")) {
-                    fileName += ".jpg"
-                }
-                
-                // 如果文件已存在，添加序号
-                var targetFile = File(picturesDir, fileName)
-                var counter = 1
-                val baseName = fileName.substringBeforeLast(".")
-                val extension = fileName.substringAfterLast(".", "jpg")
-                while (targetFile.exists()) {
-                    targetFile = File(picturesDir, "${baseName}_$counter.$extension")
-                    counter++
-                }
-                
+            
+            // 确保文件名有合适的扩展名
+            if (!fileName.contains(".")) {
+                fileName += ".jpg"
+            }
+            
+            // 如果文件已存在，添加序号
+            var targetFile = File(picturesDir, fileName)
+            var counter = 1
+            val baseName = fileName.substringBeforeLast(".")
+            val extension = fileName.substringAfterLast(".", "jpg")
+            while (targetFile.exists()) {
+                targetFile = File(picturesDir, "${baseName}_$counter.$extension")
+                counter++
+            }
+            
             // 下载图片（只对 jwznb.com 域名添加Referer头）
-                val url = URL(imageUrl)
+            val url = URL(imageUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
             if (imageUrl.contains(".jwznb.com")) {
                 connection.setRequestProperty("Referer", "https://myapp.jwznb.com")
@@ -571,23 +574,22 @@ private fun downloadImageToGallery(context: Context, imageUrl: String) {
             connection.connect()
             
             connection.inputStream.use { input ->
-                    FileOutputStream(targetFile).use { output ->
-                        input.copyTo(output)
-                    }
+                FileOutputStream(targetFile).use { output ->
+                    input.copyTo(output)
                 }
-                
-                // 通知系统媒体扫描
-                val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+            }
+            
+            // 通知系统媒体扫描
+            val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
             mediaScanIntent.data = Uri.fromFile(targetFile)
-                context.sendBroadcast(mediaScanIntent)
-                
-                // 在主线程显示成功提示
-                withContext(Dispatchers.Main) {
+            context.sendBroadcast(mediaScanIntent)
+            
+            // 在主线程显示成功提示
+            withContext(Dispatchers.Main) {
                 Toast.makeText(context, "图片已保存到相册", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -640,7 +642,6 @@ private fun shareImage(context: Context, imageUrl: String) {
                 context.startActivity(chooserIntent)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "分享失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }

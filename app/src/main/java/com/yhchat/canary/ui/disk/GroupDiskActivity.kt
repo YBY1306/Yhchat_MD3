@@ -511,7 +511,7 @@ private fun DiskFileCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (file.isFolder()) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                imageVector = if (file.isFolder()) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp),
                 tint = if (file.isFolder()) 

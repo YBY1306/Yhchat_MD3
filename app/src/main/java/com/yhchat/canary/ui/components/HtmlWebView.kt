@@ -165,8 +165,8 @@ fun HtmlWebView(
                                 val inputStream = connection.inputStream
                                 
                                 return WebResourceResponse(contentType, encoding, inputStream)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
+                            } catch (_: Exception) {
+                                // 连接失败时回退到默认处理
                             }
                         }
                         

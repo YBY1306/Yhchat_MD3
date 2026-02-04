@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -11,9 +12,9 @@ object IconSelector {
     
     // 聊天相关图标
     val chatIcons = listOf(
-        "Chat" to Icons.Filled.Chat,
+        "Chat" to Icons.AutoMirrored.Filled.Chat,
         "Forum" to Icons.Filled.Forum,
-        "Message" to Icons.Filled.Message,
+        "Message" to Icons.AutoMirrored.Filled.Message,
         "ChatBubble" to Icons.Filled.ChatBubble,
         "ChatBubbleOutline" to Icons.Filled.ChatBubbleOutline,
         "Sms" to Icons.Filled.Sms,
@@ -32,7 +33,7 @@ object IconSelector {
         "LocationOn" to Icons.Filled.LocationOn,
         "Home" to Icons.Filled.Home,
         "Explore" to Icons.Filled.Explore,
-        "TrendingUp" to Icons.Filled.TrendingUp,
+        "TrendingUp" to Icons.AutoMirrored.Filled.TrendingUp,
         "Star" to Icons.Filled.Star,
         "Favorite" to Icons.Filled.Favorite,
         "ThumbUp" to Icons.Filled.ThumbUp
@@ -58,7 +59,7 @@ object IconSelector {
         "Share" to Icons.Filled.Share,
         "Download" to Icons.Filled.Download,
         "Upload" to Icons.Filled.Upload,
-        "Send" to Icons.Filled.Send,
+        "Send" to Icons.AutoMirrored.Filled.Send,
         "AttachFile" to Icons.Filled.AttachFile,
         "Image" to Icons.Filled.Image,
         "Photo" to Icons.Filled.Photo,
@@ -73,8 +74,8 @@ object IconSelector {
         "Menu" to Icons.Filled.Menu,
         "MoreVert" to Icons.Filled.MoreVert,
         "MoreHoriz" to Icons.Filled.MoreHoriz,
-        "ArrowBack" to Icons.Filled.ArrowBack,
-        "ArrowForward" to Icons.Filled.ArrowForward,
+        "ArrowBack" to Icons.AutoMirrored.Filled.ArrowBack,
+        "ArrowForward" to Icons.AutoMirrored.Filled.ArrowForward,
         "Close" to Icons.Filled.Close,
         "Check" to Icons.Filled.Check,
         "Cancel" to Icons.Filled.Cancel
@@ -86,7 +87,7 @@ object IconSelector {
         "Error" to Icons.Filled.Error,
         "Warning" to Icons.Filled.Warning,
         "Info" to Icons.Filled.Info,
-        "Help" to Icons.Filled.Help,
+        "Help" to Icons.AutoMirrored.Filled.Help,
         "QuestionMark" to Icons.Filled.QuestionMark,
         "Done" to Icons.Filled.Done,
         "DoneAll" to Icons.Filled.DoneAll,

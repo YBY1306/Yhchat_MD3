@@ -13,14 +13,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -1191,10 +1191,11 @@ fun PostDetailScreen(
                 }
             } else {
                 postDetailState.post?.let { post ->
-                    val swipeRefreshState = rememberSwipeRefreshState(postDetailState.isRefreshing)
-                    SwipeRefresh(
-                        state = swipeRefreshState,
-                        onRefresh = { viewModel.refreshPostDetailWithToken(postId) }
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        isRefreshing = postDetailState.isRefreshing,
+                        onRefresh = { viewModel.refreshPostDetailWithToken(postId) },
+                        state = pullToRefreshState
                     ) {
                         LazyColumn(
                             modifier = Modifier.weight(1f),

@@ -106,10 +106,11 @@ fun MyCollectPostsScreen(
             }
         )
 
-        val swipeRefreshState = rememberSwipeRefreshState(collectState.isRefreshing)
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.refreshCollectPostList(token) }
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = collectState.isRefreshing,
+            onRefresh = { viewModel.refreshCollectPostList(token) },
+            state = pullToRefreshState
         ) {
             when {
                 collectState.error != null -> {

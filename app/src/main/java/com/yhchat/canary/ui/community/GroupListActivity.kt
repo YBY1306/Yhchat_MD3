@@ -12,7 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -93,9 +93,7 @@ fun GroupListScreen(
     var selectedGroup by remember { mutableStateOf<CommunityGroup?>(null) }
     
     // 下拉刷新状态
-    val swipeRefreshState = rememberSwipeRefreshState(
-        isRefreshing = groupListState.isLoading
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // 加载数据
     LaunchedEffect(boardId, token) {
@@ -104,9 +102,10 @@ fun GroupListScreen(
         }
     }
     
-    SwipeRefresh(
-        state = swipeRefreshState,
+    PullToRefreshBox(
+        isRefreshing = groupListState.isLoading,
         onRefresh = { viewModel.loadGroupList(token, boardId) },
+        state = pullToRefreshState,
         modifier = modifier.fillMaxSize()
     ) {
         Column(

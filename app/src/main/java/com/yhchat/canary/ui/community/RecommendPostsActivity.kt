@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,10 +91,11 @@ fun RecommendPostsScreen(
             }
         )
 
-        val swipeRefreshState = rememberSwipeRefreshState(state.isRefreshing)
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) }
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) },
+            state = pullToRefreshState
         ) {
             when {
                 state.error != null -> {

@@ -77,8 +77,8 @@ import androidx.compose.ui.unit.dp
 import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -391,8 +391,8 @@ private fun SavedAudiosScreen(
             return@Scaffold
         }
 
-        SwipeRefresh(
-            state = rememberSwipeRefreshState(isRefreshing),
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
             onRefresh = {
                 scope.launch {
                     isRefreshing = true
@@ -400,6 +400,7 @@ private fun SavedAudiosScreen(
                     isRefreshing = false
                 }
             },
+            state = rememberPullToRefreshState(),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

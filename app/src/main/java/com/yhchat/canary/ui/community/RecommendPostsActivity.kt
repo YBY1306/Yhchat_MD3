@@ -91,10 +91,11 @@ fun RecommendPostsScreen(
             }
         )
 
-        val swipeRefreshState = rememberSwipeRefreshState(state.isRefreshing)
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) }
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) },
+            state = pullToRefreshState
         ) {
             when {
                 state.error != null -> {

@@ -27,8 +27,8 @@ import com.yhchat.canary.data.model.*
 import com.yhchat.canary.data.repository.CoinRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import androidx.compose.ui.platform.LocalContext
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -153,9 +153,10 @@ fun CoinRecordScreen(
             ) { page ->
                 val isRefreshing = uiState.loadingPage == page && uiState.isLoading
 
-                SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
                     onRefresh = { viewModel.loadForPage(page, force = true) },
+                    state = rememberPullToRefreshState(),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     when {

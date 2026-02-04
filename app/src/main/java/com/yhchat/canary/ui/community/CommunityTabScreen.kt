@@ -174,10 +174,11 @@ fun CommunityTabScreen(
             when (page) {
                 0 -> {
                     // 分区列表
-                    val swipeRefreshState = rememberSwipeRefreshState(boardListState.isRefreshing)
-                    SwipeRefresh(
-                        state = swipeRefreshState,
-                        onRefresh = { viewModel.refreshBoardList(token) }
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        isRefreshing = boardListState.isRefreshing,
+                        onRefresh = { viewModel.refreshBoardList(token) },
+                        state = pullToRefreshState
                     ) {
                         BoardListContent(
                             boards = boardListState.boards,
@@ -196,10 +197,11 @@ fun CommunityTabScreen(
                 }
                 1 -> {
                     // 全部分区
-                    val swipeRefreshState = rememberSwipeRefreshState(allBoardListState.isRefreshing)
-                    SwipeRefresh(
-                        state = swipeRefreshState,
-                        onRefresh = { viewModel.refreshAllBoardList(token) }
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        isRefreshing = allBoardListState.isRefreshing,
+                        onRefresh = { viewModel.refreshAllBoardList(token) },
+                        state = pullToRefreshState
                     ) {
                         BoardListContent(
                             boards = allBoardListState.boards,
@@ -218,10 +220,11 @@ fun CommunityTabScreen(
                 }
                 2 -> {
                     // 关注分区
-                    val swipeRefreshState = rememberSwipeRefreshState(followingBoardListState.isRefreshing)
-                    SwipeRefresh(
-                        state = swipeRefreshState,
-                        onRefresh = { viewModel.refreshFollowingBoardList(token) }
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        isRefreshing = followingBoardListState.isRefreshing,
+                        onRefresh = { viewModel.refreshFollowingBoardList(token) },
+                        state = pullToRefreshState
                     ) {
                         BoardListContent(
                             boards = followingBoardListState.boards,

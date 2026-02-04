@@ -170,11 +170,12 @@ fun MyPostsScreen(
         )
         
         // 内容区域
-        val swipeRefreshState = rememberSwipeRefreshState(myPostListState.isRefreshing)
+        val pullToRefreshState = rememberPullToRefreshState()
         
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.refreshMyPostList(token) }
+        PullToRefreshBox(
+            isRefreshing = myPostListState.isRefreshing,
+            onRefresh = { viewModel.refreshMyPostList(token) },
+            state = pullToRefreshState
         ) {
             MyPostListContent(
                 posts = filteredPosts,

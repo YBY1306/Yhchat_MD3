@@ -78,7 +78,8 @@ fun ConversationScreen(
     onMenuClick: () -> Unit,
     tokenRepository: TokenRepository? = null,
     viewModel: ConversationViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val conversations by viewModel.conversations.collectAsState()
@@ -109,6 +110,11 @@ fun ConversationScreen(
 
     // 列表状态
     val listState = rememberLazyListState()
+    
+    // 监听滚动状态，自动隐藏/显示导航栏
+    if (navigationState != null) {
+        com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
+    }
 
     // 刷新状态 - 使用key保持状态
     var refreshing by remember(key1 = "refreshing") { mutableStateOf(false) }
@@ -724,7 +730,7 @@ fun ConversationItem(
                         if (conversation.doNotDisturb == 1) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                imageVector = Icons.Default.VolumeOff,
+                                imageVector = Icons.AutoMirrored.Filled.VolumeOff,
                                 contentDescription = "免打扰",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant

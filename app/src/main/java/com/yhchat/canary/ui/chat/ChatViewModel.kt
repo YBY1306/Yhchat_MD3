@@ -25,6 +25,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Job
 import com.yhchat.canary.data.model.GroupDetail
 import yh_bot.Bot
+import java.io.File
 
 data class ChatUiState(
     val isLoading: Boolean = false,
@@ -66,6 +67,13 @@ class ChatViewModel @Inject constructor(
     private var oldestMsgId: String? = null
 
     private val tag = "ChatViewModel"
+    
+    // 常量
+    private companion object {
+        const val DEFAULT_MSG_COUNT = 20
+        const val DEFAULT_LOAD_MEMBERS_COUNT = 100
+        const val MEMBERS_PER_PAGE = 50
+    }
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -75,7 +83,55 @@ class ChatViewModel @Inject constructor(
     
     // 流式消息缓存：msgId -> 累积的content
     private val streamingMessages = mutableMapOf<String, String>()
+    
+    // 远程草稿输入（多端同步）
+    private val _remoteDraftInput = MutableStateFlow<String?>(null)
+    val remoteDraftInput: StateFlow<String?> = _remoteDraftInput.asStateFlow()
+    
+    // 上次发送草稿的时间戳（用于防止自己的草稿被立即应用回来）
+    private var lastDraftSentTime = 0L
+    
+    init {
+        // 监听多端草稿同步
+        viewModelScope.launch {
+            webSocketManager.getDraftUpdates().collect { draftUpdate ->
+                handleDraftUpdate(draftUpdate)
+            }
+        }
+    }
 
+    /**
+     * 处理草稿更新（多端同步）
+     */
+    private fun handleDraftUpdate(draftUpdate: com.yhchat.canary.data.websocket.DraftUpdate) {
+        Log.d(tag, "📝 处理草稿更新: chatId=${draftUpdate.chatId}, currentChatId=$currentChatId, input='${draftUpdate.input.take(50)}${if (draftUpdate.input.length > 50) "..." else ""}'")
+        
+        // 如果草稿时间戳距离上次发送草稿时间小于1秒，可能是自己发送的，跳过
+        val timeSinceLastSent = System.currentTimeMillis() - lastDraftSentTime
+        if (timeSinceLastSent < 1000) {
+            Log.d(tag, "⏭️ 跳过草稿更新（可能是自己发送的，时间差${timeSinceLastSent}ms）")
+            return
+        }
+        
+        // 只判断chatId就够了
+        if (draftUpdate.chatId == currentChatId) {
+            // 当前正在该聊天界面，直接更新输入框
+            Log.d(tag, "✅ 当前在该聊天界面 (chatId匹配)，通知UI更新输入框")
+            _remoteDraftInput.value = draftUpdate.input
+        } else {
+            // 不在该聊天界面，保存草稿到本地
+            Log.d(tag, "💾 不在该聊天界面 (chatId=$currentChatId != ${draftUpdate.chatId})，保存草稿到本地")
+            draftStore.saveDraft(draftUpdate.chatId, currentChatType, draftUpdate.input)
+        }
+    }
+    
+    /**
+     * 清除远程草稿输入状态
+     */
+    fun clearRemoteDraftInput() {
+        _remoteDraftInput.value = null
+    }
+    
     /**
      * 初始化聊天
      */
@@ -91,6 +147,12 @@ class ChatViewModel @Inject constructor(
         hasMoreMessages = true
         oldestMsgSeq = 0
         oldestMsgId = null
+        
+        // 清除远程草稿输入状态（切换聊天时）
+        _remoteDraftInput.value = null
+        
+        // 清除该会话的通知历史
+        webSocketManager.clearNotificationHistory(chatId, chatType)
         
         // 如果是群聊，加载群成员信息、机器人列表和菜单按钮
         if (chatType == 2) { // 群聊
@@ -145,13 +207,13 @@ class ChatViewModel @Inject constructor(
                 onSuccess = { groupInfo ->
                     Log.d(tag, "Group info loaded, member count: ${groupInfo.memberCount}")
                     
-                    // 只加载前2页成员（共100人）用于显示权限标签，避免加载所有成员
-                    val membersToLoad = minOf(100, groupInfo.memberCount)
-                    val pages = (membersToLoad + 49) / 50  // 向上取整
+                    // 只加载前100人用于显示权限标签，避免加载所有成员
+                    val membersToLoad = minOf(DEFAULT_LOAD_MEMBERS_COUNT, groupInfo.memberCount)
+                    val pages = (membersToLoad + MEMBERS_PER_PAGE - 1) / MEMBERS_PER_PAGE  // 向上取整
                     val allMembers = mutableListOf<GroupMemberInfo>()
                     
                     for (page in 1..pages) {
-                        groupRepository.getGroupMembers(groupId, page = page, size = 50).fold(
+                        groupRepository.getGroupMembers(groupId, page = page, size = MEMBERS_PER_PAGE).fold(
                             onSuccess = { members ->
                                 allMembers.addAll(members)
                                 Log.d(tag, "Loaded page $page: ${members.size} members, total: ${allMembers.size}")
@@ -372,42 +434,67 @@ class ChatViewModel @Inject constructor(
     }
     
     /**
+     * 获取用户Token（辅助方法）
+     */
+    private suspend fun getUserToken(): String? {
+        val token = tokenRepository.getTokenSync()
+        if (token.isNullOrEmpty()) {
+            Log.e(tag, "❌ Token为空")
+            _uiState.value = _uiState.value.copy(error = "未登录")
+        }
+        return token
+    }
+    
+    /**
+     * 获取七牛上传Token的通用方法
+     */
+    private suspend fun getQiniuUploadToken(
+        tokenType: String,
+        getTokenApi: suspend (String) -> retrofit2.Response<com.yhchat.canary.data.api.QiniuTokenResponse>
+    ): String? {
+        val userToken = getUserToken() ?: return null
+        
+        Log.d(tag, "📤 获取七牛${tokenType}上传token...")
+        val tokenResponse = getTokenApi(userToken)
+        
+        if (!tokenResponse.isSuccessful || tokenResponse.body()?.code != 1) {
+            Log.e(tag, "❌ 获取${tokenType}上传token失败: ${tokenResponse.code()}")
+            _uiState.value = _uiState.value.copy(error = "获取${tokenType}上传token失败")
+            return null
+        }
+        
+        val uploadToken = tokenResponse.body()?.data?.token
+        if (uploadToken.isNullOrEmpty()) {
+            Log.e(tag, "❌ ${tokenType}上传token为空")
+            _uiState.value = _uiState.value.copy(error = "获取${tokenType}上传token失败")
+            return null
+        }
+        
+        Log.d(tag, "✅ 获取到${tokenType}上传token: ${uploadToken.take(20)}...")
+        return uploadToken
+    }
+    
+    /**
      * 上传并发送图片
      */
     fun uploadAndSendImage(
         context: android.content.Context,
         imageUri: android.net.Uri,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ) {
         viewModelScope.launch {
             try {
                 Log.d(tag, "🖼️ 开始上传并发送图片: $imageUri")
                 
                 // 1. 获取七牛上传token
-                val token = tokenRepository.getTokenSync()
-                if (token.isNullOrEmpty()) {
-                    Log.e(tag, "❌ Token为空")
-                    _uiState.value = _uiState.value.copy(error = "未登录")
-                    return@launch
-                }
-                
-                Log.d(tag, "📤 获取七牛上传token...")
-                val tokenResponse = apiService.getQiniuImageToken(token)
-                
-                if (!tokenResponse.isSuccessful || tokenResponse.body()?.code != 1) {
-                    Log.e(tag, "❌ 获取上传token失败: ${tokenResponse.code()}")
-                    _uiState.value = _uiState.value.copy(error = "获取上传token失败")
-                    return@launch
-                }
-                
-                val uploadToken = tokenResponse.body()?.data?.token ?: run {
-                    Log.e(tag, "❌ 上传token为空")
-                    _uiState.value = _uiState.value.copy(error = "获取上传token失败")
-                    return@launch
-                }
-                
-                Log.d(tag, "✅ 获取到上传token: ${uploadToken.take(20)}...")
+                val uploadToken = getQiniuUploadToken("图片") { 
+                    apiService.getQiniuImageToken(it) 
+                } ?: return@launch
                 
                 // 2. 上传图片到七牛云
                 Log.d(tag, "📤 开始上传图片到七牛云...")
@@ -438,7 +525,11 @@ class ChatViewModel @Inject constructor(
                             height = height,
                             fileSize = uploadResponse.fsize,
                             quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText
+                            quoteMsgText = quoteMsgText,
+                            quoteImageUrl = quoteImageUrl,
+                            quoteImageName = quoteImageName,
+                            quoteVideoUrl = quoteVideoUrl,
+                            quoteVideoTime = quoteVideoTime
                         )
                         
                         sendResult.fold(
@@ -473,36 +564,20 @@ class ChatViewModel @Inject constructor(
         context: android.content.Context,
         videoUri: android.net.Uri,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ) {
         viewModelScope.launch {
             try {
                 Log.d(tag, "📹 开始上传并发送视频: $videoUri")
                 
                 // 1. 获取七牛上传token
-                val token = tokenRepository.getTokenSync()
-                if (token.isNullOrEmpty()) {
-                    Log.e(tag, "❌ Token为空")
-                    _uiState.value = _uiState.value.copy(error = "未登录")
-                    return@launch
-                }
-                
-                Log.d(tag, "📤 获取七牛视频上传token...")
-                val tokenResponse = apiService.getQiniuVideoToken(token)
-                
-                if (!tokenResponse.isSuccessful || tokenResponse.body()?.code != 1) {
-                    Log.e(tag, "❌ 获取视频上传token失败: ${tokenResponse.code()}")
-                    _uiState.value = _uiState.value.copy(error = "获取视频上传token失败")
-                    return@launch
-                }
-                
-                val uploadToken = tokenResponse.body()?.data?.token ?: run {
-                    Log.e(tag, "❌ 视频上传token为空")
-                    _uiState.value = _uiState.value.copy(error = "获取视频上传token失败")
-                    return@launch
-                }
-                
-                Log.d(tag, "✅ 获取到视频上传token: ${uploadToken.take(20)}...")
+                val uploadToken = getQiniuUploadToken("视频") { 
+                    apiService.getQiniuVideoToken(it) 
+                } ?: return@launch
                 
                 // 2. 上传视频到七牛云
                 Log.d(tag, "📤 开始上传视频到七牛云...")
@@ -529,7 +604,11 @@ class ChatViewModel @Inject constructor(
                             fileHash = uploadResponse.hash,
                             fileSize = uploadResponse.fsize,
                             quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText
+                            quoteMsgText = quoteMsgText,
+                            quoteImageUrl = quoteImageUrl,
+                            quoteImageName = quoteImageName,
+                            quoteVideoUrl = quoteVideoUrl,
+                            quoteVideoTime = quoteVideoTime
                         )
                         
                         sendResult.fold(
@@ -564,7 +643,11 @@ class ChatViewModel @Inject constructor(
         context: android.content.Context,
         fileUri: android.net.Uri,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ) {
         viewModelScope.launch {
             try {
@@ -572,32 +655,10 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "📁 文件URI: $fileUri")
                 Log.d(tag, "📁 当前chatId: $currentChatId, chatType: $currentChatType")
                 
-                // 1. 获取用户token
-                val token = tokenRepository.getTokenSync()
-                if (token.isNullOrEmpty()) {
-                    Log.e(tag, "❌ Token为空")
-                    _uiState.value = _uiState.value.copy(error = "未登录")
-                    return@launch
-                }
-                Log.d(tag, "✅ Token获取成功")
-                
-                // 2. 获取文件上传token
-                Log.d(tag, "📤 请求七牛文件上传token...")
-                val tokenResponse = apiService.getQiniuFileToken(token)
-                
-                if (!tokenResponse.isSuccessful || tokenResponse.body()?.code != 1) {
-                    Log.e(tag, "❌ 获取文件上传token失败: code=${tokenResponse.code()}")
-                    _uiState.value = _uiState.value.copy(error = "获取文件上传token失败")
-                    return@launch
-                }
-                
-                val uploadToken = tokenResponse.body()?.data?.token ?: run {
-                    Log.e(tag, "❌ 文件上传token为空")
-                    _uiState.value = _uiState.value.copy(error = "获取文件上传token失败")
-                    return@launch
-                }
-                
-                Log.d(tag, "✅ 文件上传token获取成功: ${uploadToken.take(30)}...")
+                // 1. 获取文件上传token
+                val uploadToken = getQiniuUploadToken("文件") { 
+                    apiService.getQiniuFileToken(it) 
+                } ?: return@launch
                 
                 // 3. 上传文件到七牛云
                 Log.d(tag, "📤 开始上传文件到七牛云...")
@@ -640,7 +701,11 @@ class ChatViewModel @Inject constructor(
                             fileKey = fileKey,
                             fileSize = uploadResponse.fsize,
                             quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText
+                            quoteMsgText = quoteMsgText,
+                            quoteImageUrl = quoteImageUrl,
+                            quoteImageName = quoteImageName,
+                            quoteVideoUrl = quoteVideoUrl,
+                            quoteVideoTime = quoteVideoTime
                         )
                         
                         sendResult.fold(
@@ -667,6 +732,149 @@ class ChatViewModel @Inject constructor(
                 e.printStackTrace()
                 _uiState.value = _uiState.value.copy(error = "发送文件失败: ${e.message}")
             }
+        }
+    }
+    
+    /**
+     * 上传并发送音频（用于TTS合成的音频）
+     */
+    fun uploadAndSendAudio(
+        context: android.content.Context,
+        audioUri: android.net.Uri,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "🎵 ========== 开始上传并发送音频 ==========")
+                Log.d(tag, "🎵 音频URI: $audioUri")
+                Log.d(tag, "🎵 当前chatId: $currentChatId, chatType: $currentChatType")
+                
+                // 1. 获取音频上传token
+                val uploadToken = getQiniuUploadToken("音频") { 
+                    apiService.getQiniuAudioToken(it) 
+                } ?: return@launch
+                
+                // 3. 获取音频文件信息
+                val audioFile: File = getFileFromUri(context, audioUri) ?: run {
+                    Log.e(tag, "❌ 无法读取音频文件")
+                    _uiState.value = _uiState.value.copy(error = "无法读取音频文件")
+                    return@launch
+                }
+                
+                // 4. 获取上传域名
+                val accessKey = uploadToken.split(":").firstOrNull()
+                if (accessKey.isNullOrEmpty()) {
+                    Log.e(tag, "❌ 上传凭证格式错误")
+                    _uiState.value = _uiState.value.copy(error = "上传凭证格式错误")
+                    audioFile.delete()
+                    return@launch
+                }
+                
+                val uploadDomain = com.yhchat.canary.utils.AudioUtils.getQiniuUploadDomain(accessKey)
+                if (uploadDomain.isNullOrEmpty()) {
+                    Log.e(tag, "❌ 获取上传域名失败")
+                    _uiState.value = _uiState.value.copy(error = "获取上传域名失败")
+                    audioFile.delete()
+                    return@launch
+                }
+                
+                Log.d(tag, "✅ 上传域名: $uploadDomain")
+                
+                // 5. 上传音频到七牛云
+                Log.d(tag, "📤 开始上传音频到七牛云...")
+                val uploadResponse = com.yhchat.canary.utils.AudioUtils.uploadAudioToQiniu(
+                    file = audioFile,
+                    token = uploadToken,
+                    uploadUrl = uploadDomain
+                )
+                
+                if (uploadResponse == null) {
+                    Log.e(tag, "❌ 音频上传失败")
+                    _uiState.value = _uiState.value.copy(error = "音频上传失败")
+                    audioFile.delete()
+                    return@launch
+                }
+                
+                Log.d(tag, "✅ 音频上传成功！")
+                Log.d(tag, "   key: ${uploadResponse.key}")
+                Log.d(tag, "   hash (etag): ${uploadResponse.hash}")
+                Log.d(tag, "   size: ${uploadResponse.fsize} bytes")
+                
+                // 6. 获取音频时长
+                val duration = com.yhchat.canary.utils.AudioUtils.getAudioDuration(audioFile)
+                Log.d(tag, "✅ 音频时长: ${duration}秒")
+                
+                // 7. 发送语音消息（contentType = 11）
+                Log.d(tag, "📤 发送语音消息...")
+                val sendResult = messageRepository.sendAudioMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    audioKey = uploadResponse.key,
+                    fileHash = uploadResponse.hash,
+                    fileSize = uploadResponse.fsize,
+                    duration = duration,
+                    quoteMsgId = quoteMsgId,
+                    quoteMsgText = quoteMsgText,
+                    quoteImageUrl = quoteImageUrl,
+                    quoteImageName = quoteImageName,
+                    quoteVideoUrl = quoteVideoUrl,
+                    quoteVideoTime = quoteVideoTime
+                )
+                
+                sendResult.fold(
+                    onSuccess = {
+                        Log.d(tag, "✅ 语音消息发送成功！")
+                        Log.d(tag, "✅ ========== 音频发送流程完成 ==========")
+                        // 刷新消息列表
+                        loadMessages(refresh = true)
+                        
+                        // 清理临时文件
+                        audioFile.delete()
+                    },
+                    onFailure = { error ->
+                        Log.e(tag, "❌ 发送语音消息失败", error)
+                        _uiState.value = _uiState.value.copy(error = "发送语音失败: ${error.message}")
+                        audioFile.delete()
+                    }
+                )
+                
+            } catch (e: Exception) {
+                Log.e(tag, "❌ 上传并发送音频异常", e)
+                e.printStackTrace()
+                _uiState.value = _uiState.value.copy(error = "发送音频失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 从URI获取文件（复制到临时目录）
+     */
+    private fun getFileFromUri(context: android.content.Context, uri: android.net.Uri): File? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val tempFile = java.io.File(context.cacheDir, "temp_audio_${System.currentTimeMillis()}.wav")
+            
+            inputStream.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            if (tempFile.exists() && tempFile.length() > 0) {
+                Log.d(tag, "✅ 音频文件复制成功: ${tempFile.absolutePath}, 大小: ${tempFile.length()} 字节")
+                tempFile
+            } else {
+                Log.e(tag, "❌ 音频文件复制失败或为空")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 从URI获取文件失败", e)
+            null
         }
     }
     
@@ -876,6 +1084,104 @@ class ChatViewModel @Inject constructor(
     }
     
     /**
+     * 通过消息ID加载消息（用于跳转到引用消息）
+     * 使用 list-message-by-mid-seq API 精确定位并加载引用的消息
+     */
+    fun loadMessageByIdAndScroll(quoteMsgId: String) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "⚠️ 聊天未初始化，无法加载消息")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "📍 开始通过 msgId 加载引用消息: $quoteMsgId")
+                Log.d(tag, "📊 当前聊天: chatId=$currentChatId, chatType=$currentChatType")
+                
+                // 步骤1: 先在已加载的消息列表中通过msgId精确查找
+                Log.d(tag, "🔍 步骤1: 在已加载的 ${_messages.size} 条消息中查找 msgId: $quoteMsgId")
+                val existingMessage = _messages.find { it.msgId == quoteMsgId }
+                
+                if (existingMessage != null) {
+                    Log.d(tag, "✅ 消息已在列表中，msgId: $quoteMsgId，发送时间: ${existingMessage.sendTime}")
+                    return@launch
+                }
+                
+                Log.d(tag, "⚠️ 消息不在列表中，准备从服务器加载")
+
+                // 步骤2: 使用 list-message-by-mid-seq API 加载消息（包含该消息及其前后文）
+                Log.d(tag, "📡 步骤2: 调用 list-message-by-mid-seq API")
+                Log.d(tag, "   参数: chatId=$currentChatId, chatType=$currentChatType, msgId=$quoteMsgId, msgCount=30")
+                
+                val result = messageRepository.getMessagesByMsgId(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    msgId = quoteMsgId,
+                    msgCount = 30,  // 请求30条消息（实际会返回31条，包含目标消息）
+                    msgSeq = 0L
+                )
+
+                result.fold(
+                    onSuccess = { newMessages ->
+                        Log.d(tag, "✅ API返回 ${newMessages.size} 条消息")
+                        
+                        // 验证目标消息是否在返回的消息中
+                        val targetMessage = newMessages.find { it.msgId == quoteMsgId }
+                        if (targetMessage != null) {
+                            Log.d(tag, "🎯 确认找到目标消息 msgId: $quoteMsgId")
+                        } else {
+                            Log.w(tag, "⚠️ API返回的消息中不包含目标 msgId: $quoteMsgId")
+                        }
+                        
+                        // 过滤被屏蔽用户的消息
+                        val filteredMessages = newMessages.filter { message ->
+                            val isBlocked = kotlin.runCatching {
+                                blocklistRepository.isUserBlocked(message.sender.chatId)
+                            }.getOrElse { false }
+                            !isBlocked
+                        }
+                        
+                        Log.d(tag, "🔒 过滤后剩余 ${filteredMessages.size} 条消息")
+                        
+                        // 步骤3: 合并到现有消息列表，使用msgId去重
+                        val existingMsgIds = _messages.map { it.msgId }.toSet()
+                        Log.d(tag, "📋 当前已有 ${existingMsgIds.size} 个不重复的msgId")
+                        
+                        val newMsgs = filteredMessages.filter { it.msgId !in existingMsgIds }
+                        Log.d(tag, "➕ 准备添加 ${newMsgs.size} 条新消息（去重后）")
+                        
+                        if (newMsgs.isNotEmpty()) {
+                            _messages.addAll(newMsgs)
+                            // 重新按时间排序
+                            val sortedMessages = _messages.sortedBy { it.sendTime }
+                            _messages.clear()
+                            _messages.addAll(sortedMessages)
+                            Log.d(tag, "✅ 成功添加并排序，当前共 ${_messages.size} 条消息")
+                            
+                            // 确认目标消息是否在最终列表中
+                            val finalCheck = _messages.find { it.msgId == quoteMsgId }
+                            if (finalCheck != null) {
+                                Log.d(tag, "🎉 目标消息 msgId: $quoteMsgId 已成功加入消息列表")
+                            } else {
+                                Log.e(tag, "❌ 目标消息 msgId: $quoteMsgId 未能加入消息列表")
+                            }
+                        } else {
+                            Log.d(tag, "ℹ️ 没有新消息需要添加（可能都已存在）")
+                        }
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ 通过 msgId 加载消息失败: $quoteMsgId", exception)
+                        _uiState.value = _uiState.value.copy(error = "加载引用消息失败")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ 加载消息异常 msgId: $quoteMsgId", e)
+                _uiState.value = _uiState.value.copy(error = "加载引用消息异常")
+            }
+        }
+    }
+    
+    /**
      * 加载消息列表
      */
     fun loadMessages(refresh: Boolean = false) {
@@ -897,7 +1203,7 @@ class ChatViewModel @Inject constructor(
                     messageRepository.getMessages(
                         chatId = currentChatId,
                         chatType = currentChatType,
-                        msgCount = 20,
+                        msgCount = DEFAULT_MSG_COUNT,
                         msgId = oldestMsgId
                     )
                 } else {
@@ -946,7 +1252,7 @@ class ChatViewModel @Inject constructor(
                         }
 
                         // 检查是否还有更多消息
-                        hasMoreMessages = newMessages.size >= 20
+                        hasMoreMessages = newMessages.size >= DEFAULT_MSG_COUNT
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -1033,6 +1339,10 @@ class ChatViewModel @Inject constructor(
         contentType: Int = 1, 
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null,
         commandId: Long? = null,
         mentionedIds: List<String>? = null,
         onSuccess: () -> Unit = {},
@@ -1058,7 +1368,13 @@ class ChatViewModel @Inject constructor(
                     else -> "文本"
                 }
                 val mentionInfo = if (!mentionedIds.isNullOrEmpty()) " (@${mentionedIds.size}人)" else ""
-                Log.d(tag, "Sending $typeText message: $text${if (!quoteMsgId.isNullOrEmpty()) " (引用消息)" else ""}$mentionInfo")
+                val quoteMediaInfo = when {
+                    !quoteImageUrl.isNullOrEmpty() -> " (引用图片)"
+                    !quoteVideoUrl.isNullOrEmpty() -> " (引用视频)"
+                    !quoteMsgId.isNullOrEmpty() -> " (引用消息)"
+                    else -> ""
+                }
+                Log.d(tag, "Sending $typeText message: $text$quoteMediaInfo$mentionInfo")
                 
                 val result = messageRepository.sendMessage(
                     chatId = currentChatId,
@@ -1067,6 +1383,10 @@ class ChatViewModel @Inject constructor(
                     contentType = contentType,
                     quoteMsgId = quoteMsgId,
                     quoteMsgText = quoteMsgText,
+                    quoteImageUrl = quoteImageUrl,
+                    quoteImageName = quoteImageName,
+                    quoteVideoUrl = quoteVideoUrl,
+                    quoteVideoTime = quoteVideoTime,
                     commandId = commandId,
                     mentionedIds = mentionedIds
                 )
@@ -1106,7 +1426,11 @@ class ChatViewModel @Inject constructor(
     fun sendExpressionMessage(
         expression: com.yhchat.canary.data.model.Expression,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ) {
         if (currentChatId.isEmpty()) {
             Log.w(tag, "Chat not initialized")
@@ -1123,7 +1447,11 @@ class ChatViewModel @Inject constructor(
                     chatType = currentChatType,
                     expression = expression,
                     quoteMsgId = quoteMsgId,
-                    quoteMsgText = quoteMsgText
+                    quoteMsgText = quoteMsgText,
+                    quoteImageUrl = quoteImageUrl,
+                    quoteImageName = quoteImageName,
+                    quoteVideoUrl = quoteVideoUrl,
+                    quoteVideoTime = quoteVideoTime
                 )
                 
                 result.fold(
@@ -1155,7 +1483,11 @@ class ChatViewModel @Inject constructor(
     fun sendStickerMessage(
         stickerItem: com.yhchat.canary.data.model.StickerItem,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ) {
         if (currentChatId.isEmpty()) {
             Log.w(tag, "Chat not initialized")
@@ -1172,7 +1504,11 @@ class ChatViewModel @Inject constructor(
                     chatType = currentChatType,
                     stickerItem = stickerItem,
                     quoteMsgId = quoteMsgId,
-                    quoteMsgText = quoteMsgText
+                    quoteMsgText = quoteMsgText,
+                    quoteImageUrl = quoteImageUrl,
+                    quoteImageName = quoteImageName,
+                    quoteVideoUrl = quoteVideoUrl,
+                    quoteVideoTime = quoteVideoTime
                 )
                 
                 result.fold(
@@ -1205,11 +1541,215 @@ class ChatViewModel @Inject constructor(
         if (currentChatId.isNotEmpty()) {
             viewModelScope.launch {
                 try {
+                    // 记录发送时间，防止立即应用自己的草稿
+                    lastDraftSentTime = System.currentTimeMillis()
+                    
                     webSocketManager.sendDraftInput(currentChatId, inputText)
-                    Log.d(tag, "Sent draft input for chat: $currentChatId")
+                    Log.d(tag, "📤 发送草稿输入: chatId=$currentChatId, length=${inputText.length}")
                 } catch (e: Exception) {
                     Log.e(tag, "Failed to send draft input", e)
                 }
+            }
+        }
+    }
+    
+    /**
+     * 通过URL发送图片消息（用于+1功能）
+     */
+    fun sendImageByUrl(imageUrl: String, width: Int, height: Int, fileSize: Long) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "Chat not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "📷 +1发送图片: url=$imageUrl, size=${width}x${height}")
+                
+                // 从URL提取图片key（假设URL格式为 https://chat-img.jwznb.com/xxx）
+                val imageKey = imageUrl.substringAfterLast("/").substringBefore("?")
+                
+                val result = messageRepository.sendImageMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    imageKey = imageKey,
+                    width = width,
+                    height = height,
+                    fileSize = fileSize
+                )
+                
+                result.fold(
+                    onSuccess = { 
+                        Log.d(tag, "✅ +1图片消息发送成功")
+                        loadMessages(refresh = true)
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ +1图片消息发送失败", exception)
+                        _uiState.value = _uiState.value.copy(error = "发送图片失败: ${exception.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ +1图片消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送图片异常")
+            }
+        }
+    }
+    
+    /**
+     * 通过URL发送文件消息（用于+1功能）
+     */
+    fun sendFileByUrl(fileName: String, fileUrl: String, fileSize: Long) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "Chat not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "📁 +1发送文件: name=$fileName, url=$fileUrl")
+                
+                // 从URL提取文件key
+                val fileKey = fileUrl.substringAfterLast("/").substringBefore("?")
+                
+                val result = messageRepository.sendFileMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    fileName = fileName,
+                    fileKey = fileKey,
+                    fileSize = fileSize
+                )
+                
+                result.fold(
+                    onSuccess = { 
+                        Log.d(tag, "✅ +1文件消息发送成功")
+                        loadMessages(refresh = true)
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ +1文件消息发送失败", exception)
+                        _uiState.value = _uiState.value.copy(error = "发送文件失败: ${exception.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ +1文件消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送文件异常")
+            }
+        }
+    }
+    
+    /**
+     * 通过URL发送视频消息（用于+1功能）
+     */
+    fun sendVideoByUrl(videoUrl: String) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "Chat not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "🎬 +1发送视频: url=$videoUrl")
+                
+                // 从URL提取视频key
+                val videoKey = videoUrl.substringAfterLast("/").substringBefore("?")
+                
+                val result = messageRepository.sendVideoMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    videoKey = videoKey
+                )
+                
+                result.fold(
+                    onSuccess = { 
+                        Log.d(tag, "✅ +1视频消息发送成功")
+                        loadMessages(refresh = true)
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ +1视频消息发送失败", exception)
+                        _uiState.value = _uiState.value.copy(error = "发送视频失败: ${exception.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ +1视频消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送视频异常")
+            }
+        }
+    }
+    
+    /**
+     * 通过URL发送语音消息（用于+1功能）
+     */
+    fun sendAudioByUrl(audioUrl: String, audioDuration: Long) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "Chat not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "🎤 +1发送语音: url=$audioUrl, duration=${audioDuration}s")
+                
+                // 从URL提取音频key
+                val audioKey = audioUrl.substringAfterLast("/").substringBefore("?")
+                
+                val result = messageRepository.sendAudioMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    audioKey = audioKey,
+                    duration = audioDuration
+                )
+                
+                result.fold(
+                    onSuccess = { 
+                        Log.d(tag, "✅ +1语音消息发送成功")
+                        loadMessages(refresh = true)
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ +1语音消息发送失败", exception)
+                        _uiState.value = _uiState.value.copy(error = "发送语音失败: ${exception.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ +1语音消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送语音异常")
+            }
+        }
+    }
+    
+    /**
+     * 发送文章消息（用于+1功能）
+     */
+    fun sendPostMessage(postId: String, postTitle: String, postContent: String, postType: String) {
+        if (currentChatId.isEmpty()) {
+            Log.w(tag, "Chat not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "📄 +1发送文章: id=$postId, title=$postTitle")
+                
+                val result = messageRepository.sendPostMessage(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    postId = postId,
+                    postTitle = postTitle,
+                    postContent = postContent,
+                    postType = postType
+                )
+                
+                result.fold(
+                    onSuccess = { 
+                        Log.d(tag, "✅ +1文章消息发送成功")
+                        loadMessages(refresh = true)
+                    },
+                    onFailure = { exception ->
+                        Log.e(tag, "❌ +1文章消息发送失败", exception)
+                        _uiState.value = _uiState.value.copy(error = "发送文章失败: ${exception.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "❌ +1文章消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "发送文章异常")
             }
         }
     }
@@ -1494,11 +2034,11 @@ class ChatViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
 
-                // 不带 msgId 参数，获取最新的20条消息
+                // 不带 msgId 参数，获取最新的消息
                 val result = messageRepository.getMessages(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    msgCount = 20
+                    msgCount = DEFAULT_MSG_COUNT
                 )
 
                 result.fold(

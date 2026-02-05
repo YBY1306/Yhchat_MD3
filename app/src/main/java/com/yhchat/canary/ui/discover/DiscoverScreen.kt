@@ -40,12 +40,18 @@ import kotlinx.coroutines.flow.collectLatest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val discoverRepo = remember { RepositoryFactory.getDiscoverRepository(context) }
     val listState = rememberLazyListState()
+    
+    // 监听滚动状态，自动隐藏/显示导航栏
+    if (navigationState != null) {
+        com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
+    }
     
     var groups by remember { mutableStateOf<List<RecommendGroup>>(emptyList()) }
     var bots by remember { mutableStateOf<List<RecommendBot>>(emptyList()) }

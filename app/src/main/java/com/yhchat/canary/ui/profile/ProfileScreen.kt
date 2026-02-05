@@ -52,6 +52,7 @@ fun ProfileScreen(
     userRepository: UserRepository? = null,
     tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
     navigationRepository: NavigationRepository? = null,
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     val context = LocalContext.current
     val viewModel = remember {
@@ -148,6 +149,11 @@ fun ProfileScreen(
         )
         
         val scrollState = rememberScrollState()
+        
+        // 监听滚动状态，自动隐藏/显示导航栏
+        if (navigationState != null) {
+            com.yhchat.canary.ui.components.observeScrollForNavigation(scrollState, navigationState)
+        }
         
         Column(
             modifier = Modifier
@@ -681,7 +687,7 @@ private fun CoinMenuBottomSheet(
             
             // 金币明细
             CoinMenuItem(
-                icon = Icons.Default.ArrowForward,
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
                 label = "金币明细",
                 onClick = {
                     val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinRecordActivity::class.java)
@@ -1079,7 +1085,7 @@ private fun ProfileInfoItemClickable(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "查看详情",
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1178,7 +1184,7 @@ private fun ProfileSettingItem(
             }
             
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "前往",
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant

@@ -138,6 +138,88 @@ class VoiceMessageViewModel(
     }
     
     /**
+     * 停止录音但不上传，返回录音文件
+     * 用于语音转文字功能
+     */
+    fun stopRecordingOnly(context: Context, onResult: (File?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "stopRecordingOnly")
+                _voiceState.value = _voiceState.value.copy(isRecording = false, isProcessing = true)
+                
+                val file = AudioUtils.stopRecording()
+                if (file == null || !file.exists()) {
+                    _voiceState.value = _voiceState.value.copy(isProcessing = false)
+                    onResult(null)
+                    return@launch
+                }
+                
+                // 检查录音时长
+                val duration = AudioUtils.getAudioDuration(file)
+                Log.d(tag, "record duration=$duration sec file=${file.absolutePath}")
+                if (duration < 1) {
+                    _voiceState.value = _voiceState.value.copy(isProcessing = false)
+                    file.delete()
+                    onResult(null)
+                    return@launch
+                }
+                
+                _voiceState.value = _voiceState.value.copy(isProcessing = false)
+                onResult(file)
+                
+            } catch (e: Exception) {
+                Log.e(tag, "stopRecordingOnly failed", e)
+                _voiceState.value = _voiceState.value.copy(isProcessing = false)
+                onResult(null)
+            }
+        }
+    }
+    
+    /**
+     * 上传已有的语音文件
+     * 用于语音转文字后直接发送
+     */
+    fun uploadVoiceFile(
+        context: Context,
+        file: File,
+        chatId: String,
+        chatType: Long,
+        onSuccess: (String, String, Long, Long) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "uploadVoiceFile file=${file.name} chatId=$chatId chatType=$chatType")
+                _voiceState.value = _voiceState.value.copy(isProcessing = true)
+                
+                val duration = AudioUtils.getAudioDuration(file)
+                
+                // 重命名文件为 MD5
+                val renamedFile = AudioUtils.renameFileWithMD5(file)
+                if (renamedFile == null) {
+                    _voiceState.value = _voiceState.value.copy(
+                        isProcessing = false,
+                        error = "文件处理失败"
+                    )
+                    file.delete()
+                    return@launch
+                }
+                
+                Log.d(tag, "renamed file=${renamedFile.name}")
+                
+                // 上传并发送
+                uploadAndSendVoice(renamedFile, chatId, chatType, duration, onSuccess)
+                
+            } catch (e: Exception) {
+                Log.e(tag, "uploadVoiceFile failed", e)
+                _voiceState.value = _voiceState.value.copy(
+                    isProcessing = false,
+                    error = "上传语音失败: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    /**
      * 从存储选择音频文件
      */
     fun selectAudioFromStorage(

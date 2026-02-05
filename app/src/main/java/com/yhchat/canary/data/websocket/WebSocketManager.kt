@@ -40,6 +40,16 @@ class WebSocketManager @Inject constructor(
             }
         }
         
+        // 持续监听草稿更新事件并保存到本地
+        scope.launch {
+            webSocketService.draftUpdates
+                .debounce(500) // 防抖500ms，避免频繁保存
+                .collect { draftUpdate ->
+                    Log.d(tag, "📝 保存远程草稿到本地: chatId=${draftUpdate.chatId}")
+                    handleDraftUpdate(draftUpdate)
+                }
+        }
+        
         Log.d(tag, "WebSocketManager initialized with persistent listeners")
     }
     
@@ -84,6 +94,27 @@ class WebSocketManager @Inject constructor(
      */
     fun getConversationUpdates(): SharedFlow<ConversationUpdate> {
         return webSocketService.conversationUpdates
+    }
+    
+    /**
+     * 获取草稿更新流 - 供聊天界面UI监听（多端同步）
+     */
+    fun getDraftUpdates(): SharedFlow<DraftUpdate> {
+        return webSocketService.draftUpdates
+    }
+    
+    /**
+     * 清除指定会话的通知历史
+     */
+    fun clearNotificationHistory(chatId: String, chatType: Int) {
+        webSocketService.clearNotificationHistory(chatId, chatType)
+    }
+    
+    /**
+     * 清除头像缓存
+     */
+    fun clearAvatarCache() {
+        webSocketService.clearAvatarCache()
     }
     
     /**
@@ -135,6 +166,14 @@ class WebSocketManager @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "Error handling message event", e)
         }
+    }
+    
+    /**
+     * 处理草稿更新（多端同步）
+     */
+    private suspend fun handleDraftUpdate(draftUpdate: com.yhchat.canary.data.websocket.DraftUpdate) {
+        // 事件已经通过flow转发给ChatViewModel处理了，这里不需要做任何事
+        Log.d(tag, "草稿更新: chatId=${draftUpdate.chatId}")
     }
     
     /**

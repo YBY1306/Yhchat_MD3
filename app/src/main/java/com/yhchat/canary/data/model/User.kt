@@ -403,6 +403,12 @@ data class MessageContent(
     val quoteMsgText: String? = null,
     @SerializedName("quote_image_url")
     val quoteImageUrl: String? = null,
+    @SerializedName("quote_image_name")
+    val quoteImageName: String? = null,
+    @SerializedName("quote_video_url")
+    val quoteVideoUrl: String? = null,
+    @SerializedName("quote_video_time")
+    val quoteVideoTime: Long? = null,
     @SerializedName("sticker_url")
     val stickerUrl: String? = null,
     @SerializedName("post_id")

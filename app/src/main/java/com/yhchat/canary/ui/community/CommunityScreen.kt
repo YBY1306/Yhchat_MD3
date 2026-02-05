@@ -10,7 +10,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun CommunityScreen(
     token: String,
     modifier: Modifier = Modifier,
-    viewModel: CommunityViewModel = viewModel()
+    viewModel: CommunityViewModel = viewModel(),
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     // 显示社区标签页界面
     CommunityTabScreen(

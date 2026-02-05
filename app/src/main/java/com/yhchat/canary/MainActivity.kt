@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.login.LoginScreen
@@ -24,7 +26,8 @@ import com.yhchat.canary.ui.contacts.ContactsScreen
 import com.yhchat.canary.ui.discover.DiscoverScreen
 import com.yhchat.canary.ui.profile.ProfileScreen
 import com.yhchat.canary.ui.search.SearchScreen
-import com.yhchat.canary.ui.components.BottomNavigationBar
+import com.yhchat.canary.ui.components.AdaptiveNavigationBar
+import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import coil.ImageLoader
 import coil.Coil
@@ -132,32 +135,21 @@ class MainActivity : BaseActivity() {
             }
             currentScreen == "chat" -> {
                 // 显示聊天界面
-                if (currentChatId.isNotEmpty()) {
-                    ChatScreen(
-                        chatId = currentChatId,
-                        chatType = currentChatType,
-                        chatName = currentChatName,
-                        userId = userId,
-                        onBackClick = {
-                            currentScreen = "conversation"
-                        },
-                        onAvatarClick = { userId, userName, chatType, currentUserPermission ->
-                            val groupId = if (chatType == 2) currentChatId else null
-                            UserDetailActivity.start(
-                                context = this@MainActivity,
-                                userId = userId,
-                                userName = userName,
-                                groupId = groupId
-                            )
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                ShowChatScreen(
+                    currentChatId = currentChatId,
+                    currentChatType = currentChatType,
+                    currentChatName = currentChatName,
+                    userId = userId,
+                    onBackClick = { currentScreen = "conversation" }
+                )
             }
             else -> {
                 // 主界面，包含底部导航栏和HorizontalPager
                 val coroutineScope = rememberCoroutineScope()
                 val pagerState = rememberPagerState { visibleNavItems.size }
+                
+                // 滚动感知导航栏状态
+                val navigationState = rememberScrollAwareNavigationState()
 
                 // 获取当前页面对应的导航项ID
                 val currentPageItem = if (visibleNavItems.isNotEmpty() && pagerState.currentPage < visibleNavItems.size) {
@@ -182,10 +174,51 @@ class MainActivity : BaseActivity() {
                         }
                     }
                 }
+                
+                // 监听HorizontalPager滚动，自动隐藏/显示导航栏
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.isScrollInProgress }
+                        .collect { isScrolling ->
+                            if (isScrolling) {
+                                // 滚动时隐藏导航栏
+                                navigationState.hide()
+                            } else {
+                                // 停止滚动时显示导航栏
+                                kotlinx.coroutines.delay(300)
+                                navigationState.show()
+                            }
+                        }
+                }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // 主内容区域
-                    Box(modifier = Modifier.weight(1f)) {
+                // 检测屏幕尺寸
+                val configuration = LocalConfiguration.current
+                val screenWidthDp = configuration.screenWidthDp
+                val isLargeScreen = screenWidthDp >= 600
+
+                if (isLargeScreen) {
+                    // 大屏设备：使用Row布局，侧边栏在左边
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // 侧边导航栏
+                        AdaptiveNavigationBar(
+                            currentScreen = currentPageItem,
+                            visibleItems = visibleNavItems,
+                            onScreenChange = { screen ->
+                                val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
+                                if (targetIndex >= 0) {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(targetIndex)
+                                    }
+                                }
+                                currentScreen = screen
+                            },
+                            isVisible = true // 侧边栏始终显示
+                        )
+                        
+                        // 主内容区域
+                        Box(modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                        ) {
                         if (visibleNavItems.isNotEmpty()) {
                             HorizontalPager(
                                 state = pagerState,
@@ -199,13 +232,7 @@ class MainActivity : BaseActivity() {
                                                 token = token,
                                                 userId = userId,
                                                 onConversationClick = { chatId, chatType, chatName ->
-                                                    // 启动 ChatActivity 而不是切换到内嵌的聊天屏幕
-                                                    val intent = Intent(this@MainActivity, com.yhchat.canary.ui.chat.ChatActivity::class.java)
-                                                    intent.putExtra("chatId", chatId)
-                                                    intent.putExtra("chatType", chatType)
-                                                    intent.putExtra("chatName", chatName)
-                                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                                    startActivity(intent)
+                                                    launchChatActivity(chatId, chatType, chatName)
                                                 },
                                                 onSearchClick = {
                                                     if (isInitialized) {
@@ -214,27 +241,32 @@ class MainActivity : BaseActivity() {
                                                 },
                                                 onMenuClick = { },
                                                 tokenRepository = tokenRepository,
-                                                viewModel = conversationViewModel
+                                                viewModel = conversationViewModel,
+                                                navigationState = navigationState
                                             )
                                         }
                                         "community" -> {
                                             CommunityScreen(
-                                                token = token
+                                                token = token,
+                                                navigationState = navigationState
                                             )
                                         }
                                         "contacts" -> {
                                             ContactsScreen(
+                                                navigationState = navigationState
                                             )
                                         }
                                         "discover" -> {
                                             DiscoverScreen(
+                                                navigationState = navigationState
                                             )
                                         }
                                         "profile" -> {
                                             ProfileScreen(
                                                 userRepository = userRepository,
                                                 tokenRepository = tokenRepository,
-                                                navigationRepository = navigationRepository
+                                                navigationRepository = navigationRepository,
+                                                navigationState = navigationState
                                             )
                                         }
                                     }
@@ -249,41 +281,15 @@ class MainActivity : BaseActivity() {
                                 }
                             }
 
-                            // 处理特殊页面（如chat和search）
-                            if (currentScreen == "chat" && currentChatId.isNotEmpty()) {
-                                ChatScreen(
-                                    chatId = currentChatId,
-                                    chatType = currentChatType,
-                                    chatName = currentChatName,
-                                    userId = userId,
-                                    onBackClick = {
-                                        currentScreen = "conversation"
-                                    },
-                                    onAvatarClick = { userId, userName, chatType, currentUserPermission ->
-                                        val groupId = if (chatType == 2) currentChatId else null
-                                        UserDetailActivity.start(
-                                            context = this@MainActivity,
-                                            userId = userId,
-                                            userName = userName,
-                                            groupId = groupId
-                                        )
-                                    },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else if (currentScreen == "search") {
+                            // 处理搜索页面
+                            if (currentScreen == "search") {
                                 if (isInitialized && tokenRepository != null) {
                                     SearchScreen(
                                         onBackClick = {
                                             currentScreen = "conversation"
                                         },
                                         onItemClick = { chatId, chatType, chatName ->
-                                            // 启动 ChatActivity 而不是切换到内嵌的聊天屏幕
-                                            val intent = Intent(this@MainActivity, com.yhchat.canary.ui.chat.ChatActivity::class.java)
-                                            intent.putExtra("chatId", chatId)
-                                            intent.putExtra("chatType", chatType)
-                                            intent.putExtra("chatName", chatName)
-                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                            startActivity(intent)
+                                            launchChatActivity(chatId, chatType, chatName)
                                         },
                                         tokenRepository = tokenRepository,
                                         modifier = Modifier.fillMaxSize()
@@ -298,24 +304,161 @@ class MainActivity : BaseActivity() {
                                 }
                             }
                         }
-                    
-                    // 底部导航栏
-                    BottomNavigationBar(
-                        currentScreen = currentPageItem,
-                        visibleItems = visibleNavItems,
-                        onScreenChange = { screen ->
-                            val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
-                            if (targetIndex >= 0) {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(targetIndex)
+                    }
+                } else {
+                    // 小屏设备：使用Column布局，导航栏在底部
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // 主内容区域
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (visibleNavItems.isNotEmpty()) {
+                                HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    userScrollEnabled = true
+                                ) { page ->
+                                        val navItem = visibleNavItems[page]
+                                        when (navItem.id) {
+                                            "conversation" -> {
+                                                ConversationScreen(
+                                                    token = token,
+                                                    userId = userId,
+                                                    onConversationClick = { chatId, chatType, chatName ->
+                                                        launchChatActivity(chatId, chatType, chatName)
+                                                    },
+                                                    onSearchClick = {
+                                                        if (isInitialized) {
+                                                            currentScreen = "search"
+                                                        }
+                                                    },
+                                                    onMenuClick = { },
+                                                    tokenRepository = tokenRepository,
+                                                    viewModel = conversationViewModel,
+                                                    navigationState = navigationState
+                                                )
+                                            }
+                                            "community" -> {
+                                                CommunityScreen(
+                                                    token = token,
+                                                    navigationState = navigationState
+                                                )
+                                            }
+                                            "contacts" -> {
+                                                ContactsScreen(
+                                                    navigationState = navigationState
+                                                )
+                                            }
+                                            "discover" -> {
+                                                DiscoverScreen(
+                                                    navigationState = navigationState
+                                                )
+                                            }
+                                            "profile" -> {
+                                                ProfileScreen(
+                                                    userRepository = userRepository,
+                                                    tokenRepository = tokenRepository,
+                                                    navigationRepository = navigationRepository,
+                                                    navigationState = navigationState
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // 没有可见的导航项时显示空状态
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("666全关了是吗，自己清数据解决。")
+                                    }
+                                }
+
+                                // 处理搜索页面
+                                if (currentScreen == "search") {
+                                    if (isInitialized && tokenRepository != null) {
+                                        SearchScreen(
+                                            onBackClick = {
+                                                currentScreen = "conversation"
+                                            },
+                                            onItemClick = { chatId, chatType, chatName ->
+                                                launchChatActivity(chatId, chatType, chatName)
+                                            },
+                                            tokenRepository = tokenRepository,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
                                 }
                             }
-                            currentScreen = screen
-                        }
-                    )
+                        
+                        // 底部导航栏
+                        AdaptiveNavigationBar(
+                            currentScreen = currentPageItem,
+                            visibleItems = visibleNavItems,
+                            onScreenChange = { screen ->
+                                val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
+                                if (targetIndex >= 0) {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(targetIndex)
+                                    }
+                                }
+                                currentScreen = screen
+                            },
+                            isVisible = navigationState.isVisible
+                        )
+                    }
                 }
             }
         }
+    }
+    
+    /**
+     * 显示聊天界面（辅助Composable）
+     */
+    @Composable
+    private fun ShowChatScreen(
+        currentChatId: String,
+        currentChatType: Int,
+        currentChatName: String,
+        userId: String,
+        onBackClick: () -> Unit
+    ) {
+        if (currentChatId.isNotEmpty()) {
+            ChatScreen(
+                chatId = currentChatId,
+                chatType = currentChatType,
+                chatName = currentChatName,
+                userId = userId,
+                onBackClick = onBackClick,
+                onAvatarClick = { userId, userName, chatType, _ ->
+                    val groupId = if (chatType == 2) currentChatId else null
+                    UserDetailActivity.start(
+                        context = this@MainActivity,
+                        userId = userId,
+                        userName = userName,
+                        groupId = groupId
+                    )
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+    
+    /**
+     * 启动聊天Activity（辅助方法）
+     */
+    private fun launchChatActivity(chatId: String, chatType: Int, chatName: String) {
+        startActivity(Intent(this, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
+            putExtra("chatId", chatId)
+            putExtra("chatType", chatType)
+            putExtra("chatName", chatName)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        })
     }
     
     /**

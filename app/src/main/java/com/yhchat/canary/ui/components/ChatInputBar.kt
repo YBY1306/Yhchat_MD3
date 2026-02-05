@@ -110,6 +110,12 @@ fun ChatInputBar(
     val isProcessing = voiceState?.isProcessing ?: false
     val isUploading = voiceState?.isUploading ?: false
     
+    // 语音转文字对话框状态
+    var showVoiceToTextDialog by remember { mutableStateOf(false) }
+    var pendingVoiceFile by remember { mutableStateOf<java.io.File?>(null) }
+    var isConvertingToText by remember { mutableStateOf(false) }
+    var voiceToTextProgress by remember { mutableStateOf("") }
+    
     // 文件选择器
     val audioPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -342,16 +348,16 @@ fun ChatInputBar(
 
                                             val released = tryAwaitRelease()
                                             if (released) {
-                                                Log.d("ChatInputBar", "stopRecordingAndUpload")
-                                                voiceViewModel.stopRecordingAndUpload(
-                                                    context = ctx,
-                                                    chatId = chatId,
-                                                    chatType = chatType,
-                                                    onSuccess = { fileKey, fileHash, fileSize, duration ->
-                                                        onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
-                                                        isVoiceMode = false
+                                                Log.d("ChatInputBar", "voice released, show dialog")
+                                                // 停止录音但不上传，等待用户选择
+                                                voiceViewModel.stopRecordingOnly(ctx) { file ->
+                                                    if (file != null) {
+                                                        pendingVoiceFile = file
+                                                        showVoiceToTextDialog = true
+                                                    } else {
+                                                        Toast.makeText(ctx, "录音失败", Toast.LENGTH_SHORT).show()
                                                     }
-                                                )
+                                                }
                                             } else {
                                                 Log.d("ChatInputBar", "cancelRecording")
                                                 voiceViewModel.cancelRecording()
@@ -579,11 +585,11 @@ fun ChatInputBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
-                        tint = if (text.isNotBlank()) 
-                            MaterialTheme.colorScheme.onPrimary 
-                        else 
+                        tint = if (text.isNotBlank())
+                            MaterialTheme.colorScheme.onPrimary
+                        else
                             MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -669,7 +675,135 @@ fun ChatInputBar(
                 onDismiss = { showInstructionPicker = false }
             )
         }
+        
+        // 语音转文字选择对话框
+        if (showVoiceToTextDialog && pendingVoiceFile != null) {
+            VoiceToTextChoiceDialog(
+                isConverting = isConvertingToText,
+                progress = voiceToTextProgress,
+                onDirectSend = {
+                    // 直接发送语音
+                    showVoiceToTextDialog = false
+                    val file = pendingVoiceFile
+                    pendingVoiceFile = null
+                    if (file != null && voiceViewModel != null && chatId != null) {
+                        voiceViewModel.uploadVoiceFile(
+                            context = ctx,
+                            file = file,
+                            chatId = chatId,
+                            chatType = chatType,
+                            onSuccess = { fileKey, fileHash, fileSize, duration ->
+                                onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
+                                isVoiceMode = false
+                            }
+                        )
+                    }
+                },
+                onConvertToText = {
+                    // 转文字
+                    isConvertingToText = true
+                    voiceToTextProgress = "正在识别语音..."
+                    val file = pendingVoiceFile
+                    if (file != null) {
+                        coroutineScope.launch {
+                            com.yhchat.canary.utils.STTUtils.speechToTextFromFile(
+                                context = ctx,
+                                audioFile = file,
+                                onProgress = { progress -> voiceToTextProgress = progress }
+                            ).fold(
+                                onSuccess = { text ->
+                                    // 插入到输入框
+                                    onTextChange(if (text.isNotBlank()) "$text " else text)
+                                    showVoiceToTextDialog = false
+                                    pendingVoiceFile = null
+                                    isConvertingToText = false
+                                    voiceToTextProgress = ""
+                                    isVoiceMode = false
+                                    // 删除临时文件
+                                    file.delete()
+                                },
+                                onFailure = { error ->
+                                    voiceToTextProgress = "识别失败: ${error.message}"
+                                    isConvertingToText = false
+                                    Toast.makeText(ctx, "语音转文字失败: ${error.message}", Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
+                    }
+                },
+                onCancel = {
+                    showVoiceToTextDialog = false
+                    pendingVoiceFile?.delete()
+                    pendingVoiceFile = null
+                    isConvertingToText = false
+                    voiceToTextProgress = ""
+                }
+            )
+        }
     }
+}
+
+/**
+ * 语音转文字选择对话框
+ */
+@Composable
+private fun VoiceToTextChoiceDialog(
+    isConverting: Boolean,
+    progress: String,
+    onDirectSend: () -> Unit,
+    onConvertToText: () -> Unit,
+    onCancel: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { if (!isConverting) onCancel() },
+        title = {
+            Text(
+                text = if (isConverting) "语音转文字" else "是否转文字？",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            if (isConverting) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = progress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Text(
+                    text = "录音完成，请选择发送方式",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
+        confirmButton = {
+            if (!isConverting) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDirectSend) {
+                        Text("直接发送")
+                    }
+                    Button(onClick = onConvertToText) {
+                        Text("转文字")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (!isConverting) {
+                TextButton(onClick = onCancel) {
+                    Text("取消")
+                }
+            }
+        }
+    )
 }
 
 /**

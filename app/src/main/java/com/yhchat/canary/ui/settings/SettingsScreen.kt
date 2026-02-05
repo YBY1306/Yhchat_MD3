@@ -224,6 +224,11 @@ fun SettingsScreen(
             item {
                 DisplaySettingsGroup(context = context)
             }
+            
+            // TTS设置
+            item {
+                TTSSettingsGroup(context = context)
+            }
 
             // 主题设置
             item {
@@ -556,6 +561,217 @@ private fun DisplaySettingsGroup(
             { MarkdownRawTextSettingItem(context = context) }
         )
     )
+}
+
+/**
+ * TTS (文字转语音) 设置组
+ */
+@Composable
+private fun TTSSettingsGroup(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember {
+        context.getSharedPreferences("tts_settings", Context.MODE_PRIVATE)
+    }
+    
+    var ttsEnabled by remember {
+        mutableStateOf(prefs.getBoolean("tts_enabled", false))
+    }
+    
+    var speechRate by remember {
+        mutableFloatStateOf(prefs.getFloat("tts_speech_rate", 1.0f))
+    }
+    
+    var pitch by remember {
+        mutableFloatStateOf(prefs.getFloat("tts_pitch", 1.0f))
+    }
+    
+    SettingsGroup(
+        title = "文字转语音 (TTS)",
+        items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.RecordVoiceOver,
+                    title = "启用TTS功能",
+                    subtitle = if (ttsEnabled) "输入文字后可转换为语音发送" else "关闭文字转语音功能",
+                    checked = ttsEnabled,
+                    onCheckedChange = { checked ->
+                        ttsEnabled = checked
+                        prefs.edit().putBoolean("tts_enabled", checked).apply()
+                    }
+                )
+            },
+            {
+                TTSSpeechRateSettingItem(
+                    speechRate = speechRate,
+                    enabled = ttsEnabled,
+                    onSpeechRateChange = { newRate ->
+                        speechRate = newRate
+                        prefs.edit().putFloat("tts_speech_rate", newRate).apply()
+                    }
+                )
+            },
+            {
+                TTSPitchSettingItem(
+                    pitch = pitch,
+                    enabled = ttsEnabled,
+                    onPitchChange = { newPitch ->
+                        pitch = newPitch
+                        prefs.edit().putFloat("tts_pitch", newPitch).apply()
+                    }
+                )
+            }
+        )
+    )
+}
+
+/**
+ * TTS语速设置项
+ */
+@Composable
+private fun TTSSpeechRateSettingItem(
+    speechRate: Float,
+    enabled: Boolean,
+    onSpeechRateChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SettingsCustomItem {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Speed,
+                    contentDescription = "语速",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "语速",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "当前: ${String.format("%.1f", speechRate)}x",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Slider(
+                value = speechRate,
+                onValueChange = onSpeechRateChange,
+                valueRange = 0.5f..2.0f,
+                steps = 14,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "慢 (0.5x)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "快 (2.0x)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * TTS音调设置项
+ */
+@Composable
+private fun TTSPitchSettingItem(
+    pitch: Float,
+    enabled: Boolean,
+    onPitchChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SettingsCustomItem {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "音调",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "音调",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "当前: ${String.format("%.1f", pitch)}x",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Slider(
+                value = pitch,
+                onValueChange = onPitchChange,
+                valueRange = 0.5f..2.0f,
+                steps = 14,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "低 (0.5x)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "高 (2.0x)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 /**

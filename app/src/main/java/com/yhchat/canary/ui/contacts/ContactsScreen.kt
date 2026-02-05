@@ -45,11 +45,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 @Composable
 fun ContactsScreen(
     modifier: Modifier = Modifier,
-    viewModel: ContactsViewModel = hiltViewModel()
+    viewModel: ContactsViewModel = hiltViewModel(),
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    
+    // 监听滚动状态，自动隐藏/显示导航栏
+    if (navigationState != null) {
+        com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
+    }
 
     
     Scaffold(

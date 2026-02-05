@@ -489,6 +489,12 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+        
+        <!-- 通知快捷回复接收器 -->
+        <receiver
+            android:name=".receiver.NotificationReplyReceiver"
+            android:enabled="true"
+            android:exported="false" />
             
         <!-- 文件下载服务 -->
         <service

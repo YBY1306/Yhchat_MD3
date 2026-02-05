@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +21,62 @@ class MessageRepository @Inject constructor(
 ) {
     private val tag = "MessageRepository"
     
+    // 常量
+    private companion object {
+        const val DEFAULT_MSG_COUNT = 20
+        const val CONTENT_TYPE_TEXT = 1
+        const val CONTENT_TYPE_IMAGE = 2
+        const val CONTENT_TYPE_FILE = 4
+        const val CONTENT_TYPE_POST = 6
+        const val CONTENT_TYPE_EXPRESSION = 7
+        const val CONTENT_TYPE_VIDEO = 10
+        const val CONTENT_TYPE_AUDIO = 11
+    }
+    
+    /**
+     * 获取Token的辅助方法
+     */
+    private suspend fun getToken(): String? {
+        val tokenFlow = tokenRepository.getToken()
+        val token = tokenFlow.first()?.token
+        if (token.isNullOrEmpty()) {
+            Log.e(tag, "Token is null or empty")
+        }
+        return token
+    }
+    
+    /**
+     * 处理Protobuf API响应的通用方法
+     */
+    private inline fun <reified T> handleProtobufResponse(
+        response: retrofit2.Response<okhttp3.ResponseBody>,
+        parseResponse: (ByteArray) -> T,
+        getStatus: (T) -> Any,
+        getStatusCode: (Any) -> Int,
+        getStatusMsg: (Any) -> String,
+        onSuccess: (T) -> Result<Any>
+    ): Result<Any> {
+        return if (response.isSuccessful) {
+            response.body()?.let { responseBody ->
+                val bytes = responseBody.bytes()
+                val parsedResponse = parseResponse(bytes)
+                val status = getStatus(parsedResponse)
+                val code = getStatusCode(status)
+                val msg = getStatusMsg(status)
+                
+                if (code == 1) {
+                    onSuccess(parsedResponse)
+                } else {
+                    Log.e(tag, "API error: $msg")
+                    Result.failure(Exception(msg))
+                }
+            } ?: Result.failure(Exception("响应体为空"))
+        } else {
+            Log.e(tag, "HTTP error: ${response.code()}")
+            Result.failure(Exception("网络请求失败: ${response.code()}"))
+        }
+    }
+    
     /**
      * 获取消息列表
      * 
@@ -31,7 +88,7 @@ class MessageRepository @Inject constructor(
     suspend fun getMessages(
         chatId: String,
         chatType: Int,
-        msgCount: Int = 20,
+        msgCount: Int = DEFAULT_MSG_COUNT,
         msgId: String? = null
     ): Result<List<ChatMessage>> {
         return try {
@@ -55,7 +112,11 @@ class MessageRepository @Inject constructor(
             val request = requestBuilder.build()
             val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
 
-            Log.d(tag, "Getting messages for chat: $chatId, type: $chatType, count: $msgCount")
+            if (msgId.isNullOrEmpty()) {
+                Log.d(tag, "📡 获取最新消息: chatId=$chatId, chatType=$chatType, count=$msgCount")
+            } else {
+                Log.d(tag, "📡 通过msgId获取消息: chatId=$chatId, chatType=$chatType, msgId=$msgId, count=$msgCount")
+            }
             
             val response = apiService.listMessage(token, requestBody)
             
@@ -68,7 +129,19 @@ class MessageRepository @Inject constructor(
                         val messages = messageResponse.msgList.map { protoMsg ->
                             convertProtoToMessage(protoMsg, chatId, chatType)
                         }
-                        Log.d(tag, "Successfully got ${messages.size} messages")
+                        
+                        if (msgId.isNullOrEmpty()) {
+                            Log.d(tag, "✅ 成功获取 ${messages.size} 条最新消息")
+                        } else {
+                            Log.d(tag, "✅ 成功通过msgId获取 ${messages.size} 条消息")
+                            // 验证目标消息是否在结果中
+                            val foundTarget = messages.find { it.msgId == msgId }
+                            if (foundTarget != null) {
+                                Log.d(tag, "🎯 确认找到目标消息 msgId: $msgId")
+                            } else {
+                                Log.w(tag, "⚠️ 未找到目标消息 msgId: $msgId（可能被过滤或不存在）")
+                            }
+                        }
                         Result.success(messages)
                 } else {
                         Log.e(tag, "API error: ${messageResponse.status.msg}")
@@ -147,9 +220,13 @@ class MessageRepository @Inject constructor(
         chatId: String,
         chatType: Int,
         text: String,
-        contentType: Int = 1, // 1-文本
+        contentType: Int = CONTENT_TYPE_TEXT,
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,  // 引用图片URL
+        quoteImageName: String? = null,  // 引用图片名称
+        quoteVideoUrl: String? = null,  // 引用视频URL
+        quoteVideoTime: Long? = null,  // 引用视频时长
         commandId: Long? = null,  // 指令ID
         mentionedIds: List<String>? = null  // @的用户ID列表
     ): Result<Boolean> {
@@ -170,6 +247,25 @@ class MessageRepository @Inject constructor(
             // 添加引用消息文本
             if (!quoteMsgText.isNullOrEmpty()) {
                 contentBuilder.setQuoteMsgText(quoteMsgText)
+            }
+            
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+                Log.d(tag, "🖼️ 引用消息包含图片: $quoteImageUrl")
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+                Log.d(tag, "🎬 引用消息包含视频: $quoteVideoUrl")
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+                Log.d(tag, "⏱️ 引用视频时长: ${quoteVideoTime}s")
             }
             
             // 添加@的用户ID列表
@@ -376,7 +472,11 @@ class MessageRepository @Inject constructor(
         height: Int,
         fileSize: Long,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -406,12 +506,30 @@ class MessageRepository @Inject constructor(
                 Log.d(tag, "📤 引用消息: $quoteMsgText")
             }
             
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+                Log.d(tag, "📤 引用消息包含图片: $quoteImageUrl")
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+                Log.d(tag, "📤 引用消息包含视频: $quoteVideoUrl")
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
             val requestBuilder = send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(2) // 图片消息类型为2
+                .setContentType(CONTENT_TYPE_IMAGE.toLong())
             
             if (!quoteMsgId.isNullOrEmpty()) {
                 requestBuilder.setQuoteMsgId(quoteMsgId)
@@ -479,7 +597,11 @@ class MessageRepository @Inject constructor(
         fileKey: String,  // 七牛云返回的key，格式：disk/xxx.ext
         fileSize: Long,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -513,12 +635,28 @@ class MessageRepository @Inject constructor(
                 Log.d(tag, "📤 引用消息: $quoteMsgText")
             }
             
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
             val requestBuilder = send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(4) // 文件消息类型为4
+                .setContentType(CONTENT_TYPE_FILE.toLong())
             
             if (!quoteMsgId.isNullOrEmpty()) {
                 requestBuilder.setQuoteMsgId(quoteMsgId)
@@ -573,10 +711,14 @@ class MessageRepository @Inject constructor(
         chatId: String,
         chatType: Int,
         videoKey: String,  // 七牛云返回的key，格式：xxx.mp4
-        fileHash: String,  // 七牛云返回的hash
-        fileSize: Long,    // 文件大小
+        fileHash: String = "",  // 七牛云返回的hash
+        fileSize: Long = 0L,    // 文件大小
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -606,6 +748,22 @@ class MessageRepository @Inject constructor(
                 Log.d(tag, "📤 引用消息: $quoteMsgText")
             }
             
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
             // 构建media字段 - 视频消息需要media信息
             val mediaBuilder = send_message_send.Media.newBuilder()
                 .setFileKey(videoKey)
@@ -620,7 +778,7 @@ class MessageRepository @Inject constructor(
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(10) // 视频消息类型为10
+                .setContentType(CONTENT_TYPE_VIDEO.toLong())
                 .setMedia(mediaBuilder.build())
             
             if (!quoteMsgId.isNullOrEmpty()) {
@@ -667,6 +825,131 @@ class MessageRepository @Inject constructor(
     }
     
     /**
+     * 发送语音消息 (contentType=11)
+     * contentType = 11
+     */
+    suspend fun sendAudioMessage(
+        chatId: String,
+        chatType: Int,
+        audioKey: String,   // 七牛云返回的key
+        fileHash: String = "",   // 七牛云返回的hash
+        fileSize: Long = 0L,     // 文件大小
+        duration: Long = 0L,     // 音频时长（秒）
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
+    ): Result<Boolean> {
+        return try {
+            val tokenFlow = tokenRepository.getToken()
+            val token = tokenFlow.first()?.token
+            if (token.isNullOrEmpty()) {
+                Log.e(tag, "❌ Token为空")
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val msgId = UUID.randomUUID().toString().replace("-", "")
+            
+            Log.d(tag, "📤 ========== 发送语音消息 ==========")
+            Log.d(tag, "📤 msgId: $msgId")
+            Log.d(tag, "📤 chatId: $chatId")
+            Log.d(tag, "📤 chatType: $chatType")
+            Log.d(tag, "📤 audioKey: $audioKey")
+            Log.d(tag, "📤 fileHash: $fileHash")
+            Log.d(tag, "📤 fileSize: $fileSize bytes")
+            Log.d(tag, "📤 duration: ${duration}秒")
+            
+            // 构建protobuf请求 - 语音消息需要设置content.audio、audioTime和media字段
+            val contentBuilder = send_message_send.Content.newBuilder()
+                .setAudio(audioKey)        // 设置音频key
+                .setAudioTime(duration)    // 设置音频时长
+            
+            // 添加引用消息文本
+            if (!quoteMsgText.isNullOrEmpty()) {
+                contentBuilder.setQuoteMsgText(quoteMsgText)
+                Log.d(tag, "📤 引用消息: $quoteMsgText")
+            }
+            
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
+            // 构建media字段 - 语音消息需要media信息
+            val fileExtension = audioKey.substringAfterLast(".", "wav")
+            val mediaBuilder = send_message_send.Media.newBuilder()
+                .setFileKey(audioKey)
+                .setFileHash(fileHash)
+                .setFileType("video/mp4")  // 必须固定为 video/mp4 才会显示音频
+                .setFileSize(fileSize)
+                .setFileKey2(audioKey)
+                .setFileSuffix(fileExtension.lowercase(Locale.getDefault()))
+            
+            val requestBuilder = send_message_send.newBuilder()
+                .setMsgId(msgId)
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(contentBuilder.build())
+                .setContentType(CONTENT_TYPE_AUDIO.toLong())
+                .setMedia(mediaBuilder.build())
+            
+            if (!quoteMsgId.isNullOrEmpty()) {
+                requestBuilder.setQuoteMsgId(quoteMsgId)
+                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
+            }
+            
+            val request = requestBuilder.build()
+            val requestBytes = request.toByteArray()
+            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
+
+            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
+            
+            val response = apiService.sendMessage(token, requestBody)
+            
+            Log.d(tag, "📥 服务器响应码: ${response.code()}")
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val sendResponse = send_message.parseFrom(bytes)
+                    
+                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
+                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
+                    
+                    if (sendResponse.status.code == 1) {
+                        Log.d(tag, "✅ ========== 语音消息发送成功！ ==========")
+                        Result.success(true)
+                    } else {
+                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
+                        Result.failure(Exception(sendResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
+                Result.failure(Exception("发送失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 发送语音消息异常", e)
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    /**
      * 发送表情消息 (contentType=7)
      * @param expression 表情对象，包含id、url等信息
      */
@@ -675,7 +958,11 @@ class MessageRepository @Inject constructor(
         chatType: Int,
         expression: com.yhchat.canary.data.model.Expression,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -706,12 +993,28 @@ class MessageRepository @Inject constructor(
                 Log.d(tag, "📤 引用消息: $quoteMsgText")
             }
             
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
             val requestBuilder = send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(7) // 表情消息类型为7
+                .setContentType(CONTENT_TYPE_EXPRESSION.toLong())
             
             if (!quoteMsgId.isNullOrEmpty()) {
                 requestBuilder.setQuoteMsgId(quoteMsgId)
@@ -765,7 +1068,11 @@ class MessageRepository @Inject constructor(
         chatType: Int,
         stickerItem: com.yhchat.canary.data.model.StickerItem,
         quoteMsgId: String? = null,
-        quoteMsgText: String? = null
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -798,12 +1105,28 @@ class MessageRepository @Inject constructor(
                 Log.d(tag, "📤 引用消息: $quoteMsgText")
             }
             
+            // 添加引用消息的图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用消息的视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
             val requestBuilder = send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(7) // 表情消息类型为7
+                .setContentType(CONTENT_TYPE_EXPRESSION.toLong())
             
             if (!quoteMsgId.isNullOrEmpty()) {
                 requestBuilder.setQuoteMsgId(quoteMsgId)
@@ -887,7 +1210,7 @@ class MessageRepository @Inject constructor(
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(6) // 文章消息类型为6
+                .setContentType(CONTENT_TYPE_POST.toLong())
             
             if (!quoteMsgId.isNullOrEmpty()) {
                 requestBuilder.setQuoteMsgId(quoteMsgId)
@@ -1070,6 +1393,82 @@ class MessageRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "Error getting message by id from API: $messageId", e)
             null
+        }
+    }
+    
+    /**
+     * 通过msgId获取消息及其前后文（使用list-message-by-mid-seq API）
+     * @param chatId 会话ID
+     * @param chatType 会话类型
+     * @param msgId 目标消息ID
+     * @param msgCount 获取的消息数量（会返回msgCount+1条）
+     * @param msgSeq 消息序列号（默认0）
+     * @return 包含目标消息及其前后文的消息列表
+     */
+    suspend fun getMessagesByMsgId(
+        chatId: String,
+        chatType: Int,
+        msgId: String,
+        msgCount: Int = 30,
+        msgSeq: Long = 0L
+    ): Result<List<ChatMessage>> {
+        return try {
+            val tokenFlow = tokenRepository.getToken()
+            val token = tokenFlow.first()?.token
+            if (token.isNullOrEmpty()) {
+                Log.e(tag, "❌ Token为空")
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            Log.d(tag, "📡 使用 list-message-by-mid-seq 获取消息: chatId=$chatId, msgId=$msgId, msgCount=$msgCount")
+            
+            // 构建protobuf请求
+            val request = list_message_by_mid_seq_send.newBuilder()
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setMsgId(msgId)
+                .setMsgCount(msgCount.toLong())
+                .setMsgSeq(msgSeq)
+                .setUnknown(0)
+                .build()
+            
+            val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
+            
+            val response = apiService.listMessageByMidSeq(token, requestBody)
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val messageResponse = list_message_by_mid_seq.parseFrom(bytes)
+                    
+                    Log.d(tag, "✅ API返回: code=${messageResponse.status.code}, 消息数=${messageResponse.msgList.size}, total=${messageResponse.total}")
+                    
+                    if (messageResponse.status.code == 1) {
+                        val messages = messageResponse.msgList.map { protoMsg ->
+                            convertProtoToMessage(protoMsg, chatId, chatType)
+                        }
+                        
+                        // 验证目标消息是否在结果中
+                        val targetMessage = messages.find { it.msgId == msgId }
+                        if (targetMessage != null) {
+                            Log.d(tag, "🎯 确认找到目标消息 msgId: $msgId (content: ${targetMessage.content.text?.take(20)})")
+                        } else {
+                            Log.w(tag, "⚠️ 目标消息 $msgId 不在返回结果中")
+                        }
+                        
+                        Result.success(messages)
+                    } else {
+                        Log.e(tag, "❌ API错误: ${messageResponse.status.msg}")
+                        Result.failure(Exception(messageResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                Log.e(tag, "❌ HTTP错误: ${response.code()}")
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 获取消息异常", e)
+            Result.failure(e)
         }
     }
     

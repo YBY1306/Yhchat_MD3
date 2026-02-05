@@ -4,16 +4,32 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Environment
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
@@ -46,15 +62,41 @@ fun ShareDialog(
     
     val uiState by viewModel.uiState.collectAsState()
     
+    val scope = rememberCoroutineScope()
+    var isSavingImage by remember { mutableStateOf(false) }
+    
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("分享${when(chatType) {
-                1 -> "用户"
-                2 -> "群聊"
-                3 -> "机器人"
-                else -> "对象"
-            }}")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "分享${when(chatType) {
+                            1 -> "用户"
+                            2 -> "群聊"
+                            3 -> "机器人"
+                            else -> "对象"
+                        }}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = chatName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.QrCode,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         },
         text = {
             Column(
@@ -87,7 +129,7 @@ fun ShareDialog(
                         }
                         val yunhuLink = "yunhu://chat-add?id=$chatId&type=$chatTypeText"
                         
-                        // 分享文本（带群ID）
+                        // 分享文本（带ID）
                         val shareText = "访问链接加入云湖${when(chatType) {
                             1 -> "用户"
                             2 -> "群聊"
@@ -100,71 +142,147 @@ fun ShareDialog(
                             else -> "ID"
                         }}: $chatId"
                         
-                        // 显示分享图片
-                        AsyncImage(
-                            model = shareData?.getShareImageUrl(),
-                            contentDescription = "分享图片",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                        )
+                        val shareImageUrl = shareData?.getShareImageUrl()
                         
-                        // 分享链接（外部链接）
-                        OutlinedTextField(
-                            value = shareText,
-                            onValueChange = {},
-                            readOnly = true,
+                        // 分享图片卡片
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("分享链接（外部）") },
-                            minLines = 3,
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    copyToClipboard(context, shareText)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "复制外部链接"
-                                    )
-                                }
-                            }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // 云湖内链
-                        OutlinedTextField(
-                            value = yunhuLink,
-                            onValueChange = {},
-                            readOnly = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("云湖内链") },
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    copyToClipboard(context, yunhuLink)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "复制云湖内链"
-                                    )
-                                }
-                            }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // 分享按钮
-                        Button(
-                            onClick = {
-                                shareToSystem(context, shareText, chatName)
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "分享"
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("分享到其他应用")
+                            Column {
+                                // 分享图片
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(220.dp)
+                                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = shareImageUrl,
+                                        contentDescription = "分享图片",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    
+                                    // 保存图片按钮
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                isSavingImage = true
+                                                val result = saveShareImage(context, shareImageUrl ?: "")
+                                                isSavingImage = false
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    if (result) "图片已保存" else "保存失败",
+                                                    android.widget.Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                                        ) {
+                                            if (isSavingImage) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier
+                                                        .padding(12.dp)
+                                                        .size(20.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Download,
+                                                    contentDescription = "保存图片",
+                                                    modifier = Modifier.padding(12.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // 提示文字
+                                Text(
+                                    text = "长按图片或点击下载按钮保存",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                        .align(Alignment.CenterHorizontally)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // 操作按钮组
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 复制链接按钮
+                            OutlinedButton(
+                                onClick = { copyToClipboard(context, shareText) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("复制链接")
+                            }
+                            
+                            // 分享按钮
+                            Button(
+                                onClick = { shareToSystem(context, shareText, chatName) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("分享")
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // 链接信息卡片
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                // 外部分享链接
+                                LinkInfoRow(
+                                    label = "分享链接",
+                                    value = "${shareData?.shareUrl}share?key=${shareData?.key}&ts=${shareData?.ts}",
+                                    onCopy = { copyToClipboard(context, "${shareData?.shareUrl}share?key=${shareData?.key}&ts=${shareData?.ts}") }
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Divider()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // 云湖内链
+                                LinkInfoRow(
+                                    label = "云湖内链",
+                                    value = yunhuLink,
+                                    onCopy = { copyToClipboard(context, yunhuLink) }
+                                )
+                            }
                         }
                     }
                 }
@@ -199,6 +317,75 @@ private fun shareToSystem(context: Context, shareUrl: String, chatName: String) 
     }
     val shareIntent = Intent.createChooser(sendIntent, "分享到")
     context.startActivity(shareIntent)
+}
+
+/**
+ * 保存分享图片到本地
+ */
+private suspend fun saveShareImage(context: Context, imageUrl: String): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            // 使用Coil下载图片
+            val imageLoader = context.imageLoader
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .build()
+            
+            val result = imageLoader.execute(request)
+            if (result is SuccessResult) {
+                val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                    ?: return@withContext false
+                
+                // 保存到Pictures目录
+                val fileName = "share_${System.currentTimeMillis()}.jpg"
+                val file = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    // Android 10+ 使用MediaStore
+                    val values = android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                        put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                        put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/YhChat")
+                    }
+                    
+                    val uri = context.contentResolver.insert(
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        values
+                    ) ?: return@withContext false
+                    
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    }
+                    true
+                } else {
+                    // Android 9及以下使用传统方式
+                    val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                    val yhchatDir = File(picturesDir, "YhChat")
+                    if (!yhchatDir.exists()) {
+                        yhchatDir.mkdirs()
+                    }
+                    
+                    val file = File(yhchatDir, fileName)
+                    FileOutputStream(file).use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    }
+                    
+                    // 通知系统扫描新文件
+                    context.sendBroadcast(
+                        Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
+                            data = android.net.Uri.fromFile(file)
+                        }
+                    )
+                    true
+                }
+                
+                file
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ShareDialog", "保存图片失败", e)
+            false
+        }
+    }
 }
 
 /**
@@ -242,3 +429,44 @@ data class ShareUiState(
     val error: String? = null
 )
 
+/**
+ * 链接信息行组件
+ */
+@Composable
+private fun LinkInfoRow(
+    label: String,
+    value: String,
+    onCopy: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            TextButton(onClick = onCopy) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("复制", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}

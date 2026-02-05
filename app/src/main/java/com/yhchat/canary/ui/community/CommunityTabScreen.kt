@@ -65,18 +65,31 @@ fun CommunityTabScreen(
 ) {
     val context = LocalContext.current
     
+    // 获取布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showHotTab = remember { layoutPrefs.getBoolean("community_show_hot", true) }
+    val showAllTab = remember { layoutPrefs.getBoolean("community_show_all", true) }
+    val showFollowingTab = remember { layoutPrefs.getBoolean("community_show_following", true) }
+    val showMoreTab = remember { layoutPrefs.getBoolean("community_show_more", true) }
+    
     // 获取状态
     val boardListState by viewModel.boardListState.collectAsState()
     val followingBoardListState by viewModel.followingBoardListState.collectAsState()
     val allBoardListState by viewModel.allBoardListState.collectAsState()
     
+    // 根据布局设置过滤可见的Tab
+    val allTabs = listOf(
+        "热门" to showHotTab,
+        "全部" to showAllTab,
+        "关注" to showFollowingTab,
+        "更多" to showMoreTab
+    )
+    val visibleTabs = allTabs.filter { it.second }.map { it.first }
+    val tabTitles = visibleTabs.ifEmpty { listOf("热门") } // 确保至少有一个Tab
+    
     // 页面状态
-    val pagerState = rememberPagerState { 4 }
+    val pagerState = rememberPagerState { tabTitles.size }
     var selectedTab by remember { mutableStateOf(0) }
-    
-    
-    // 标签页标题
-    val tabTitles = listOf("热门", "全部", "关注", "更多")
     
     // 监听页面变化，使用snapshotFlow来获得更好的响应性
     LaunchedEffect(pagerState) {
@@ -167,14 +180,16 @@ fun CommunityTabScreen(
             }
         }
         
-        // 页面内容
+        // 页面内容 - 根据可见的Tab标题动态显示内容
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
-        ) { 
-            page ->
-            when (page) {
-                0 -> {
+        ) { page ->
+            // 获取当前页面对应的Tab标题
+            val currentTabTitle = tabTitles.getOrNull(page) ?: ""
+            
+            when (currentTabTitle) {
+                "热门" -> {
                     // 分区列表
                     val pullToRefreshState = rememberPullToRefreshState()
                     PullToRefreshBox(
@@ -197,7 +212,7 @@ fun CommunityTabScreen(
                         )
                     }
                 }
-                1 -> {
+                "全部" -> {
                     // 全部分区
                     val pullToRefreshState = rememberPullToRefreshState()
                     PullToRefreshBox(
@@ -220,7 +235,7 @@ fun CommunityTabScreen(
                         )
                     }
                 }
-                2 -> {
+                "关注" -> {
                     // 关注分区
                     val pullToRefreshState = rememberPullToRefreshState()
                     PullToRefreshBox(
@@ -243,7 +258,7 @@ fun CommunityTabScreen(
                         )
                     }
                 }
-                3 -> {
+                "更多" -> {
                     // 更多页面
                     MoreTabContent(
                         token = token,
@@ -265,6 +280,15 @@ fun MoreTabContent(
     viewModel: CommunityViewModel,
     context: android.content.Context
 ) {
+    // 读取布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showMyPosts = remember { layoutPrefs.getBoolean("community_more_my_posts", true) }
+    val showRecommend = remember { layoutPrefs.getBoolean("community_more_recommend", true) }
+    val showCollect = remember { layoutPrefs.getBoolean("community_more_collect", true) }
+    val showBlocked = remember { layoutPrefs.getBoolean("community_more_blocked", true) }
+    val showCreateBoard = remember { layoutPrefs.getBoolean("community_more_create_board", true) }
+    val showManagedBoards = remember { layoutPrefs.getBoolean("community_more_managed_boards", true) }
+    
     var showCreateBoardDialog by remember { mutableStateOf(false) }
 
     val createdBoardListState by viewModel.createdBoardListState.collectAsState()
@@ -315,86 +339,102 @@ fun MoreTabContent(
         }
     }
     
+    // 构建可见的菜单项列表
+    val moreMenuItems = buildList<@Composable () -> Unit> {
+        if (showMyPosts) {
+            add {
+                SettingsItemCell(
+                    icon = Icons.Default.Person,
+                    title = "我的文章",
+                    subtitle = "查看和管理我发布的文章",
+                    onClick = {
+                        val intent = Intent(context, MyPostsActivity::class.java).apply {
+                            putExtra("token", token)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+        }
+        if (showRecommend) {
+            add {
+                SettingsItemCell(
+                    icon = Icons.Default.ThumbUp,
+                    title = "查看推荐文章",
+                    subtitle = "浏览社区推荐文章列表",
+                    onClick = {
+                        val intent = Intent(context, RecommendPostsActivity::class.java).apply {
+                            putExtra("token", token)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+        }
+        if (showCollect) {
+            add {
+                SettingsItemCell(
+                    icon = Icons.Default.Star,
+                    title = "我的收藏",
+                    subtitle = "查看我收藏的文章",
+                    onClick = {
+                        val intent = Intent(context, MyCollectPostsActivity::class.java).apply {
+                            putExtra("token", token)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+        }
+        if (showBlocked) {
+            add {
+                SettingsItemCell(
+                    icon = Icons.Default.Block,
+                    title = "被屏蔽的用户",
+                    subtitle = "管理已屏蔽的用户列表",
+                    onClick = {
+                        val intent = Intent(context, BlockedUsersActivity::class.java).apply {
+                            putExtra("token", token)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+        }
+        if (showCreateBoard) {
+            add {
+                SettingsItemCell(
+                    icon = Icons.Default.Add,
+                    title = "新建分区",
+                    subtitle = "创建一个新的文章分区",
+                    onClick = {
+                        showCreateBoardDialog = true
+                    }
+                )
+            }
+        }
+    }
+    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        item {
-            SettingsGroup(
-                title = "更多",
-                items = listOf(
-                    {
-                        SettingsItemCell(
-                            icon = Icons.Default.Person,
-                            title = "我的文章",
-                            subtitle = "查看和管理我发布的文章",
-                            onClick = {
-                                val intent = Intent(context, MyPostsActivity::class.java).apply {
-                                    putExtra("token", token)
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    },
-                    {
-                        SettingsItemCell(
-                            icon = Icons.Default.ThumbUp,
-                            title = "查看推荐文章",
-                            subtitle = "浏览社区推荐文章列表",
-                            onClick = {
-                                val intent = Intent(context, RecommendPostsActivity::class.java).apply {
-                                    putExtra("token", token)
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    },
-                    {
-                        SettingsItemCell(
-                            icon = Icons.Default.Star,
-                            title = "我的收藏",
-                            subtitle = "查看我收藏的文章",
-                            onClick = {
-                                val intent = Intent(context, MyCollectPostsActivity::class.java).apply {
-                                    putExtra("token", token)
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    },
-                    {
-                        SettingsItemCell(
-                            icon = Icons.Default.Block,
-                            title = "被屏蔽的用户",
-                            subtitle = "管理已屏蔽的用户列表",
-                            onClick = {
-                                val intent = Intent(context, BlockedUsersActivity::class.java).apply {
-                                    putExtra("token", token)
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    },
-                    {
-                        SettingsItemCell(
-                            icon = Icons.Default.Add,
-                            title = "新建分区",
-                            subtitle = "创建一个新的文章分区",
-                            onClick = {
-                                showCreateBoardDialog = true
-                            }
-                        )
-                    }
+        if (moreMenuItems.isNotEmpty()) {
+            item {
+                SettingsGroup(
+                    title = "更多",
+                    items = moreMenuItems
                 )
-            )
+            }
         }
 
-        item {
-            val boards = createdBoardListState.boards
-            SettingsGroup(
-                title = "我管理的分区",
-                items = boards.map { board ->
+        if (showManagedBoards) {
+            item {
+                val boards = createdBoardListState.boards
+                SettingsGroup(
+                    title = "我管理的分区",
+                    items = boards.map { board ->
                     {
                         SettingsCustomItem(
                             onClick = {
@@ -479,6 +519,7 @@ fun MoreTabContent(
                     }
                 }
             )
+            }
         }
     }
     

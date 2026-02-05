@@ -75,6 +75,10 @@ fun BotListScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     
+    // 布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showBanner = layoutPrefs.getBoolean("discover_show_banner", true)
+    
     // 加载Banner和机器人列表
     LaunchedEffect(Unit) {
         isLoading = true
@@ -189,7 +193,7 @@ fun BotListScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // Banner轮播图
-                        if (banners.isNotEmpty()) {
+                        if (showBanner && banners.isNotEmpty()) {
                             item {
                                 BannerCarousel(
                                     banners = banners,

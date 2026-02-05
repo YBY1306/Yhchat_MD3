@@ -1,4 +1,7 @@
-# Yhchat_MD3
+# Experimental - 更激进的修改
+这个版本会尝试一些之前从未做过的功能
+
+
 用各种AI IDE制作的云湖第三方客户端，由AI强力驱动。
 
 # 声明
@@ -42,6 +45,14 @@
 ### [FlymeLive](https://github.com/wsu2059q/FlymeLive)
 
 ### [图标@星河间](https://github.com/Kauid323/Yhchat_MD3/issues/12)
+
+### [TTS文本转语音@Rabbit](https://yhfx.jwznb.com/share?key=WfYmURDk5BWz&ts=1770288663)
+
+## 已接入 ComboLite
+如果你不知道ComboLite是什么，那么[请看这个！](https://github.com/lnzz123/ComboLite)
+理论来说可以给Yhchat Canary装插件的，没试过所以就给你们试啦！
+[一些文档](./docs/)  
+
 
 > 这个app经历Cursor Kiro Windsurf CodeFlicker VSCode里面的Copilot Antigravity AndroidStudio里面的Gemini 等AI IDE之手
 

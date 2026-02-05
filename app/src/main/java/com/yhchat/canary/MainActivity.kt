@@ -1,12 +1,16 @@
 package com.yhchat.canary
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import dagger.hilt.android.AndroidEntryPoint
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -15,9 +19,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.yhchat.canary.ui.login.LoginScreen
 import com.yhchat.canary.ui.conversation.ConversationScreen
 import com.yhchat.canary.ui.chat.ChatScreen
@@ -58,12 +64,60 @@ class MainActivity : BaseActivity() {
         
         setContent {
             YhchatCanaryTheme {
+                // 设置系统导航栏颜色，让手势线自动适配应用的导航栏颜色
+                SetSystemNavigationBarColor()
+                
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainContent()
                 }
+            }
+        }
+    }
+    
+    /**
+     * 设置系统导航栏颜色，让手势线自动适配应用主题
+     */
+    @Composable
+    private fun SetSystemNavigationBarColor() {
+        // 使用导航栏的surface颜色作为系统导航栏背景
+        val navigationBarColor = MaterialTheme.colorScheme.surface
+        val isLightTheme = !isSystemInDarkTheme()
+        
+        SideEffect {
+            // 设置系统导航栏背景色
+            window.navigationBarColor = navigationBarColor.toArgb()
+            
+            // Android 8.0+ 支持设置导航栏图标颜色
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = if (isLightTheme) {
+                    // 浅色主题：使用深色图标和手势线
+                    window.decorView.systemUiVisibility or 
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                } else {
+                    // 深色主题：使用浅色图标和手势线
+                    window.decorView.systemUiVisibility and 
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                }
+            }
+            
+            // Android 10+ 禁用系统强制对比度，完全使用我们设置的颜色
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+            }
+            
+            // Android 11+ 使用新的API设置导航栏外观
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.setSystemBarsAppearance(
+                    if (isLightTheme) 
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS 
+                    else 
+                        0,
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                )
             }
         }
     }
@@ -175,19 +229,10 @@ class MainActivity : BaseActivity() {
                     }
                 }
                 
-                // 监听HorizontalPager滚动，自动隐藏/显示导航栏
-                LaunchedEffect(pagerState) {
-                    snapshotFlow { pagerState.isScrollInProgress }
-                        .collect { isScrolling ->
-                            if (isScrolling) {
-                                // 滚动时隐藏导航栏
-                                navigationState.hide()
-                            } else {
-                                // 停止滚动时显示导航栏
-                                kotlinx.coroutines.delay(300)
-                                navigationState.show()
-                            }
-                        }
+                // 切换页面时重置导航栏状态（仅在页面完全切换后显示）
+                LaunchedEffect(pagerState.currentPage) {
+                    // 切换到新页面时显示导航栏
+                    navigationState.show()
                 }
 
                 // 检测屏幕尺寸
@@ -306,10 +351,24 @@ class MainActivity : BaseActivity() {
                         }
                     }
                 } else {
-                    // 小屏设备：使用Column布局，导航栏在底部
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // 主内容区域
-                        Box(modifier = Modifier.weight(1f)) {
+                    // 小屏设备：使用Box布局，导航栏覆盖在内容上方（像LibChecker一样）
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // 底部padding动态变化 - 当导航栏隐藏时变为0
+                        val bottomPadding by animateDpAsState(
+                            targetValue = if (navigationState.isVisible) 80.dp else 0.dp,
+                            animationSpec = tween(
+                                durationMillis = 400,
+                                easing = LinearOutSlowInEasing
+                            ),
+                            label = "contentBottomPadding"
+                        )
+                        
+                        // 主内容区域 - 底部留出导航栏空间
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = bottomPadding) // 导航栏高度动态调整
+                        ) {
                             if (visibleNavItems.isNotEmpty()) {
                                 HorizontalPager(
                                     state = pagerState,
@@ -396,7 +455,7 @@ class MainActivity : BaseActivity() {
                                 }
                             }
                         
-                        // 底部导航栏
+                        // 底部导航栏 - 覆盖在内容上方，位于底部
                         AdaptiveNavigationBar(
                             currentScreen = currentPageItem,
                             visibleItems = visibleNavItems,
@@ -409,7 +468,8 @@ class MainActivity : BaseActivity() {
                                 }
                                 currentScreen = screen
                             },
-                            isVisible = navigationState.isVisible
+                            isVisible = navigationState.isVisible,
+                            modifier = Modifier.align(Alignment.BottomCenter)
                         )
                     }
                 }

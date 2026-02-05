@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.community
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -227,25 +228,29 @@ fun PostItem(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // 文章标题
-            Text(
-                text = post.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            // 文章标题 - 支持选择复制
+            SelectionContainer {
+                Text(
+                    text = post.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // 文章内容预览
-            Text(
-                text = post.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            // 文章内容预览 - 支持选择复制
+            SelectionContainer {
+                Text(
+                    text = post.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             
             Spacer(modifier = Modifier.height(12.dp))
             

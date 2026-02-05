@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -55,21 +56,23 @@ fun BotBoardContent(
                 .padding(12.dp)
         ) {
             when (boardData.contentType) {
-                1 -> { // 文本
-                    Text(
-                        text = boardData.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                1 -> { // 文本 - 支持选择复制
+                    SelectionContainer {
+                        Text(
+                            text = boardData.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
-                2 -> { // Markdown
+                2 -> { // Markdown - MarkdownText组件内部支持选择
                     MarkdownText(
                         markdown = boardData.content,
                         modifier = Modifier.fillMaxWidth(),
                         onImageClick = onImageClick
                     )
                 }
-                3 -> { // HTML
+                3 -> { // HTML - HtmlWebView内部支持选择
                     HtmlWebView(
                         htmlContent = boardData.content,
                         modifier = Modifier
@@ -78,12 +81,14 @@ fun BotBoardContent(
                         onImageClick = onImageClick
                     )
                 }
-                else -> { // 默认按文本处理
-                    Text(
-                        text = boardData.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                else -> { // 默认按文本处理 - 支持选择复制
+                    SelectionContainer {
+                        Text(
+                            text = boardData.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }

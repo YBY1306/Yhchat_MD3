@@ -124,6 +124,9 @@ fun YhchatCanaryTheme(
     // 读取自定义主题颜色设置
     val useCustomColor = customColorInt != -1 && customColorInt != 0xFF6200EE.toInt()
     val customPrimaryColor = if (useCustomColor) Color(customColorInt) else null
+    
+    // 读取是否启用莫奈取色（Material You动态颜色）
+    val monaetEnabled = displayPrefs.getBoolean("enable_monet_colors", true)
 
     val effectiveDarkTheme = when (themeMode) {
         "light" -> false
@@ -131,25 +134,31 @@ fun YhchatCanaryTheme(
         else -> systemDarkTheme
     }
     
-    // 选择配色方案
+    // 选择配色方案（莫奈取色优先级最高）
     val baseColorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (effectiveDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        // 优先1：启用了莫奈取色且系统支持（Android 12+）
+        monaetEnabled && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (effectiveDarkTheme) {
+                dynamicDarkColorScheme(context)
+            } else {
+                dynamicLightColorScheme(context)
+            }
         }
+        // 优先2：使用自定义主题色
+        customPrimaryColor != null -> {
+            val base = if (effectiveDarkTheme) DarkColorScheme else LightColorScheme
+            base.copy(
+                primary = customPrimaryColor,
+                primaryContainer = customPrimaryColor.copy(alpha = 0.3f),
+                onPrimaryContainer = if (effectiveDarkTheme) customPrimaryColor.copy(alpha = 0.9f) else customPrimaryColor
+            )
+        }
+        // 优先3：使用默认主题
         effectiveDarkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
     
-    // 应用自定义主题色（如果设置了）
-    val colorScheme = if (customPrimaryColor != null) {
-        baseColorScheme.copy(
-            primary = customPrimaryColor,
-            primaryContainer = customPrimaryColor.copy(alpha = 0.3f),
-            onPrimaryContainer = if (effectiveDarkTheme) customPrimaryColor.copy(alpha = 0.9f) else customPrimaryColor
-        )
-    } else {
-        baseColorScheme
-    }
+    val colorScheme = baseColorScheme
 
     val baseDensity = LocalDensity.current
     val scaledDensity = Density(

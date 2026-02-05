@@ -2,7 +2,11 @@ package com.yhchat.canary.ui.components
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
@@ -61,6 +65,15 @@ import java.util.*
 import kotlin.math.roundToInt
 
 /**
+ * TTS引擎信息数据类（需要在顶层定义，供多个函数使用）
+ */
+data class TtsEngineInfo(
+    val packageName: String,
+    val label: String,
+    val isInstalled: Boolean
+)
+
+/**
  * 浮动语音窗口组件
  * @param chatId 聊天ID
  * @param chatType 聊天类型
@@ -104,13 +117,15 @@ fun FloatingVoiceWindow(
     var ttsVolume by remember { mutableFloatStateOf(1.0f) } // 音量 0.0-1.0
     
     // TTS引擎相关
-    var availableTtsEngines by remember { mutableStateOf<List<TextToSpeech.EngineInfo>>(emptyList()) }
+    var availableTtsEngines by remember { mutableStateOf<List<TtsEngineInfo>>(emptyList()) }
     var selectedTtsEngine by remember { mutableStateOf<String?>(null) }
     var ttsEngine by remember { mutableStateOf<TextToSpeech?>(null) }
     var customEnginePackage by remember { mutableStateOf("") }
     var showEngineSelector by remember { mutableStateOf(false) }
+    var isInitializing by remember { mutableStateOf(false) }
+    var initTimeout by remember { mutableStateOf(false) }
     
-    val openTtsSettings = remember {
+    val openTtsSettings: () -> Unit = remember {
         {
             try {
                 // 尝试打开TTS设置页面
@@ -127,6 +142,7 @@ fun FloatingVoiceWindow(
                     Log.e("FloatingVoiceWindow", "无法打开设置", e2)
                 }
             }
+            Unit // 显式返回Unit
         }
     }
     
@@ -137,40 +153,72 @@ fun FloatingVoiceWindow(
         }
     }
     
-    // 初始化TTS引擎
+    // 初始化TTS引擎（使用最佳实践）
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val defaultEngine = getDefaultTtsEngine(context)
-            if (defaultEngine != null && defaultEngine.isNotBlank()) {
-                Log.d("FloatingVoiceWindow", "检测到系统默认TTS引擎: $defaultEngine，将尝试使用此引擎")
+            Log.d("FloatingVoiceWindow", "🎤 ========== TTS初始化开始 ==========")
+            Log.d("FloatingVoiceWindow", "📱 设备信息: SDK=${Build.VERSION.SDK_INT}, 型号=${Build.MODEL}")
+            
+            // 1. 检测所有可用TTS引擎
+            val engines = detectAllTtsEngines(context)
+            withContext(Dispatchers.Main) {
+                availableTtsEngines = engines
+            }
+            
+            // 2. 寻找最佳引擎（优先级：Google TTS → 系统默认 → 其他）
+            val bestEngine = findBestTtsEngine(engines)
+            
+            if (bestEngine != null) {
+                Log.d("FloatingVoiceWindow", "🎯 选择最佳引擎: ${bestEngine.label} (${bestEngine.packageName})")
                 withContext(Dispatchers.Main) {
-                    selectedTtsEngine = defaultEngine
+                    selectedTtsEngine = bestEngine.packageName
                 }
             } else {
-                Log.d("FloatingVoiceWindow", "系统未设置默认TTS引擎，将使用默认初始化")
+                Log.e("FloatingVoiceWindow", "❌ 未找到可用的TTS引擎")
+                withContext(Dispatchers.Main) {
+                    ttsError = "未检测到TTS引擎，请安装Google文字转语音或其他TTS应用"
+                }
             }
         }
     }
     
-    // 初始化TTS实例
+    // 初始化TTS实例（使用最佳实践）
     DisposableEffect(selectedTtsEngine, ttsRetryCount) {
         val currentEngine = selectedTtsEngine
         var tts: TextToSpeech? = null
+        var timeoutJob: kotlinx.coroutines.Job? = null
         
-        Log.d("FloatingVoiceWindow", "🎤 ========== 开始初始化TTS ========== (重试次数: $ttsRetryCount)")
-        Log.d("FloatingVoiceWindow", "🔧 使用引擎: ${currentEngine ?: "系统默认"}")
+        Log.d("FloatingVoiceWindow", "🎤 ========== TTS实例初始化 ========== (重试: $ttsRetryCount)")
+        Log.d("FloatingVoiceWindow", "🔧 目标引擎: ${currentEngine ?: "系统默认"}")
+        
+        isInitializing = true
+        initTimeout = false
+        
+        // 设置15秒超时保护
+        timeoutJob = kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
+            kotlinx.coroutines.delay(15000)
+            if (isInitializing) {
+                Log.e("FloatingVoiceWindow", "⏰ TTS初始化超时（15秒）")
+                initTimeout = true
+                isInitializing = false
+                ttsError = "TTS初始化超时，请检查系统TTS设置"
+            }
+        }
         
         tts = if (!currentEngine.isNullOrBlank()) {
             Log.d("FloatingVoiceWindow", "📦 创建指定引擎TTS: $currentEngine")
             try {
                 TextToSpeech(context, { status ->
-                    Log.d("FloatingVoiceWindow", "📡 TTS初始化回调: status=$status (${if (status == TextToSpeech.SUCCESS) "SUCCESS" else if (status == TextToSpeech.ERROR) "ERROR" else "UNKNOWN"}), engine=$currentEngine")
+                    timeoutJob?.cancel()
+                    isInitializing = false
+                    
+                    Log.d("FloatingVoiceWindow", "📡 TTS初始化回调: status=$status (${getStatusName(status)}), engine=$currentEngine")
                 
                 if (status == TextToSpeech.SUCCESS) {
                     tts?.let { engine ->
-                        Log.d("FloatingVoiceWindow", "✅ TTS初始化成功")
+                        Log.d("FloatingVoiceWindow", "✅ TTS引擎初始化成功")
                         
-                        // 检查并设置语言支持
+                        // 1. 设置语言
                         val languageResult = engine.setLanguage(Locale.CHINESE)
                         when (languageResult) {
                             TextToSpeech.LANG_AVAILABLE,
@@ -178,26 +226,20 @@ fun FloatingVoiceWindow(
                             TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> {
                                 Log.d("FloatingVoiceWindow", "✅ 中文语言设置成功: $languageResult")
                                 
-                                // 应用初始参数
+                                // 2. 配置音频属性（关键！）
+                                configureAudioAttributes(engine)
+                                
+                                // 3. 应用语音参数
                                 engine.setSpeechRate(ttsSpeechRate)
                                 engine.setPitch(ttsPitch)
+                                Log.d("FloatingVoiceWindow", "🎚️ 参数配置: 语速=$ttsSpeechRate, 音调=$ttsPitch")
                                 
-                                Log.d("FloatingVoiceWindow", "🎚️ TTS参数设置: 语速=$ttsSpeechRate, 音调=$ttsPitch")
-                                
-                                // 获取可用语言列表
-                                val availableLanguages = engine.availableLanguages
-                                if (availableLanguages != null) {
-                                    Log.d("FloatingVoiceWindow", "📝 支持的语言数量: ${availableLanguages.size}")
-                                    availableLanguages.take(5).forEach { locale ->
-                                        Log.d("FloatingVoiceWindow", "  - ${locale.displayName}")
-                                    }
-                                } else {
-                                    Log.w("FloatingVoiceWindow", "⚠️ 无法获取支持的语言列表")
-                                }
+                                // 4. 记录引擎详细信息
+                                logEngineDetails(engine)
                                 
                                 ttsError = null
                                 ttsEngine = tts
-                                Log.d("FloatingVoiceWindow", "🎉 TTS完全准备就绪")
+                                Log.d("FloatingVoiceWindow", "🎉 TTS完全就绪")
                             }
                             TextToSpeech.LANG_MISSING_DATA -> {
                                 Log.e("FloatingVoiceWindow", "❌ 缺少中文语言数据")
@@ -234,13 +276,16 @@ fun FloatingVoiceWindow(
             Log.d("FloatingVoiceWindow", "📦 创建默认TTS引擎")
             try {
                 TextToSpeech(context) { status ->
-                    Log.d("FloatingVoiceWindow", "📡 TTS初始化回调 (默认引擎): status=$status (${if (status == TextToSpeech.SUCCESS) "SUCCESS" else if (status == TextToSpeech.ERROR) "ERROR" else "UNKNOWN"})")
+                    timeoutJob?.cancel()
+                    isInitializing = false
+                    
+                    Log.d("FloatingVoiceWindow", "📡 TTS初始化回调 (默认引擎): status=$status (${getStatusName(status)})")
                 
                 if (status == TextToSpeech.SUCCESS) {
                     tts?.let { engine ->
-                        Log.d("FloatingVoiceWindow", "✅ TTS初始化成功 (默认引擎)")
+                        Log.d("FloatingVoiceWindow", "✅ TTS引擎初始化成功 (默认引擎)")
                         
-                        // 检查并设置语言支持
+                        // 1. 设置语言
                         val languageResult = engine.setLanguage(Locale.CHINESE)
                         when (languageResult) {
                             TextToSpeech.LANG_AVAILABLE,
@@ -248,15 +293,20 @@ fun FloatingVoiceWindow(
                             TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> {
                                 Log.d("FloatingVoiceWindow", "✅ 中文语言设置成功: $languageResult")
                                 
-                                // 应用初始参数
+                                // 2. 配置音频属性（关键！）
+                                configureAudioAttributes(engine)
+                                
+                                // 3. 应用语音参数
                                 engine.setSpeechRate(ttsSpeechRate)
                                 engine.setPitch(ttsPitch)
+                                Log.d("FloatingVoiceWindow", "🎚️ 参数配置: 语速=$ttsSpeechRate, 音调=$ttsPitch")
                                 
-                                Log.d("FloatingVoiceWindow", "🎚️ TTS参数设置: 语速=$ttsSpeechRate, 音调=$ttsPitch")
+                                // 4. 记录引擎详细信息
+                                logEngineDetails(engine)
                                 
                                 ttsError = null
                                 ttsEngine = tts
-                                Log.d("FloatingVoiceWindow", "🎉 TTS完全准备就绪 (默认引擎)")
+                                Log.d("FloatingVoiceWindow", "🎉 TTS完全就绪 (默认引擎)")
                             }
                             TextToSpeech.LANG_MISSING_DATA -> {
                                 Log.e("FloatingVoiceWindow", "❌ 缺少中文语言数据")
@@ -293,7 +343,9 @@ fun FloatingVoiceWindow(
         
         onDispose {
             Log.d("FloatingVoiceWindow", "🔚 TTS实例销毁")
+            timeoutJob?.cancel()
             tts?.shutdown()
+            isInitializing = false
         }
     }
     
@@ -316,35 +368,7 @@ fun FloatingVoiceWindow(
         }
     }
     
-    // 获取可用的TTS引擎列表
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            try {
-                val engines = getAvailableTtsEngines(context)
-                availableTtsEngines = engines
-                Log.d("FloatingVoiceWindow", "📋 找到 ${engines.size} 个TTS引擎:")
-                engines.forEach { engine ->
-                    Log.d("FloatingVoiceWindow", "  - ${engine.label} (${engine.name})")
-                }
-                
-                // 如果没有找到任何TTS引擎
-                if (engines.isEmpty()) {
-                    Log.e("FloatingVoiceWindow", "❌ 系统中没有安装任何TTS引擎")
-                    withContext(Dispatchers.Main) {
-                        ttsError = "未找到TTS引擎，请先安装TTS应用（如Google TTS、小米TTS等）"
-                    }
-                } else {
-                    Log.d("FloatingVoiceWindow", "✅ TTS引擎列表加载完成")
-                }
-            } catch (e: Exception) {
-                Log.e("FloatingVoiceWindow", "❌ 获取TTS引擎列表失败", e)
-                availableTtsEngines = emptyList()
-                withContext(Dispatchers.Main) {
-                    ttsError = "获取TTS引擎列表失败: ${e.message}"
-                }
-            }
-        }
-    }
+    // TTS引擎列表在初始化TTS时已经加载，这里不再重复
     
     val density = LocalDensity.current
     
@@ -679,7 +703,7 @@ fun TTSTab(
     error: String?,
     isSynthesizing: Boolean,
     synthesisError: String?,
-    availableEngines: List<TextToSpeech.EngineInfo>,
+    availableEngines: List<TtsEngineInfo>,
     selectedEngine: String?,
     onEngineSelected: (String) -> Unit,
     speechRate: Float,
@@ -688,7 +712,7 @@ fun TTSTab(
     onPitchChange: (Float) -> Unit,
     volume: Float,
     onVolumeChange: (Float) -> Unit,
-    availableTtsEngines: List<TextToSpeech.EngineInfo>,
+    availableTtsEngines: List<TtsEngineInfo>,
     selectedTtsEngine: String?,
     onEngineChange: (String) -> Unit,
     customEnginePackage: String,
@@ -763,13 +787,20 @@ fun TTSTab(
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = selectedTtsEngine?.let { engine ->
-                            availableTtsEngines.find { it.name == engine }?.label ?: "默认"
-                        } ?: "系统默认",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = selectedTtsEngine?.let { engine ->
+                                availableTtsEngines.find { it.packageName == engine }?.label ?: "默认"
+                            } ?: "系统默认",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "${availableTtsEngines.count { it.isInstalled }} 个已安装",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
             }
         }
@@ -842,7 +873,7 @@ fun TTSTab(
                                 )
                             }
                         }
-                        error.contains("未找到TTS引擎") -> {
+                        error.contains("未找到TTS引擎") || error.contains("未检测到") -> {
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -853,7 +884,29 @@ fun TTSTab(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "请先安装TTS应用:\n• Google TTS (推荐)\n• 讯飞语记\n• 微软Edge TTS\n• MultiTTS",
+                                    text = "请先安装TTS应用:\n" +
+                                          "• Google 文字转语音 (推荐)\n" +
+                                          "• Multi TTS (离线TTS)\n" +
+                                          "• 小米TTS / 华为TTS\n" +
+                                          "• 科大讯飞TTS\n\n" +
+                                          "安装后重新打开本窗口",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                        error.contains("超时") -> {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "⏰ TTS初始化超时",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "• 检查TTS引擎是否正常运行\n• 尝试重启设备\n• 或更换其他TTS引擎",
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -913,12 +966,12 @@ fun TTSTab(
                                     .horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                availableTtsEngines.take(5).forEach { engine ->
-                                    if (engine.name != selectedTtsEngine) {
+                                availableTtsEngines.filter { it.isInstalled }.take(5).forEach { engine ->
+                                    if (engine.packageName != selectedTtsEngine) {
                                         FilterChip(
                                             selected = false,
                                             onClick = {
-                                                onEngineChange(engine.name)
+                                                onEngineChange(engine.packageName)
                                             },
                                             label = { 
                                                 Text(
@@ -1181,7 +1234,7 @@ suspend fun loadSavedAudios(context: Context): List<SavedAudioItem> {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TtsEngineSelector(
-    availableEngines: List<TextToSpeech.EngineInfo>,
+    availableEngines: List<TtsEngineInfo>,
     selectedEngine: String?,
     onEngineChange: (String) -> Unit,
     customEnginePackage: String,
@@ -1239,7 +1292,7 @@ fun TtsEngineSelector(
             // 当前使用的引擎
             if (!showEngineSelector) {
                 val engineLabel = if (selectedEngine != null) {
-                    availableEngines.find { it.name == selectedEngine }?.label ?: selectedEngine
+                    availableEngines.find { it.packageName == selectedEngine }?.label ?: selectedEngine
                 } else {
                     "系统默认"
                 }
@@ -1271,8 +1324,7 @@ fun TtsEngineSelector(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { 
-                                selectedTtsEngine = null
-                                ttsRetryCount++
+                                onEngineChange("") // 空字符串表示系统默认
                             },
                         color = if (selectedEngine == null) {
                             MaterialTheme.colorScheme.primaryContainer
@@ -1317,9 +1369,11 @@ fun TtsEngineSelector(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onEngineChange(engine.name) },
-                                color = if (selectedEngine == engine.name) {
+                                    .clickable { onEngineChange(engine.packageName) },
+                                color = if (selectedEngine == engine.packageName) {
                                     MaterialTheme.colorScheme.primaryContainer
+                                } else if (!engine.isInstalled) {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 } else {
                                     Color.Transparent
                                 },
@@ -1336,21 +1390,32 @@ fun TtsEngineSelector(
                                         Text(
                                             text = engine.label,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Medium,
+                                            color = if (engine.isInstalled) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            }
                                         )
                                         Text(
-                                            text = engine.name,
+                                            text = engine.packageName,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     
-                                    if (selectedEngine == engine.name) {
+                                    if (selectedEngine == engine.packageName) {
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = "已选中",
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)
+                                        )
+                                    } else if (!engine.isInstalled) {
+                                        Text(
+                                            text = "未安装",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                         )
                                     }
                                 }
@@ -1408,8 +1473,7 @@ fun TtsEngineSelector(
                         OutlinedButton(
                             onClick = {
                                 onCustomEnginePackageChange("")
-                                selectedTtsEngine = null // null表示使用系统默认
-                                ttsRetryCount++
+                                onEngineChange("") // 空字符串表示系统默认
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -1432,17 +1496,24 @@ fun TtsEngineSelector(
                     ) {
                         listOf(
                             "Google TTS" to "com.google.android.tts",
-                            "三星TTS" to "com.samsung.SMT",
                             "小米TTS" to "com.xiaomi.mibrain.speech",
-                            "华为TTS" to "com.huawei.tts"
+                            "华为TTS" to "com.huawei.tts",
+                            "Multi TTS" to "org.nobody.multitts"
                         ).forEach { (label, packageName) ->
+                            val engineInfo = availableEngines.find { it.packageName == packageName }
                             FilterChip(
                                 selected = selectedEngine == packageName,
                                 onClick = {
                                     onCustomEnginePackageChange(packageName)
                                     onEngineChange(packageName)
                                 },
-                                label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                                label = { 
+                                    Text(
+                                        label + if (engineInfo?.isInstalled == true) " ✓" else "",
+                                        style = MaterialTheme.typography.labelSmall
+                                    ) 
+                                },
+                                enabled = engineInfo?.isInstalled == true
                             )
                         }
                     }
@@ -1468,24 +1539,169 @@ fun getDefaultTtsEngine(context: Context): String? {
 }
 
 /**
- * 获取可用的TTS引擎列表
+ * 检测所有TTS引擎（包括已安装和已知但未安装的）
+ * 参考指南：使用系统API查询 + 已知引擎列表
  */
-fun getAvailableTtsEngines(context: Context): List<TextToSpeech.EngineInfo> {
-    return try {
-        Log.d("FloatingVoiceWindow", "🔍 正在查找可用的TTS引擎...")
-        val testTts = TextToSpeech(context, null)
-        val engines = testTts.engines ?: emptyList()
-        testTts.shutdown()
+fun detectAllTtsEngines(context: Context): List<TtsEngineInfo> {
+    val engines = mutableListOf<TtsEngineInfo>()
+    
+    try {
+        Log.d("FloatingVoiceWindow", "🔍 开始检测TTS引擎...")
+        Log.d("FloatingVoiceWindow", "📱 SDK版本: ${Build.VERSION.SDK_INT}")
         
-        Log.d("FloatingVoiceWindow", "✅ 找到 ${engines.size} 个TTS引擎")
-        engines.forEach { engine ->
-            Log.d("FloatingVoiceWindow", "  📱 ${engine.label} (${engine.name})")
+        // 1. 查询系统已安装的TTS服务
+        val ttsServiceIntent = Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE)
+        val resolveInfoList = context.packageManager.queryIntentServices(ttsServiceIntent, 0)
+        
+        Log.d("FloatingVoiceWindow", "📋 系统查询到 ${resolveInfoList.size} 个TTS服务")
+        
+        if (resolveInfoList.isEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Log.e("FloatingVoiceWindow", "⚠️ Android 11+ 未检测到TTS引擎！请检查AndroidManifest.xml的<queries>配置")
         }
         
-        engines
+        val installedPackages = mutableSetOf<String>()
+        
+        for (resolveInfo in resolveInfoList) {
+            val serviceInfo = resolveInfo.serviceInfo
+            val packageName = serviceInfo.packageName
+            val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
+            val appName = context.packageManager.getApplicationLabel(appInfo).toString()
+            
+            engines.add(TtsEngineInfo(
+                packageName = packageName,
+                label = appName,
+                isInstalled = true
+            ))
+            installedPackages.add(packageName)
+            
+            Log.d("FloatingVoiceWindow", "  ✅ ${appName} ($packageName)")
+        }
+        
+        // 2. 添加已知但可能未被系统API检测到的引擎
+        val knownEngines = listOf(
+            "com.google.android.tts" to "Google 文字转语音",
+            "com.xiaomi.mibrain.speech" to "小米TTS",
+            "com.huawei.tts" to "华为TTS",
+            "com.samsung.SMT" to "三星TTS",
+            "org.nobody.multitts" to "Multi TTS",
+            "cn.sherpa.onnx" to "Sherpa-onnx TTS",
+            "com.iflytek.tts" to "科大讯飞TTS"
+        )
+        
+        for ((packageName, label) in knownEngines) {
+            if (!installedPackages.contains(packageName)) {
+                // 检查是否真的安装了
+                val isInstalled = try {
+                    context.packageManager.getPackageInfo(packageName, 0)
+                    true
+                } catch (e: PackageManager.NameNotFoundException) {
+                    false
+                }
+                
+                engines.add(TtsEngineInfo(
+                    packageName = packageName,
+                    label = label,
+                    isInstalled = isInstalled
+                ))
+                
+                if (isInstalled) {
+                    Log.d("FloatingVoiceWindow", "  ✅ 已知引擎: $label ($packageName)")
+                }
+            }
+        }
+        
+        Log.d("FloatingVoiceWindow", "✅ 总共检测到 ${engines.count { it.isInstalled }} 个已安装引擎")
+        
     } catch (e: Exception) {
-        Log.e("FloatingVoiceWindow", "❌ 获取TTS引擎列表失败", e)
-        emptyList()
+        Log.e("FloatingVoiceWindow", "❌ 检测TTS引擎失败", e)
+    }
+    
+    return engines
+}
+
+/**
+ * 寻找最佳TTS引擎
+ * 策略：Google TTS → 系统默认 → 其他已安装引擎
+ */
+fun findBestTtsEngine(engines: List<TtsEngineInfo>): TtsEngineInfo? {
+    Log.d("FloatingVoiceWindow", "🔍 寻找最佳TTS引擎...")
+    
+    // 1. 优先选择Google TTS
+    engines.find { it.packageName == "com.google.android.tts" && it.isInstalled }?.let {
+        Log.d("FloatingVoiceWindow", "🎯 找到Google TTS，优先使用")
+        return it
+    }
+    
+    // 2. 选择第一个已安装的引擎
+    engines.find { it.isInstalled }?.let {
+        Log.d("FloatingVoiceWindow", "🎯 使用第一个可用引擎: ${it.label}")
+        return it
+    }
+    
+    Log.w("FloatingVoiceWindow", "⚠️ 未找到可用引擎")
+    return null
+}
+
+/**
+ * 配置音频属性（关键！确保正确的声音输出）
+ * 参考指南第4.4节
+ */
+fun configureAudioAttributes(tts: TextToSpeech) {
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            tts.setAudioAttributes(audioAttributes)
+            Log.d("FloatingVoiceWindow", "🔊 音频属性配置: USAGE_MEDIA + CONTENT_TYPE_SPEECH")
+        } else {
+            // Android 5.0以下使用流类型（已废弃但仍然可用）
+            try {
+                // 使用反射调用已废弃的setStreamType方法
+                val method = TextToSpeech::class.java.getMethod("setStreamType", Int::class.javaPrimitiveType)
+                method.invoke(tts, AudioManager.STREAM_MUSIC)
+                Log.d("FloatingVoiceWindow", "🔊 音频流类型: STREAM_MUSIC (反射调用)")
+            } catch (e: Exception) {
+                Log.w("FloatingVoiceWindow", "⚠️ 设置音频流类型失败", e)
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("FloatingVoiceWindow", "❌ 配置音频属性失败", e)
+    }
+}
+
+/**
+ * 记录TTS引擎详细信息（用于调试）
+ */
+fun logEngineDetails(tts: TextToSpeech) {
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val voice = tts.voice
+            Log.d("FloatingVoiceWindow", "🎤 当前语音: ${voice?.name ?: "未知"}")
+            Log.d("FloatingVoiceWindow", "🌍 语言: ${voice?.locale ?: "未知"}")
+            
+            val voices = tts.voices
+            Log.d("FloatingVoiceWindow", "📝 可用语音数: ${voices?.size ?: 0}")
+            voices?.take(3)?.forEachIndexed { index, v ->
+                Log.d("FloatingVoiceWindow", "  [$index] ${v.name} (${v.locale})")
+            }
+        } else {
+            Log.d("FloatingVoiceWindow", "📱 API < 21，无法获取详细语音信息")
+        }
+    } catch (e: Exception) {
+        Log.e("FloatingVoiceWindow", "❌ 获取引擎详情失败", e)
+    }
+}
+
+/**
+ * 获取状态码名称（用于日志）
+ */
+fun getStatusName(status: Int): String {
+    return when (status) {
+        TextToSpeech.SUCCESS -> "SUCCESS(0)"
+        TextToSpeech.ERROR -> "ERROR(-1)"
+        else -> "UNKNOWN($status)"
     }
 }
 

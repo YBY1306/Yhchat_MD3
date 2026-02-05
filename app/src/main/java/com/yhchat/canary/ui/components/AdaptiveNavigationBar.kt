@@ -106,6 +106,11 @@ private fun NavigationRailBar(
 
 /**
  * 带动画的底部导航栏 - 支持滚动时自动隐藏
+ * 参考LibChecker的实现：使用offset让整个导航栏滑出屏幕
+ * 
+ * LibChecker使用HideBottomViewOnScrollBehavior，内部动画参数：
+ * - 时长: 225ms (ENTER_ANIMATION_DURATION / EXIT_ANIMATION_DURATION)
+ * - 插值器: FastOutSlowInInterpolator (Material标准缓动)
  */
 @Composable
 private fun AnimatedBottomNavigationBar(
@@ -115,59 +120,51 @@ private fun AnimatedBottomNavigationBar(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true
 ) {
-    // 使用动画来实现显示/隐藏效果
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium
-            )
+    // 使用Material风格的tween动画，模拟LibChecker的HideBottomViewOnScrollBehavior
+    // LinearOutSlowInEasing = 缓出效果，更有缓冲感
+    val offsetY by animateDpAsState(
+        targetValue = if (isVisible) 0.dp else 100.dp,
+        animationSpec = tween(
+            durationMillis = 275, // 加长动画时长，增加缓冲感
+            easing = LinearOutSlowInEasing // 缓出效果，从匀速到慢速
         ),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
-            )
-        ),
-        modifier = modifier
+        label = "navBarOffset"
+    )
+    
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 3.dp,
+        modifier = modifier.offset(y = offsetY)
     ) {
-        NavigationBar(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 3.dp
-        ) {
-            visibleItems.forEach { item ->
-                NavigationBarItem(
-                    icon = {
-                        Icon(
-                            imageVector = item.getIcon(),
-                            contentDescription = item.title,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = {
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    },
-                    selected = currentScreen == item.id,
-                    onClick = {
-                        onScreenChange(item.id)
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    alwaysShowLabel = true
-                )
-            }
+        visibleItems.forEach { item ->
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = item.getIcon(),
+                        contentDescription = item.title,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                },
+                selected = currentScreen == item.id,
+                onClick = {
+                    onScreenChange(item.id)
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                alwaysShowLabel = true
+            )
         }
     }
 }
@@ -183,11 +180,12 @@ fun GradientBottomNavigationBar(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true
 ) {
+    // 使用Material风格的tween动画
     val offsetY by animateDpAsState(
         targetValue = if (isVisible) 0.dp else 100.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+        animationSpec = tween(
+            durationMillis = 400,
+            easing = LinearOutSlowInEasing
         ),
         label = "navBarOffset"
     )

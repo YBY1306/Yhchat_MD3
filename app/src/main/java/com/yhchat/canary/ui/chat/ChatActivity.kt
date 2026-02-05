@@ -85,10 +85,27 @@ class ChatActivity : BaseActivity() {
         setContent {
             YhchatCanaryTheme {
                 val topBarColor = MaterialTheme.colorScheme.primaryContainer.toArgb()
+                val navigationBarColor = MaterialTheme.colorScheme.surface.toArgb()
                 val view = LocalView.current
+                val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
+                
                 SideEffect {
+                    // 设置状态栏
                     WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
                     window.statusBarColor = topBarColor
+                    
+                    // 设置导航栏，让手势线自动适配
+                    window.navigationBarColor = navigationBarColor
+                    
+                    // Android 8.0+ 设置导航栏图标和手势线颜色
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isLightTheme
+                    }
+                    
+                    // Android 10+ 禁用强制对比度
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
                 }
                 Surface(color = MaterialTheme.colorScheme.background) {
                     ChatScreen(
@@ -120,7 +137,9 @@ class ChatActivity : BaseActivity() {
                                 "${packageName}.fileprovider",
                                 photoFile
                             )
-                            cameraLauncher.launch(cameraImageUri)
+                            cameraImageUri?.let { uri ->
+                                cameraLauncher.launch(uri)
+                            }
                         },
                         onFilePickerClick = {
                             // 启动文件选择器 - 选择所有类型文件

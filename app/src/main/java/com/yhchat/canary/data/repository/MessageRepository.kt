@@ -322,6 +322,78 @@ class MessageRepository @Inject constructor(
     }
     
     /**
+     * 发送表单消息（类型5）
+     * @param chatId 会话ID
+     * @param chatType 会话类型
+     * @param formJson 表单数据JSON
+     * @param commandId 指令ID
+     */
+    suspend fun sendFormMessage(
+        chatId: String,
+        chatType: Int,
+        formJson: String,
+        commandId: Long
+    ): Result<Boolean> {
+        return try {
+            val tokenFlow = tokenRepository.getToken()
+            val token = tokenFlow.first()?.token
+            if (token.isNullOrEmpty()) {
+                Log.e(tag, "❌ Token为空")
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val msgId = UUID.randomUUID().toString().replace("-", "")
+            
+            Log.d(tag, "📤 ========== 发送表单消息 ==========")
+            Log.d(tag, "📤 msgId: $msgId")
+            Log.d(tag, "📤 chatId: $chatId")
+            Log.d(tag, "📤 chatType: $chatType")
+            Log.d(tag, "📤 commandId: $commandId")
+            Log.d(tag, "📤 formJson: ${formJson.take(200)}${if (formJson.length > 200) "..." else ""}")
+            
+            // 构建protobuf请求
+            val contentBuilder = send_message_send.Content.newBuilder()
+                .setForm(formJson)  // 设置表单内容
+            
+            val requestBuilder = send_message_send.newBuilder()
+                .setMsgId(msgId)
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(contentBuilder.build())
+                .setContentType(5)  // 表单消息类型为5
+                .setCommandId(commandId)  // 设置指令ID
+            
+            val request = requestBuilder.build()
+            val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
+
+            Log.d(tag, "发送表单消息: $chatId, commandId: $commandId")
+            
+            val response = apiService.sendMessage(token, requestBody)
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val sendResponse = send_message.parseFrom(bytes)
+                    
+                    if (sendResponse.status.code == 1) {
+                        Log.d(tag, "✅ 表单消息发送成功")
+                        Result.success(true)
+                    } else {
+                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
+                        Result.failure(Exception(sendResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                Log.e(tag, "❌ HTTP错误: ${response.code()}")
+                Result.failure(Exception("发送失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 发送表单消息异常", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
      * 撤回消息
      * 使用protobuf的recall_msg_send
      */

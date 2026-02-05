@@ -6,6 +6,7 @@ import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -237,19 +238,21 @@ fun PostContentCard(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // 文章标题
-        Text(
-            text = post.title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth()
-        )
+        // 文章标题 - 支持选择复制
+        SelectionContainer {
+            Text(
+                text = post.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // 文章内容 - 支持Markdown和HTML
+        // 文章内容 - 支持选择复制
         if (post.contentType == 2) {
-            // Markdown 内容 - 使用统一的MarkdownText组件
+            // Markdown 内容 - MarkdownText组件内部支持选择
             MarkdownText(
                 markdown = post.content,
                 onImageClick = { imageUrl ->
@@ -259,15 +262,17 @@ fun PostContentCard(
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
-            // 普通文本内容 - 支持链接点击
-            ArticleLinkText(
-                text = post.content,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
-                    color = MaterialTheme.colorScheme.onSurface // 确保使用正确的主题颜色
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
+            // 普通文本内容 - 支持选择复制
+            SelectionContainer {
+                ArticleLinkText(
+                    text = post.content,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -558,10 +563,13 @@ fun CommentItem(
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
-                    Text(
-                        text = comment.content,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    // 评论内容 - 支持选择复制
+                    SelectionContainer {
+                        Text(
+                            text = comment.content,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
             

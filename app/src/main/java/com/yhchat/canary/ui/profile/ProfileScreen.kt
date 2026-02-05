@@ -298,6 +298,18 @@ private fun UserProfileContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    
+    // 读取布局设置
+    val prefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showUserId = remember { prefs.getBoolean("profile_show_user_id", true) }
+    val showVipBadge = remember { prefs.getBoolean("profile_show_vip_badge", true) }
+    val showBetaBadge = remember { prefs.getBoolean("profile_show_beta_badge", true) }
+    val showPersonalInfo = remember { prefs.getBoolean("profile_show_personal_info", true) }
+    val showPhone = remember { prefs.getBoolean("profile_show_phone", true) }
+    val showEmail = remember { prefs.getBoolean("profile_show_email", true) }
+    val showCoin = remember { prefs.getBoolean("profile_show_coin", true) }
+    val showVipExpire = remember { prefs.getBoolean("profile_show_vip_expire", true) }
+    val showInviteCode = remember { prefs.getBoolean("profile_show_invite_code", true) }
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -407,17 +419,19 @@ private fun UserProfileContent(
                 }
 
                 // 用户ID
-                Text(
-                    text = "ID: ${userProfile.userId}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable {
-                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("userId", userProfile.userId)
-                        clipboardManager.setPrimaryClip(clip)
-                        android.widget.Toast.makeText(context, "已复制用户ID", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                )
+                if (showUserId) {
+                    Text(
+                        text = "ID: ${userProfile.userId}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable {
+                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clip = android.content.ClipData.newPlainText("userId", userProfile.userId)
+                            clipboardManager.setPrimaryClip(clip)
+                            android.widget.Toast.makeText(context, "已复制用户ID", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
                 
                 // VIP 标识和内测标识
                 Row(
@@ -425,7 +439,7 @@ private fun UserProfileContent(
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
                     // VIP 标识
-                    if (userProfile.isVip == 1) {
+                    if (showVipBadge && userProfile.isVip == 1) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -452,7 +466,7 @@ private fun UserProfileContent(
                     }
                     
                     // 内测标识
-                    if (betaState.betaInfo?.isBetaUser == true) {
+                    if (showBetaBadge && betaState.betaInfo?.isBetaUser == true) {
                         var showBetaInfo by remember { mutableStateOf(false) }
                         
                         Row(
@@ -510,15 +524,17 @@ private fun UserProfileContent(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                ProfileInfoItemWithButton(
-                    icon = Icons.Default.Person,
-                    label = "个人信息",
-                    value = "个人信息",
-                    buttonText = "编辑",
-                    onButtonClick = {
-                        onShowUserDataDialog()
-                    }
-                )
+                if (showPersonalInfo) {
+                    ProfileInfoItemWithButton(
+                        icon = Icons.Default.Person,
+                        label = "个人信息",
+                        value = "个人信息",
+                        buttonText = "编辑",
+                        onButtonClick = {
+                            onShowUserDataDialog()
+                        }
+                    )
+                }
 
                 if (showUserDataDialog) {
                     UserDataEditDialog(
@@ -534,7 +550,7 @@ private fun UserProfileContent(
                 }
                 
                 // 手机号（带显示/隐藏切换）
-                if (!TextUtils.isEmpty(userProfile.phone)) {
+                if (showPhone && !TextUtils.isEmpty(userProfile.phone)) {
                     var showFullPhone by remember { mutableStateOf(false) }
                     
                     ProfileInfoItemWithToggle(
@@ -547,32 +563,34 @@ private fun UserProfileContent(
                 }
 
                 // 邮箱
-                if (!TextUtils.isEmpty(userProfile.email)) {
-                    ProfileInfoItemWithButton(
-                        icon = Icons.Default.Email,
-                        label = "邮箱",
-                        value = userProfile.email!!,
-                        buttonText = "修改",
-                        onButtonClick = {
-                            val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailModificationActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
-                } else {
-                    ProfileInfoItemWithButton(
-                        icon = Icons.Default.Email,
-                        label = "邮箱",
-                        value = "未绑定",
-                        buttonText = "去绑定",
-                        onButtonClick = {
-                            val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailBindingActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
+                if (showEmail) {
+                    if (!TextUtils.isEmpty(userProfile.email)) {
+                        ProfileInfoItemWithButton(
+                            icon = Icons.Default.Email,
+                            label = "邮箱",
+                            value = userProfile.email!!,
+                            buttonText = "修改",
+                            onButtonClick = {
+                                val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailModificationActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        )
+                    } else {
+                        ProfileInfoItemWithButton(
+                            icon = Icons.Default.Email,
+                            label = "邮箱",
+                            value = "未绑定",
+                            buttonText = "去绑定",
+                            onButtonClick = {
+                                val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailBindingActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
                 }
 
                 // 云湖币（可点击）
-                if (userProfile.coin != null) {
+                if (showCoin && userProfile.coin != null) {
                     var showCoinMenu by remember { mutableStateOf(false) }
                     
                     ProfileInfoItemClickable(
@@ -593,7 +611,7 @@ private fun UserProfileContent(
                 }
 
                 // VIP到期时间
-                if (userProfile.isVip == 1 && userProfile.vipExpiredTime != null && userProfile.vipExpiredTime > 0) {
+                if (showVipExpire && userProfile.isVip == 1 && userProfile.vipExpiredTime != null && userProfile.vipExpiredTime > 0) {
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val expiredDate = Date(userProfile.vipExpiredTime * 1000) // 假设是秒级时间戳
                     ProfileInfoItem(
@@ -604,7 +622,7 @@ private fun UserProfileContent(
                 }
 
                 // 邀请码
-                if (!TextUtils.isEmpty(userProfile.invitationCode)) {
+                if (showInviteCode && !TextUtils.isEmpty(userProfile.invitationCode)) {
                     var showInviteCodeMenu by remember { mutableStateOf(false) }
                     
                     ProfileInfoItemClickable(

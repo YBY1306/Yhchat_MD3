@@ -12,7 +12,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
  * 滚动感知导航栏控制器
  * 
  * 模仿 LibChecker 的 HideBottomViewOnScrollBehavior
- * 向上滚动时隐藏导航栏，向下滚动时显示导航栏
+ * - 向下滚动（往底部翻）时隐藏导航栏
+ * - 向上滚动（往顶部翻）时显示导航栏
+ * - 需要累积一定滚动距离才触发状态改变
+ * - 停止滚动时保持当前状态，不自动恢复
  */
 @Composable
 fun rememberScrollAwareNavigationState(): ScrollAwareNavigationState {
@@ -26,11 +29,12 @@ class ScrollAwareNavigationState {
     private val _isVisible = mutableStateOf(true)
     val isVisible: Boolean by _isVisible
     
-    private var lastScrollOffset = 0f
+    // 累积滚动距离
     private var accumulatedScroll = 0f
     
-    // 滚动阈值（像素）
-    private val scrollThreshold = 50f
+    // 滚动阈值（像素）- 需要累积这么多距离才触发状态改变
+    // LibChecker 使用的是 view.measuredHeight，这里用固定值模拟
+    private val scrollThreshold = 80f
     
     /**
      * 创建嵌套滚动连接
@@ -38,20 +42,56 @@ class ScrollAwareNavigationState {
     fun nestedScrollConnection() = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
             val delta = available.y
+            
+            // 根据滚动方向累积或重置
+            if (delta > 0 && accumulatedScroll < 0) {
+                // 方向改变：从向下滚动变为向上滚动，重置累积
+                accumulatedScroll = 0f
+            } else if (delta < 0 && accumulatedScroll > 0) {
+                // 方向改变：从向上滚动变为向下滚动，重置累积
+                accumulatedScroll = 0f
+            }
+            
             accumulatedScroll += delta
             
-            // 向上滚动（delta < 0）且累积滚动超过阈值时隐藏导航栏
+            // 向下滚动（delta < 0，手指往上划）且累积滚动超过阈值时隐藏导航栏
             if (accumulatedScroll < -scrollThreshold && _isVisible.value) {
                 _isVisible.value = false
                 accumulatedScroll = 0f
             }
-            // 向下滚动（delta > 0）且累积滚动超过阈值时显示导航栏
+            // 向上滚动（delta > 0，手指往下划）且累积滚动超过阈值时显示导航栏
             else if (accumulatedScroll > scrollThreshold && !_isVisible.value) {
                 _isVisible.value = true
                 accumulatedScroll = 0f
             }
             
             return Offset.Zero
+        }
+    }
+    
+    /**
+     * 处理滚动变化（用于LazyList等）
+     * @param delta 滚动增量，正值表示向上滚动（往顶部翻），负值表示向下滚动（往底部翻）
+     */
+    fun onScroll(delta: Int) {
+        // 根据滚动方向累积或重置
+        if (delta > 0 && accumulatedScroll < 0) {
+            accumulatedScroll = 0f
+        } else if (delta < 0 && accumulatedScroll > 0) {
+            accumulatedScroll = 0f
+        }
+        
+        accumulatedScroll += delta.toFloat()
+        
+        // 向下滚动（delta < 0）且累积滚动超过阈值时隐藏导航栏
+        if (accumulatedScroll < -scrollThreshold && _isVisible.value) {
+            _isVisible.value = false
+            accumulatedScroll = 0f
+        }
+        // 向上滚动（delta > 0）且累积滚动超过阈值时显示导航栏
+        else if (accumulatedScroll > scrollThreshold && !_isVisible.value) {
+            _isVisible.value = true
+            accumulatedScroll = 0f
         }
     }
     
@@ -78,10 +118,22 @@ class ScrollAwareNavigationState {
         _isVisible.value = !_isVisible.value
         accumulatedScroll = 0f
     }
+    
+    /**
+     * 重置累积滚动
+     */
+    fun resetAccumulation() {
+        accumulatedScroll = 0f
+    }
 }
 
 /**
  * 监听 LazyListState 的滚动状态并自动控制导航栏
+ * 
+ * 采用LibChecker的逻辑：
+ * - 需要累积一定滚动距离才触发状态改变
+ * - 停止滚动时保持当前状态，不自动恢复
+ * - 只有在列表顶部时才强制显示导航栏
  */
 @Composable
 fun observeScrollForNavigation(listState: LazyListState, navigationState: ScrollAwareNavigationState) {
@@ -93,22 +145,23 @@ fun observeScrollForNavigation(listState: LazyListState, navigationState: Scroll
         val currentScrollOffset = listState.firstVisibleItemScrollOffset
         
         if (previousIndex != currentIndex || previousScrollOffset != currentScrollOffset) {
-            // 判断滚动方向
-            val isScrollingDown = currentIndex > previousIndex || 
-                (currentIndex == previousIndex && currentScrollOffset > previousScrollOffset)
-            val isScrollingUp = currentIndex < previousIndex || 
-                (currentIndex == previousIndex && currentScrollOffset < previousScrollOffset)
+            // 计算滚动增量（正值表示向上滚动/往顶部翻，负值表示向下滚动/往底部翻）
+            val indexDelta = previousIndex - currentIndex
+            val offsetDelta = previousScrollOffset - currentScrollOffset
             
-            // 向下滚动时隐藏导航栏
-            if (isScrollingDown && navigationState.isVisible && currentIndex > 2) {
-                navigationState.hide()
+            // 综合计算滚动方向和距离
+            // 如果index变了，使用一个较大的值来表示方向
+            val delta = if (indexDelta != 0) {
+                indexDelta * 200 // 每个item大约200px
+            } else {
+                offsetDelta
             }
-            // 向上滚动时显示导航栏
-            else if (isScrollingUp && !navigationState.isVisible) {
-                navigationState.show()
-            }
+            
+            // 使用新的onScroll方法来处理累积滚动
+            navigationState.onScroll(delta)
+            
             // 在列表顶部时始终显示导航栏
-            else if (currentIndex <= 1 && !navigationState.isVisible) {
+            if (currentIndex == 0 && currentScrollOffset < 50 && !navigationState.isVisible) {
                 navigationState.show()
             }
             
@@ -120,6 +173,11 @@ fun observeScrollForNavigation(listState: LazyListState, navigationState: Scroll
 
 /**
  * 监听 LazyGridState 的滚动状态并自动控制导航栏
+ * 
+ * 采用LibChecker的逻辑：
+ * - 需要累积一定滚动距离才触发状态改变
+ * - 停止滚动时保持当前状态，不自动恢复
+ * - 只有在列表顶部时才强制显示导航栏
  */
 @Composable
 fun observeScrollForNavigation(gridState: LazyGridState, navigationState: ScrollAwareNavigationState) {
@@ -131,22 +189,22 @@ fun observeScrollForNavigation(gridState: LazyGridState, navigationState: Scroll
         val currentScrollOffset = gridState.firstVisibleItemScrollOffset
         
         if (previousIndex != currentIndex || previousScrollOffset != currentScrollOffset) {
-            // 判断滚动方向
-            val isScrollingDown = currentIndex > previousIndex || 
-                (currentIndex == previousIndex && currentScrollOffset > previousScrollOffset)
-            val isScrollingUp = currentIndex < previousIndex || 
-                (currentIndex == previousIndex && currentScrollOffset < previousScrollOffset)
+            // 计算滚动增量（正值表示向上滚动/往顶部翻，负值表示向下滚动/往底部翻）
+            val indexDelta = previousIndex - currentIndex
+            val offsetDelta = previousScrollOffset - currentScrollOffset
             
-            // 向下滚动时隐藏导航栏
-            if (isScrollingDown && navigationState.isVisible && currentIndex > 3) {
-                navigationState.hide()
+            // 综合计算滚动方向和距离
+            val delta = if (indexDelta != 0) {
+                indexDelta * 200
+            } else {
+                offsetDelta
             }
-            // 向上滚动时显示导航栏
-            else if (isScrollingUp && !navigationState.isVisible) {
-                navigationState.show()
-            }
+            
+            // 使用新的onScroll方法来处理累积滚动
+            navigationState.onScroll(delta)
+            
             // 在列表顶部时始终显示导航栏
-            else if (currentIndex <= 2 && !navigationState.isVisible) {
+            if (currentIndex == 0 && currentScrollOffset < 50 && !navigationState.isVisible) {
                 navigationState.show()
             }
             
@@ -159,6 +217,11 @@ fun observeScrollForNavigation(gridState: LazyGridState, navigationState: Scroll
 /**
  * 监听 ScrollState 的滚动状态并自动控制导航栏
  * 用于 Column + verticalScroll
+ * 
+ * 采用LibChecker的逻辑：
+ * - 需要累积一定滚动距离才触发状态改变
+ * - 停止滚动时保持当前状态，不自动恢复
+ * - 只有在列表顶部时才强制显示导航栏
  */
 @Composable
 fun observeScrollForNavigation(scrollState: ScrollState, navigationState: ScrollAwareNavigationState) {
@@ -168,20 +231,14 @@ fun observeScrollForNavigation(scrollState: ScrollState, navigationState: Scroll
         val currentScrollOffset = scrollState.value
         
         if (previousScrollOffset != currentScrollOffset) {
-            // 判断滚动方向
-            val isScrollingDown = currentScrollOffset > previousScrollOffset
-            val isScrollingUp = currentScrollOffset < previousScrollOffset
+            // 计算滚动增量（正值表示向上滚动/往顶部翻，负值表示向下滚动/往底部翻）
+            val delta = previousScrollOffset - currentScrollOffset
             
-            // 向下滚动时隐藏导航栏（超过100px）
-            if (isScrollingDown && navigationState.isVisible && currentScrollOffset > 100) {
-                navigationState.hide()
-            }
-            // 向上滚动时显示导航栏
-            else if (isScrollingUp && !navigationState.isVisible) {
-                navigationState.show()
-            }
+            // 使用新的onScroll方法来处理累积滚动
+            navigationState.onScroll(delta)
+            
             // 在顶部时始终显示导航栏
-            else if (currentScrollOffset <= 50 && !navigationState.isVisible) {
+            if (currentScrollOffset < 50 && !navigationState.isVisible) {
                 navigationState.show()
             }
             

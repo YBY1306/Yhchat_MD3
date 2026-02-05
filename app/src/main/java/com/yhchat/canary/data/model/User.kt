@@ -1664,7 +1664,7 @@ data class Instruction(
     val hintText: String = "", // 输入框提示文字
     val defaultText: String = "", // 输入框默认文字
     val form: String = "" // 表单（自定义输入指令用）
-)
+) : java.io.Serializable
 
 /**
  * 群ID请求（通用）

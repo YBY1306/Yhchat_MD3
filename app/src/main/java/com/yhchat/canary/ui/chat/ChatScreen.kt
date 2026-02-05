@@ -52,6 +52,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -82,8 +83,10 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.ui.composed
 import com.yhchat.canary.ui.bot.BotInfoActivity
@@ -96,6 +99,7 @@ import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.LinkText
 import com.yhchat.canary.ui.components.ExpressionText
 import com.yhchat.canary.ui.components.LinkDetector
+import com.yhchat.canary.ui.components.MessageSelectionContainer
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MessageContent
 import com.yhchat.canary.service.AudioPlayerService
@@ -874,8 +878,10 @@ fun ChatScreen(
                                 }
                             },
                             onRecall = { msgId ->
-                                // 撤回消息
+                                // 撤回消息 - 执行撤回，动画自动触发
+                                android.util.Log.d("ChatScreen", "🗑️ 用户点击撤回: msgId=$msgId")
                                 viewModel.recallMessage(msgId)
+                                // 动画会在消息状态更新时自动触发
                             },
                             onEdit = { message ->
                                 // 编辑消息
@@ -1373,14 +1379,12 @@ fun ChatScreen(
                 onInstructionClick = { instruction ->
                     android.util.Log.d("ChatScreen", "🎯 用户点击指令: /${instruction.name} (id=${instruction.id}, type=${instruction.type})")
                     
-                    // 选中指令
-                    selectedInstruction = instruction
-                    
                     // 根据指令类型处理
                     when (instruction.type) {
                         1 -> {
                             android.util.Log.d("ChatScreen", "📝 普通指令，应用默认文本: ${instruction.defaultText}")
                             // 普通指令：应用默认文本（如果有）
+                            selectedInstruction = instruction
                             if (instruction.defaultText.isNotEmpty()) {
                                 inputText = instruction.defaultText
                             }
@@ -1392,6 +1396,7 @@ fun ChatScreen(
                             android.util.Log.d("ChatScreen", "📤 直发指令发送文本: '$textToSend'")
                             
                             // 立即发送消息
+                            selectedInstruction = instruction
                             viewModel.sendMessage(
                                 text = textToSend,
                                 contentType = selectedMessageType,
@@ -1412,9 +1417,21 @@ fun ChatScreen(
                             quotedVideoUrl = null
                             quotedVideoTime = null
                         }
+                        5 -> {
+                            android.util.Log.d("ChatScreen", "📋 表单指令，打开表单填写界面")
+                            // 表单指令：打开表单填写Activity
+                            com.yhchat.canary.ui.bot.InstructionFormActivity.start(
+                                context = context,
+                                instruction = instruction,
+                                chatId = chatId,
+                                chatType = chatType,
+                                chatName = chatName
+                            )
+                        }
                         else -> {
                             android.util.Log.w("ChatScreen", "⚠️ 未知指令类型: ${instruction.type}")
                             // 其他类型指令暂不处理
+                            selectedInstruction = instruction
                         }
                     }
                 },
@@ -1714,12 +1731,17 @@ private fun MessageItem(
                     content = message.content,
                     contentType = message.contentType,
                     isMyMessage = isMyMessage,
+                    conversationChatType = conversationChatType,
                     modifier = Modifier.padding(12.dp),
                     onImageClick = { imageUrl ->
                         onImageClick(imageUrl)
                     },
                     onLongClick = { showContextMenu = true },
-                    onQuoteMessageClick = onQuoteMessageClick
+                    onQuoteMessageClick = onQuoteMessageClick,
+                    onQuote = onQuote,
+                    onEdit = onEdit,
+                    onRecall = onRecall,
+                    onPlusOne = onPlusOne
                 )
             }
 
@@ -2158,10 +2180,13 @@ private fun MessageContextMenu(
                     }
                 }
                 
-                // 撤回
+                // 撤回（危险操作）
                 if (showRecall) {
                     TextButton(
-                        onClick = onRecall,
+                        onClick = {
+                            onRecall()
+                            // 立即关闭菜单，让用户看到撤回动画
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -2176,10 +2201,19 @@ private fun MessageContextMenu(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "撤回",
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            Column {
+                                Text(
+                                    "撤回消息",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "消息将旋转飞走",
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
@@ -2286,6 +2320,14 @@ private fun SenderNameAndTags(
     onToggleExpand: () -> Unit,
     memberPermission: Int? = null  // 群成员权限等级：100=群主，2=管理员
 ) {
+    val context = LocalContext.current
+    
+    // 读取布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+    val showOwnerBadge = remember { layoutPrefs.getBoolean("chat_show_owner_badge", true) }
+    val showAdminBadge = remember { layoutPrefs.getBoolean("chat_show_admin_badge", true) }
+    val showMemberTags = remember { layoutPrefs.getBoolean("chat_show_member_tags", true) }
+    
     val tags = message.sender.tag ?: emptyList()
     val hasMultipleTags = tags.size > 1
     
@@ -2329,69 +2371,75 @@ private fun SenderNameAndTags(
             // 群主/管理员标签
             when (memberPermission) {
                 100 -> {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFF9800)  // 橙色表示群主
-                    ) {
-                        Text(
-                            text = "群主",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    if (showOwnerBadge) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFFF9800)  // 橙色表示群主
+                        ) {
+                            Text(
+                                text = "群主",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
                 2 -> {
+                    if (showAdminBadge) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFF2196F3)  // 蓝色表示管理员
+                        ) {
+                            Text(
+                                text = "管理员",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // 显示前两个标签（受布局设置控制）
+            if (showMemberTags) {
+                tags.take(1).forEach { tag ->
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFF2196F3)  // 蓝色表示管理员
+                        color = parseTagColor(tag.color)
                     ) {
                         Text(
-                            text = "管理员",
+                            text = tag.text,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
-            }
-            
-            // 显示前两个标签
-            tags.take(1).forEach { tag ->
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = parseTagColor(tag.color)
-                ) {
-                    Text(
-                        text = tag.text,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
-            
-            // 如果有更多标签，显示展开/收起按钮
-            if (hasMultipleTags) {
-                IconButton(
-                    onClick = onToggleExpand,
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(
-                        imageVector = if (tagsExpanded) 
-                            Icons.Default.KeyboardArrowUp 
-                        else 
-                            Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (tagsExpanded) "收起标签" else "展开标签",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
+                
+                // 如果有更多标签，显示展开/收起按钮
+                if (hasMultipleTags) {
+                    IconButton(
+                        onClick = onToggleExpand,
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (tagsExpanded) 
+                                Icons.Default.KeyboardArrowUp 
+                            else 
+                                Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (tagsExpanded) "收起标签" else "展开标签",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
         
-        // 展开时显示剩余标签（支持换行）
-        if (tagsExpanded && tags.size > 1) {
+        // 展开时显示剩余标签（支持换行，受布局设置控制）
+        if (showMemberTags && tagsExpanded && tags.size > 1) {
             Spacer(modifier = Modifier.height(4.dp))
             FlowRow(
                 modifier = Modifier.wrapContentWidth(),
@@ -2507,10 +2555,15 @@ private fun MessageContentView(
     content: MessageContent,
     contentType: Int,
     isMyMessage: Boolean,
+    conversationChatType: Int = 1,
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
     onLongClick: () -> Unit = {},
-    onQuoteMessageClick: (String) -> Unit = {}
+    onQuoteMessageClick: (String) -> Unit = {},
+    onQuote: (String, String) -> Unit = { _, _ -> },
+    onEdit: (ChatMessage) -> Unit = {},
+    onRecall: (String) -> Unit = {},
+    onPlusOne: (ChatMessage) -> Unit = {}
 ) {
     val textColor = if (isMyMessage) {
                                 MaterialTheme.colorScheme.onPrimary 
@@ -2800,16 +2853,12 @@ private fun MessageContentView(
                 }
             }
             5 -> {
-                // 表单消息（带按钮）- 支持文本选择
-                content.text?.let { text ->
-                    SelectionContainer {
-                        Text(
-                            text = text,
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+                // 表单消息 - 解析并展示表单内容
+                FormMessageView(
+                    content = content,
+                    textColor = textColor,
+                    isMyMessage = isMyMessage
+                )
             }
             else -> {
                 // 其他类型消息，显示文本内容
@@ -2818,8 +2867,21 @@ private fun MessageContentView(
                     val prefs = remember { context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) }
                     val showInlineExpressions = remember { prefs.getBoolean("show_inline_expressions", true) }
 
-                    // 使用 SelectionContainer 支持文本选择
-                    SelectionContainer {
+                    // 使用自定义SelectionContainer，在文本选择菜单中添加消息操作
+                    MessageSelectionContainer(
+                        onQuote = if (message.contentType in listOf(1, 3, 8)) {
+                            { onQuote(message.msgId, text) }
+                        } else null,
+                        onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                            { onEdit(message) }
+                        } else null,
+                        onDelete = when (conversationChatType) {
+                            2 -> if (message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
+                            1, 3 -> if (isMyMessage && message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
+                            else -> null
+                        },
+                        onPlusOne = { onPlusOne(message) }
+                    ) {
                         if (showInlineExpressions) {
                             ExpressionText(
                                 text = text,
@@ -3954,7 +4016,7 @@ private fun AnimatedMessageItem(
     // 动画状态
     var isVisible by remember(message.msgId) { mutableStateOf(!isNewMessage) }
     
-    // 启动动画
+    // 启动新消息动画
     LaunchedEffect(message.msgId) {
         if (isNewMessage) {
             isVisible = true
@@ -3964,13 +4026,14 @@ private fun AnimatedMessageItem(
     AnimatedVisibility(
         visible = isVisible,
         enter = slideInVertically(
-            initialOffsetY = { fullHeight -> fullHeight / 2 }, // 从底部一半位置开始
+            initialOffsetY = { fullHeight -> fullHeight / 2 },
             animationSpec = tween(
                 durationMillis = 250,
                 easing = FastOutSlowInEasing
             )
         ),
-        modifier = modifier
+        exit = shrinkVertically() + fadeOut(),
+        modifier = modifier.fillMaxWidth()
     ) {
         MessageItem(
             message = message,
@@ -3991,5 +4054,312 @@ private fun AnimatedMessageItem(
             onQuoteMessageClick = onQuoteMessageClick,
             memberPermission = memberPermission
         )
+    }
+}
+
+/**
+ * 表单消息视图
+ * 解析并展示表单消息内容
+ */
+@Composable
+private fun FormMessageView(
+    content: MessageContent,
+    textColor: Color,
+    isMyMessage: Boolean,
+    modifier: Modifier = Modifier
+) {
+    // 解析表单数据
+    val formItems = remember(content.form) {
+        parseFormData(content.form)
+    }
+    
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // 显示文本内容（如果有）
+        content.text?.let { text ->
+            if (text.isNotBlank()) {
+                SelectionContainer {
+                    Text(
+                        text = text,
+                        color = textColor,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (formItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    HorizontalDivider(
+                        color = textColor.copy(alpha = 0.2f),
+                        thickness = 0.5.dp
+                    )
+                }
+            }
+        }
+        
+        // 渲染表单项
+        if (formItems.isNotEmpty()) {
+            formItems.forEach { item ->
+                FormItemView(
+                    item = item,
+                    textColor = textColor,
+                    isMyMessage = isMyMessage
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 表单项数据类
+ */
+private data class FormItem(
+    val id: String,
+    val type: String,
+    val label: String,
+    val value: Any? = null,
+    val selectIndex: Int? = null,
+    val selectValue: String? = null
+)
+
+/**
+ * 解析表单JSON数据
+ */
+private fun parseFormData(formJson: String?): List<FormItem> {
+    if (formJson.isNullOrBlank()) return emptyList()
+    
+    return try {
+        val jsonObject = JSONObject(formJson)
+        val items = mutableListOf<FormItem>()
+        
+        jsonObject.keys().forEach { key ->
+            val itemObj = jsonObject.getJSONObject(key)
+            items.add(
+                FormItem(
+                    id = itemObj.optString("id", key),
+                    type = itemObj.optString("type", ""),
+                    label = itemObj.optString("label", ""),
+                    value = when {
+                        itemObj.has("value") -> {
+                            when {
+                                itemObj.get("value") is Boolean -> itemObj.getBoolean("value")
+                                else -> itemObj.optString("value", "")
+                            }
+                        }
+                        else -> null
+                    },
+                    selectIndex = if (itemObj.has("selectIndex")) itemObj.optInt("selectIndex") else null,
+                    selectValue = itemObj.optString("selectValue", null)
+                )
+            )
+        }
+        items
+    } catch (e: Exception) {
+        android.util.Log.e("FormMessageView", "Failed to parse form data", e)
+        emptyList()
+    }
+}
+
+/**
+ * 单个表单项视图
+ */
+@Composable
+private fun FormItemView(
+    item: FormItem,
+    textColor: Color,
+    isMyMessage: Boolean
+) {
+    val secondaryTextColor = textColor.copy(alpha = 0.7f)
+    val accentColor = if (isMyMessage) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    
+    when (item.type.lowercase()) {
+        "radio" -> {
+            // 单选框
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = accentColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = secondaryTextColor
+                    )
+                    Text(
+                        text = item.selectValue ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        
+        "input" -> {
+            // 单行输入框
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondaryTextColor
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = textColor.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    SelectionContainer {
+                        Text(
+                            text = item.value?.toString() ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        "switch" -> {
+            // 开关
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (item.value == true) accentColor else textColor.copy(alpha = 0.3f)
+                ) {
+                    Text(
+                        text = if (item.value == true) "开" else "关",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (item.value == true) {
+                            if (isMyMessage) MaterialTheme.colorScheme.primary else Color.White
+                        } else textColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        }
+        
+        "textarea" -> {
+            // 多行文本框
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondaryTextColor
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = textColor.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    SelectionContainer {
+                        Text(
+                            text = item.value?.toString() ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            maxLines = 5,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+        
+        "select" -> {
+            // 选择器
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = accentColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = secondaryTextColor
+                    )
+                    Text(
+                        text = item.selectValue ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        
+        "checkbox" -> {
+            // 复选框
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (item.value == true) Icons.Default.Check else Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .background(
+                            if (item.value == true) accentColor else Color.Transparent,
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(2.dp),
+                    tint = if (item.value == true) {
+                        if (isMyMessage) MaterialTheme.colorScheme.primary else Color.White
+                    } else textColor.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
+                )
+            }
+        }
+        
+        else -> {
+            // 未知类型，显示原始数据
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondaryTextColor
+                )
+                Text(
+                    text = item.value?.toString() ?: item.selectValue ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
+                )
+            }
+        }
     }
 }

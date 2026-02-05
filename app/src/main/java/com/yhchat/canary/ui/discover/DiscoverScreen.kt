@@ -48,6 +48,11 @@ fun DiscoverScreen(
     val discoverRepo = remember { RepositoryFactory.getDiscoverRepository(context) }
     val listState = rememberLazyListState()
     
+    // 布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showBotList = layoutPrefs.getBoolean("discover_show_bot_list", true)
+    val showGroupList = layoutPrefs.getBoolean("discover_show_group_list", true)
+    
     // 监听滚动状态，自动隐藏/显示导航栏
     if (navigationState != null) {
         com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
@@ -151,123 +156,129 @@ fun DiscoverScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 机器人卡片（保持原样）
-            item {
-                DiscoverSectionCard(
-                    title = "机器人",
-                    icon = Icons.Default.SmartToy,
-                    isLoading = isLoadingBots,
-                    onMoreClick = {
-                        BotListActivity.start(context)
-                    }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp),
-                        contentAlignment = Alignment.Center
+            // 机器人卡片
+            if (showBotList) {
+                item {
+                    DiscoverSectionCard(
+                        title = "机器人",
+                        icon = Icons.Default.SmartToy,
+                        isLoading = isLoadingBots,
+                        onMoreClick = {
+                            BotListActivity.start(context)
+                        }
                     ) {
-                        if (bots.isNotEmpty()) {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(bots) { bot ->
-                                    BotDiscoverCard(
-                                        bot = bot,
-                                        onClick = { selectedBot = bot }
-                                    )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (bots.isNotEmpty()) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(bots) { bot ->
+                                        BotDiscoverCard(
+                                            bot = bot,
+                                            onClick = { selectedBot = bot }
+                                        )
+                                    }
                                 }
+                            } else if (!isLoadingBots) {
+                                Text(
+                                    text = "暂无推荐机器人",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        } else if (!isLoadingBots) {
-                            Text(
-                                text = "暂无推荐机器人",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }
             }
 
             // 发现群聊标题
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "发现群聊",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+            if (showGroupList) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "发现群聊",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                    IconButton(onClick = { DiscoverGroupsActivity.start(context) }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "更多"
-                        )
+                        IconButton(onClick = { DiscoverGroupsActivity.start(context) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = "更多"
+                            )
+                        }
                     }
                 }
             }
 
             // 群聊列表 - 一行一个，居中显示
-            if (isLoadingGroups) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                    }
-                }
-            } else if (groups.isNotEmpty()) {
-                items(groups) { group ->
-                    GroupDiscoverCard(
-                        group = group,
-                        onClick = { selectedGroup = group }
-                    )
-                }
-
-                // 加载更多指示器
-                if (hasMoreGroups) {
+            if (showGroupList) {
+                if (isLoadingGroups) {
                     item {
-                        if (isLoadingMoreGroups) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        }
+                    }
+                } else if (groups.isNotEmpty()) {
+                    items(groups) { group ->
+                        GroupDiscoverCard(
+                            group = group,
+                            onClick = { selectedGroup = group }
+                        )
+                    }
+
+                    // 加载更多指示器
+                    if (hasMoreGroups) {
+                        item {
+                            if (isLoadingMoreGroups) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "暂无推荐群聊",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                } else {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无推荐群聊",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

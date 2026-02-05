@@ -148,6 +148,7 @@ private fun BotDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMoreSheet by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
     
     var isNoNotify by remember { mutableStateOf(false) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
@@ -264,6 +265,16 @@ private fun BotDetailScreen(
         )
     }
     
+    // 分享弹窗
+    if (showShareDialog) {
+        com.yhchat.canary.ui.components.ShareDialog(
+            chatId = botId,
+            chatType = 3, // 机器人
+            chatName = botName,
+            onDismiss = { showShareDialog = false }
+        )
+    }
+    
     // MoreBottomSheet
     if (showMoreSheet) {
         ModalBottomSheet(
@@ -275,6 +286,15 @@ private fun BotDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 SheetSectionHeader(title = "互动")
+
+                SheetActionItem(
+                    icon = Icons.Default.Share,
+                    title = "分享机器人",
+                    onClick = {
+                        showMoreSheet = false
+                        showShareDialog = true
+                    }
+                )
 
                 SheetActionItem(
                     icon = Icons.Default.Report,
@@ -589,22 +609,43 @@ private fun BotDetailContent(
         if (botInfo.data.introduction.isNotBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    Text(
-                        text = "机器人简介",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Text(
-                        text = botInfo.data.introduction,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "机器人简介",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    
+                    // 使用SelectionContainer支持文本选择
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(
+                            text = botInfo.data.introduction,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
+                        )
+                    }
                 }
             }
         }
@@ -671,18 +712,31 @@ private fun BotDetailContent(
         // 详细信息
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(
-                    text = "详细信息",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "详细信息",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 
                 DetailItem(
                     icon = Icons.Default.Person,
@@ -734,59 +788,76 @@ private fun BotDetailContent(
             if (boardData != null && boardData.content.isNotBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(20.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Dashboard,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "看板信息",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                     
-                    when (boardData.contentType) {
-                        1 -> { // 文本
-                            Text(
-                                text = boardData.content,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        2 -> { // Markdown
-                            MarkdownText(
-                                markdown = boardData.content,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        3 -> { // HTML
-                            com.yhchat.canary.ui.components.HtmlWebView(
-                                htmlContent = boardData.content,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 200.dp, max = 400.dp)
-                            )
-                        }
-                        else -> { // 默认按文本处理
-                            Text(
-                                text = boardData.content,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            when (boardData.contentType) {
+                                1 -> { // 文本
+                                    androidx.compose.foundation.text.selection.SelectionContainer {
+                                        Text(
+                                            text = boardData.content,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
+                                        )
+                                    }
+                                }
+                                2 -> { // Markdown
+                                    MarkdownText(
+                                        markdown = boardData.content,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                3 -> { // HTML
+                                    com.yhchat.canary.ui.components.HtmlWebView(
+                                        htmlContent = boardData.content,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 200.dp, max = 400.dp)
+                                    )
+                                }
+                                else -> { // 默认按文本处理
+                                    androidx.compose.foundation.text.selection.SelectionContainer {
+                                        Text(
+                                            text = boardData.content,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -795,15 +866,26 @@ private fun BotDetailContent(
         } else if (isBoardLoading) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        Text(
+                            "加载看板信息中...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

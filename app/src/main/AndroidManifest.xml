@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- 强制ComboLite支持minSdk 21（可能导致运行时失败，需要做好兼容性检查） -->
+    <uses-sdk tools:overrideLibrary="com.combo.core" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -26,6 +29,22 @@
     
     <!-- 通知权限 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Android 11+ TTS查询权限声明（关键！没有这个TTS引擎检测会失败） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <!-- 声明已知的TTS引擎包名，提升检测成功率 -->
+        <package android:name="com.google.android.tts" />
+        <package android:name="com.xiaomi.mibrain.speech" />
+        <package android:name="com.huawei.tts" />
+        <package android:name="com.samsung.SMT" />
+        <package android:name="org.nobody.multitts" />
+        <package android:name="cn.sherpa.onnx" />
+        <package android:name="com.example.sherpaonnx" />
+        <package android:name="com.iflytek.tts" />
+    </queries>
 
     <application
         android:name=".CanaryApplication"
@@ -34,7 +53,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.YhchatCanary">
         <!-- 登录 Activity -->
@@ -205,6 +224,13 @@
             android:name=".ui.settings.NavigationSettingsActivity"
             android:exported="false"
             android:label="导航栏管理"
+            android:theme="@style/Theme.YhchatCanary" />
+        
+        <!-- 布局设置 Activity -->
+        <activity
+            android:name=".ui.settings.LayoutSettingsActivity"
+            android:exported="false"
+            android:label="布局设置"
             android:theme="@style/Theme.YhchatCanary" />
             
         <!-- 应用详情 Activity -->
@@ -449,6 +475,12 @@
             android:exported="false"
             android:label="指令预览"
             android:theme="@style/Theme.YhchatCanary" />
+        
+        <activity
+            android:name=".ui.bot.InstructionFormActivity"
+            android:exported="false"
+            android:label="填写表单"
+            android:theme="@style/Theme.YhchatCanary" />
 
         <activity
             android:name=".ui.discover.DiscoverGroupsActivity"
@@ -473,6 +505,13 @@
             android:exported="false"
             android:label="黑名单设置"
             android:theme="@style/Theme.YhchatCanary" />
+        
+        <!-- 插件管理 Activity -->
+        <activity
+            android:name=".ui.plugin.PluginManagerActivity"
+            android:exported="false"
+            android:label="插件管理"
+            android:theme="@style/Theme.YhchatCanary" />
 
             
         <!-- 语音播放服务 -->
@@ -493,6 +532,24 @@
         <!-- 通知快捷回复接收器 -->
         <receiver
             android:name=".receiver.NotificationReplyReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        
+        <!-- ComboLite 插件化框架代理组件 -->
+        <!-- 代理Activity：用于启动和运行插件Activity -->
+        <activity
+            android:name=".plugin.HostProxyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YhchatCanary" />
+            
+        <!-- 代理Service：用于运行插件Service -->
+        <service
+            android:name=".plugin.HostProxyService1"
+            android:enabled="true"
+            android:exported="false" />
+            
+        <service
+            android:name=".plugin.HostProxyService2"
             android:enabled="true"
             android:exported="false" />
             

@@ -117,11 +117,21 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // 底部导航栏设置
+            // 界面设置
             item {
                 SettingsGroup(
                     title = "界面",
                     items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.ViewAgenda,
+                                title = "布局设置",
+                                subtitle = "自定义各界面的显示项",
+                                onClick = {
+                                    LayoutSettingsActivity.start(context)
+                                }
+                            )
+                        },
                         {
                             SettingsItemCell(
                                 icon = Icons.Default.Menu,
@@ -252,6 +262,30 @@ fun SettingsScreen(
                                 subtitle = "查看应用版本和开发者信息",
                                 onClick = {
                                     AppInfoActivity.start(context)
+                                }
+                            )
+                        },
+                        {
+                            val isComboLiteSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+                            SettingsItemCell(
+                                icon = Icons.Default.Extension,
+                                title = "插件管理",
+                                subtitle = if (isComboLiteSupported) {
+                                    "管理和配置应用插件"
+                                } else {
+                                    "需要 Android 7.0+ (当前设备不支持)"
+                                },
+                                onClick = {
+                                    if (isComboLiteSupported) {
+                                        val intent = android.content.Intent(context, com.yhchat.canary.ui.plugin.PluginManagerActivity::class.java)
+                                        context.startActivity(intent)
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "插件功能需要 Android 7.0 或更高版本",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 }
                             )
                         }

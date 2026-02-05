@@ -133,6 +133,16 @@ fun ConversationScreen(
     
     // 添加菜单 BottomSheet 状态
     var showAddMenuBottomSheet by remember { mutableStateOf(false) }
+    
+    // 布局设置
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+    var layoutShowSearchButton by remember { mutableStateOf(layoutPrefs.getBoolean("conversation_show_search", true)) }
+    var layoutShowAddButton by remember { mutableStateOf(layoutPrefs.getBoolean("conversation_show_add", true)) }
+    var layoutShowUnreadBadge by remember { mutableStateOf(layoutPrefs.getBoolean("conversation_show_unread_badge", true)) }
+    var layoutShowConversationList by remember { mutableStateOf(layoutPrefs.getBoolean("conversation_show_list", true)) }
+    var layoutShowAddUser by remember { mutableStateOf(layoutPrefs.getBoolean("add_menu_show_user", true)) }
+    var layoutShowAddGroup by remember { mutableStateOf(layoutPrefs.getBoolean("add_menu_show_group", true)) }
+    var layoutShowScan by remember { mutableStateOf(layoutPrefs.getBoolean("add_menu_show_scan", true)) }
 
     // 扫一扫相关逻辑
     // 处理扫描结果
@@ -226,19 +236,23 @@ fun ConversationScreen(
                 )
             },
             actions = {
-                IconButton(onClick = {
-                    showAddMenuBottomSheet = true
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "添加"
-                    )
+                if (layoutShowAddButton) {
+                    IconButton(onClick = {
+                        showAddMenuBottomSheet = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "添加"
+                        )
+                    }
                 }
-                IconButton(onClick = onSearchClick) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "搜索"
-                    )
+                if (layoutShowSearchButton) {
+                    IconButton(onClick = onSearchClick) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "搜索"
+                        )
+                    }
                 }
             }
         )
@@ -354,42 +368,59 @@ fun ConversationScreen(
                         }
                     }
                     
-                    // 普通会话列表
-                    items(
-                        items = pagedConversations,
-                        key = { conversation -> "conversation_${conversation.chatId}" }
-                    ) { conversation ->
-                        // 使用remember确保点击时获取最新的conversation数据
-                        val chatId = conversation.chatId
-                        val chatType = conversation.chatType
-                        val chatName = conversation.name
-                        
-                        ConversationItem(
-                            conversation = conversation,
-                            onClick = {
-                                // 标记会话为已读
-                                viewModel.markConversationAsRead(chatId, chatType)
-                                
-                                // 跳转到聊天界面（使用最新的会话数据）
-                                val intent = Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java)
-                                intent.putExtra("chatId", chatId)
-                                intent.putExtra("chatType", chatType)
-                                intent.putExtra("chatName", chatName)
-                                // 使用 FLAG_ACTIVITY_CLEAR_TOP 确保清除栈顶到目标Activity之间的所有Activity
-                                // 配合 FLAG_ACTIVITY_SINGLE_TOP 确保如果已存在则重用并调用 onNewIntent
-                                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                context.startActivity(intent)
-                            },
-                            onLongClick = {
-                                selectedConversation = conversation
-                                coroutineScope.launch {
-                                    isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
-                                    showConversationMenu = true
+                    // 普通会话列表 - 受布局设置控制
+                    if (layoutShowConversationList) {
+                        items(
+                            items = pagedConversations,
+                            key = { conversation -> "conversation_${conversation.chatId}" }
+                        ) { conversation ->
+                            // 使用remember确保点击时获取最新的conversation数据
+                            val chatId = conversation.chatId
+                            val chatType = conversation.chatType
+                            val chatName = conversation.name
+                            
+                            ConversationItem(
+                                conversation = conversation,
+                                onClick = {
+                                    // 标记会话为已读
+                                    viewModel.markConversationAsRead(chatId, chatType)
+                                    
+                                    // 跳转到聊天界面（使用最新的会话数据）
+                                    val intent = Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java)
+                                    intent.putExtra("chatId", chatId)
+                                    intent.putExtra("chatType", chatType)
+                                    intent.putExtra("chatName", chatName)
+                                    // 使用 FLAG_ACTIVITY_CLEAR_TOP 确保清除栈顶到目标Activity之间的所有Activity
+                                    // 配合 FLAG_ACTIVITY_SINGLE_TOP 确保如果已存在则重用并调用 onNewIntent
+                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    context.startActivity(intent)
+                                },
+                                onLongClick = {
+                                    selectedConversation = conversation
+                                    coroutineScope.launch {
+                                        isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
+                                        showConversationMenu = true
+                                    }
+                                }
+                            )
+                        }
+                        if (pagedConversations.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "暂无会话",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
-                        )
-                    }
-                    if (pagedConversations.isEmpty()) {
+                        }
+                    } else {
                         item {
                             Box(
                                 modifier = Modifier
@@ -398,7 +429,7 @@ fun ConversationScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "暂无会话",
+                                    text = "会话列表已隐藏",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -507,7 +538,10 @@ fun ConversationScreen(
                 onScan = {
                     showAddMenuBottomSheet = false
                     showScanMethodDialog = true
-                }
+                },
+                showAddUser = layoutShowAddUser,
+                showAddGroup = layoutShowAddGroup,
+                showScan = layoutShowScan
             )
         }
     }
@@ -520,7 +554,10 @@ fun ConversationScreen(
 private fun AddMenuBottomSheetContent(
     onAddUserGroupBot: () -> Unit,
     onCreateGroupBot: () -> Unit,
-    onScan: () -> Unit
+    onScan: () -> Unit,
+    showAddUser: Boolean = true,
+    showAddGroup: Boolean = true,
+    showScan: Boolean = true
 ) {
     Column(
         modifier = Modifier
@@ -537,49 +574,55 @@ private fun AddMenuBottomSheetContent(
         HorizontalDivider()
         
         // 添加用户/群聊/机器人
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("添加用户/群聊/机器人") },
-            supportingContent = { Text("通过ID搜索并添加好友、群聊或机器人", style = MaterialTheme.typography.bodySmall) },
-            leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = "添加",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            modifier = Modifier.clickable(onClick = onAddUserGroupBot)
-        )
+        if (showAddUser) {
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("添加用户/群聊/机器人") },
+                supportingContent = { Text("通过ID搜索并添加好友、群聊或机器人", style = MaterialTheme.typography.bodySmall) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = "添加",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                modifier = Modifier.clickable(onClick = onAddUserGroupBot)
+            )
+        }
         
         // 创建群聊/机器人
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("创建群聊/机器人") },
-            supportingContent = { Text("创建新的群聊或机器人", style = MaterialTheme.typography.bodySmall) },
-            leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.GroupAdd,
-                    contentDescription = "创建",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            modifier = Modifier.clickable(onClick = onCreateGroupBot)
-        )
+        if (showAddGroup) {
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("创建群聊/机器人") },
+                supportingContent = { Text("创建新的群聊或机器人", style = MaterialTheme.typography.bodySmall) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.GroupAdd,
+                        contentDescription = "创建",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                modifier = Modifier.clickable(onClick = onCreateGroupBot)
+            )
+        }
         
         // 扫一扫
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("扫一扫") },
-            supportingContent = { Text("扫描二维码添加好友或加入群聊", style = MaterialTheme.typography.bodySmall) },
-            leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
-                    contentDescription = "扫一扫",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            modifier = Modifier.clickable(onClick = onScan)
-        )
+        if (showScan) {
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("扫一扫") },
+                supportingContent = { Text("扫描二维码添加好友或加入群聊", style = MaterialTheme.typography.bodySmall) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = "扫一扫",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                modifier = Modifier.clickable(onClick = onScan)
+            )
+        }
     }
 }
 

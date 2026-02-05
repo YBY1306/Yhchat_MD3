@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
@@ -139,6 +140,7 @@ fun UserDetailScreen(
     var showMoreSheet by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showDeleteFriendDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
 
     var isNoNotify by remember { mutableStateOf(false) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
@@ -408,6 +410,15 @@ fun UserDetailScreen(
                     SheetSectionHeader(title = "互动")
 
                     SheetActionItem(
+                        icon = Icons.Default.Share,
+                        title = "分享好友",
+                        onClick = {
+                            showMoreSheet = false
+                            showShareDialog = true
+                        }
+                    )
+
+                    SheetActionItem(
                         icon = Icons.Default.Report,
                         title = "举报",
                         onClick = {
@@ -623,6 +634,15 @@ fun UserDetailScreen(
                 onSuccess = {
                     Toast.makeText(context, "举报已提交", Toast.LENGTH_SHORT).show()
                 }
+            )
+        }
+        
+        if (showShareDialog) {
+            com.yhchat.canary.ui.components.ShareDialog(
+                chatId = userId,
+                chatType = 1, // 用户
+                chatName = uiState.userDetail?.name ?: userName,
+                onDismiss = { showShareDialog = false }
             )
         }
     }

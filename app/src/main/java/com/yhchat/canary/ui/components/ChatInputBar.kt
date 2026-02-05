@@ -98,6 +98,13 @@ fun ChatInputBar(
 ) {
     val ctx = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // 读取布局设置
+    val layoutPrefs = remember { ctx.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    val showAddButton = remember { layoutPrefs.getBoolean("input_show_add_button", true) }
+    val showMicButton = remember { layoutPrefs.getBoolean("input_show_mic_button", true) }
+    val showInstructionButton = remember { layoutPrefs.getBoolean("input_show_instruction_button", true) }
+    val showExpressionButton = remember { layoutPrefs.getBoolean("input_show_expression_button", true) }
 
     var showAttachMenu by remember { mutableStateOf(false) }
     var showExpressionPicker by remember { mutableStateOf(false) }
@@ -116,13 +123,22 @@ fun ChatInputBar(
     var isConvertingToText by remember { mutableStateOf(false) }
     var voiceToTextProgress by remember { mutableStateOf("") }
     
-    // 文件选择器
+    // 文件选择器 - 使用OpenDocument以获取完整权限
     val audioPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
             if (voiceViewModel != null && chatId != null) {
                 Log.d("ChatInputBar", "audioPicker result uri=$uri")
+                // 获取持久化权限（如果需要）
+                try {
+                    ctx.contentResolver.takePersistableUriPermission(
+                        uri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    Log.d("ChatInputBar", "takePersistableUriPermission failed (may be temporary): ${e.message}")
+                }
                 voiceViewModel.selectAudioFromStorage(
                     context = ctx,
                     uri = uri,
@@ -249,51 +265,55 @@ fun ChatInputBar(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 加号按钮
-                IconButton(
-                    onClick = { 
-                        showAttachMenu = !showAttachMenu
-                        showExpressionPicker = false
-                        showInstructionPicker = false
-                        isVoiceMode = false
-                        if (showAttachMenu) {
-                            keyboardController?.hide()
-                        }
-                    },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "附件",
-                        tint = if (showAttachMenu) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+                if (showAddButton) {
+                    IconButton(
+                        onClick = { 
+                            showAttachMenu = !showAttachMenu
+                            showExpressionPicker = false
+                            showInstructionPicker = false
+                            isVoiceMode = false
+                            if (showAttachMenu) {
+                                keyboardController?.hide()
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "附件",
+                            tint = if (showAttachMenu) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                 
                 // 麦克风按钮
-                IconButton(
-                    onClick = {
-                        isVoiceMode = !isVoiceMode
-                        showAttachMenu = false
-                        showExpressionPicker = false
-                        showInstructionPicker = false
-                        if (isVoiceMode) {
-                            keyboardController?.hide()
-                        }
-                    },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isVoiceMode) Icons.Default.MicOff else Icons.Default.Mic,
-                        contentDescription = if (isVoiceMode) "关闭语音" else "语音",
-                        tint = if (isVoiceMode) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+                if (showMicButton) {
+                    IconButton(
+                        onClick = {
+                            isVoiceMode = !isVoiceMode
+                            showAttachMenu = false
+                            showExpressionPicker = false
+                            showInstructionPicker = false
+                            if (isVoiceMode) {
+                                keyboardController?.hide()
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isVoiceMode) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = if (isVoiceMode) "关闭语音" else "语音",
+                            tint = if (isVoiceMode) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                     
                 // 输入框或语音按钮区域
@@ -408,7 +428,7 @@ fun ChatInputBar(
                         // 从存储选取按钮
                         Button(
                             onClick = {
-                                audioPickerLauncher.launch("audio/*")
+                                audioPickerLauncher.launch(arrayOf("audio/*"))
                             },
                             enabled = !isProcessing && !isUploading && !isRecording,
                             modifier = Modifier
@@ -493,7 +513,7 @@ fun ChatInputBar(
                 }
                     
                     // 指令按钮 - 群聊 或 机器人私聊
-                    if (onInstructionClick != null && (groupId != null || botId != null)) {
+                    if (showInstructionButton && onInstructionClick != null && (groupId != null || botId != null)) {
                         IconButton(
                             onClick = { 
                                 showInstructionPicker = !showInstructionPicker
@@ -518,26 +538,28 @@ fun ChatInputBar(
                     }
                     
                     // 表情按钮
-                    IconButton(
-                        onClick = { 
-                            showExpressionPicker = !showExpressionPicker
-                            showAttachMenu = false
-                            showInstructionPicker = false
-                            if (showExpressionPicker) {
-                                keyboardController?.hide()
-                            }
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEmotions,
-                            contentDescription = "表情",
-                            tint = if (showExpressionPicker) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    if (showExpressionButton) {
+                        IconButton(
+                            onClick = { 
+                                showExpressionPicker = !showExpressionPicker
+                                showAttachMenu = false
+                                showInstructionPicker = false
+                                if (showExpressionPicker) {
+                                    keyboardController?.hide()
+                                }
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEmotions,
+                                contentDescription = "表情",
+                                tint = if (showExpressionPicker) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                     
                 // 发送按钮 - 圆形背景

@@ -87,6 +87,7 @@ fun BoardDetailScreen(
     token: String,
     viewModel: BoardDetailViewModel,
     onBackClick: () -> Unit,
+    onPostNavigate: ((postId: Int, postTitle: String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -204,13 +205,17 @@ fun BoardDetailScreen(
                 PostListItem(
                     post = post,
                     onClick = {
-                        // 跳转到文章详情
-                        val intent = Intent(context, PostDetailActivity::class.java).apply {
-                            putExtra("post_id", post.id)
-                            putExtra("post_title", post.title)
-                            putExtra("token", token)
+                        if (onPostNavigate != null) {
+                            onPostNavigate(post.id, post.title)
+                        } else {
+                            // 跳转到文章详情
+                            val intent = Intent(context, PostDetailActivity::class.java).apply {
+                                putExtra("post_id", post.id)
+                                putExtra("post_title", post.title)
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     },
                     onLongClick = {
                         selectedPost = post

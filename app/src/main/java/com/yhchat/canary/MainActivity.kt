@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.key
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +30,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import com.yhchat.canary.ui.login.LoginScreen
 import com.yhchat.canary.ui.conversation.ConversationScreen
 import com.yhchat.canary.ui.chat.ChatScreen
-import com.yhchat.canary.ui.community.CommunityScreen
+import com.yhchat.canary.ui.community.*
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhchat.canary.ui.contacts.ContactsScreen
 import com.yhchat.canary.ui.discover.DiscoverScreen
 import com.yhchat.canary.ui.profile.ProfileScreen
@@ -141,6 +145,21 @@ class MainActivity : BaseActivity() {
         var currentChatType by remember { mutableStateOf(0) }
         var currentChatName by remember { mutableStateOf("") }
         var pendingLoginToken by remember { mutableStateOf<String?>(null) }
+        
+        // 大屏分屏模式：当前选中的聊天（右侧面板）
+        var splitChatId by remember { mutableStateOf("") }
+        var splitChatType by remember { mutableStateOf(0) }
+        var splitChatName by remember { mutableStateOf("") }
+        
+        // 大屏社区分屏状态
+        var communityPanelType by remember { mutableStateOf("") } // "", "board", "post", "myposts", "recommend", "collect", "blocked"
+        var communityBoardId by remember { mutableStateOf(0) }
+        var communityBoardName by remember { mutableStateOf("") }
+        var communityPostId by remember { mutableStateOf(0) }
+        var communityPostTitle by remember { mutableStateOf("") }
+        var communityPrevType by remember { mutableStateOf("") }
+        var communityPrevBoardId by remember { mutableStateOf(0) }
+        var communityPrevBoardName by remember { mutableStateOf("") }
         
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()
@@ -273,28 +292,319 @@ class MainActivity : BaseActivity() {
                                     val navItem = visibleNavItems[page]
                                     when (navItem.id) {
                                         "conversation" -> {
-                                            ConversationScreen(
-                                                token = token,
-                                                userId = userId,
-                                                onConversationClick = { chatId, chatType, chatName ->
-                                                    launchChatActivity(chatId, chatType, chatName)
-                                                },
-                                                onSearchClick = {
-                                                    if (isInitialized) {
-                                                        currentScreen = "search"
+                                            // 大屏分屏：会话列表(1) + 聊天界面(2)
+                                            Row(modifier = Modifier.fillMaxSize()) {
+                                                // 左侧：会话列表 (占1/3)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .fillMaxHeight()
+                                                ) {
+                                                    ConversationScreen(
+                                                        token = token,
+                                                        userId = userId,
+                                                        onConversationClick = { chatId, chatType, chatName ->
+                                                            // 大屏模式：更新右侧面板而不是启动新Activity
+                                                            splitChatId = chatId
+                                                            splitChatType = chatType
+                                                            splitChatName = chatName
+                                                        },
+                                                        onSearchClick = {
+                                                            if (isInitialized) {
+                                                                currentScreen = "search"
+                                                            }
+                                                        },
+                                                        onMenuClick = { },
+                                                        tokenRepository = tokenRepository,
+                                                        viewModel = conversationViewModel,
+                                                        navigationState = navigationState
+                                                    )
+                                                }
+                                                
+                                                // 分隔线
+                                                VerticalDivider(
+                                                    modifier = Modifier.fillMaxHeight(),
+                                                    thickness = 0.5.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
+                                                
+                                                // 右侧：聊天界面 (占2/3)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(2f)
+                                                        .fillMaxHeight()
+                                                ) {
+                                                    if (splitChatId.isNotEmpty()) {
+                                                        // 使用 key 确保切换聊天时重建 ChatScreen
+                                                        key(splitChatId, splitChatType) {
+                                                            ChatScreen(
+                                                                chatId = splitChatId,
+                                                                chatType = splitChatType,
+                                                                chatName = splitChatName,
+                                                                userId = userId,
+                                                                onBackClick = {
+                                                                    // 大屏模式：关闭右侧面板
+                                                                    splitChatId = ""
+                                                                    splitChatType = 0
+                                                                    splitChatName = ""
+                                                                },
+                                                                onAvatarClick = { avatarUserId, userName, chatType, _ ->
+                                                                    val groupId = if (chatType == 2) splitChatId else null
+                                                                    UserDetailActivity.start(
+                                                                        context = this@MainActivity,
+                                                                        userId = avatarUserId,
+                                                                        userName = userName,
+                                                                        groupId = groupId
+                                                                    )
+                                                                },
+                                                                modifier = Modifier.fillMaxSize()
+                                                            )
+                                                        }
+                                                    } else {
+                                                        // 未选择聊天时的占位界面
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Column(
+                                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.AutoMirrored.Filled.Send,
+                                                                    contentDescription = null,
+                                                                    modifier = Modifier.size(48.dp),
+                                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                                )
+                                                                Text(
+                                                                    text = "选择一个会话开始聊天",
+                                                                    style = MaterialTheme.typography.bodyLarge,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                                )
+                                                            }
+                                                        }
                                                     }
-                                                },
-                                                onMenuClick = { },
-                                                tokenRepository = tokenRepository,
-                                                viewModel = conversationViewModel,
-                                                navigationState = navigationState
-                                            )
+                                                }
+                                            }
                                         }
                                         "community" -> {
-                                            CommunityScreen(
-                                                token = token,
-                                                navigationState = navigationState
-                                            )
+                                            // 大屏分屏：社区标签页(1) + 详情面板(2)
+                                            Row(modifier = Modifier.fillMaxSize()) {
+                                                // 左侧：社区标签页 (占1/3)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .fillMaxHeight()
+                                                ) {
+                                                    CommunityTabScreen(
+                                                        token = token,
+                                                        onBoardNavigate = { boardId, boardName ->
+                                                            communityBoardId = boardId
+                                                            communityBoardName = boardName
+                                                            communityPanelType = "board"
+                                                            communityPrevType = ""
+                                                        },
+                                                        onMyPostsNavigate = {
+                                                            communityPanelType = "myposts"
+                                                            communityPrevType = ""
+                                                        },
+                                                        onRecommendPostsNavigate = {
+                                                            communityPanelType = "recommend"
+                                                            communityPrevType = ""
+                                                        },
+                                                        onMyCollectPostsNavigate = {
+                                                            communityPanelType = "collect"
+                                                            communityPrevType = ""
+                                                        },
+                                                        onBlockedUsersNavigate = {
+                                                            communityPanelType = "blocked"
+                                                            communityPrevType = ""
+                                                        },
+                                                    )
+                                                }
+                                                
+                                                // 分隔线
+                                                VerticalDivider(
+                                                    modifier = Modifier.fillMaxHeight(),
+                                                    thickness = 0.5.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
+                                                
+                                                // 右侧：详情面板 (占2/3)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(2f)
+                                                        .fillMaxHeight()
+                                                ) {
+                                                    when (communityPanelType) {
+                                                        "board" -> {
+                                                            key("board_$communityBoardId") {
+                                                                val boardDetailVm: BoardDetailViewModel = viewModel(key = "split_board_$communityBoardId") {
+                                                                    BoardDetailViewModel(
+                                                                        communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity),
+                                                                        tokenRepository = RepositoryFactory.getTokenRepository(this@MainActivity)
+                                                                    )
+                                                                }
+                                                                BoardDetailScreen(
+                                                                    boardId = communityBoardId,
+                                                                    boardName = communityBoardName,
+                                                                    token = token,
+                                                                    viewModel = boardDetailVm,
+                                                                    onBackClick = {
+                                                                        communityPanelType = ""
+                                                                    },
+                                                                    onPostNavigate = { postId, postTitle ->
+                                                                        communityPrevType = "board"
+                                                                        communityPrevBoardId = communityBoardId
+                                                                        communityPrevBoardName = communityBoardName
+                                                                        communityPostId = postId
+                                                                        communityPostTitle = postTitle
+                                                                        communityPanelType = "post"
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                        "post" -> {
+                                                            key("post_$communityPostId") {
+                                                                val postDetailVm: PostDetailViewModel = viewModel(key = "split_post_$communityPostId") {
+                                                                    PostDetailViewModel(
+                                                                        communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity),
+                                                                        tokenRepository = RepositoryFactory.getTokenRepository(this@MainActivity),
+                                                                        userRepository = RepositoryFactory.getUserRepository(this@MainActivity),
+                                                                        friendRepository = RepositoryFactory.getFriendRepository(this@MainActivity),
+                                                                        messageRepository = RepositoryFactory.getMessageRepository(this@MainActivity)
+                                                                    )
+                                                                }
+                                                                PostDetailScreen(
+                                                                    postId = communityPostId,
+                                                                    postTitle = communityPostTitle,
+                                                                    viewModel = postDetailVm,
+                                                                    onBackClick = {
+                                                                        when (communityPrevType) {
+                                                                            "board" -> {
+                                                                                communityBoardId = communityPrevBoardId
+                                                                                communityBoardName = communityPrevBoardName
+                                                                                communityPanelType = "board"
+                                                                                communityPrevType = ""
+                                                                            }
+                                                                            "myposts" -> {
+                                                                                communityPanelType = "myposts"
+                                                                                communityPrevType = ""
+                                                                            }
+                                                                            "recommend" -> {
+                                                                                communityPanelType = "recommend"
+                                                                                communityPrevType = ""
+                                                                            }
+                                                                            "collect" -> {
+                                                                                communityPanelType = "collect"
+                                                                                communityPrevType = ""
+                                                                            }
+                                                                            else -> {
+                                                                                communityPanelType = ""
+                                                                                communityPrevType = ""
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                        "myposts" -> {
+                                                            val moreCommunityVm: CommunityViewModel = viewModel(key = "split_more_community") {
+                                                                CommunityViewModel(
+                                                                    communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity)
+                                                                )
+                                                            }
+                                                            MyPostsScreen(
+                                                                token = token,
+                                                                viewModel = moreCommunityVm,
+                                                                onBackClick = {
+                                                                    communityPanelType = ""
+                                                                },
+                                                                onPostNavigate = { postId, postTitle ->
+                                                                    communityPrevType = "myposts"
+                                                                    communityPostId = postId
+                                                                    communityPostTitle = postTitle
+                                                                    communityPanelType = "post"
+                                                                }
+                                                            )
+                                                        }
+                                                        "recommend" -> {
+                                                            val moreCommunityVm: CommunityViewModel = viewModel(key = "split_more_community") {
+                                                                CommunityViewModel(
+                                                                    communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity)
+                                                                )
+                                                            }
+                                                            RecommendPostsScreen(
+                                                                token = token,
+                                                                viewModel = moreCommunityVm,
+                                                                onBackClick = {
+                                                                    communityPanelType = ""
+                                                                },
+                                                                onPostNavigate = { postId, postTitle ->
+                                                                    communityPrevType = "recommend"
+                                                                    communityPostId = postId
+                                                                    communityPostTitle = postTitle
+                                                                    communityPanelType = "post"
+                                                                }
+                                                            )
+                                                        }
+                                                        "collect" -> {
+                                                            val moreCommunityVm: CommunityViewModel = viewModel(key = "split_more_community") {
+                                                                CommunityViewModel(
+                                                                    communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity)
+                                                                )
+                                                            }
+                                                            MyCollectPostsScreen(
+                                                                token = token,
+                                                                viewModel = moreCommunityVm,
+                                                                onBackClick = {
+                                                                    communityPanelType = ""
+                                                                },
+                                                                onPostNavigate = { postId, postTitle ->
+                                                                    communityPrevType = "collect"
+                                                                    communityPostId = postId
+                                                                    communityPostTitle = postTitle
+                                                                    communityPanelType = "post"
+                                                                }
+                                                            )
+                                                        }
+                                                        "blocked" -> {
+                                                            val blockedUsersVm: BlockedUsersViewModel = hiltViewModel()
+                                                            BlockedUsersScreen(
+                                                                token = token,
+                                                                viewModel = blockedUsersVm,
+                                                                onBackClick = {
+                                                                    communityPanelType = ""
+                                                                }
+                                                            )
+                                                        }
+                                                        else -> {
+                                                            // 未选择时的占位界面
+                                                            Box(
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Column(
+                                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                                ) {
+                                                                    Icon(
+                                                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                                                        contentDescription = null,
+                                                                        modifier = Modifier.size(48.dp),
+                                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                                    )
+                                                                    Text(
+                                                                        text = "选择一个分区或功能",
+                                                                        style = MaterialTheme.typography.bodyLarge,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                         "contacts" -> {
                                             ContactsScreen(
@@ -334,7 +644,11 @@ class MainActivity : BaseActivity() {
                                             currentScreen = "conversation"
                                         },
                                         onItemClick = { chatId, chatType, chatName ->
-                                            launchChatActivity(chatId, chatType, chatName)
+                                            // 大屏搜索结果也在右侧面板打开
+                                            splitChatId = chatId
+                                            splitChatType = chatType
+                                            splitChatName = chatName
+                                            currentScreen = "conversation"
                                         },
                                         tokenRepository = tokenRepository,
                                         modifier = Modifier.fillMaxSize()

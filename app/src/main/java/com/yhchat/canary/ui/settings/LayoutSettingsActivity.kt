@@ -663,6 +663,9 @@ private fun ProfileLayoutSettingsGroup(context: Context) {
 private fun ChatLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
     
+    var hideTopAppBar by remember { mutableStateOf(prefs.getBoolean("chat_hide_top_app_bar", false)) }
+    var hideBackButtonInLargeScreen by remember { mutableStateOf(prefs.getBoolean("chat_hide_back_button_large_screen", true)) }
+    var showTtsButton by remember { mutableStateOf(prefs.getBoolean("chat_show_tts_button", true)) }
     var showOwnerBadge by remember { mutableStateOf(prefs.getBoolean("chat_show_owner_badge", true)) }
     var showAdminBadge by remember { mutableStateOf(prefs.getBoolean("chat_show_admin_badge", true)) }
     var showMemberTags by remember { mutableStateOf(prefs.getBoolean("chat_show_member_tags", true)) }
@@ -670,6 +673,48 @@ private fun ChatLayoutSettingsGroup(context: Context) {
     var showMicButton by remember { mutableStateOf(prefs.getBoolean("input_show_mic_button", true)) }
     var showInstructionButton by remember { mutableStateOf(prefs.getBoolean("input_show_instruction_button", true)) }
     var showExpressionButton by remember { mutableStateOf(prefs.getBoolean("input_show_expression_button", true)) }
+    
+    SettingsGroup(
+        title = "聊天界面 - TopAppBar",
+        items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.VisibilityOff,
+                    title = "隐藏TopAppBar",
+                    subtitle = if (hideTopAppBar) "TopAppBar已隐藏" else "TopAppBar正常显示",
+                    checked = hideTopAppBar,
+                    onCheckedChange = {
+                        hideTopAppBar = it
+                        prefs.edit().putBoolean("chat_hide_top_app_bar", it).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    title = "大屏下隐藏返回键",
+                    subtitle = if (hideBackButtonInLargeScreen) "大屏模式下隐藏返回按钮" else "大屏模式下显示返回按钮",
+                    checked = hideBackButtonInLargeScreen,
+                    onCheckedChange = {
+                        hideBackButtonInLargeScreen = it
+                        prefs.edit().putBoolean("chat_hide_back_button_large_screen", it).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.RecordVoiceOver,
+                    title = "TTS语音按钮",
+                    subtitle = if (showTtsButton) "显示文字转语音按钮" else "隐藏文字转语音按钮",
+                    checked = showTtsButton,
+                    onCheckedChange = {
+                        showTtsButton = it
+                        prefs.edit().putBoolean("chat_show_tts_button", it).apply()
+                    }
+                )
+            }
+        )
+    )
     
     SettingsGroup(
         title = "聊天界面 - 成员标识",

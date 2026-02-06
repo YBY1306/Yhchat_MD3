@@ -61,7 +61,8 @@ class RecommendPostsActivity : BaseActivity() {
 fun RecommendPostsScreen(
     token: String,
     viewModel: CommunityViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onPostNavigate: ((postId: Int, postTitle: String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val state by viewModel.recommendPostListState.collectAsState()
@@ -122,12 +123,16 @@ fun RecommendPostsScreen(
                             RecommendPostListItem(
                                 post = post,
                                 onClick = {
-                                    val intent = Intent(context, PostDetailActivity::class.java).apply {
-                                        putExtra("post_id", post.id)
-                                        putExtra("post_title", post.title)
-                                        putExtra("token", token)
+                                    if (onPostNavigate != null) {
+                                        onPostNavigate(post.id, post.title)
+                                    } else {
+                                        val intent = Intent(context, PostDetailActivity::class.java).apply {
+                                            putExtra("post_id", post.id)
+                                            putExtra("post_title", post.title)
+                                            putExtra("token", token)
+                                        }
+                                        context.startActivity(intent)
                                     }
-                                    context.startActivity(intent)
                                 }
                             )
                         }

@@ -74,7 +74,8 @@ class MyPostsActivity : BaseActivity() {
 fun MyPostsScreen(
     token: String,
     viewModel: CommunityViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onPostNavigate: ((postId: Int, postTitle: String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val myPostListState by viewModel.myPostListState.collectAsState()
@@ -185,11 +186,15 @@ fun MyPostsScreen(
                 error = myPostListState.error,
                 searchQuery = searchQuery,
                 onPostClick = { post ->
-                    val intent = android.content.Intent(context, PostDetailActivity::class.java).apply {
-                        putExtra("post_id", post.id)
-                        putExtra("token", token)
+                    if (onPostNavigate != null) {
+                        onPostNavigate(post.id, post.title)
+                    } else {
+                        val intent = android.content.Intent(context, PostDetailActivity::class.java).apply {
+                            putExtra("post_id", post.id)
+                            putExtra("token", token)
+                        }
+                        context.startActivity(intent)
                     }
-                    context.startActivity(intent)
                 },
                 onDeletePost = { postId ->
                     viewModel.deletePost(token, postId)

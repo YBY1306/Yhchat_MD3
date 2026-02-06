@@ -61,7 +61,18 @@ class ChatSearchActivity : BaseActivity() {
                         chatType = chatType,
                         chatName = chatName,
                         viewModel = viewModel,
-                        onBackClick = { finish() }
+                        onBackClick = { finish() },
+                        onNavigateToChat = { targetChatId, targetChatType, targetChatName, msgId, msgSeq ->
+                            // 启动ChatActivity并定位到目标消息
+                            com.yhchat.canary.ui.chat.ChatActivity.startWithSearchTarget(
+                                context = this@ChatSearchActivity,
+                                chatId = targetChatId,
+                                chatType = targetChatType,
+                                chatName = targetChatName,
+                                targetMsgId = msgId,
+                                targetMsgSeq = msgSeq
+                            )
+                        }
                     )
                 }
             }

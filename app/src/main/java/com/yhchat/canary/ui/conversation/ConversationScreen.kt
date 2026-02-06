@@ -385,15 +385,8 @@ fun ConversationScreen(
                                     // 标记会话为已读
                                     viewModel.markConversationAsRead(chatId, chatType)
                                     
-                                    // 跳转到聊天界面（使用最新的会话数据）
-                                    val intent = Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java)
-                                    intent.putExtra("chatId", chatId)
-                                    intent.putExtra("chatType", chatType)
-                                    intent.putExtra("chatName", chatName)
-                                    // 使用 FLAG_ACTIVITY_CLEAR_TOP 确保清除栈顶到目标Activity之间的所有Activity
-                                    // 配合 FLAG_ACTIVITY_SINGLE_TOP 确保如果已存在则重用并调用 onNewIntent
-                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                    context.startActivity(intent)
+                                    // 调用统一的点击回调（大屏模式会在右侧面板打开，小屏模式会启动新Activity）
+                                    onConversationClick(chatId, chatType, chatName)
                                 },
                                 onLongClick = {
                                     selectedConversation = conversation
@@ -647,13 +640,16 @@ fun ConversationItem(
         }
     }
 
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val dateFormat = SimpleDateFormat("MM-dd", Locale.getDefault())
-    val now = System.currentTimeMillis()
-    val timeText = if (now - conversation.timestampMs < 24 * 60 * 60 * 1000) {
-        timeFormat.format(Date(conversation.timestampMs))
-    } else {
-        dateFormat.format(Date(conversation.timestampMs))
+    // 性能优化：remember时间格式化对象和结果，避免每次重组都创建新对象
+    val timeText = remember(conversation.timestampMs) {
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("MM-dd", Locale.getDefault())
+        val now = System.currentTimeMillis()
+        if (now - conversation.timestampMs < 24 * 60 * 60 * 1000) {
+            timeFormat.format(Date(conversation.timestampMs))
+        } else {
+            dateFormat.format(Date(conversation.timestampMs))
+        }
     }
     
     Surface(
@@ -676,18 +672,22 @@ fun ConversationItem(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-            // 头像
+            // 头像 - 性能优化：remember ImageRequest避免重复构建
             Box {
-                AsyncImage(
-                    model = if (conversation.avatarUrl != null) {
-                        ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val avatarModel = remember(avatarUrl72) {
+                    if (avatarUrl72 != null) {
+                        ImageRequest.Builder(context)
                             .data(avatarUrl72)
                             .addHeader("Referer", "https://myapp.jwznb.com")
                             .crossfade(true)
                             .build()
                     } else {
                         null
-                    },
+                    }
+                }
+                AsyncImage(
+                    model = avatarModel,
                     contentDescription = "头像",
                     modifier = Modifier
                         .size(44.dp)
@@ -795,11 +795,13 @@ fun ConversationItem(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 直接显示消息内容，不再显示"发送者："前缀
-                    val displayContent = if (conversation.at > 0) {
-                        "@${conversation.chatContent}"
-                    } else {
-                        conversation.chatContent
+                    // 性能优化：remember displayContent避免重复计算
+                    val displayContent = remember(conversation.chatContent, conversation.at) {
+                        if (conversation.at > 0) {
+                            "@${conversation.chatContent}"
+                        } else {
+                            conversation.chatContent
+                        }
                     }
                     
                     Text(

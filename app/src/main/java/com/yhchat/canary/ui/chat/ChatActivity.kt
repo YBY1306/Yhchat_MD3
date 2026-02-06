@@ -28,6 +28,10 @@ class ChatActivity : BaseActivity() {
     private var chatType by mutableStateOf(1)
     private var chatName by mutableStateOf("")
     
+    // 搜索跳转参数
+    private var searchTargetMsgId by mutableStateOf<String?>(null)
+    private var searchTargetMsgSeq by mutableStateOf<Long?>(null)
+    
     // 图片选择器 - 使用与 ChatBackgroundActivity 相同的 API
     private val imagePickerLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -168,7 +172,10 @@ class ChatActivity : BaseActivity() {
                             // 视频发送后清空
                             android.util.Log.d("ChatActivity", "📹 视频发送完成，清空URI")
                             videoUriToSend = null
-                        }
+                        },
+                        // 传递搜索跳转参数
+                        searchTargetMsgId = searchTargetMsgId,
+                        searchTargetMsgSeq = searchTargetMsgSeq
                     )
                 }
             }
@@ -189,10 +196,43 @@ class ChatActivity : BaseActivity() {
         val newChatType = intent.getIntExtra("chatType", 1)
         val newChatName = intent.getStringExtra("chatName") ?: ""
         
-        android.util.Log.d("ChatActivity", "Updating chat params: chatId=$newChatId, chatType=$newChatType, chatName=$newChatName")
+        // 读取搜索跳转参数
+        val newSearchTargetMsgId = intent.getStringExtra("searchTargetMsgId")
+        val newSearchTargetMsgSeq = intent.getLongExtra("searchTargetMsgSeq", -1L).let { 
+            if (it == -1L) null else it 
+        }
+        
+        android.util.Log.d("ChatActivity", "Updating chat params: chatId=$newChatId, chatType=$newChatType, chatName=$newChatName, searchTargetMsgId=$newSearchTargetMsgId, searchTargetMsgSeq=$newSearchTargetMsgSeq")
         
         chatId = newChatId
         chatType = newChatType
         chatName = newChatName
+        searchTargetMsgId = newSearchTargetMsgId
+        searchTargetMsgSeq = newSearchTargetMsgSeq
+    }
+    
+    companion object {
+        /**
+         * 启动ChatActivity并跳转到指定消息
+         */
+        fun startWithSearchTarget(
+            context: android.content.Context,
+            chatId: String,
+            chatType: Int,
+            chatName: String,
+            targetMsgId: String,
+            targetMsgSeq: Long? = null
+        ) {
+            val intent = Intent(context, ChatActivity::class.java).apply {
+                putExtra("chatId", chatId)
+                putExtra("chatType", chatType)
+                putExtra("chatName", chatName)
+                putExtra("searchTargetMsgId", targetMsgId)
+                targetMsgSeq?.let { putExtra("searchTargetMsgSeq", it) }
+                // 添加标志以确保Activity正确启动
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            context.startActivity(intent)
+        }
     }
 }

@@ -52,7 +52,8 @@ fun ChatSearchScreen(
     chatType: Int,
     chatName: String,
     viewModel: ChatSearchViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToChat: (String, Int, String, String, Long?) -> Unit = { _, _, _, _, _ -> } // (chatId, chatType, chatName, msgId, msgSeq) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
@@ -253,7 +254,14 @@ fun ChatSearchScreen(
                                 message = message,
                                 searchQuery = searchQuery,
                                 onClick = {
-                                    viewModel.showMessageDetail(message)
+                                    // 跳转到ChatActivity并定位到目标消息
+                                    onNavigateToChat(
+                                        message.chatId ?: chatId,
+                                        message.chatType ?: chatType,
+                                        chatName,
+                                        message.msgId,
+                                        message.msgSeq
+                                    )
                                 }
                             )
                         }

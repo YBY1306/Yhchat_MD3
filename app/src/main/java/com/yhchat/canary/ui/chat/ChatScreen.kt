@@ -3,19 +3,33 @@ package com.yhchat.canary.ui.chat
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.app.Activity
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.border
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -35,22 +49,16 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.material3.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
@@ -58,6 +66,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
@@ -66,8 +75,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateContentSize
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.filter
@@ -77,18 +100,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.ui.composed
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.yhchat.canary.ui.bot.BotInfoActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
@@ -100,37 +115,34 @@ import com.yhchat.canary.ui.components.LinkText
 import com.yhchat.canary.ui.components.ExpressionText
 import com.yhchat.canary.ui.components.LinkDetector
 import com.yhchat.canary.ui.components.MessageSelectionContainer
+import com.yhchat.canary.ui.community.PostDetailActivity
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import com.yhchat.canary.ui.components.VoiceMessageViewModel
+import com.yhchat.canary.ui.components.FloatingVoiceWindow
+import com.yhchat.canary.data.api.ApiClient
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MessageContent
 import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.service.FileDownloadService
+import com.yhchat.canary.service.AudioCacheManager
 import com.yhchat.canary.utils.PermissionUtils
-import android.app.Activity
-import android.content.Context
-import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.input.pointer.pointerInput
-import com.yhchat.canary.ui.community.PostDetailActivity
-import androidx.compose.foundation.border
+import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
-import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import android.content.ContentValues
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.ui.components.VoiceMessageViewModel
-import com.yhchat.canary.ui.components.FloatingVoiceWindow
+import android.graphics.Bitmap
 import android.provider.MediaStore
-import com.yhchat.canary.service.AudioCacheManager
-import java.io.IOException
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.ui.graphics.asImageBitmap
+import com.yhchat.canary.ui.components.MultiSelectBottomBar
+
+
 
 /**
  * 聊天界面
@@ -160,7 +172,10 @@ fun ChatScreen(
     videoUriToSend: android.net.Uri? = null,  // 待发送的视频URI
     onImageSent: () -> Unit = {},  // 图片发送完成回调
     onFileSent: () -> Unit = {},  // 文件发送完成回调
-    onVideoSent: () -> Unit = {}  // 视频发送完成回调
+    onVideoSent: () -> Unit = {},  // 视频发送完成回调
+    // 搜索跳转参数
+    searchTargetMsgId: String? = null,  // 搜索目标消息ID
+    searchTargetMsgSeq: Long? = null  // 搜索目标消息序列号
 ) {
     val context = LocalContext.current
 
@@ -237,6 +252,8 @@ fun ChatScreen(
     var sttAudioUrl by remember { mutableStateOf<String?>(null) }
     var sttProgress by remember { mutableStateOf("") }
     var sttResult by remember { mutableStateOf<String?>(null) }
+    
+    // 注意：文件选择器已移至ChatActivity中处理，这里不再需要launcher
     var isSttProcessing by remember { mutableStateOf(false) }
     
     // 浮动TTS窗口状态
@@ -254,9 +271,48 @@ fun ChatScreen(
     // 高亮消息ID（用于跳转到引用消息时高亮显示）
     var highlightedMessageId by remember { mutableStateOf<String?>(null) }
     
+    // 多选模式状态
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    var selectedMessageIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    
+    // 生成图片预览状态
+    var showImagePreviewDialog by remember { mutableStateOf(false) }
+    var generatedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isGeneratingImage by remember { mutableStateOf(false) }
+    
+    // 读取布局设置：TTS按钮和TopAppBar显隐
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
+    var showTtsButton by remember { mutableStateOf(layoutPrefs.getBoolean("chat_show_tts_button", true)) }
+    var hideTopAppBar by remember { mutableStateOf(layoutPrefs.getBoolean("chat_hide_top_app_bar", false)) }
+    DisposableEffect(layoutPrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "chat_show_tts_button" -> showTtsButton = layoutPrefs.getBoolean("chat_show_tts_button", true)
+                "chat_hide_top_app_bar" -> hideTopAppBar = layoutPrefs.getBoolean("chat_hide_top_app_bar", false)
+            }
+        }
+        layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    
+    // 性能优化：预计算反转后的消息列表，避免在LazyColumn内部重复计算
+    val reversedMessages by remember {
+        derivedStateOf { messages.reversed() }
+    }
+    
     // 初始化聊天
-    LaunchedEffect(chatId, chatType, userId) {
+    LaunchedEffect(chatId, chatType) {
         viewModel.initChat(chatId, chatType, userId)
+    }
+    
+    // 处理搜索跳转：当有搜索目标消息ID时，自动跳转到该消息
+    LaunchedEffect(searchTargetMsgId) {
+        if (!searchTargetMsgId.isNullOrEmpty()) {
+            android.util.Log.d("ChatScreen", "🔍 搜索跳转：尝试定位到消息 $searchTargetMsgId (seq: $searchTargetMsgSeq)")
+            // 延迟一下确保聊天已初始化
+            kotlinx.coroutines.delay(500)
+            viewModel.loadMessageByIdAndScroll(searchTargetMsgId)
+        }
     }
     
     // 如果是机器人聊天，加载机器人信息和看板
@@ -417,7 +473,6 @@ fun ChatScreen(
     LaunchedEffect(uiState.newMessageReceived) {
         if (uiState.newMessageReceived) {
             // 获取最新消息（reversedMessages的第一条就是最新的）
-            val reversedMessages = messages.reversed()
             val latestMessage = reversedMessages.firstOrNull()
             
             // 判断条件1：用户是否在底部附近（允许一些偏移量）
@@ -450,7 +505,12 @@ fun ChatScreen(
 
     // 处理系统返回键/手势返回
     BackHandler {
-        onBackClick()
+        if (isMultiSelectMode) {
+            isMultiSelectMode = false
+            selectedMessageIds = emptySet()
+        } else {
+            onBackClick()
+        }
     }
 
     // 下拉刷新状态（刷新最新消息）
@@ -487,46 +547,82 @@ fun ChatScreen(
                     .fillMaxSize()
                     .imePadding()  // 自动响应软键盘，推动内容上移
         ) {
-        // 顶部应用栏
+        // 顶部应用栏（受布局设置控制）
+        if (!hideTopAppBar) {
+        // 检测屏幕尺寸，判断是否为大屏模式
+        val configuration = LocalConfiguration.current
+        val screenWidthDp = configuration.screenWidthDp
+        val isLargeScreen = screenWidthDp >= 600
+        
+        // 读取大屏下隐藏返回键的设置
+        var hideBackButtonInLargeScreen by remember { 
+            mutableStateOf(layoutPrefs.getBoolean("chat_hide_back_button_large_screen", true)) 
+        }
+        DisposableEffect(layoutPrefs) {
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key == "chat_hide_back_button_large_screen") {
+                    hideBackButtonInLargeScreen = layoutPrefs.getBoolean("chat_hide_back_button_large_screen", true)
+                }
+            }
+            layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
+        
+        // 判断是否应该显示返回按钮
+        val shouldShowBackButton = if (isLargeScreen) {
+            !hideBackButtonInLargeScreen
+        } else {
+            true // 小屏模式下总是显示返回按钮
+        }
+        
         TopAppBar(
             title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 标题部分
-                    Column(modifier = Modifier.weight(1f)) {
+                // 标题部分 - 强制单行显示，不被按钮挤压
+                Column {
+                    Text(
+                        text = chatName,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    // 如果是群聊，显示群人数
+                    if (chatType == 2 && uiState.groupMemberCount > 0) {
                         Text(
-                            text = chatName,
-                            fontWeight = FontWeight.Bold
+                            text = "${uiState.groupMemberCount} 人",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
-                        // 如果是群聊，显示群人数
-                        if (chatType == 2 && uiState.groupMemberCount > 0) {
+                    }
+                    // 如果是机器人，显示使用人数
+                    if (chatType == 3) {
+                        val botInfo = uiState.botInfo
+                        if (botInfo != null) {
                             Text(
-                                text = "${uiState.groupMemberCount} 人",
+                                text = "${botInfo.data.headcount} 人使用",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
                             )
                         }
-                        // 如果是机器人，显示使用人数
-                        if (chatType == 3) {
-                            val botInfo = uiState.botInfo
-                            if (botInfo != null) {
-                                Text(
-                                    text = "${botInfo.data.headcount} 人使用",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
                     }
-                    
-                    // TTS按钮
-                    IconButton(
-                        onClick = { showFloatingTtsWindow = true },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
+                }
+            },
+            navigationIcon = {
+                // 根据设置和屏幕尺寸决定是否显示返回按钮
+                if (shouldShowBackButton) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                }
+            },
+            actions = {
+                // TTS按钮（受布局设置控制）
+                if (showTtsButton) {
+                    IconButton(onClick = { showFloatingTtsWindow = true }) {
                         Icon(
                             imageVector = Icons.Default.RecordVoiceOver,
                             contentDescription = "文字转语音",
@@ -534,16 +630,6 @@ fun ChatScreen(
                         )
                     }
                 }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
-                }
-            },
-            actions = {
                 // 用户详情按钮（只在单聊时显示）
                 if (chatType == 1) {
                     IconButton(onClick = {
@@ -597,6 +683,7 @@ fun ChatScreen(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             )
         )
+        }
         
         // 机器人看板按钮和内容
         // 单个机器人聊天时显示该机器人的看板（且设置允许）
@@ -789,6 +876,19 @@ fun ChatScreen(
                             conversationChatType = chatType,
                             modifier = itemModifier,
                             isHighlighted = message.msgId == highlightedMessageId,
+                            isMultiSelectMode = isMultiSelectMode,
+                            isSelected = selectedMessageIds.contains(message.msgId),
+                            onSelectionToggle = { msgId ->
+                                selectedMessageIds = if (selectedMessageIds.contains(msgId)) {
+                                    selectedMessageIds - msgId
+                                } else {
+                                    selectedMessageIds + msgId
+                                }
+                            },
+                            onMultiSelect = {
+                                isMultiSelectMode = true
+                                selectedMessageIds = setOf(message.msgId)
+                            },
                             onImageClick = { imageUrl ->
                                 currentImageUrl = imageUrl
                                 showImageViewer = true
@@ -1063,7 +1163,6 @@ fun ChatScreen(
                                 coroutineScope.launch {
                                     // 步骤1: 在当前已加载的消息列表中通过msgId查找引用消息
                                     android.util.Log.d("ChatScreen", "🔍 在已加载的 ${messages.size} 条消息中查找 msgId: $quoteMsgId")
-                                    val reversedMessages = messages.reversed()
                                     val targetIndex = reversedMessages.indexOfFirst { it.msgId == quoteMsgId }
                                     
                                     if (targetIndex != -1) {
@@ -1229,6 +1328,64 @@ fun ChatScreen(
             )
         }
 
+        // 底部栏：多选模式 vs 输入模式
+        if (isMultiSelectMode) {
+            // 多选模式底部操作栏（带上浮动画）
+            AnimatedVisibility(
+                visible = true,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(200)
+                ) + fadeOut(animationSpec = tween(200))
+            ) {
+                MultiSelectBottomBar(
+                    selectedCount = selectedMessageIds.size,
+                    onGenerateImage = {
+                        // 生成图片
+                        if (selectedMessageIds.isNotEmpty()) {
+                            isGeneratingImage = true
+                            coroutineScope.launch {
+                                try {
+                                    val selectedMessages = messages
+                                        .filter { selectedMessageIds.contains(it.msgId) }
+                                        .sortedBy { it.sendTime }
+                                    val bitmap = generateMessagesImage(
+                                        context = context,
+                                        messages = selectedMessages,
+                                        chatName = chatName
+                                    )
+                                    generatedImageBitmap = bitmap
+                                    showImagePreviewDialog = true
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ChatScreen", "生成图片失败", e)
+                                    Toast.makeText(context, "生成图片失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isGeneratingImage = false
+                                }
+                            }
+                        }
+                    },
+                    onRecall = {
+                        // 批量撤回
+                        if (selectedMessageIds.isNotEmpty()) {
+                            viewModel.recallMessagesBatch(selectedMessageIds.toList())
+                            Toast.makeText(context, "正在撤回 ${selectedMessageIds.size} 条消息...", Toast.LENGTH_SHORT).show()
+                            isMultiSelectMode = false
+                            selectedMessageIds = emptySet()
+                        }
+                    },
+                    onClose = {
+                        isMultiSelectMode = false
+                        selectedMessageIds = emptySet()
+                    },
+                    modifier = Modifier.navigationBarsPadding()
+                )
+            }
+        } else {
         // 底部输入栏
             ChatInputBar(
                 text = inputText,
@@ -1300,15 +1457,15 @@ fun ChatScreen(
                     }
                 },
                 onImageClick = {
-                    // 调用图片选择器
+                    // 使用从ChatActivity传递的回调
                     onImagePickerClick()
                 },
                 onFileClick = {
-                    // 调用文件选择器
+                    // 使用从ChatActivity传递的回调
                     onFilePickerClick()
                 },
                 onVideoClick = {
-                    // 调用视频选择器
+                    // 使用从ChatActivity传递的回调
                     onVideoPickerClick()
                 },
                 onVoiceMessageSend = { fileKey, fileHash, fileSize, audioDuration ->
@@ -1321,7 +1478,7 @@ fun ChatScreen(
                     viewModel.sendDraftInput(draftText)
                 },
                 onCameraClick = {
-                    // 调用相机拍照
+                    // 使用从ChatActivity传递的回调
                     onCameraClick()
                 },
                 selectedMessageType = selectedMessageType,
@@ -1456,8 +1613,9 @@ fun ChatScreen(
                         bottom = 0.dp  // 导航栏padding已处理
                     )
             )
-        }
-        }
+        }  // 闭合else（输入模式）
+        }  // 闭合Column
+        }  // 闭合Surface
     }  // 闭合Box（聊天背景容器）
     
     // 图片预览器
@@ -1523,6 +1681,47 @@ fun ChatScreen(
         )
     }
     
+    // 生成图片加载中指示器
+    if (isGeneratingImage) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("生成中...") },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            },
+            confirmButton = {}
+        )
+    }
+    
+    // 消息图片预览对话框
+    if (showImagePreviewDialog && generatedImageBitmap != null) {
+        MessageImagePreviewDialog(
+            bitmap = generatedImageBitmap!!,
+            selectedCount = selectedMessageIds.size,
+            chatName = chatName,
+            onDismiss = {
+                showImagePreviewDialog = false
+                generatedImageBitmap?.recycle()
+                generatedImageBitmap = null
+            },
+            onSave = {
+                coroutineScope.launch {
+                    val success = saveBitmapToGallery(context, generatedImageBitmap!!)
+                    Toast.makeText(
+                        context,
+                        if (success) "图片已保存到 Pictures/YhChat" else "保存失败",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        )
+    }
+    
     // 浮动TTS窗口
     if (showFloatingTtsWindow) {
         FloatingVoiceWindow(
@@ -1579,6 +1778,9 @@ private fun MessageItem(
     conversationChatType: Int,
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,  // 是否高亮显示
+    isMultiSelectMode: Boolean = false,  // 多选模式
+    onSelectionToggle: (() -> Unit)? = null,  // 点击切换选中
+    onMultiSelect: (() -> Unit)? = null,  // 进入多选模式
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
     onAvatarLongClick: (String, String) -> Unit = { _, _ -> },  // 长按头像@用户 (userId, userName)
@@ -1636,20 +1838,28 @@ private fun MessageItem(
                 }
             )
             .combinedClickable(
-                onClick = {}, // 单击不做任何事
-                onDoubleClick = {
-                    // 双击复制消息文本
-                    val textToCopy = message.content.text ?: ""
-                    if (textToCopy.isNotEmpty()) {
-                        val clip = android.content.ClipData.newPlainText("message", textToCopy)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                onClick = {
+                    if (isMultiSelectMode) {
+                        onSelectionToggle?.invoke()
                     }
                 },
-                onLongClick = {
-                    // 长按显示菜单
-                    showContextMenu = true
-                }
+                onDoubleClick = if (!isMultiSelectMode) {
+                    {
+                        // 双击复制消息文本
+                        val textToCopy = message.content.text ?: ""
+                        if (textToCopy.isNotEmpty()) {
+                            val clip = android.content.ClipData.newPlainText("message", textToCopy)
+                            clipboardManager.setPrimaryClip(clip)
+                            Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else null,
+                onLongClick = if (!isMultiSelectMode) {
+                    {
+                        // 长按显示菜单
+                        showContextMenu = true
+                    }
+                } else null
             ),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
     ) {
@@ -1908,6 +2118,10 @@ private fun MessageItem(
             onPlusOne = {
                 onPlusOne(message)
                 showContextMenu = false
+            },
+            onMultiSelect = {
+                onMultiSelect?.invoke()
+                showContextMenu = false
             }
         )
     }
@@ -1962,7 +2176,8 @@ private fun MessageContextMenu(
     onBlockUser: (() -> Unit)? = null,
     onSaveAudio: (() -> Unit)? = null,
     onSpeechToText: (() -> Unit)? = null,  // 语音转文字
-    onPlusOne: (() -> Unit)? = null  // +1 复制发送同样消息
+    onPlusOne: (() -> Unit)? = null,  // +1 复制发送同样消息
+    onMultiSelect: (() -> Unit)? = null  // 多选
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2154,6 +2369,28 @@ private fun MessageContextMenu(
                     }
                 }
                 
+                // 多选
+                if (onMultiSelect != null) {
+                    TextButton(
+                        onClick = onMultiSelect,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckBox,
+                                contentDescription = "多选",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("多选")
+                        }
+                    }
+                }
+                
                 // 屏蔽用户
                 if (onBlockUser != null) {
                     TextButton(
@@ -2185,7 +2422,6 @@ private fun MessageContextMenu(
                     TextButton(
                         onClick = {
                             onRecall()
-                            // 立即关闭菜单，让用户看到撤回动画
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -2204,14 +2440,7 @@ private fun MessageContextMenu(
                             Column {
                                 Text(
                                     "撤回消息",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "消息将旋转飞走",
-                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                    style = MaterialTheme.typography.labelSmall
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -3993,6 +4222,10 @@ private fun AnimatedMessageItem(
     conversationChatType: Int,
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,
+    isMultiSelectMode: Boolean = false,
+    isSelected: Boolean = false,
+    onSelectionToggle: ((String) -> Unit)? = null,
+    onMultiSelect: (() -> Unit)? = null,
     onImageClick: (String) -> Unit = {},
     onAvatarClick: (String, String, Int) -> Unit = { _, _, _ -> },
     onAvatarLongClick: (String, String) -> Unit = { _, _ -> },
@@ -4035,25 +4268,55 @@ private fun AnimatedMessageItem(
         exit = shrinkVertically() + fadeOut(),
         modifier = modifier.fillMaxWidth()
     ) {
-        MessageItem(
-            message = message,
-            isMyMessage = isMyMessage,
-            conversationChatType = conversationChatType,
-            modifier = Modifier.fillMaxWidth(),
-            isHighlighted = isHighlighted,
-            onImageClick = onImageClick,
-            onAvatarClick = onAvatarClick,
-            onAvatarLongClick = onAvatarLongClick,
-            onAddExpression = onAddExpression,
-            onQuote = onQuote,
-            onRecall = onRecall,
-            onEdit = onEdit,
-            onBlockUser = onBlockUser,
-            onSpeechToText = onSpeechToText,
-            onPlusOne = onPlusOne,
-            onQuoteMessageClick = onQuoteMessageClick,
-            memberPermission = memberPermission
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isMultiSelectMode) {
+                        Modifier.clickable { onSelectionToggle?.invoke(message.msgId) }
+                    } else {
+                        Modifier
+                    }
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 多选复选框
+            if (isMultiSelectMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectionToggle?.invoke(message.msgId) },
+                    modifier = Modifier
+                        .padding(start = 4.dp, end = 4.dp)
+                        .size(36.dp)
+                )
+            }
+            
+            // 消息内容
+            Box(modifier = if (isMultiSelectMode) Modifier.weight(1f) else Modifier.fillMaxWidth()) {
+                MessageItem(
+                    message = message,
+                    isMyMessage = isMyMessage,
+                    conversationChatType = conversationChatType,
+                    modifier = Modifier.fillMaxWidth(),
+                    isHighlighted = isHighlighted,
+                    isMultiSelectMode = isMultiSelectMode,
+                    onSelectionToggle = { onSelectionToggle?.invoke(message.msgId) },
+                    onMultiSelect = onMultiSelect,
+                    onImageClick = onImageClick,
+                    onAvatarClick = onAvatarClick,
+                    onAvatarLongClick = onAvatarLongClick,
+                    onAddExpression = onAddExpression,
+                    onQuote = onQuote,
+                    onRecall = onRecall,
+                    onEdit = onEdit,
+                    onBlockUser = onBlockUser,
+                    onSpeechToText = onSpeechToText,
+                    onPlusOne = onPlusOne,
+                    onQuoteMessageClick = onQuoteMessageClick,
+                    memberPermission = memberPermission
+                )
+            }
+        }
     }
 }
 
@@ -4363,3 +4626,490 @@ private fun FormItemView(
         }
     }
 }
+
+/**
+ * 消息图片预览对话框
+ */
+@Composable
+private fun MessageImagePreviewDialog(
+    bitmap: Bitmap,
+    selectedCount: Int,
+    chatName: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "消息图片预览",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 500.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 详细信息
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "来源: $chatName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "共 $selectedCount 条消息",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "图片尺寸: ${bitmap.width} × ${bitmap.height}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // 图片预览（可滚动）
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "消息图片",
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.FillWidth
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSave) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = "保存",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("保存到本地")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
+}
+
+/**
+ * 生成消息图片 - 使用真正的Compose截图方式，完全复制ChatScreen的UI
+ * 包含消息气泡、头像、标签显示、管理员/群主显示、时间显示等
+ */
+private suspend fun generateMessagesImage(
+    context: Context,
+    messages: List<ChatMessage>,
+    chatName: String
+): Bitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+    val composeView = androidx.compose.ui.platform.ComposeView(context)
+    val density = context.resources.displayMetrics.density
+    val imageWidth = (400 * density).toInt()
+
+    val completableDeferred = kotlinx.coroutines.CompletableDeferred<Bitmap>()
+    
+    // 将ComposeView添加到Activity的根视图中，确保它附加到窗口
+    val activity = context as? android.app.Activity
+    val rootView = activity?.findViewById<android.view.ViewGroup>(android.R.id.content)
+    rootView?.addView(composeView)
+
+    composeView.setContent {
+        YhchatCanaryTheme {
+            Surface(
+                modifier = Modifier
+                    .width((imageWidth / density).dp)
+                    .wrapContentHeight()
+                    .background(MaterialTheme.colorScheme.background),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // 标题
+                    Text(
+                        text = chatName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // 消息列表 - 使用真实的MessageItem组件
+                    messages.forEach { message ->
+                        RealMessageItemForScreenshot(
+                            message = message,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
+
+                    // 页脚
+                    Text(
+                        text = "共 ${messages.size} 条消息 · 生成于 ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+
+    composeView.measure(
+        android.view.View.MeasureSpec.makeMeasureSpec(imageWidth, android.view.View.MeasureSpec.EXACTLY),
+        android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+    )
+    composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
+
+    composeView.post {
+        try {
+            val bitmap = Bitmap.createBitmap(
+                composeView.measuredWidth,
+                composeView.measuredHeight,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = android.graphics.Canvas(bitmap)
+            composeView.draw(canvas)
+            completableDeferred.complete(bitmap)
+        } catch (e: Exception) {
+            completableDeferred.completeExceptionally(e)
+        } finally {
+            // 清理：从根视图中移除ComposeView
+            rootView?.removeView(composeView)
+        }
+    }
+
+    try {
+        completableDeferred.await()
+    } catch (e: Exception) {
+        // 确保在异常情况下也清理ComposeView
+        rootView?.removeView(composeView)
+        throw e
+    }
+}
+
+/**
+ * 真实消息项组件 - 用于截图，完全复制MessageItem的UI
+ */
+@Composable
+private fun RealMessageItemForScreenshot(
+    message: ChatMessage,
+    modifier: Modifier = Modifier
+) {
+    val isMyMessage = false // 截图中统一显示为对方消息，便于阅读
+    
+    // 检查是否为撤回消息
+    if (message.msgDeleteTime != null) {
+        RecallMessageItem(
+            message = message,
+            modifier = modifier
+        )
+        return
+    }
+    
+    // 检查是否为tip消息（类型9）
+    if (message.contentType == 9) {
+        TipMessageItem(
+            message = message,
+            modifier = modifier
+        )
+        return
+    }
+    
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        // 发送者头像（左侧）
+        AsyncImage(
+            model = ImageUtils.createAvatarImageRequest(
+                context = LocalContext.current,
+                url = message.sender.avatarUrl
+            ),
+            contentDescription = message.sender.name,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .widthIn(max = 280.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            // 发送者姓名和标签
+            SenderNameAndTagsForScreenshot(message = message)
+            
+            // 指令消息标识
+            if (message.cmd != null && message.cmd.name.isNotEmpty()) {
+                Text(
+                    text = "/${message.cmd.name}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+
+            // 消息气泡
+            Surface(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 4.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 16.dp
+                        )
+                    ),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                MessageContentForScreenshot(
+                    message = message,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            // 时间戳和编辑状态
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = formatTimestamp(message.sendTime),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // 如果消息被编辑过，显示"已编辑"标记
+                if (message.editTime != null && message.editTime > 0) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "已编辑",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "已编辑",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 截图专用的发送者姓名和标签组件 - 修复版本
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SenderNameAndTagsForScreenshot(
+    message: ChatMessage
+) {
+    val tags = message.sender.tag ?: emptyList()
+    // 从消息中获取发送者权限信息（如果有的话）
+    val memberPermission = null // TODO: 需要根据实际数据结构获取权限信息
+    
+    Column(
+        modifier = Modifier
+            .wrapContentWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Row(
+            modifier = Modifier.wrapContentWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start)
+        ) {
+            Text(
+                text = message.sender.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+
+            if (message.sender.chatType == 3) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "机器人",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            when (memberPermission) {
+                100 -> {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color(0xFFFF9800)
+                    ) {
+                        Text(
+                            text = "群主",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                2 -> {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color(0xFF2196F3)
+                    ) {
+                        Text(
+                            text = "管理员",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            tags.forEach { tag ->
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = parseTagColor(tag.color)
+                ) {
+                    Text(
+                        text = tag.text,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 截图专用的消息内容组件 - 使用真实的MessageContentView
+ */
+@Composable
+private fun MessageContentForScreenshot(
+    message: ChatMessage,
+    modifier: Modifier = Modifier
+) {
+    // 直接使用真实的MessageContentView组件，确保与原始ChatScreen完全一致
+    MessageContentView(
+        message = message,
+        content = message.content,
+        contentType = message.contentType,
+        isMyMessage = false, // 截图中统一显示为对方消息
+        conversationChatType = 2, // 假设为群聊
+        modifier = modifier,
+        onImageClick = { }, // 截图中不需要交互
+        onLongClick = { }, // 截图中不需要交互
+        onQuoteMessageClick = { }, // 截图中不需要交互
+        onQuote = { _, _ -> }, // 截图中不需要交互
+        onEdit = { }, // 截图中不需要交互
+        onRecall = { }, // 截图中不需要交互
+        onPlusOne = { } // 截图中不需要交互
+    )
+}
+
+/**
+ * 保存 Bitmap 到系统图库
+ */
+private suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean =
+    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val fileName = "messages_${System.currentTimeMillis()}.png"
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(
+                        android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                        "${Environment.DIRECTORY_PICTURES}/YhChat"
+                    )
+                }
+                val uri = context.contentResolver.insert(
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    values
+                ) ?: return@withContext false
+
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                }
+                true
+            } else {
+                val picturesDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val yhchatDir = java.io.File(picturesDir, "YhChat")
+                if (!yhchatDir.exists()) yhchatDir.mkdirs()
+                val file = java.io.File(yhchatDir, fileName)
+                java.io.FileOutputStream(file).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                }
+                context.sendBroadcast(
+                    Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
+                        data = android.net.Uri.fromFile(file)
+                    }
+                )
+                true
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ChatScreen", "保存图片失败", e)
+            false
+        }
+    }

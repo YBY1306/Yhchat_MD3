@@ -203,31 +203,7 @@ fun SettingsScreen(
             
             // 内容设置
             item {
-                SettingsGroup(
-                    title = "内容",
-                    items = listOf(
-                        {
-                            SettingsItemCell(
-                                icon = Icons.Default.Web,
-                                title = "HTML设置",
-                                subtitle = "网页内容显示设置",
-                                onClick = {
-                                    HtmlSettingsActivity.start(context)
-                                }
-                            )
-                        },
-                        {
-                            SettingsItemCell(
-                                icon = Icons.Default.GraphicEq,
-                                title = "已保存的语音",
-                                subtitle = "管理 Download/yhchat/audio/ 下的语音",
-                                onClick = {
-                                    SavedAudiosActivity.start(context)
-                                }
-                            )
-                        }
-                    )
-                )
+                ContentSettingsGroup(context = context)
             }
             
             // 显示设置
@@ -2051,6 +2027,54 @@ fun SettingsCustomItem(
             content()
         }
     }
+}
+
+/**
+ * 内容设置组
+ */
+@Composable
+private fun ContentSettingsGroup(context: Context) {
+    // 读取图片上传设置
+    val imagePrefs = remember { context.getSharedPreferences("image_settings", Context.MODE_PRIVATE) }
+    var uploadOriginalImage by remember { mutableStateOf(imagePrefs.getBoolean("upload_original_image", false)) }
+    
+    SettingsGroup(
+        title = "内容",
+        items = listOf(
+            {
+                SettingsItemCell(
+                    icon = Icons.Default.Web,
+                    title = "HTML设置",
+                    subtitle = "网页内容显示设置",
+                    onClick = {
+                        HtmlSettingsActivity.start(context)
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Image,
+                    title = "上传原图",
+                    subtitle = if (uploadOriginalImage) "上传原始图片，不进行WebP压缩" else "上传时自动压缩为WebP格式",
+                    checked = uploadOriginalImage,
+                    onCheckedChange = { checked ->
+                        uploadOriginalImage = checked
+                        imagePrefs.edit().putBoolean("upload_original_image", checked).apply()
+                    }
+                )
+            },
+            {
+                SettingsItemCell(
+                    icon = Icons.Default.GraphicEq,
+                    title = "已保存的语音",
+                    subtitle = "管理 Download/yhchat/audio/ 下的语音",
+                    onClick = {
+                        SavedAudiosActivity.start(context)
+                    }
+                )
+            }
+        )
+    )
 }
 
 /**

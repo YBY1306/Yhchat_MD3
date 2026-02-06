@@ -335,11 +335,14 @@ interface ApiService {
         @Body request: com.yhchat.canary.data.model.RemoveBotRequest
     ): Response<com.yhchat.canary.data.model.ApiStatus>
     
+    /**
+     * 批量撤回消息 - 使用protobuf
+     */
     @POST("v1/msg/recall-msg-batch")
-    suspend fun recallMessagesBatch(
+    suspend fun recallMessagesBatchProto(
         @Header("token") token: String,
-        @Body request: RecallMessagesBatchRequest
-    ): Response<ApiStatus>
+        @Body request: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
     
     @POST("v1/msg/button-report")
     suspend fun buttonReport(

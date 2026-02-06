@@ -1109,71 +1109,91 @@ class ChatViewModel @Inject constructor(
                 
                 Log.d(tag, "⚠️ 消息不在列表中，准备从服务器加载")
 
-                // 步骤2: 使用 list-message-by-mid-seq API 加载消息（包含该消息及其前后文）
-                Log.d(tag, "📡 步骤2: 调用 list-message-by-mid-seq API")
-                Log.d(tag, "   参数: chatId=$currentChatId, chatType=$currentChatType, msgId=$quoteMsgId, msgCount=30")
+                // 步骤2: 先尝试从本地缓存获取目标消息
+                Log.d(tag, "📡 步骤2: 先从本地缓存获取目标消息")
+                val cachedMessage = messageRepository.getMessageById(quoteMsgId)
                 
-                val result = messageRepository.getMessagesByMsgId(
-                    chatId = currentChatId,
-                    chatType = currentChatType,
-                    msgId = quoteMsgId,
-                    msgCount = 30,  // 请求30条消息（实际会返回31条，包含目标消息）
-                    msgSeq = 0L
-                )
-
-                result.fold(
-                    onSuccess = { newMessages ->
-                        Log.d(tag, "✅ API返回 ${newMessages.size} 条消息")
-                        
-                        // 验证目标消息是否在返回的消息中
-                        val targetMessage = newMessages.find { it.msgId == quoteMsgId }
-                        if (targetMessage != null) {
-                            Log.d(tag, "🎯 确认找到目标消息 msgId: $quoteMsgId")
-                        } else {
-                            Log.w(tag, "⚠️ API返回的消息中不包含目标 msgId: $quoteMsgId")
-                        }
-                        
-                        // 过滤被屏蔽用户的消息
-                        val filteredMessages = newMessages.filter { message ->
-                            val isBlocked = kotlin.runCatching {
-                                blocklistRepository.isUserBlocked(message.sender.chatId)
-                            }.getOrElse { false }
-                            !isBlocked
-                        }
-                        
-                        Log.d(tag, "🔒 过滤后剩余 ${filteredMessages.size} 条消息")
-                        
-                        // 步骤3: 合并到现有消息列表，使用msgId去重
-                        val existingMsgIds = _messages.map { it.msgId }.toSet()
-                        Log.d(tag, "📋 当前已有 ${existingMsgIds.size} 个不重复的msgId")
-                        
-                        val newMsgs = filteredMessages.filter { it.msgId !in existingMsgIds }
-                        Log.d(tag, "➕ 准备添加 ${newMsgs.size} 条新消息（去重后）")
-                        
-                        if (newMsgs.isNotEmpty()) {
-                            _messages.addAll(newMsgs)
-                            // 重新按时间排序
-                            val sortedMessages = _messages.sortedBy { it.sendTime }
-                            _messages.clear()
-                            _messages.addAll(sortedMessages)
-                            Log.d(tag, "✅ 成功添加并排序，当前共 ${_messages.size} 条消息")
-                            
-                            // 确认目标消息是否在最终列表中
-                            val finalCheck = _messages.find { it.msgId == quoteMsgId }
-                            if (finalCheck != null) {
-                                Log.d(tag, "🎉 目标消息 msgId: $quoteMsgId 已成功加入消息列表")
-                            } else {
-                                Log.e(tag, "❌ 目标消息 msgId: $quoteMsgId 未能加入消息列表")
-                            }
-                        } else {
-                            Log.d(tag, "ℹ️ 没有新消息需要添加（可能都已存在）")
-                        }
-                    },
-                    onFailure = { exception ->
-                        Log.e(tag, "❌ 通过 msgId 加载消息失败: $quoteMsgId", exception)
-                        _uiState.value = _uiState.value.copy(error = "加载引用消息失败")
+                if (cachedMessage != null) {
+                    Log.d(tag, "✅ 从缓存获取到目标消息，msgSeq=${cachedMessage.msgSeq}")
+                    // 如果获取到了目标消息，直接添加到列表中
+                    val existingMsgIds = _messages.map { it.msgId }.toSet()
+                    if (cachedMessage.msgId !in existingMsgIds) {
+                        _messages.add(cachedMessage)
+                        val sortedMessages = _messages.sortedBy { it.sendTime }
+                        _messages.clear()
+                        _messages.addAll(sortedMessages)
+                        Log.d(tag, "🎉 目标消息已成功添加到列表")
                     }
-                )
+                } else {
+                    Log.w(tag, "⚠️ 本地缓存中未找到消息，尝试使用 list-message-by-mid-seq")
+                    
+                    // 步骤3: 使用 list-message-by-mid-seq API 加载消息（包含该消息及其前后文）
+                    Log.d(tag, "📡 步骤3: 调用 list-message-by-mid-seq API")
+                    Log.d(tag, "   参数: chatId=$currentChatId, chatType=$currentChatType, msgId=$quoteMsgId, msgCount=30")
+                    
+                    // 直接在当前协程中处理 list-message-by-mid-seq 的结果
+                    val result = messageRepository.getMessagesByMsgId(
+                        chatId = currentChatId,
+                        chatType = currentChatType,
+                        msgId = quoteMsgId,
+                        msgCount = 30,  // 请求30条消息（实际会返回31条，包含目标消息）
+                        msgSeq = 0L
+                    )
+                    
+                    result.fold(
+                        onSuccess = { newMessages ->
+                            Log.d(tag, "✅ API返回 ${newMessages.size} 条消息")
+                            
+                            // 验证目标消息是否在返回的消息中
+                            val targetMessage = newMessages.find { it.msgId == quoteMsgId }
+                            if (targetMessage != null) {
+                                Log.d(tag, "🎯 确认找到目标消息 msgId: $quoteMsgId")
+                            } else {
+                                Log.w(tag, "⚠️ API返回的消息中不包含目标 msgId: $quoteMsgId")
+                            }
+                            
+                            // 过滤被屏蔽用户的消息
+                            val filteredMessages = newMessages.filter { message ->
+                                val isBlocked = kotlin.runCatching {
+                                    blocklistRepository.isUserBlocked(message.sender.chatId)
+                                }.getOrElse { false }
+                                !isBlocked
+                            }
+                            
+                            Log.d(tag, "🔒 过滤后剩余 ${filteredMessages.size} 条消息")
+                            
+                            // 合并到现有消息列表，使用msgId去重
+                            val existingMsgIds = _messages.map { it.msgId }.toSet()
+                            Log.d(tag, "📋 当前已有 ${existingMsgIds.size} 个不重复的msgId")
+                            
+                            val newMsgs = filteredMessages.filter { it.msgId !in existingMsgIds }
+                            Log.d(tag, "➕ 准备添加 ${newMsgs.size} 条新消息（去重后）")
+                            
+                            if (newMsgs.isNotEmpty()) {
+                                _messages.addAll(newMsgs)
+                                // 重新按时间排序
+                                val sortedMessages = _messages.sortedBy { it.sendTime }
+                                _messages.clear()
+                                _messages.addAll(sortedMessages)
+                                Log.d(tag, "✅ 成功添加并排序，当前共 ${_messages.size} 条消息")
+                                
+                                // 确认目标消息是否在最终列表中
+                                val finalCheck = _messages.find { it.msgId == quoteMsgId }
+                                if (finalCheck != null) {
+                                    Log.d(tag, "🎉 目标消息 msgId: $quoteMsgId 已成功加入消息列表")
+                                } else {
+                                    Log.e(tag, "❌ 目标消息 msgId: $quoteMsgId 未能加入消息列表")
+                                }
+                            } else {
+                                Log.d(tag, "ℹ️ 没有新消息需要添加（可能都已存在）")
+                            }
+                        },
+                        onFailure = { exception ->
+                            Log.e(tag, "❌ 通过 msgId 加载消息失败: $quoteMsgId", exception)
+                            _uiState.value = _uiState.value.copy(error = "加载引用消息失败")
+                        }
+                    )
+                }
             } catch (e: Exception) {
                 Log.e(tag, "❌ 加载消息异常 msgId: $quoteMsgId", e)
                 _uiState.value = _uiState.value.copy(error = "加载引用消息异常")
@@ -1840,6 +1860,47 @@ class ChatViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(tag, "撤回消息异常", e)
                 _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    /**
+     * 批量撤回消息
+     */
+    fun recallMessagesBatch(msgIds: List<String>) {
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "开始批量撤回消息: ${msgIds.size} 条")
+                
+                val result = messageRepository.recallMessagesBatch(
+                    chatId = currentChatId,
+                    chatType = currentChatType,
+                    msgIds = msgIds
+                )
+                
+                result.fold(
+                    onSuccess = {
+                        Log.d(tag, "批量撤回成功: ${msgIds.size} 条")
+                        // 更新本地消息为已撤回状态
+                        val currentTime = System.currentTimeMillis()
+                        msgIds.forEach { msgId ->
+                            val index = _messages.indexOfFirst { it.msgId == msgId }
+                            if (index != -1) {
+                                val message = _messages[index]
+                                _messages[index] = message.copy(
+                                    msgDeleteTime = currentTime
+                                )
+                            }
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e(tag, "批量撤回失败: ${error.message}", error)
+                        _uiState.value = _uiState.value.copy(error = "批量撤回失败: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(tag, "批量撤回消息异常", e)
+                _uiState.value = _uiState.value.copy(error = "批量撤回异常: ${e.message}")
             }
         }
     }

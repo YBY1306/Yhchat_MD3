@@ -61,7 +61,13 @@ import com.yhchat.canary.ui.community.FollowersListActivity
 fun CommunityTabScreen(
     token: String,
     modifier: Modifier = Modifier,
-    viewModel: CommunityViewModel = viewModel()
+    viewModel: CommunityViewModel = viewModel(),
+    // 大屏分屏导航回调（null=使用默认Activity导航）
+    onBoardNavigate: ((boardId: Int, boardName: String) -> Unit)? = null,
+    onMyPostsNavigate: (() -> Unit)? = null,
+    onRecommendPostsNavigate: (() -> Unit)? = null,
+    onMyCollectPostsNavigate: (() -> Unit)? = null,
+    onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     
@@ -202,12 +208,16 @@ fun CommunityTabScreen(
                             isLoading = boardListState.isLoading,
                             error = boardListState.error,
                             onBoardClick = { board ->
-                                val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                    putExtra("board_id", board.id)
-                                    putExtra("board_name", board.name)
-                                    putExtra("token", token)
+                                if (onBoardNavigate != null) {
+                                    onBoardNavigate(board.id, board.name)
+                                } else {
+                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                        putExtra("board_id", board.id)
+                                        putExtra("board_name", board.name)
+                                        putExtra("token", token)
+                                    }
+                                    context.startActivity(intent)
                                 }
-                                context.startActivity(intent)
                             }
                         )
                     }
@@ -225,12 +235,16 @@ fun CommunityTabScreen(
                             isLoading = allBoardListState.isLoading,
                             error = allBoardListState.error,
                             onBoardClick = { board ->
-                                val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                    putExtra("board_id", board.id)
-                                    putExtra("board_name", board.name)
-                                    putExtra("token", token)
+                                if (onBoardNavigate != null) {
+                                    onBoardNavigate(board.id, board.name)
+                                } else {
+                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                        putExtra("board_id", board.id)
+                                        putExtra("board_name", board.name)
+                                        putExtra("token", token)
+                                    }
+                                    context.startActivity(intent)
                                 }
-                                context.startActivity(intent)
                             }
                         )
                     }
@@ -248,12 +262,16 @@ fun CommunityTabScreen(
                             isLoading = followingBoardListState.isLoading,
                             error = followingBoardListState.error,
                             onBoardClick = { board ->
-                                val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                    putExtra("board_id", board.id)
-                                    putExtra("board_name", board.name)
-                                    putExtra("token", token)
+                                if (onBoardNavigate != null) {
+                                    onBoardNavigate(board.id, board.name)
+                                } else {
+                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                        putExtra("board_id", board.id)
+                                        putExtra("board_name", board.name)
+                                        putExtra("token", token)
+                                    }
+                                    context.startActivity(intent)
                                 }
-                                context.startActivity(intent)
                             }
                         )
                     }
@@ -263,7 +281,12 @@ fun CommunityTabScreen(
                     MoreTabContent(
                         token = token,
                         viewModel = viewModel,
-                        context = context
+                        context = context,
+                        onBoardNavigate = onBoardNavigate,
+                        onMyPostsNavigate = onMyPostsNavigate,
+                        onRecommendPostsNavigate = onRecommendPostsNavigate,
+                        onMyCollectPostsNavigate = onMyCollectPostsNavigate,
+                        onBlockedUsersNavigate = onBlockedUsersNavigate,
                     )
                 }
             }
@@ -278,7 +301,12 @@ fun CommunityTabScreen(
 fun MoreTabContent(
     token: String,
     viewModel: CommunityViewModel,
-    context: android.content.Context
+    context: android.content.Context,
+    onBoardNavigate: ((boardId: Int, boardName: String) -> Unit)? = null,
+    onMyPostsNavigate: (() -> Unit)? = null,
+    onRecommendPostsNavigate: (() -> Unit)? = null,
+    onMyCollectPostsNavigate: (() -> Unit)? = null,
+    onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
     // 读取布局设置
     val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
@@ -348,10 +376,14 @@ fun MoreTabContent(
                     title = "我的文章",
                     subtitle = "查看和管理我发布的文章",
                     onClick = {
-                        val intent = Intent(context, MyPostsActivity::class.java).apply {
-                            putExtra("token", token)
+                        if (onMyPostsNavigate != null) {
+                            onMyPostsNavigate()
+                        } else {
+                            val intent = Intent(context, MyPostsActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     }
                 )
             }
@@ -363,10 +395,14 @@ fun MoreTabContent(
                     title = "查看推荐文章",
                     subtitle = "浏览社区推荐文章列表",
                     onClick = {
-                        val intent = Intent(context, RecommendPostsActivity::class.java).apply {
-                            putExtra("token", token)
+                        if (onRecommendPostsNavigate != null) {
+                            onRecommendPostsNavigate()
+                        } else {
+                            val intent = Intent(context, RecommendPostsActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     }
                 )
             }
@@ -378,10 +414,14 @@ fun MoreTabContent(
                     title = "我的收藏",
                     subtitle = "查看我收藏的文章",
                     onClick = {
-                        val intent = Intent(context, MyCollectPostsActivity::class.java).apply {
-                            putExtra("token", token)
+                        if (onMyCollectPostsNavigate != null) {
+                            onMyCollectPostsNavigate()
+                        } else {
+                            val intent = Intent(context, MyCollectPostsActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     }
                 )
             }
@@ -393,10 +433,14 @@ fun MoreTabContent(
                     title = "被屏蔽的用户",
                     subtitle = "管理已屏蔽的用户列表",
                     onClick = {
-                        val intent = Intent(context, BlockedUsersActivity::class.java).apply {
-                            putExtra("token", token)
+                        if (onBlockedUsersNavigate != null) {
+                            onBlockedUsersNavigate()
+                        } else {
+                            val intent = Intent(context, BlockedUsersActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     }
                 )
             }
@@ -438,12 +482,16 @@ fun MoreTabContent(
                     {
                         SettingsCustomItem(
                             onClick = {
-                                val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                    putExtra("board_id", board.id)
-                                    putExtra("board_name", board.name)
-                                    putExtra("token", token)
+                                if (onBoardNavigate != null) {
+                                    onBoardNavigate(board.id, board.name)
+                                } else {
+                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                        putExtra("board_id", board.id)
+                                        putExtra("board_name", board.name)
+                                        putExtra("token", token)
+                                    }
+                                    context.startActivity(intent)
                                 }
-                                context.startActivity(intent)
                             }
                         ) {
                             Row(

@@ -82,7 +82,33 @@ object ImageUploadUtil {
     }
 
     /**
-     * 上传图片到七牛云（自动压缩为WebP格式）
+     * 读取原图字节数据
+     * @param context 上下文
+     * @param imageUri 原始图片URI
+     * @return 原图字节数组和MIME类型
+     */
+    private suspend fun readOriginalImage(
+        context: Context,
+        imageUri: Uri
+    ): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "📖 开始读取原图")
+        
+        val inputStream = context.contentResolver.openInputStream(imageUri)
+            ?: throw Exception("无法读取图片")
+        
+        val imageBytes = inputStream.readBytes()
+        inputStream.close()
+        
+        // 获取原始MIME类型
+        val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+        
+        Log.d(TAG, "✅ 原图读取完成，大小: ${imageBytes.size} bytes, MIME: $mimeType")
+        
+        Pair(imageBytes, mimeType)
+    }
+
+    /**
+     * 上传图片到七牛云（支持原图上传或WebP压缩）
      * 参考Python实现：tool.py中的upload方法
      * @param context 上下文
      * @param imageUri 图片URI
@@ -98,22 +124,38 @@ object ImageUploadUtil {
             Log.d(TAG, "📤 ========== 开始上传图片 ==========")
             Log.d(TAG, "📤 图片URI: $imageUri")
             
-            // 1. 获取WebP压缩质量设置
+            // 1. 获取图片上传设置
             val sharedPrefs = context.getSharedPreferences("image_settings", Context.MODE_PRIVATE)
+            val uploadOriginal = sharedPrefs.getBoolean("upload_original_image", false)
             val webpQuality = sharedPrefs.getInt("webp_quality", 95)
             
-            // 2. 压缩图片为WebP格式
-            val imageBytes = compressToWebP(context, imageUri, webpQuality)
+            Log.d(TAG, "⚙️ 上传设置 - 原图上传: $uploadOriginal, WebP质量: $webpQuality")
             
-            Log.d(TAG, "✅ WebP压缩完成，大小: ${imageBytes.size} bytes")
+            // 2. 根据设置决定是否压缩
+            val (imageBytes, mimeType) = if (uploadOriginal) {
+                // 上传原图
+                readOriginalImage(context, imageUri)
+            } else {
+                // 压缩为WebP格式
+                val compressedBytes = compressToWebP(context, imageUri, webpQuality)
+                Pair(compressedBytes, "image/webp")
+            }
+            
+            Log.d(TAG, "✅ 图片处理完成，大小: ${imageBytes.size} bytes, MIME: $mimeType")
             
             // 3. 计算MD5 - 参考Python: md5.hexdigest()
             val md5 = calculateMD5(imageBytes)
             Log.d(TAG, "✅ MD5计算完成: $md5")
             
-            // 4. 设置为WebP格式
-            val mimeType = "image/webp"
-            val extension = "webp"
+            // 4. 根据MIME类型确定文件扩展名
+            val extension = when (mimeType) {
+                "image/webp" -> "webp"
+                "image/png" -> "png"
+                "image/gif" -> "gif"
+                "image/bmp" -> "bmp"
+                "image/jpeg" -> "jpg"
+                else -> "jpg" // 默认为jpg
+            }
             
             // 文件key = MD5.扩展名
             val fileKey = "$md5.$extension"

@@ -59,6 +59,10 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    
+    // 聊天界面动画偏好
+    val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
+    var enableChatAnimations by remember { mutableStateOf(chatPrefs.getBoolean("enable_chat_animations", true)) }
 
     // 获取用户信息
     var userEmail by remember { mutableStateOf("") }
@@ -141,6 +145,19 @@ fun SettingsScreen(
                                     navigationRepository?.let {
                                         NavigationSettingsActivity.start(context, it)
                                     }
+                                }
+                            )
+                        }
+                        ,
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.PlayArrow,
+                                title = "聊天界面动画",
+                                subtitle = if (enableChatAnimations) "启用聊天界面内的动画效果" else "禁用聊天界面内的动画效果",
+                                checked = enableChatAnimations,
+                                onCheckedChange = { checked ->
+                                    enableChatAnimations = checked
+                                    chatPrefs.edit().putBoolean("enable_chat_animations", checked).apply()
                                 }
                             )
                         }

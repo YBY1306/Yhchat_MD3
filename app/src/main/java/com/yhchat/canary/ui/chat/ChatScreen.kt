@@ -159,6 +159,7 @@ fun ChatScreen(
     chatType: Int,
     chatName: String,
     userId: String,
+    enableAnimations: Boolean = true,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = viewModel(),
@@ -845,6 +846,8 @@ fun ChatScreen(
                         val isStreaming = viewModel.isMessageStreaming(message.msgId)
                         val itemModifier = if (isStreaming) {
                             Modifier.fillMaxWidth()
+                        } else if (!enableAnimations) {
+                            Modifier.fillMaxWidth()
                         } else {
                             Modifier
                                 .fillMaxWidth()
@@ -875,6 +878,7 @@ fun ChatScreen(
                             isMyMessage = viewModel.isMyMessage(message),
                             conversationChatType = chatType,
                             modifier = itemModifier,
+                            enableAnimations = enableAnimations,
                             isHighlighted = message.msgId == highlightedMessageId,
                             isMultiSelectMode = isMultiSelectMode,
                             isSelected = selectedMessageIds.contains(message.msgId),
@@ -4221,6 +4225,7 @@ private fun AnimatedMessageItem(
     isMyMessage: Boolean,
     conversationChatType: Int,
     modifier: Modifier = Modifier,
+    enableAnimations: Boolean = true,
     isHighlighted: Boolean = false,
     isMultiSelectMode: Boolean = false,
     isSelected: Boolean = false,
@@ -4254,6 +4259,60 @@ private fun AnimatedMessageItem(
         if (isNewMessage) {
             isVisible = true
         }
+    }
+    
+    // 如果全局禁用动画，则直接渲染消息内容（不使用 AnimatedVisibility）
+    if (!enableAnimations) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isMultiSelectMode) {
+                        Modifier.clickable { onSelectionToggle?.invoke(message.msgId) }
+                    } else {
+                        Modifier
+                    }
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 多选复选框
+            if (isMultiSelectMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectionToggle?.invoke(message.msgId) },
+                    modifier = Modifier
+                        .padding(start = 4.dp, end = 4.dp)
+                        .size(36.dp)
+                )
+            }
+            
+            // 消息内容
+            Box(modifier = if (isMultiSelectMode) Modifier.weight(1f) else Modifier.fillMaxWidth()) {
+                MessageItem(
+                    message = message,
+                    isMyMessage = isMyMessage,
+                    conversationChatType = conversationChatType,
+                    modifier = Modifier.fillMaxWidth(),
+                    isHighlighted = isHighlighted,
+                    isMultiSelectMode = isMultiSelectMode,
+                    onSelectionToggle = { onSelectionToggle?.invoke(message.msgId) },
+                    onMultiSelect = onMultiSelect,
+                    onImageClick = onImageClick,
+                    onAvatarClick = onAvatarClick,
+                    onAvatarLongClick = onAvatarLongClick,
+                    onAddExpression = onAddExpression,
+                    onQuote = onQuote,
+                    onRecall = onRecall,
+                    onEdit = onEdit,
+                    onBlockUser = onBlockUser,
+                    onSpeechToText = onSpeechToText,
+                    onPlusOne = onPlusOne,
+                    onQuoteMessageClick = onQuoteMessageClick,
+                    memberPermission = memberPermission
+                )
+            }
+        }
+        return
     }
     
     AnimatedVisibility(

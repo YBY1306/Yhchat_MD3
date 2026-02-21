@@ -128,7 +128,7 @@ fun GroupBotBoardsSection(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(botsWithBoards, key = { it.first.id }) { bot ->
+            items(botsWithBoards) { bot ->
                 val isSelected = selectedBotId == bot.botId
 
                 FilterChip(

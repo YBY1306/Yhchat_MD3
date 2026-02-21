@@ -256,7 +256,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(searchResults, key = { it.id }) { group ->
+                            items(searchResults) { group ->
                                 var selectedGroup by remember { mutableStateOf<RecommendGroup?>(null) }
                                 GroupCard(
                                     group = group,
@@ -474,7 +474,7 @@ fun GroupListPage(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(groups, key = { it.id }) { group ->
+                    items(groups) { group ->
                         GroupCard(
                             group = group,
                             onClick = { selectedGroup = group }

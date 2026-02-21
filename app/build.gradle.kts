@@ -13,21 +13,6 @@ android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
 
-    val signingProps = Properties()
-    val signingPropsFile = rootProject.file("keystore.properties")
-    if (signingPropsFile.exists()) {
-        signingPropsFile.inputStream().use { signingProps.load(it) }
-    }
-
-    fun signingValue(key: String): String? =
-        signingProps.getProperty(key)?.takeIf { it.isNotBlank() }
-            ?: System.getenv(key)?.takeIf { it.isNotBlank() }
-
-    val releaseStoreFilePath = signingValue("CANARY_STORE_FILE") ?: "C:/Users/admin/Videos/canary.jks"
-    val releaseStorePassword = signingValue("CANARY_STORE_PASSWORD")
-    val releaseKeyAlias = signingValue("CANARY_KEY_ALIAS")
-    val releaseKeyPassword = signingValue("CANARY_KEY_PASSWORD")
-    val hasReleaseSigning = releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
 
     defaultConfig {
         applicationId = "com.yhchat.canary"

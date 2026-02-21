@@ -240,10 +240,10 @@ fun ChatBackgroundScreen(
                                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                 )
                             }
-                            items(otherBgs, key = { it.id ?: it.url }) { background ->
+                            items(otherBgs) { background ->
                                 BackgroundCard(
                                     background = background,
-                                    onDelete = { viewModel.deleteBackground(it, background.chatId) }
+                                    onDelete = { viewModel.deleteBackground(background, background.chatId) }
                                 )
                             }
                         }

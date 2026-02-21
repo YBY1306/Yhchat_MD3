@@ -371,7 +371,7 @@ fun BotDetailScreen(
                             }
                             
                             // 群聊列表
-                            items(groups, key = { it.id }) { group ->
+                            items(groups) { group ->
                                 GroupListItem(
                                     group = group,
                                     isAdding = addingGroupId == group.groupId,

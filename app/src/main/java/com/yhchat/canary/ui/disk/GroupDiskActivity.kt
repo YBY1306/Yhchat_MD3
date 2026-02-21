@@ -350,7 +350,7 @@ fun GroupDiskScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.files, key = { it.path }) { file ->
+                        items(uiState.files) { file ->
                             DiskFileCard(
                                 file = file,
                                 onClick = {

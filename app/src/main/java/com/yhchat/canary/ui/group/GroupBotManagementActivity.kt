@@ -173,7 +173,7 @@ fun GroupBotManagementScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.bots, key = { it.id }) { bot ->
+                        items(uiState.bots) { bot ->
                             BotCard(
                                 bot = bot,
                                 onRemoveClick = {
@@ -382,7 +382,7 @@ fun InviteBotDialog(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(filteredBots, key = { it.id }) { bot ->
+                        items(filteredBots) { bot ->
                             InviteBotItem(
                                 bot = bot,
                                 onInvite = { onInvite(bot.chatId) }

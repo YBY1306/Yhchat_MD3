@@ -143,7 +143,7 @@ fun GroupMenuBottomSheet(
                     }
                     
                     // 普通菜单项
-                    items(menuItems, key = { it.id ?: it.hashCode() }) { menuItem ->
+                    items(menuItems) { menuItem ->
                         GroupMenuItem(
                             icon = menuItem.icon,
                             text = menuItem.text,
@@ -157,7 +157,7 @@ fun GroupMenuBottomSheet(
                     }
                     
                     // 危险操作菜单项
-                    items(dangerousItems, key = { it.id ?: it.hashCode() }) { menuItem ->
+                    items(dangerousItems) { menuItem ->
                         GroupMenuItem(
                             icon = menuItem.icon,
                             text = menuItem.text,

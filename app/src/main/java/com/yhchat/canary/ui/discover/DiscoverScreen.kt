@@ -243,7 +243,7 @@ fun DiscoverScreen(
                         }
                     }
                 } else if (groups.isNotEmpty()) {
-                    items(groups, key = { it.id }) { group ->
+                    items(groups) { group ->
                         GroupDiscoverCard(
                             group = group,
                             onClick = { selectedGroup = group }

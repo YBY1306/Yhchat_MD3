@@ -182,7 +182,7 @@ fun GroupTagDetailScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.members, key = { it.id }) { member ->
+                        items(uiState.members) { member ->
                             TagMemberCard(
                                 member = member,
                                 onClick = {
@@ -288,7 +288,7 @@ fun AddMemberToTagDialog(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(availableMembers, key = { it.id }) { member ->
+                            items(availableMembers) { member ->
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()

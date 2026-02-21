@@ -295,8 +295,7 @@ class MainActivity : BaseActivity() {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize(),
-                                userScrollEnabled = true,
-                                beyondBoundsPageCount = 1
+                                userScrollEnabled = true
                             ) { page ->
                                     val navItem = visibleNavItems[page]
                                     when (navItem.id) {
@@ -696,8 +695,7 @@ class MainActivity : BaseActivity() {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    userScrollEnabled = true,
-                                    beyondBoundsPageCount = 1
+                                    userScrollEnabled = true
                                 ) { page ->
                                         val navItem = visibleNavItems[page]
                                         when (navItem.id) {

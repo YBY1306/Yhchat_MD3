@@ -637,7 +637,7 @@ fun SavedAudiosTab(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(audios, key = { it.id ?: it.hashCode() }) { audio ->
+                items(audios) { audio ->
                     AudioItemCard(
                         audio = audio,
                         onClick = { onAudioSelected(audio.uri) }

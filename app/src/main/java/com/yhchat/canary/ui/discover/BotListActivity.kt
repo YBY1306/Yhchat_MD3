@@ -206,7 +206,7 @@ fun BotListScreen(
                         }
                         
                         // 机器人列表
-                        items(bots, key = { it.id }) { bot ->
+                        items(bots) { bot ->
                             BotListItem(
                                 bot = bot,
                                 onClick = {

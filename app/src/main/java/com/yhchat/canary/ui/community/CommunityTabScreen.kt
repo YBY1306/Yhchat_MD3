@@ -1054,7 +1054,7 @@ fun BoardListContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(boards) { board ->
+            items(boards, key = { it.id }) { board ->
                 BoardItem(
                     board = board,
                     onClick = { onBoardClick(board) }
@@ -1143,7 +1143,7 @@ fun MyPostListContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(posts) { post ->
+            items(posts, key = { it.id }) { post ->
                 MyPostItem(
                     post = post,
                     onClick = { onPostClick(post) },

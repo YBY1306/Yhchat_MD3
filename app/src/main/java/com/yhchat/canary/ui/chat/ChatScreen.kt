@@ -3489,7 +3489,7 @@ private fun EditHistoryDialog(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(editRecords) { record ->
+                            items(editRecords, key = { it.editId ?: it.messageId }) { record ->
                                 EditRecordItem(record)
                             }
                         }

@@ -783,8 +783,7 @@ private fun MessageTypeLimitDialog(
                     )
                 }
                 
-                items(messageTypes.size) { index ->
-                    val (type, name) = messageTypes[index]
+                items(messageTypes, key = { it.first }) { (type, name) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

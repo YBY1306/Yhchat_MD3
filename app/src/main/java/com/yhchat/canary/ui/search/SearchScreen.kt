@@ -165,7 +165,7 @@ fun SearchScreen(
                                     )
                                 }
                                 
-                                items(items) { searchItem ->
+                                items(items, key = { "${it.friendId}_${it.friendType}" }) { searchItem ->
                                         Card(
                                         modifier = Modifier
                                             .fillMaxWidth()

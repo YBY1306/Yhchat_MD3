@@ -31,7 +31,7 @@ fun MenuButtonBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 8.dp)
     ) {
-        items(menuButtons) { button ->
+        items(menuButtons, key = { it.hashCode() }) { button ->
             MenuButtonItem(
                 button = button,
                 onClick = { onButtonClick(button) }

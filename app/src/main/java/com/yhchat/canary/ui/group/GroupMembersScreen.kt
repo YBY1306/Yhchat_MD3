@@ -236,7 +236,7 @@ private fun GroupMembersContent(
             }
         } else {
             // 显示成员列表
-            items(members) { member ->
+            items(members, key = { it.id }) { member ->
                 MemberItem(
                     member = member,
                     currentUserPermission = currentUserPermission,

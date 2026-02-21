@@ -162,7 +162,7 @@ fun InviteToGroupDialog(
                             .weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(filteredFriends) { friend ->
+                        items(filteredFriends, key = { it.id ?: it.chatId }) { friend ->
                             FriendInviteItem(
                                 friend = friend,
                                 isInviting = uiState.invitingFriendId == friend.chatId,

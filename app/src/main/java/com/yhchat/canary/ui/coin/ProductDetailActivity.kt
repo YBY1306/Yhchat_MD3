@@ -237,7 +237,7 @@ fun ProductDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp)
                                 ) {
-                                    items(imageUrls) { imageUrl ->
+                                    items(imageUrls, key = { it }) { imageUrl ->
                                         AsyncImage(
                                             model = imageUrl,
                                             contentDescription = uiState.product!!.name,

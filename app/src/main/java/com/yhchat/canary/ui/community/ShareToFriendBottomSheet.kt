@@ -217,7 +217,7 @@ fun ShareToFriendBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(pageList) { item ->
+                        items(pageList, key = { it.id ?: it.hashCode() }) { item ->
                             val chatType = when (page) {
                                 0 -> 1 // User
                                 1 -> 2 // Group

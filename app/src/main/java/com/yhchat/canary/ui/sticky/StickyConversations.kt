@@ -74,7 +74,7 @@ fun StickyConversations(
             modifier = Modifier.fillMaxWidth()
         ) {
             stickyData?.sticky?.let { stickyList ->
-                items(stickyList) { stickyItem ->
+                items(stickyList, key = { it.id }) { stickyItem ->
                     StickyConversationItem(
                         stickyItem = stickyItem,
                         onClick = {

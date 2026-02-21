@@ -164,7 +164,7 @@ fun OnlineDevicesScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(deviceState.devices) { device ->
+                items(deviceState.devices, key = { it.id }) { device ->
                     DeviceItem(device = device)
                 }
                 

@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    
-    <!-- 强制ComboLite支持minSdk 21（可能导致运行时失败，需要做好兼容性检查） -->
-    <uses-sdk tools:overrideLibrary="com.combo.core" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -506,14 +503,6 @@
             android:label="黑名单设置"
             android:theme="@style/Theme.YhchatCanary" />
         
-        <!-- 插件管理 Activity -->
-        <activity
-            android:name=".ui.plugin.PluginManagerActivity"
-            android:exported="false"
-            android:label="插件管理"
-            android:theme="@style/Theme.YhchatCanary" />
-
-            
         <!-- 语音播放服务 -->
         <service
             android:name=".service.AudioPlayerService"
@@ -535,24 +524,6 @@
             android:enabled="true"
             android:exported="false" />
         
-        <!-- ComboLite 插件化框架代理组件 -->
-        <!-- 代理Activity：用于启动和运行插件Activity -->
-        <activity
-            android:name=".plugin.HostProxyActivity"
-            android:exported="false"
-            android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 代理Service：用于运行插件Service -->
-        <service
-            android:name=".plugin.HostProxyService1"
-            android:enabled="true"
-            android:exported="false" />
-            
-        <service
-            android:name=".plugin.HostProxyService2"
-            android:enabled="true"
-            android:exported="false" />
-            
         <!-- 文件下载服务 -->
         <service
             android:name=".service.FileDownloadService"

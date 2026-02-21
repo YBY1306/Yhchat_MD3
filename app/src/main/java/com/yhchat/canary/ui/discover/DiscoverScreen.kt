@@ -177,7 +177,7 @@ fun DiscoverScreen(
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    items(bots) { bot ->
+                                    items(bots, key = { it.id }) { bot ->
                                         BotDiscoverCard(
                                             bot = bot,
                                             onClick = { selectedBot = bot }
@@ -243,7 +243,7 @@ fun DiscoverScreen(
                         }
                     }
                 } else if (groups.isNotEmpty()) {
-                    items(groups) { group ->
+                    items(groups, key = { it.id }) { group ->
                         GroupDiscoverCard(
                             group = group,
                             onClick = { selectedGroup = group }

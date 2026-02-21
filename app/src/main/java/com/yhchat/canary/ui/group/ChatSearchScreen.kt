@@ -249,7 +249,7 @@ fun ChatSearchScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        items(state.searchResults) { message ->
+                        items(state.searchResults, key = { it.id ?: it.hashCode() }) { message ->
                             SearchMessageItem(
                                 message = message,
                                 searchQuery = searchQuery,

@@ -270,7 +270,15 @@ class MainActivity : BaseActivity() {
                                 val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
                                 if (targetIndex >= 0) {
                                     coroutineScope.launch {
-                                        pagerState.animateScrollToPage(targetIndex)
+                                        val currentPage = pagerState.currentPage
+                                        val distance = kotlin.math.abs(targetIndex - currentPage)
+                                        if (distance == 1) {
+                                            // 相邻页面，使用动画滑动
+                                            pagerState.animateScrollToPage(targetIndex)
+                                        } else {
+                                            // 跨页跳转，直接跳转
+                                            pagerState.scrollToPage(targetIndex)
+                                        }
                                     }
                                 }
                                 currentScreen = screen
@@ -287,7 +295,8 @@ class MainActivity : BaseActivity() {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize(),
-                                userScrollEnabled = true
+                                userScrollEnabled = true,
+                                beyondBoundsPageCount = 1
                             ) { page ->
                                     val navItem = visibleNavItems[page]
                                     when (navItem.id) {
@@ -687,7 +696,8 @@ class MainActivity : BaseActivity() {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    userScrollEnabled = true
+                                    userScrollEnabled = true,
+                                    beyondBoundsPageCount = 1
                                 ) { page ->
                                         val navItem = visibleNavItems[page]
                                         when (navItem.id) {
@@ -777,7 +787,15 @@ class MainActivity : BaseActivity() {
                                 val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
                                 if (targetIndex >= 0) {
                                     coroutineScope.launch {
-                                        pagerState.animateScrollToPage(targetIndex)
+                                        val currentPage = pagerState.currentPage
+                                        val distance = kotlin.math.abs(targetIndex - currentPage)
+                                        if (distance == 1) {
+                                            // 相邻页面，使用动画滑动
+                                            pagerState.animateScrollToPage(targetIndex)
+                                        } else {
+                                            // 跨页跳转，直接跳转
+                                            pagerState.scrollToPage(targetIndex)
+                                        }
                                     }
                                 }
                                 currentScreen = screen

@@ -3,13 +3,12 @@ package com.yhchat.canary.ui.base
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.combo.core.component.activity.BaseHostActivity
 
 /**
- * 基础Activity类 - 支持ComboLite插件化
+ * 基础Activity类
  * 统一处理字体大小设置和其他全局配置
  */
-abstract class BaseActivity : BaseHostActivity() {
+abstract class BaseActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         // 在super.onCreate之前应用字体设置

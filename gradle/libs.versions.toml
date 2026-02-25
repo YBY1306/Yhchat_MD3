@@ -21,7 +21,6 @@ room = "2.7.0"
 hilt = "2.57.2"
 zxingEmbedded = "4.3.0"
 zxingCore = "3.5.3"
-reorderable = "0.9.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

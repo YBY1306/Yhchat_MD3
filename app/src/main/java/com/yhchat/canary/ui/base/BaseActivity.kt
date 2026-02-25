@@ -3,8 +3,11 @@ package com.yhchat.canary.ui.base
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+<<<<<<< HEAD
 import androidx.core.view.WindowCompat
 import android.graphics.Color
+=======
+>>>>>>> f4a13afe97ba10b72c3fefc05068fea437695a53
 
 /**
  * 基础Activity类

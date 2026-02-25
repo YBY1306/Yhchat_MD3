@@ -166,8 +166,13 @@ fun SearchScreen(
                                     )
                                 }
                                 
+<<<<<<< HEAD
                                 itemsIndexed(items, key = { index, item -> "${item.friendId}_${item.friendType}_$index" }) { _, searchItem ->
                                     Card(
+=======
+                                items(items, key = { "${it.friendId}_${it.friendType}" }) { searchItem ->
+                                        Card(
+>>>>>>> f4a13afe97ba10b72c3fefc05068fea437695a53
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(horizontal = 16.dp, vertical = 4.dp)

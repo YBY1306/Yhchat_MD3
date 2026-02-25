@@ -124,7 +124,11 @@ fun DiscoverScreen(
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
+<<<<<<< HEAD
                                     items(bots, key = { it.chatId }) { bot ->
+=======
+                                    items(bots, key = { it.id }) { bot ->
+>>>>>>> f4a13afe97ba10b72c3fefc05068fea437695a53
                                         BotDiscoverCard(
                                             bot = bot,
                                             onClick = { selectedBot = bot }

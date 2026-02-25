@@ -243,7 +243,7 @@ fun ChatBackgroundScreen(
                             items(otherBgs) { background ->
                                 BackgroundCard(
                                     background = background,
-                                    onDelete = { viewModel.deleteBackground(it, background.chatId) }
+                                    onDelete = { viewModel.deleteBackground(background, background.chatId) }
                                 )
                             }
                         }

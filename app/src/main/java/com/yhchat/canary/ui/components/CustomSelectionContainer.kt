@@ -62,6 +62,8 @@ private class CustomTextToolbar(
     private var actionMode: ActionMode? = null
     private var copyCallback: (() -> Unit)? = null
     private var selectAllCallback: (() -> Unit)? = null
+    // 保存选区矩形，用于浮动工具栏定位
+    private var selectionRect: Rect = Rect.Zero
     
     override val status: TextToolbarStatus
         get() = if (actionMode != null) TextToolbarStatus.Shown else TextToolbarStatus.Hidden
@@ -73,12 +75,19 @@ private class CustomTextToolbar(
         onCutRequested: (() -> Unit)?,
         onSelectAllRequested: (() -> Unit)?
     ) {
-        // 保存系统回调
+        // 保存系统回调和选区位置
         copyCallback = onCopyRequested
         selectAllCallback = onSelectAllRequested
+        selectionRect = rect
+
+        // 如果已有ActionMode，刷新位置即可
+        actionMode?.let {
+            it.invalidateContentRect()
+            return
+        }
         
-        // 启动自定义ActionMode
-        actionMode = view.startActionMode(object : ActionMode.Callback {
+        // 使用Callback2以支持onGetContentRect，让浮动工具栏定位在选中文本附近
+        actionMode = view.startActionMode(object : ActionMode.Callback2() {
             override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
                 // 添加系统操作
                 onCopyRequested?.let {
@@ -156,6 +165,16 @@ private class CustomTextToolbar(
                 actionMode = null
                 copyCallback = null
                 selectAllCallback = null
+            }
+
+            override fun onGetContentRect(mode: ActionMode, view: View, outRect: android.graphics.Rect) {
+                // 将Compose的选区矩形传给系统，让浮动工具栏定位在选中文本上方
+                outRect.set(
+                    selectionRect.left.toInt(),
+                    selectionRect.top.toInt(),
+                    selectionRect.right.toInt(),
+                    selectionRect.bottom.toInt()
+                )
             }
         }, ActionMode.TYPE_FLOATING)
     }

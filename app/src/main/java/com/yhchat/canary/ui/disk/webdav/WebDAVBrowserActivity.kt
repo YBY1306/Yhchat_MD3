@@ -439,7 +439,7 @@ private fun WebDAVFileListPage(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(mountState.files) { file ->
+                items(mountState.files, key = { it.path }) { file ->
                     WebDAVFileCard(
                         file = file,
                         onClick = {

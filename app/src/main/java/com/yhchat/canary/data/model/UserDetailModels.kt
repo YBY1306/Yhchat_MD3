@@ -19,7 +19,8 @@ data class UserDetail(
     val isVip: Int,
     val vipExpiredTime: Long,
     val remarkInfo: RemarkInfo? = null,
-    val profileInfo: ProfileInfo? = null
+    val profileInfo: ProfileInfo? = null,
+    val ipGeo: String = ""
 )
 
 /**

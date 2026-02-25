@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +30,7 @@ import com.yhchat.canary.data.model.RecommendBot
 import com.yhchat.canary.ui.components.ImageUtils
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -46,6 +48,8 @@ fun DiscoverScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val discoverRepo = remember { RepositoryFactory.getDiscoverRepository(context) }
+    val viewModel = remember { DiscoverViewModel(discoverRepo) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     
     // 布局设置
@@ -58,56 +62,14 @@ fun DiscoverScreen(
         com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
     }
     
-    var groups by remember { mutableStateOf<List<RecommendGroup>>(emptyList()) }
-    var bots by remember { mutableStateOf<List<RecommendBot>>(emptyList()) }
-    var isLoadingGroups by remember { mutableStateOf(true) }
-    var isLoadingBots by remember { mutableStateOf(true) }
-    var isLoadingMoreGroups by remember { mutableStateOf(false) }
-    var currentGroupPage by remember { mutableStateOf(1) }
-    var hasMoreGroups by remember { mutableStateOf(true) }
+    val groups = uiState.groups
+    val bots = uiState.bots
+    val isLoadingGroups = uiState.isLoadingGroups
+    val isLoadingBots = uiState.isLoadingBots
+    val isLoadingMoreGroups = uiState.isLoadingMoreGroups
+    val hasMoreGroups = uiState.hasMoreGroups
     var selectedGroup by remember { mutableStateOf<RecommendGroup?>(null) }
     var selectedBot by remember { mutableStateOf<RecommendBot?>(null) }
-
-    // 加载推荐群聊（最新）
-    LaunchedEffect(Unit) {
-        isLoadingGroups = true
-        currentGroupPage = 1
-        discoverRepo.getRecommendGroups(category = "", size = 20, page = 1).fold(
-            onSuccess = { groupList ->
-                groups = groupList
-                hasMoreGroups = groupList.size >= 20
-                isLoadingGroups = false
-            },
-            onFailure = {
-                isLoadingGroups = false
-            }
-        )
-    }
-
-    // 加载更多群聊的函数
-    fun loadMoreGroups() {
-        if (isLoadingMoreGroups || !hasMoreGroups) return
-        
-        scope.launch {
-            isLoadingMoreGroups = true
-            val nextPage = currentGroupPage + 1
-            discoverRepo.getRecommendGroups(category = "", size = 20, page = nextPage).fold(
-                onSuccess = { newGroups ->
-                    if (newGroups.isNotEmpty()) {
-                        groups = groups + newGroups
-                        currentGroupPage = nextPage
-                        hasMoreGroups = newGroups.size >= 20
-                    } else {
-                        hasMoreGroups = false
-                    }
-                    isLoadingMoreGroups = false
-                },
-                onFailure = {
-                    isLoadingMoreGroups = false
-                }
-            )
-        }
-    }
 
     // 滚动到底部自动加载更多群聊
     LaunchedEffect(listState, groups.size, hasMoreGroups, isLoadingMoreGroups) {
@@ -122,23 +84,8 @@ fun DiscoverScreen(
             .distinctUntilChanged()
             .filter { it }
             .collectLatest {
-                loadMoreGroups()
+                viewModel.loadMoreGroups()
             }
-    }
-
-    // 加载推荐机器人
-    LaunchedEffect(Unit) {
-        isLoadingBots = true
-        discoverRepo.getRecommendBots().fold(
-            onSuccess = { botList ->
-                bots = botList.take(23) // 显示前23个
-                
-                isLoadingBots = false
-            },
-            onFailure = {
-                isLoadingBots = false
-            }
-        )
     }
 
     Scaffold(
@@ -177,7 +124,7 @@ fun DiscoverScreen(
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    items(bots) { bot ->
+                                    items(bots, key = { it.chatId }) { bot ->
                                         BotDiscoverCard(
                                             bot = bot,
                                             onClick = { selectedBot = bot }
@@ -243,7 +190,11 @@ fun DiscoverScreen(
                         }
                     }
                 } else if (groups.isNotEmpty()) {
-                    items(groups) { group ->
+                    items(
+                        items = groups,
+                        key = { it.chatId },
+                        contentType = { "group" }
+                    ) { group ->
                         GroupDiscoverCard(
                             group = group,
                             onClick = { selectedGroup = group }
@@ -458,6 +409,7 @@ fun GroupDiscoverCard(
     group: RecommendGroup,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -471,8 +423,11 @@ fun GroupDiscoverCard(
         ) {
             // 群聊头像
             if (!group.avatarUrl.isNullOrEmpty()) {
+                val avatarRequest = remember(group.avatarUrl) {
+                    ImageUtils.createAvatarImageRequest(context, group.avatarUrl)
+                }
                 AsyncImage(
-                    model = ImageUtils.createAvatarImageRequest(LocalContext.current, group.avatarUrl),
+                    model = avatarRequest,
                     contentDescription = "群聊头像",
                     modifier = Modifier
                         .size(56.dp)
@@ -533,6 +488,7 @@ fun BotDiscoverCard(
     bot: RecommendBot,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         onClick = onClick,
         modifier = Modifier.width(140.dp),
@@ -544,8 +500,11 @@ fun BotDiscoverCard(
         ) {
             // 机器人头像
             if (!bot.avatarUrl.isNullOrEmpty()) {
+                val avatarRequest = remember(bot.avatarUrl) {
+                    ImageUtils.createBotImageRequest(context, bot.avatarUrl)
+                }
                 AsyncImage(
-                    model = ImageUtils.createBotImageRequest(LocalContext.current, bot.avatarUrl),
+                    model = avatarRequest,
                     contentDescription = "机器人头像",
                     modifier = Modifier
                         .size(56.dp)
@@ -593,6 +552,7 @@ fun BotDetailDialog(
     onDismiss: () -> Unit,
     onAdd: () -> Unit
 ) {
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("机器人详情") },
@@ -603,8 +563,11 @@ fun BotDetailDialog(
             ) {
                 // 机器人头像
                 if (!bot.avatarUrl.isNullOrEmpty()) {
+                    val avatarRequest = remember(bot.avatarUrl) {
+                        ImageUtils.createBotImageRequest(context, bot.avatarUrl)
+                    }
                     AsyncImage(
-                        model = ImageUtils.createBotImageRequest(LocalContext.current, bot.avatarUrl),
+                        model = avatarRequest,
                         contentDescription = "机器人头像",
                         modifier = Modifier
                             .size(80.dp)

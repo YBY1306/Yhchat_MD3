@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -19,6 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.data.model.NavigationConfig
@@ -28,7 +33,7 @@ import kotlin.system.exitProcess
 /**
  * 导航栏设置Activity
  */
-class NavigationSettingsActivity : ComponentActivity() {
+class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
     
     companion object {
         fun start(context: Context, navigationRepository: NavigationRepository) {
@@ -135,7 +140,7 @@ fun NavigationSettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• 点击开关显示/隐藏导航项\n• 使用上下箭头调整显示顺序\n• 修改后需要重启应用才能生效",
+                    text = "• 点击开关显示/隐藏导航项\n• 长按并拖拽项目调整显示顺序\n• 修改后需要重启应用才能生效",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -182,43 +187,42 @@ fun NavigationSettingsScreen(
         }
         
         // 导航项列表
+        val state = rememberReorderableLazyListState(onMove = { from, to ->
+            val fromIndex = from.index
+            val toIndex = to.index
+            val mutable = items.toMutableList()
+            val moved = mutable.removeAt(fromIndex)
+            val target = if (fromIndex < toIndex) toIndex - 1 else toIndex
+            val clampedTarget = target.coerceIn(0, mutable.size)
+            mutable.add(clampedTarget, moved)
+            items = mutable
+            hasChanges = true
+        })
+
         LazyColumn(
+            state = state.listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
+                .reorderable(state)
+                .detectReorderAfterLongPress(state)
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                NavigationItemCard(
-                    item = item,
-                    index = index,
-                    totalItems = items.size,
-                    onVisibilityChange = { isVisible ->
-                        items = items.map {
-                            if (it.id == item.id) it.copy(isVisible = isVisible) else it
-                        }
-                        hasChanges = true
-                    },
-                    onMoveUp = {
-                        if (index > 0) {
-                            items = items.toMutableList().apply {
-                                val temp = this[index]
-                                this[index] = this[index - 1]
-                                this[index - 1] = temp
+                ReorderableItem(state, key = item.id) { isDragging ->
+                    val elevation = animateDpAsState(if (isDragging) 8.dp else 2.dp, label = "elevation")
+                    NavigationItemCard(
+                        item = item,
+                        index = index,
+                        totalItems = items.size,
+                        elevation = elevation.value,
+                        onVisibilityChange = { isVisible ->
+                            items = items.map {
+                                if (it.id == item.id) it.copy(isVisible = isVisible) else it
                             }
                             hasChanges = true
                         }
-                    },
-                    onMoveDown = {
-                        if (index < items.size - 1) {
-                            items = items.toMutableList().apply {
-                                val temp = this[index]
-                                this[index] = this[index + 1]
-                                this[index + 1] = temp
-                            }
-                            hasChanges = true
-                        }
-                    }
-                )
+                    )
+                }
             }
             
             // 添加一些底部空间
@@ -267,16 +271,15 @@ private fun NavigationItemCard(
     item: NavigationItem,
     index: Int,
     totalItems: Int,
+    elevation: androidx.compose.ui.unit.Dp,
     onVisibilityChange: (Boolean) -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Row(
             modifier = Modifier
@@ -284,6 +287,16 @@ private fun NavigationItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 拖拽手柄图标
+            Icon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = "拖拽排序",
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+
             // 导航项图标
             Icon(
                 imageVector = item.getIcon(),
@@ -310,34 +323,6 @@ private fun NavigationItemCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            
-            // 上下移动按钮
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                IconButton(
-                    onClick = onMoveUp,
-                    enabled = index > 0
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowUp,
-                        contentDescription = "上移",
-                        tint = if (index > 0) MaterialTheme.colorScheme.primary 
-                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    )
-                }
-                IconButton(
-                    onClick = onMoveDown,
-                    enabled = index < totalItems - 1
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "下移",
-                        tint = if (index < totalItems - 1) MaterialTheme.colorScheme.primary 
-                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    )
-                }
             }
             
             Spacer(modifier = Modifier.width(8.dp))

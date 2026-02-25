@@ -1,7 +1,9 @@
 package com.yhchat.canary.ui.user
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -35,11 +37,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.api.ApiClient
@@ -124,6 +129,8 @@ fun UserDetailScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
+    val activity = context as? Activity
     var uiState by remember { mutableStateOf(UserDetailUiState()) }
     var showAddFriendDialog by remember { mutableStateOf(false) }
     var addFriendRemark by remember { mutableStateOf("") }
@@ -144,6 +151,30 @@ fun UserDetailScreen(
 
     var isNoNotify by remember { mutableStateOf(false) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
+
+    val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
+    
+    val navigationBarColor = MaterialTheme.colorScheme.background
+
+    SideEffect {
+        val window = activity?.window ?: return@SideEffect
+
+        // 设置 system bars 颜色
+        window.statusBarColor = navigationBarColor.toArgb()
+        window.navigationBarColor = navigationBarColor.toArgb()
+
+        // 设置图标颜色：浅色主题用深色图标；深色主题用浅色图标
+        val controller = WindowCompat.getInsetsController(window, view)
+        controller.isAppearanceLightStatusBars = isLightTheme
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            controller.isAppearanceLightNavigationBars = isLightTheme
+        }
+
+        // Android 10+ 禁用系统强制对比度，避免导航栏被强制变亮
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+    }
     
     // 加载用户详情
     LaunchedEffect(userId) {
@@ -980,6 +1011,10 @@ fun UserDetailContent(
                     InfoRow("注册时间", userDetail.registerTime)
                     InfoRow("在线天数", "${userDetail.onlineDay} 天")
                     InfoRow("连续在线", "${userDetail.continuousOnlineDay} 天")
+
+                    if (userDetail.ipGeo.isNotEmpty()) {
+                        InfoRow("IP归属地", userDetail.ipGeo)
+                    }
                     
                     if (userDetail.isVip == 1 && userDetail.vipExpiredTime > 0) {
                         val expireDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())

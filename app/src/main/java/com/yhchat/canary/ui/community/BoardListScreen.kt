@@ -81,7 +81,7 @@ fun BoardListScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(boards) { board ->
+            items(boards, key = { it.id }) { board ->
                 BoardItem(
                     board = board,
                     onClick = { onBoardClick(board) }

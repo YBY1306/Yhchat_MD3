@@ -41,6 +41,9 @@ import android.text.TextUtils
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.ui.platform.LocalConfiguration
 
 /**
  * 我的界面
@@ -88,9 +91,22 @@ fun ProfileScreen(
         }
     }
     
-    // 在界面显示时加载用户资料
+    // 仅在首次加载时拉取用户资料（切换Tab不重复加载）
     LaunchedEffect(Unit) {
-        viewModel.loadUserProfile()
+        if (uiState.userProfile == null && !uiState.isLoading) {
+            viewModel.loadUserProfile()
+        }
+    }
+
+    // 下拉刷新状态
+    var refreshing by remember { mutableStateOf(false) }
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = refreshing)
+
+    // 刷新完成后关闭指示器
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading && refreshing) {
+            refreshing = false
+        }
     }
     
     // 监听头像修改状态
@@ -154,7 +170,15 @@ fun ProfileScreen(
         if (navigationState != null) {
             com.yhchat.canary.ui.components.observeScrollForNavigation(scrollState, navigationState)
         }
-        
+
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = {
+                refreshing = true
+                viewModel.loadUserProfile()
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -245,6 +269,7 @@ fun ProfileScreen(
             }
         }
     }
+    } // SwipeRefresh
     }
     
     // 修改邀请码弹窗
@@ -537,7 +562,7 @@ private fun UserProfileContent(
                 }
 
                 if (showUserDataDialog) {
-                    UserDataEditDialog(
+                    UserDataEditBottomSheet(
                         userDataState = userDataState,
                         saveUserDataState = saveUserDataState,
                         onDismiss = {
@@ -769,16 +794,21 @@ private fun CoinMenuItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UserDataEditDialog(
+private fun UserDataEditBottomSheet(
     userDataState: UserDataState,
     saveUserDataState: SaveUserDataState,
     onDismiss: () -> Unit,
     onSave: (SaveUserDataRequest) -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val coroutineScope = rememberCoroutineScope()
+
     var introduction by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("3") }
     var selectedYear by remember { mutableStateOf<Int?>(null) }
     var selectedMonth by remember { mutableStateOf<Int?>(null) }
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
     var province by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var district by remember { mutableStateOf("") }
@@ -796,9 +826,11 @@ private fun UserDataEditDialog(
                 }
                 selectedYear = cal.get(java.util.Calendar.YEAR)
                 selectedMonth = cal.get(java.util.Calendar.MONTH) + 1
+                selectedDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
             } else {
                 selectedYear = null
                 selectedMonth = null
+                selectedDay = null
             }
             province = data.province ?: ""
             city = data.city ?: ""
@@ -807,255 +839,315 @@ private fun UserDataEditDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = { if (!saveUserDataState.isLoading) onDismiss() },
-        title = {
-            Text(
-                text = "个人信息",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            val scrollState = rememberScrollState()
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (userDataState.isLoading) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-
-                userDataState.error?.let { error ->
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-
-                OutlinedTextField(
-                    value = introduction,
-                    onValueChange = { introduction = it },
-                    label = { Text("个人简介") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading
-                )
-
-                Text(
-                    text = "性别",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = gender == "1",
-                            onClick = { if (!saveUserDataState.isLoading) gender = "1" },
-                            enabled = !saveUserDataState.isLoading
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("男")
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = gender == "2",
-                            onClick = { if (!saveUserDataState.isLoading) gender = "2" },
-                            enabled = !saveUserDataState.isLoading
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("女")
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = gender == "3",
-                            onClick = { if (!saveUserDataState.isLoading) gender = "3" },
-                            enabled = !saveUserDataState.isLoading
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("其他")
-                    }
-                }
-
-                Text(
-                    text = "生日（年 / 月）",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                val nowCal = remember { java.util.Calendar.getInstance() }
-                val currentYear = nowCal.get(java.util.Calendar.YEAR)
-                val yearOptions = remember(currentYear) { (1900..currentYear).toList().reversed() }
-                val monthOptions = remember { (1..12).toList() }
-                var yearExpanded by remember { mutableStateOf(false) }
-                var monthExpanded by remember { mutableStateOf(false) }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ExposedDropdownMenuBox(
-                        expanded = yearExpanded,
-                        onExpandedChange = { if (!saveUserDataState.isLoading) yearExpanded = !yearExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedYear?.toString() ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("年") },
-                            enabled = !saveUserDataState.isLoading,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = yearExpanded,
-                            onDismissRequest = { yearExpanded = false }
-                        ) {
-                            yearOptions.forEach { y ->
-                                DropdownMenuItem(
-                                    text = { Text(y.toString()) },
-                                    onClick = {
-                                        selectedYear = y
-                                        yearExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    ExposedDropdownMenuBox(
-                        expanded = monthExpanded,
-                        onExpandedChange = { if (!saveUserDataState.isLoading) monthExpanded = !monthExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedMonth?.toString() ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("月") },
-                            enabled = !saveUserDataState.isLoading,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = monthExpanded,
-                            onDismissRequest = { monthExpanded = false }
-                        ) {
-                            monthOptions.forEach { m ->
-                                DropdownMenuItem(
-                                    text = { Text(m.toString()) },
-                                    onClick = {
-                                        selectedMonth = m
-                                        monthExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = province,
-                    onValueChange = { province = it },
-                    label = { Text("省份") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { city = it },
-                    label = { Text("城市") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = district,
-                    onValueChange = { district = it },
-                    label = { Text("城区") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = locationCode,
-                    onValueChange = { locationCode = it },
-                    label = { Text("邮政编码") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !saveUserDataState.isLoading,
-                    singleLine = true
-                )
+    ModalBottomSheet(
+        onDismissRequest = {
+            if (!saveUserDataState.isLoading) {
+                onDismiss()
             }
         },
-        confirmButton = {
+        sheetState = sheetState
+    ) {
+        val scrollState = rememberScrollState()
+        val maxSheetHeight = (configuration.screenHeightDp.dp * 0.95f)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxSheetHeight)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "个人信息",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(
+                    onClick = {
+                        if (!saveUserDataState.isLoading) {
+                            coroutineScope.launch { sheetState.hide() }
+                            onDismiss()
+                        }
+                    },
+                    enabled = !saveUserDataState.isLoading
+                ) {
+                    Text("关闭")
+                }
+            }
+
+            if (userDataState.isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            userDataState.error?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            OutlinedTextField(
+                value = introduction,
+                onValueChange = { introduction = it },
+                label = { Text("个人简介") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !saveUserDataState.isLoading
+            )
+
+            Text(
+                text = "性别",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = gender == "1",
+                        onClick = { if (!saveUserDataState.isLoading) gender = "1" },
+                        enabled = !saveUserDataState.isLoading
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("男")
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = gender == "2",
+                        onClick = { if (!saveUserDataState.isLoading) gender = "2" },
+                        enabled = !saveUserDataState.isLoading
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("女")
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = gender == "3",
+                        onClick = { if (!saveUserDataState.isLoading) gender = "3" },
+                        enabled = !saveUserDataState.isLoading
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("其他")
+                }
+            }
+
+            Text(
+                text = "生日（年 / 月 / 日）",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            val nowCal = remember { java.util.Calendar.getInstance() }
+            val currentYear = nowCal.get(java.util.Calendar.YEAR)
+            val yearOptions = remember(currentYear) { (1900..currentYear).toList().reversed() }
+            val monthOptions = remember { (1..12).toList() }
+            var yearExpanded by remember { mutableStateOf(false) }
+            var monthExpanded by remember { mutableStateOf(false) }
+            var dayExpanded by remember { mutableStateOf(false) }
+
+            val maxDayInMonth = remember(selectedYear, selectedMonth) {
+                val year = selectedYear ?: 2000
+                val month = selectedMonth ?: 1
+                java.util.Calendar.getInstance().apply {
+                    set(java.util.Calendar.YEAR, year)
+                    set(java.util.Calendar.MONTH, month - 1)
+                }.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+            }
+            val dayOptions = remember(maxDayInMonth) { (1..maxDayInMonth).toList() }
+
+            LaunchedEffect(maxDayInMonth) {
+                val cur = selectedDay
+                if (cur != null && cur > maxDayInMonth) {
+                    selectedDay = maxDayInMonth
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = yearExpanded,
+                    onExpandedChange = { if (!saveUserDataState.isLoading) yearExpanded = !yearExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedYear?.toString() ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("年") },
+                        enabled = !saveUserDataState.isLoading,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = yearExpanded,
+                        onDismissRequest = { yearExpanded = false }
+                    ) {
+                        yearOptions.forEach { y ->
+                            DropdownMenuItem(
+                                text = { Text(y.toString()) },
+                                onClick = {
+                                    selectedYear = y
+                                    yearExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = monthExpanded,
+                    onExpandedChange = { if (!saveUserDataState.isLoading) monthExpanded = !monthExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedMonth?.toString() ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("月") },
+                        enabled = !saveUserDataState.isLoading,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = monthExpanded,
+                        onDismissRequest = { monthExpanded = false }
+                    ) {
+                        monthOptions.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text(m.toString()) },
+                                onClick = {
+                                    selectedMonth = m
+                                    monthExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = dayExpanded,
+                    onExpandedChange = { if (!saveUserDataState.isLoading) dayExpanded = !dayExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedDay?.toString() ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("日") },
+                        enabled = !saveUserDataState.isLoading,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = dayExpanded,
+                        onDismissRequest = { dayExpanded = false }
+                    ) {
+                        dayOptions.forEach { d ->
+                            DropdownMenuItem(
+                                text = { Text(d.toString()) },
+                                onClick = {
+                                    selectedDay = d
+                                    dayExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = province,
+                onValueChange = { province = it },
+                label = { Text("省") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !saveUserDataState.isLoading
+            )
+
+            OutlinedTextField(
+                value = city,
+                onValueChange = { city = it },
+                label = { Text("市") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !saveUserDataState.isLoading
+            )
+
+            OutlinedTextField(
+                value = district,
+                onValueChange = { district = it },
+                label = { Text("区") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !saveUserDataState.isLoading
+            )
+
+            OutlinedTextField(
+                value = locationCode,
+                onValueChange = { locationCode = it },
+                label = { Text("地区编码") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !saveUserDataState.isLoading
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Button(
                 onClick = {
-                    val genderInt = gender.toIntOrNull() ?: 3
-
-                    val birthdaySec = if (selectedYear != null && selectedMonth != null) {
-                        val cal = java.util.Calendar.getInstance().apply {
+                    if (saveUserDataState.isLoading) return@Button
+                    val birthday = if (selectedYear != null && selectedMonth != null && selectedDay != null) {
+                        java.util.Calendar.getInstance().apply {
                             set(java.util.Calendar.YEAR, selectedYear!!)
                             set(java.util.Calendar.MONTH, selectedMonth!! - 1)
-                            set(java.util.Calendar.DAY_OF_MONTH, 1)
+                            set(java.util.Calendar.DAY_OF_MONTH, selectedDay!!)
                             set(java.util.Calendar.HOUR_OF_DAY, 0)
                             set(java.util.Calendar.MINUTE, 0)
                             set(java.util.Calendar.SECOND, 0)
-                            set(java.util.Calendar.MILLISECOND, 0)
-                        }
-                        cal.timeInMillis / 1000L
+                        }.timeInMillis / 1000L
                     } else {
                         0L
                     }
-
-                    val req = SaveUserDataRequest(
-                        introduction = introduction,
-                        gender = genderInt,
-                        birthday = birthdaySec,
-                        province = province,
-                        city = city,
-                        district = district,
-                        locationCode = locationCode
+                    onSave(
+                        SaveUserDataRequest(
+                            introduction = introduction,
+                            gender = gender.toIntOrNull() ?: 0,
+                            birthday = birthday,
+                            province = province,
+                            city = city,
+                            district = district,
+                            locationCode = locationCode
+                        )
                     )
-                    onSave(req)
                 },
+                modifier = Modifier.fillMaxWidth(),
                 enabled = !saveUserDataState.isLoading
             ) {
                 if (saveUserDataState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存中...")
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("保存")
                 }
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !saveUserDataState.isLoading
-            ) {
-                Text("取消")
-            }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
-    )
+    }
 }
 
 /**

@@ -177,7 +177,7 @@ fun DraftBoxScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(drafts) { draft ->
+                items(drafts, key = { it.id }) { draft ->
                     DraftItem(
                         draft = draft,
                         onClick = { onDraftClick(draft) },

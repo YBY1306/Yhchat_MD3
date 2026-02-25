@@ -3,18 +3,24 @@ package com.yhchat.canary.ui.base
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.combo.core.component.activity.BaseHostActivity
+import androidx.core.view.WindowCompat
+import android.graphics.Color
 
 /**
- * 基础Activity类 - 支持ComboLite插件化
+ * 基础Activity类
  * 统一处理字体大小设置和其他全局配置
  */
-abstract class BaseActivity : BaseHostActivity() {
+abstract class BaseActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         // 在super.onCreate之前应用字体设置
         applyFontScale()
         super.onCreate(savedInstanceState)
+
+        // 全局开启沉浸式，系统手势条区域透明
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
     }
     
     /**

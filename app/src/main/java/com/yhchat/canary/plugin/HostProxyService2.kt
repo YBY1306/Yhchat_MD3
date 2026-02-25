@@ -1,11 +1,16 @@
 package com.yhchat.canary.plugin
 
-import com.combo.core.component.service.BaseHostService
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
 
 /**
- * 代理Service2 - 用于运行插件中的Service
- * 多个代理Service支持插件并行运行多个Service实例
+ * 代理Service2 - ComboLite移除后的占位实现
+ * 保持类结构以避免其他地方的引用错误
  */
-class HostProxyService2 : BaseHostService() {
-    // 不需要额外实现，BaseHostService已经包含所有必需的代理逻辑
+class HostProxyService2 : Service() {
+    override fun onBind(intent: Intent?): IBinder? {
+        // ComboLite已移除，此Service不再有实际功能
+        return null
+    }
 }

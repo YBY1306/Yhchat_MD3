@@ -125,7 +125,7 @@ fun CoinShopScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.products) { product ->
+                    items(uiState.products, key = { it.id }) { product ->
                         ProductCard(
                             product = product,
                             onClick = {

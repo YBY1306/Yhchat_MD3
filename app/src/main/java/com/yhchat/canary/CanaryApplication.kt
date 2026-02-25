@@ -16,9 +16,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
-import com.combo.core.runtime.PluginManager
-import com.combo.core.runtime.ValidationStrategy
-import com.combo.core.security.crash.PluginCrashHandler
 
 @HiltAndroidApp
 class CanaryApplication : Application() {
@@ -27,57 +24,8 @@ class CanaryApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        
-        // 初始化ComboLite插件化框架
-        initializePluginFramework()
-        
         AppForegroundTracker.init()
         startMemoryAutoCleanLoop()
-    }
-    
-    /**
-     * 初始化ComboLite插件化框架（手动初始化方式，兼容Hilt）
-     */
-    private fun initializePluginFramework() {
-        // ComboLite要求API 24+，在低版本设备上跳过初始化
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.N) {
-            Log.w("CanaryApp", "⚠️ 当前设备API ${android.os.Build.VERSION.SDK_INT} < 24，跳过ComboLite初始化")
-            Log.w("CanaryApp", "⚠️ 插件功能在此设备上不可用")
-            return
-        }
-        
-        Log.d("CanaryApp", "🔌 开始初始化ComboLite插件化框架...")
-        
-        try {
-            // 1. 注册插件崩溃处理器（重要！）
-            PluginCrashHandler.initialize(this)
-            Log.d("CanaryApp", "✅ 插件崩溃处理器已注册")
-            
-            // 2. 初始化插件管理器
-            PluginManager.initialize(this) {
-                // 此代码块在后台线程执行
-                Log.d("CanaryApp", "⚙️ 配置插件管理器...")
-                
-                // 配置四大组件的代理池
-                PluginManager.proxyManager.apply {
-                    setHostActivity(com.yhchat.canary.plugin.HostProxyActivity::class.java)
-                    setServicePool(listOf(
-                        com.yhchat.canary.plugin.HostProxyService1::class.java,
-                        com.yhchat.canary.plugin.HostProxyService2::class.java
-                    ))
-                    setHostProviderAuthority("com.yhchat.canary.provider")
-                }
-                Log.d("CanaryApp", "✅ 代理组件已配置")
-                
-                // 设置签名校验策略（开发阶段使用Insecure，生产环境改为Strict）
-                PluginManager.setValidationStrategy(ValidationStrategy.Insecure)
-                Log.d("CanaryApp", "✅ 签名校验策略已设置: Insecure (开发模式)")
-                
-                Log.d("CanaryApp", "🎉 ComboLite插件化框架初始化完成")
-            }
-        } catch (e: Exception) {
-            Log.e("CanaryApp", "❌ ComboLite初始化失败", e)
-        }
     }
 
     private fun startMemoryAutoCleanLoop() {

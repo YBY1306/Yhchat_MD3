@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
@@ -86,10 +87,13 @@ class ChatActivity : BaseActivity() {
         // 从Intent中读取参数
         updateChatParams(intent)
         
+        val enableAnimations = getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
+            .getBoolean("enable_chat_animations", true)
+
         setContent {
             YhchatCanaryTheme {
                 val topBarColor = MaterialTheme.colorScheme.primaryContainer.toArgb()
-                val navigationBarColor = MaterialTheme.colorScheme.surface.toArgb()
+                val navigationBarColor = android.graphics.Color.TRANSPARENT
                 val view = LocalView.current
                 val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
                 
@@ -116,6 +120,7 @@ class ChatActivity : BaseActivity() {
                         chatId = chatId,
                         chatType = chatType,
                         chatName = chatName,
+                        enableAnimations = enableAnimations,
                         userId = "",
                         onBackClick = { finish() },
                         onAvatarClick = { userId, userName, chatType, currentUserPermission ->

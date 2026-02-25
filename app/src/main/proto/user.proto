@@ -53,6 +53,7 @@ message get_user {
         int64 vip_expired_time = 14;
         RemarkInfo remark_info = 18;    // 备注信息
         ProfileInfo profile_info = 19; // 个人资料信息
+        string ipGeo = 20;
     }
 }
 

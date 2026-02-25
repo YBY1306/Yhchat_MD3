@@ -102,7 +102,7 @@ private fun IconCategory(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(icons) { (name, icon) ->
+                items(icons, key = { it.first }) { (name, icon) ->
                     IconItem(
                         name = name,
                         icon = icon

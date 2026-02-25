@@ -937,7 +937,8 @@ class UserRepository @Inject constructor(
                         isVip = data.isVip,
                         vipExpiredTime = data.vipExpiredTime,
                         remarkInfo = remarkInfo,
-                        profileInfo = profileInfo
+                        profileInfo = profileInfo,
+                        ipGeo = data.ipGeo
                     )
                     Result.success(userDetail)
                 } else {

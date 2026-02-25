@@ -1,11 +1,16 @@
 package com.yhchat.canary.plugin
 
-import com.combo.core.component.activity.BaseHostActivity
+import android.app.Activity
+import android.os.Bundle
 
 /**
- * 代理Activity - 用于启动插件中的Activity
- * ComboLite会通过这个代理Activity来启动和运行插件的Activity
+ * 代理Activity - ComboLite移除后的占位实现
+ * 保持类结构以避免其他地方的引用错误
  */
-class HostProxyActivity : BaseHostActivity() {
-    // 不需要额外实现，BaseHostActivity已经包含所有必需的代理逻辑
+class HostProxyActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // ComboLite已移除，此Activity不再有实际功能
+        finish()
+    }
 }

@@ -231,7 +231,7 @@ private fun CoinIncreaseDecreaseList(records: List<GoldCoinRecord>) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(records) { record ->
+        items(records, key = { it.id }) { record ->
             CoinRecordCard(record)
         }
     }
@@ -318,7 +318,7 @@ private fun PostRewardList(rewards: List<RewardRecord>) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(rewards) { reward ->
+        items(rewards, key = { it.id }) { reward ->
             RewardRecordCard(reward)
         }
     }
@@ -348,7 +348,7 @@ private fun CommentRewardList(rewards: List<RewardRecord>) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(rewards) { reward ->
+        items(rewards, key = { it.id }) { reward ->
             RewardRecordCard(reward)
         }
     }

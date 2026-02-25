@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -165,8 +166,8 @@ fun SearchScreen(
                                     )
                                 }
                                 
-                                items(items) { searchItem ->
-                                        Card(
+                                itemsIndexed(items, key = { index, item -> "${item.friendId}_${item.friendType}_$index" }) { _, searchItem ->
+                                    Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(horizontal = 16.dp, vertical = 4.dp)

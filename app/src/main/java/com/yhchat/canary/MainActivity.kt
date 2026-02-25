@@ -22,6 +22,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,6 +53,8 @@ import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.utils.ChatAddLinkHandler
 import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 @AndroidEntryPoint
 class MainActivity : BaseActivity() {
@@ -86,8 +89,8 @@ class MainActivity : BaseActivity() {
      */
     @Composable
     private fun SetSystemNavigationBarColor() {
-        // 使用导航栏的surface颜色作为系统导航栏背景
-        val navigationBarColor = MaterialTheme.colorScheme.surface
+        // 导航栏背景设为透明，让手势条区域完全透明
+        val navigationBarColor = Color.Transparent
         val isLightTheme = !isSystemInDarkTheme()
         
         SideEffect {
@@ -270,7 +273,15 @@ class MainActivity : BaseActivity() {
                                 val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
                                 if (targetIndex >= 0) {
                                     coroutineScope.launch {
-                                        pagerState.animateScrollToPage(targetIndex)
+                                        val currentPage = pagerState.currentPage
+                                        val distance = kotlin.math.abs(targetIndex - currentPage)
+                                        if (distance == 1) {
+                                            // 相邻页面，使用动画滑动
+                                            pagerState.animateScrollToPage(targetIndex)
+                                        } else {
+                                            // 跨页跳转，直接跳转
+                                            pagerState.scrollToPage(targetIndex)
+                                        }
                                     }
                                 }
                                 currentScreen = screen
@@ -337,6 +348,37 @@ class MainActivity : BaseActivity() {
                                                     if (splitChatId.isNotEmpty()) {
                                                         // 使用 key 确保切换聊天时重建 ChatScreen
                                                         key(splitChatId, splitChatType) {
+                                                            var imageUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+                                                            var fileUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+                                                            var videoUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+                                                            var cameraImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+                                                            val imagePickerLauncher = rememberLauncherForActivityResult(
+                                                                contract = ActivityResultContracts.GetContent()
+                                                            ) { uri: android.net.Uri? ->
+                                                                uri?.let { imageUriToSend = it }
+                                                            }
+
+                                                            val filePickerLauncher = rememberLauncherForActivityResult(
+                                                                contract = ActivityResultContracts.GetContent()
+                                                            ) { uri: android.net.Uri? ->
+                                                                uri?.let { fileUriToSend = it }
+                                                            }
+
+                                                            val videoPickerLauncher = rememberLauncherForActivityResult(
+                                                                contract = ActivityResultContracts.GetContent()
+                                                            ) { uri: android.net.Uri? ->
+                                                                uri?.let { videoUriToSend = it }
+                                                            }
+
+                                                            val cameraLauncher = rememberLauncherForActivityResult(
+                                                                contract = ActivityResultContracts.TakePicture()
+                                                            ) { success: Boolean ->
+                                                                if (success) {
+                                                                    cameraImageUri?.let { imageUriToSend = it }
+                                                                }
+                                                            }
+
                                                             ChatScreen(
                                                                 chatId = splitChatId,
                                                                 chatType = splitChatType,
@@ -356,6 +398,39 @@ class MainActivity : BaseActivity() {
                                                                         userName = userName,
                                                                         groupId = groupId
                                                                     )
+                                                                },
+                                                                onImagePickerClick = {
+                                                                    imagePickerLauncher.launch("image/*")
+                                                                },
+                                                                onFilePickerClick = {
+                                                                    filePickerLauncher.launch("*/*")
+                                                                },
+                                                                onVideoPickerClick = {
+                                                                    videoPickerLauncher.launch("video/*")
+                                                                },
+                                                                onCameraClick = {
+                                                                    val photoFile = java.io.File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                                                    cameraImageUri = androidx.core.content.FileProvider.getUriForFile(
+                                                                        this@MainActivity,
+                                                                        "${packageName}.fileprovider",
+                                                                        photoFile
+                                                                    )
+                                                                    cameraImageUri?.let { uri ->
+                                                                        cameraLauncher.launch(uri)
+                                                                    }
+                                                                },
+                                                                imageUriToSend = imageUriToSend,
+                                                                fileUriToSend = fileUriToSend,
+                                                                videoUriToSend = videoUriToSend,
+                                                                onImageSent = {
+                                                                    imageUriToSend = null
+                                                                    cameraImageUri = null
+                                                                },
+                                                                onFileSent = {
+                                                                    fileUriToSend = null
+                                                                },
+                                                                onVideoSent = {
+                                                                    videoUriToSend = null
                                                                 },
                                                                 modifier = Modifier.fillMaxSize()
                                                             )
@@ -777,7 +852,15 @@ class MainActivity : BaseActivity() {
                                 val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
                                 if (targetIndex >= 0) {
                                     coroutineScope.launch {
-                                        pagerState.animateScrollToPage(targetIndex)
+                                        val currentPage = pagerState.currentPage
+                                        val distance = kotlin.math.abs(targetIndex - currentPage)
+                                        if (distance == 1) {
+                                            // 相邻页面，使用动画滑动
+                                            pagerState.animateScrollToPage(targetIndex)
+                                        } else {
+                                            // 跨页跳转，直接跳转
+                                            pagerState.scrollToPage(targetIndex)
+                                        }
                                     }
                                 }
                                 currentScreen = screen

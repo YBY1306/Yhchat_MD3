@@ -114,7 +114,8 @@ fun LayoutSettingsScreen(
 private fun ConversationLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
     
-    var showSearchButton by remember { mutableStateOf(prefs.getBoolean("conversation_show_search", true)) }
+    var showTitle by remember { mutableStateOf(prefs.getBoolean("conversation_show_title", true)) }
+    var showSearchBox by remember { mutableStateOf(prefs.getBoolean("conversation_show_search", true)) }
     var showAddButton by remember { mutableStateOf(prefs.getBoolean("conversation_show_add", true)) }
     var showUnreadBadge by remember { mutableStateOf(prefs.getBoolean("conversation_show_unread_badge", true)) }
     var showConversationList by remember { mutableStateOf(prefs.getBoolean("conversation_show_list", true)) }
@@ -127,12 +128,24 @@ private fun ConversationLayoutSettingsGroup(context: Context) {
         items = listOf(
             {
                 SettingsSwitchItem(
-                    icon = Icons.Default.Search,
-                    title = "搜索按钮",
-                    subtitle = if (showSearchButton) "显示搜索按钮" else "隐藏搜索按钮",
-                    checked = showSearchButton,
+                    icon = Icons.Default.Title,
+                    title = "\"云湖\"标题",
+                    subtitle = if (showTitle) "显示标题，搜索栏在标题右侧" else "隐藏标题，搜索栏自动扩展",
+                    checked = showTitle,
                     onCheckedChange = {
-                        showSearchButton = it
+                        showTitle = it
+                        prefs.edit().putBoolean("conversation_show_title", it).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Search,
+                    title = "搜索框",
+                    subtitle = if (showSearchBox) "显示顶部搜索框" else "隐藏顶部搜索框",
+                    checked = showSearchBox,
+                    onCheckedChange = {
+                        showSearchBox = it
                         prefs.edit().putBoolean("conversation_show_search", it).apply()
                     }
                 )

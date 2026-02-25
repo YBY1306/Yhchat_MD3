@@ -160,7 +160,7 @@ fun GroupTagManagementScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.tags) { tag ->
+                        items(uiState.tags, key = { it.id }) { tag ->
                             TagCard(
                                 tag = tag,
                                 onClick = { onTagClick(tag) },

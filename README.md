@@ -1,8 +1,5 @@
-# Experimental - 更激进的修改
-这个版本会尝试一些之前从未做过的功能
-
-
-用各种AI IDE制作的云湖第三方客户端，由AI强力驱动。
+# Experimental
+更激进的修改
 
 # 声明
 此项目（Yhchat_MD3）是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。
@@ -13,8 +10,8 @@
 - [x] 手机号/邮箱登录
 - [x] 显示会话/管理置顶会话
 - [x] 完整解析消息
-- [x] Websocket消息实时同步/实时更新会话/草稿同步
-- [x] 发送普通/HTML/Markdown/图片/文件/视频/语音/表情/指令消息
+- [x] Websocket消息实时同步/实时更新会话/草稿同步（目前只能单向同步）
+- [x] 发送普通/HTML/Markdown/图片/文件/视频/语音/表情/指令消息（不支持表单指令）
 - [x] 解析普通消息/HTML/Markdown/图片/表情/文件消息
 - [x] 搜索用户/群聊/机器人，并且添加
 - [x] 查看用户/机器人/群聊详情（并且实现protobuf解析）
@@ -46,14 +43,6 @@
 
 ### [图标@星河间](https://github.com/Kauid323/Yhchat_MD3/issues/12)
 
-### [TTS文本转语音@Rabbit](https://yhfx.jwznb.com/share?key=WfYmURDk5BWz&ts=1770288663)
+### Hilt
 
-## 已接入 ComboLite
-如果你不知道ComboLite是什么，那么[请看这个！](https://github.com/lnzz123/ComboLite)
-理论来说可以给Yhchat Canary装插件的，没试过所以就给你们试啦！
-[一些文档](./docs/)  
-
-
-> 这个app经历Cursor Kiro Windsurf CodeFlicker VSCode里面的Copilot Antigravity AndroidStudio里面的Gemini 等AI IDE之手
-
-> 其实我觉得这么原生的应用启动占用却不像个原生应用，也挺屎了
+### 

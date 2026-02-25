@@ -47,4 +47,3 @@ dependencyResolutionManagement {
 rootProject.name = "Yhchat Canary"
 
 include(":app")
-include(":example-plugin")  // 示例插件模块

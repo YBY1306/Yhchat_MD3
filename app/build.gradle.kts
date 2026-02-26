@@ -13,14 +13,48 @@ android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
 
+    val signingProps = Properties()
+    val signingPropsFile = rootProject.file("keystore.properties")
+    if (signingPropsFile.exists()) {
+        signingPropsFile.inputStream().use { signingProps.load(it) }
+    }
+
+    fun signingValue(key: String): String? =
+        signingProps.getProperty(key)?.takeIf { it.isNotBlank() }
+            ?: System.getenv(key)?.takeIf { it.isNotBlank() }
+
+    val releaseStoreFilePath = signingValue("CANARY_STORE_FILE") ?: "C:/Users/admin/Videos/canary.jks"
+    val releaseStorePassword = signingValue("CANARY_STORE_PASSWORD")
+    val releaseKeyAlias = signingValue("CANARY_KEY_ALIAS")
+    val releaseKeyPassword = signingValue("CANARY_KEY_PASSWORD")
+    val hasReleaseSigning = releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
 
     defaultConfig {
         applicationId = "com.yhchat.canary"
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "21.1-Experimental"
+        versionName = "21.2-Experimental"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFilePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     buildFeatures {
@@ -70,6 +104,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material:material:1.6.8")
 
+    implementation(libs.reorderable)
+
     // 下拉刷新
     implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
 
@@ -102,6 +138,8 @@ dependencies {
     implementation("io.noties.markwon:linkify:4.6.2")
     implementation("io.noties.markwon:ext-strikethrough:4.6.2")
     implementation("io.noties.markwon:ext-tables:4.6.2")
+
+    implementation(libs.ksoup.html)
     
     // HTML 文本渲染支持
     implementation("androidx.compose.ui:ui-text-google-fonts")
@@ -129,7 +167,6 @@ dependencies {
 
     // QR Code Scanning
     implementation(libs.zxing.android.embedded)
-    implementation(libs.reorderable)
     implementation(libs.zxing.core)
     
     testImplementation(libs.junit)

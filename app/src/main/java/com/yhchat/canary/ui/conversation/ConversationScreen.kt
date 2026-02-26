@@ -197,32 +197,56 @@ fun ConversationScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var isManuallyActivated by remember { mutableStateOf(false) } // 标记是否手动激活
     var isTextFieldEnabled by remember { mutableStateOf(false) } // 控制输入框是否启用
+    var isFocusClearing by remember { mutableStateOf(false) } // 防止焦点清除死循环
     val searchFocusRequester = remember { FocusRequester() }
+    
+    // 检测安卓版本
+    val isLowAndroidVersion = remember { android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.O_MR1 }
 
     // 防止安卓8及以下自动聚焦 - 多层防护
     LaunchedEffect(Unit) {
-        // 延迟清除焦点，确保组件完全初始化
-        repeat(5) { // 多次尝试清除焦点
-            kotlinx.coroutines.delay(50)
-            if (!isSearchActive && !isManuallyActivated) {
-                try {
-                    focusManager.clearFocus()
-                    searchFocusRequester.freeFocus()
-                } catch (_: Exception) {}
+        if (isLowAndroidVersion) {
+            // 安卓8及以下版本使用温和的初始化
+            kotlinx.coroutines.delay(300)
+            repeat(3) {
+                kotlinx.coroutines.delay(100)
+                if (!isSearchActive && !isManuallyActivated && !isFocusClearing) {
+                    try {
+                        focusManager.clearFocus()
+                        searchFocusRequester.freeFocus()
+                    } catch (_: Exception) {}
+                }
             }
+            kotlinx.coroutines.delay(200)
+            isTextFieldEnabled = true
+        } else {
+            // 安卓9及以上版本使用原有逻辑
+            repeat(5) {
+                kotlinx.coroutines.delay(50)
+                if (!isSearchActive && !isManuallyActivated) {
+                    try {
+                        focusManager.clearFocus()
+                        searchFocusRequester.freeFocus()
+                    } catch (_: Exception) {}
+                }
+            }
+            kotlinx.coroutines.delay(200)
+            isTextFieldEnabled = true
         }
-        // 初始化完成后才启用输入框
-        kotlinx.coroutines.delay(200)
-        isTextFieldEnabled = true
     }
     
     // 监听搜索状态变化，在退出搜索时清除焦点
     LaunchedEffect(isSearchActive) {
-        if (!isSearchActive && searchQuery.isEmpty()) {
-            try {
-                focusManager.clearFocus()
-                searchFocusRequester.freeFocus()
-            } catch (_: Exception) {}
+        if (!isSearchActive && searchQuery.isEmpty() && !isFocusClearing) {
+            coroutineScope.launch {
+                isFocusClearing = true
+                try {
+                    focusManager.clearFocus()
+                    searchFocusRequester.freeFocus()
+                } catch (_: Exception) {}
+                kotlinx.coroutines.delay(if (isLowAndroidVersion) 200 else 100)
+                isFocusClearing = false
+            }
         }
     }
 
@@ -423,18 +447,36 @@ fun ConversationScreen(
                                         .fillMaxWidth()
                                         .focusRequester(searchFocusRequester)
                                         .onFocusChanged { focusState ->
-                                            if (focusState.isFocused && !isManuallyActivated) {
-                                                coroutineScope.launch {
-                                                    focusManager.clearFocus()
-                                                    isTextFieldEnabled = false
-                                                    kotlinx.coroutines.delay(100)
-                                                    isTextFieldEnabled = true
+                                            if (!isFocusClearing) {
+                                                if (focusState.isFocused && !isManuallyActivated) {
+                                                    // 非手动激活的焦点需要清除
+                                                    if (isLowAndroidVersion) {
+                                                        // 安卓8及以下版本使用温和的处理方式
+                                                        coroutineScope.launch {
+                                                            isFocusClearing = true
+                                                            try {
+                                                                focusManager.clearFocus()
+                                                            } catch (_: Exception) {}
+                                                            kotlinx.coroutines.delay(200)
+                                                            isFocusClearing = false
+                                                        }
+                                                    } else {
+                                                        // 安卓9及以上版本使用原有逻辑
+                                                        coroutineScope.launch {
+                                                            isFocusClearing = true
+                                                            focusManager.clearFocus()
+                                                            isTextFieldEnabled = false
+                                                            kotlinx.coroutines.delay(100)
+                                                            isTextFieldEnabled = true
+                                                            isFocusClearing = false
+                                                        }
+                                                    }
+                                                } else if (focusState.isFocused && isManuallyActivated) {
+                                                    isSearchActive = true
+                                                } else if (!focusState.isFocused && isSearchActive && searchQuery.isEmpty()) {
+                                                    isSearchActive = false
+                                                    isManuallyActivated = false
                                                 }
-                                            } else if (focusState.isFocused && isManuallyActivated) {
-                                                isSearchActive = true
-                                            } else if (!focusState.isFocused && isSearchActive && searchQuery.isEmpty()) {
-                                                isSearchActive = false
-                                                isManuallyActivated = false
                                             }
                                         },
                                     cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
@@ -536,7 +578,7 @@ fun ConversationScreen(
                 if (filteredConversations.isNotEmpty()) {
                     item(key = "local_header") {
                         Text(
-                            text = "会话",
+                            text = "本地筛选",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,

@@ -107,7 +107,7 @@ import kotlinx.coroutines.launch
 import com.yhchat.canary.ui.bot.BotInfoActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
-import com.yhchat.canary.ui.components.HtmlWebView
+import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.ChatInputBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.ImageViewer
@@ -118,6 +118,7 @@ import com.yhchat.canary.ui.components.MessageSelectionContainer
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.components.VoiceMessageViewModel
+import com.yhchat.canary.utils.UnifiedLinkHandler
 import com.yhchat.canary.ui.components.FloatingVoiceWindow
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
@@ -2835,19 +2836,16 @@ private fun MessageContentView(
                             )
                         }
                     } else {
-                        // 使用Box包裹，添加占位符以减少初始渲染压力
-                        // HtmlWebView 内部支持文本选择
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 120.dp, max = 440.dp)
-                        ) {
-                            HtmlWebView(
-                                htmlContent = htmlContent,
-                                onImageClick = onImageClick,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        HtmlTextMessage(
+                            html = htmlContent,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            onImageClick = onImageClick,
+                            onUriClick = { url ->
+                                UnifiedLinkHandler.handleLink(context, url)
+                            }
+                        )
                     }
                 }
 
@@ -4865,6 +4863,9 @@ private suspend fun generateMessagesImage(
 
     composeView.post {
         try {
+            // 禁用硬件加速以避免 "software rendering doesn't support hardware bitmaps" 错误
+            composeView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+            
             val bitmap = Bitmap.createBitmap(
                 composeView.measuredWidth,
                 composeView.measuredHeight,

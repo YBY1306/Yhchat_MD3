@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.burnoutcrew.reorderable.ItemPosition
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
@@ -187,7 +188,7 @@ fun NavigationSettingsScreen(
         }
         
         // 导航项列表
-        val state = rememberReorderableLazyListState(onMove = { from, to ->
+        val state = rememberReorderableLazyListState(onMove = { from: ItemPosition, to: ItemPosition ->
             val fromIndex = from.index
             val toIndex = to.index
             val mutable = items.toMutableList()

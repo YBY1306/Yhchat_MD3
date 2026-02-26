@@ -21,6 +21,8 @@ room = "2.7.0"
 hilt = "2.57.2"
 zxingEmbedded = "4.3.0"
 zxingCore = "3.5.3"
+reorderable = "0.9.6"
+ksoupHtml = "0.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,6 +58,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 reorderable = { group = "org.burnoutcrew.composereorderable", name = "reorderable", version.ref = "reorderable" }
+ksoup-html = { group = "com.mohamedrejeb.ksoup", name = "ksoup-html", version.ref = "ksoupHtml" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

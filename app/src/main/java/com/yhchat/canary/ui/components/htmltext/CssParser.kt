@@ -7,6 +7,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
@@ -19,7 +21,23 @@ data class CssStyle(
     val fontWeight: FontWeight? = null,
     val fontStyle: FontStyle? = null,
     val textDecoration: TextDecoration? = null,
-    val textAlign: TextAlign? = null
+    val textAlign: TextAlign? = null,
+    val width: Dp? = null,
+    val height: Dp? = null,
+    val margin: Dp? = null,
+    val marginTop: Dp? = null,
+    val marginRight: Dp? = null,
+    val marginBottom: Dp? = null,
+    val marginLeft: Dp? = null,
+    val padding: Dp? = null,
+    val paddingTop: Dp? = null,
+    val paddingRight: Dp? = null,
+    val paddingBottom: Dp? = null,
+    val paddingLeft: Dp? = null,
+    val borderRadius: Dp? = null,
+    val display: String? = null,
+    val alignItems: String? = null,
+    val flex: Float? = null
 )
 
 /**
@@ -50,7 +68,23 @@ object CssParser {
             fontWeight = properties["font-weight"]?.let { parseFontWeight(it) },
             fontStyle = properties["font-style"]?.let { parseFontStyle(it) },
             textDecoration = properties["text-decoration"]?.let { parseTextDecoration(it) },
-            textAlign = properties["text-align"]?.let { parseTextAlign(it) }
+            textAlign = properties["text-align"]?.let { parseTextAlign(it) },
+            width = properties["width"]?.let { parseDimension(it) },
+            height = properties["height"]?.let { parseDimension(it) },
+            margin = properties["margin"]?.let { parseDimension(it) },
+            marginTop = properties["margin-top"]?.let { parseDimension(it) },
+            marginRight = properties["margin-right"]?.let { parseDimension(it) },
+            marginBottom = properties["margin-bottom"]?.let { parseDimension(it) },
+            marginLeft = properties["margin-left"]?.let { parseDimension(it) },
+            padding = properties["padding"]?.let { parseDimension(it) },
+            paddingTop = properties["padding-top"]?.let { parseDimension(it) },
+            paddingRight = properties["padding-right"]?.let { parseDimension(it) },
+            paddingBottom = properties["padding-bottom"]?.let { parseDimension(it) },
+            paddingLeft = properties["padding-left"]?.let { parseDimension(it) },
+            borderRadius = properties["border-radius"]?.let { parseDimension(it) },
+            display = properties["display"],
+            alignItems = properties["align-items"],
+            flex = properties["flex"]?.toFloatOrNull()
         )
     }
     
@@ -222,6 +256,40 @@ object CssParser {
             "right" -> TextAlign.Right
             "justify" -> TextAlign.Justify
             else -> null
+        }
+    }
+    
+    /**
+     * 解析尺寸值（px、dp、sp、em等）
+     */
+    private fun parseDimension(dimensionString: String): Dp? {
+        return try {
+            val dimension = dimensionString.trim().lowercase()
+            when {
+                dimension.endsWith("px") -> {
+                    val value = dimension.substring(0, dimension.length - 2).toFloatOrNull()
+                    value?.dp
+                }
+                dimension.endsWith("dp") -> {
+                    val value = dimension.substring(0, dimension.length - 2).toFloatOrNull()
+                    value?.dp
+                }
+                dimension.endsWith("sp") -> {
+                    val value = dimension.substring(0, dimension.length - 2).toFloatOrNull()
+                    value?.dp // 转换为 dp，虽然不完全准确但可用
+                }
+                dimension.endsWith("em") -> {
+                    val value = dimension.substring(0, dimension.length - 2).toFloatOrNull()
+                    value?.let { (it * 16).dp } // 假设基础字体大小为 16dp
+                }
+                dimension == "auto" -> null
+                else -> {
+                    // 尝试解析纯数字，默认为 px
+                    dimension.toFloatOrNull()?.dp
+                }
+            }
+        } catch (e: Exception) {
+            null
         }
     }
     

@@ -39,72 +39,84 @@ fun HtmlTextMessage(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     onUriClick: ((String) -> Unit)? = null,
     onImageClick: ((String) -> Unit)? = null,
-    enableCssSupport: Boolean = true
+    enableCssSupport: Boolean = true,
+    useAdvancedRenderer: Boolean = false
 ) {
-    val parsed = htmlToAnnotatedStringWithImages(
-        html = html,
-        urlSpanStyle = urlSpanStyle,
-        colorMapping = colorMapping,
-        enableCssSupport = enableCssSupport
-    )
-    val annotatedString = parsed.annotatedString
-
-    val density = LocalDensity.current
-    val placeholderSizeSp = with(density) { 220.dp.toSp() }
-
-    // 从 AnnotatedString 中提取内联内容注解并构建 InlineTextContent 映射
-    val inlineContentAnnotations = annotatedString.getStringAnnotations("inlineContent", 0, annotatedString.length)
-    val imageInlineContent: Map<String, InlineTextContent> = inlineContentAnnotations.associate { annotation ->
-        val id = annotation.item
-        val src = parsed.inlineImages[id] ?: ""
-        id to InlineTextContent(
-            placeholder = Placeholder(
-                width = placeholderSizeSp,
-                height = placeholderSizeSp,
-                placeholderVerticalAlign = PlaceholderVerticalAlign.AboveBaseline
-            )
-        ) {
-            val context = LocalContext.current
-            val imageRequest = if (src.contains("jwznb.com", ignoreCase = true)) {
-                ImageRequest.Builder(context)
-                    .data(src)
-                    .addHeader("Referer", "https://myapp.jwznb.com")
-                    .build()
-            } else {
-                src
-            }
-
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = "图片",
-                modifier = Modifier
-                    .size(220.dp)
-                    .clickable(enabled = onImageClick != null) {
-                        onImageClick?.invoke(src)
-                    },
-                contentScale = ContentScale.Fit
-            )
-        }
-    }
-
-    val mergedInlineContent = if (inlineContent.isEmpty()) imageInlineContent else (inlineContent + imageInlineContent)
-
-    SelectionContainer {
-        BaseHtmlText(
+    if (useAdvancedRenderer) {
+        // 使用高级渲染器处理复杂的 CSS 布局
+        AdvancedHtmlRenderer(
+            html = html,
             modifier = modifier,
-            annotatedString = annotatedString,
-            linkBoxModifier = linkBoxModifier,
-            onTextLayout = onTextLayout,
-            onUriClick = onUriClick,
-        ) { textModifier, onLayout ->
-            Text(
-                text = annotatedString,
-                modifier = textModifier,
-                color = color,
-                style = style,
-                inlineContent = mergedInlineContent,
-                onTextLayout = onLayout,
-            )
+            onImageClick = onImageClick,
+            onLinkClick = onUriClick
+        )
+    } else {
+        // 使用传统的 AnnotatedString 渲染器
+        val parsed = htmlToAnnotatedStringWithImages(
+            html = html,
+            urlSpanStyle = urlSpanStyle,
+            colorMapping = colorMapping,
+            enableCssSupport = enableCssSupport
+        )
+        val annotatedString = parsed.annotatedString
+
+        val density = LocalDensity.current
+        val placeholderSizeSp = with(density) { 220.dp.toSp() }
+
+        // 从 AnnotatedString 中提取内联内容注解并构建 InlineTextContent 映射
+        val inlineContentAnnotations = annotatedString.getStringAnnotations("inlineContent", 0, annotatedString.length)
+        val imageInlineContent: Map<String, InlineTextContent> = inlineContentAnnotations.associate { annotation ->
+            val id = annotation.item
+            val src = parsed.inlineImages[id] ?: ""
+            id to InlineTextContent(
+                placeholder = Placeholder(
+                    width = placeholderSizeSp,
+                    height = placeholderSizeSp,
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.AboveBaseline
+                )
+            ) {
+                val context = LocalContext.current
+                val imageRequest = if (src.contains("jwznb.com", ignoreCase = true)) {
+                    ImageRequest.Builder(context)
+                        .data(src)
+                        .addHeader("Referer", "https://myapp.jwznb.com")
+                        .build()
+                } else {
+                    src
+                }
+
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = "图片",
+                    modifier = Modifier
+                        .size(220.dp)
+                        .clickable(enabled = onImageClick != null) {
+                            onImageClick?.invoke(src)
+                        },
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+
+        val mergedInlineContent = if (inlineContent.isEmpty()) imageInlineContent else (inlineContent + imageInlineContent)
+
+        SelectionContainer {
+            BaseHtmlText(
+                modifier = modifier,
+                annotatedString = annotatedString,
+                linkBoxModifier = linkBoxModifier,
+                onTextLayout = onTextLayout,
+                onUriClick = onUriClick,
+            ) { textModifier, onLayout ->
+                Text(
+                    text = annotatedString,
+                    modifier = textModifier,
+                    color = color,
+                    style = style,
+                    inlineContent = mergedInlineContent,
+                    onTextLayout = onLayout,
+                )
+            }
         }
     }
 }

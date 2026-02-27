@@ -63,7 +63,8 @@ object UnifiedLinkHandler {
                     handleWebArticleLink(context, url)
                 }
                 else -> {
-                    Log.w(TAG, "Unknown link type: $url")
+                    // 对于非云湖内链，尝试在外部浏览器中打开
+                    handleExternalLink(context, url)
                 }
             }
         } catch (e: Exception) {
@@ -159,6 +160,40 @@ object UnifiedLinkHandler {
         if (!handled) {
             Log.w(TAG, "Failed to handle web article link: $url")
             android.widget.Toast.makeText(context, "无法打开文章链接", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * 处理外部链接，在系统浏览器中打开
+     */
+    private fun handleExternalLink(context: Context, url: String) {
+        try {
+            Log.d(TAG, "Opening external link in browser: $url")
+            
+            // 确保 URL 有正确的协议
+            val finalUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                "https://$url"
+            } else {
+                url
+            }
+            
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // 确保在外部浏览器中打开，而不是应用内
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            }
+            
+            // 检查是否有可用的浏览器应用
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                Log.d(TAG, "Successfully opened external link: $finalUrl")
+            } else {
+                Log.w(TAG, "No browser app available to handle: $finalUrl")
+                android.widget.Toast.makeText(context, "没有可用的浏览器应用", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open external link: $url", e)
+            android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 }

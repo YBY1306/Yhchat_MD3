@@ -832,13 +832,13 @@ fun ChatScreen(
                     items(
                         count = reversedMessages.size,
                         key = { index -> 
-                            // 使用多个字段组合确保key的唯一性，包括索引位置
+                            // 极高唯一性的 Key 方案：组合消息ID、发送者ID、时间戳、索引以及内容的 Hash
+                            // 确保在各种极端数据（如消息重发、本地缓存冲突、分页加载）下都不会碰撞
                             val message = reversedMessages[index]
-                            if (message.msgId.isNotBlank()) {
-                                message.msgId
-                            } else {
-                                "${message.sendTime}_${message.sender.chatId}_$index"
-                            }
+                            val contentHash = message.content.hashCode()
+                            val msgId = if (message.msgId.isNotBlank()) message.msgId else "local_${message.sendTime}"
+                            
+                            "${msgId}_${message.sender.chatId}_${message.sendTime}_${contentHash}_${index}"
                         },
                         contentType = { index ->
                             reversedMessages[index].contentType
@@ -4861,6 +4861,9 @@ private suspend fun generateMessagesImage(
         }
     }
 
+    // 强制使用软件渲染层，必须在 measure/layout 之前设置效果最佳
+    composeView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+
     composeView.measure(
         android.view.View.MeasureSpec.makeMeasureSpec(imageWidth, android.view.View.MeasureSpec.EXACTLY),
         android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
@@ -4869,15 +4872,13 @@ private suspend fun generateMessagesImage(
 
     composeView.post {
         try {
-            // 禁用硬件加速以避免 "software rendering doesn't support hardware bitmaps" 错误
-            composeView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
-            
             val bitmap = Bitmap.createBitmap(
                 composeView.measuredWidth,
                 composeView.measuredHeight,
                 Bitmap.Config.ARGB_8888
             )
             val canvas = android.graphics.Canvas(bitmap)
+            // 确保绘制时也不使用硬件加速
             composeView.draw(canvas)
             completableDeferred.complete(bitmap)
         } catch (e: Exception) {

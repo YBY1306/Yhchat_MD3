@@ -473,6 +473,15 @@ fun ChatInputBar(
                             .weight(1f)
                             .heightIn(min = 36.dp, max = 90.dp)
                             .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .pointerInput(Unit) {
+                                // 针对大屏/悬浮键盘模式的修复：
+                                // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
+                                // 显式监听点击事件，强制请求焦点并弹出键盘。
+                                detectTapGestures {
+                                    focusRequester?.requestFocus()
+                                    keyboardController?.show()
+                                }
+                            }
                             .onFocusChanged { state ->
                                 if (state.isFocused) {
                                     showExpressionPicker = false

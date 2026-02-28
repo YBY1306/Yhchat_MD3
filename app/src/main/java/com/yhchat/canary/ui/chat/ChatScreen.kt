@@ -2794,6 +2794,7 @@ private fun MessageContentView(
     isMyMessage: Boolean,
     conversationChatType: Int = 1,
     modifier: Modifier = Modifier,
+    enableHardware: Boolean = true, // 控制是否允许硬件位图
     onImageClick: (String) -> Unit = {},
     onLongClick: () -> Unit = {},
     onQuoteMessageClick: (String) -> Unit = {},
@@ -2862,7 +2863,8 @@ private fun MessageContentView(
                         AsyncImage(
                         model = ImageUtils.createImageRequest(
                             context = LocalContext.current,
-                            url = imageUrl
+                            url = imageUrl,
+                            enableHardware = enableHardware
                         ),
                             contentDescription = "图片",
                             modifier = Modifier
@@ -3014,7 +3016,8 @@ private fun MessageContentView(
                     AsyncImage(
                         model = ImageUtils.createStickerImageRequest(
                             context = context,
-                            url = imageUrl
+                            url = imageUrl,
+                            enableHardware = enableHardware
                         ),
                         contentDescription = when {
                             isPersonalExpression -> "个人收藏表情"
@@ -3056,7 +3059,8 @@ private fun MessageContentView(
                         AsyncImage(
                             model = ImageUtils.createStickerImageRequest(
                                 context = context,
-                                url = fullUrl
+                                url = fullUrl,
+                                enableHardware = enableHardware
                             ),
                             contentDescription = "表情",
                             modifier = Modifier
@@ -4934,7 +4938,8 @@ private fun RealMessageItemForScreenshot(
         AsyncImage(
             model = ImageUtils.createAvatarImageRequest(
                 context = LocalContext.current,
-                url = message.sender.avatarUrl
+                url = message.sender.avatarUrl,
+                enableHardware = false // 截图模式下禁用硬件位图，防止软件渲染冲突
             ),
             contentDescription = message.sender.name,
             modifier = Modifier
@@ -5127,6 +5132,7 @@ private fun MessageContentForScreenshot(
         isMyMessage = false, // 截图中统一显示为对方消息
         conversationChatType = 2, // 假设为群聊
         modifier = modifier,
+        enableHardware = false, // 强制禁用硬件位图
         onImageClick = { }, // 截图中不需要交互
         onLongClick = { }, // 截图中不需要交互
         onQuoteMessageClick = { }, // 截图中不需要交互

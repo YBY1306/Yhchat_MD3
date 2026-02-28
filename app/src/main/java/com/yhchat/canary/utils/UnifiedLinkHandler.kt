@@ -159,16 +159,16 @@ object UnifiedLinkHandler {
         val handled = com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, url)
         if (!handled) {
             Log.w(TAG, "Failed to handle web article link: $url")
-            android.widget.Toast.makeText(context, "无法打开文章链接", android.widget.Toast.LENGTH_SHORT).show()
+            handleExternalLink(context, url)
         }
     }
     
     /**
-     * 处理外部链接，在系统浏览器中打开
+     * 处理外部链接，尝试在 WebViewActivity 中打开（如果适用），否则在系统浏览器中打开
      */
     private fun handleExternalLink(context: Context, url: String) {
         try {
-            Log.d(TAG, "Opening external link in browser: $url")
+            Log.d(TAG, "Opening external link: $url")
             
             // 确保 URL 有正确的协议
             val finalUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -176,21 +176,11 @@ object UnifiedLinkHandler {
             } else {
                 url
             }
+
+            // 统一使用 WebViewActivity 打开外部链接，它内部会处理是否需要跳转到外部浏览器
+            com.yhchat.canary.ui.webview.WebViewActivity.start(context, finalUrl)
+            Log.d(TAG, "Started WebViewActivity for link: $finalUrl")
             
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // 确保在外部浏览器中打开，而不是应用内
-                addCategory(Intent.CATEGORY_BROWSABLE)
-            }
-            
-            // 检查是否有可用的浏览器应用
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-                Log.d(TAG, "Successfully opened external link: $finalUrl")
-            } else {
-                Log.w(TAG, "No browser app available to handle: $finalUrl")
-                android.widget.Toast.makeText(context, "没有可用的浏览器应用", android.widget.Toast.LENGTH_SHORT).show()
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to open external link: $url", e)
             android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()

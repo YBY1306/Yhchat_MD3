@@ -12,19 +12,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.mohamedrejeb.ksoup.html.parser.KsoupHtmlHandler
 import com.mohamedrejeb.ksoup.html.parser.KsoupHtmlParser
+import com.yhchat.canary.utils.UnifiedLinkHandler
+import android.annotation.SuppressLint
 
 /**
  * 高级 HTML 渲染器，支持复杂的 CSS 布局
@@ -55,6 +65,22 @@ fun AdvancedHtmlRenderer(
 sealed class HtmlElement {
     data class TextElement(
         val text: String,
+        val style: CssStyle = CssStyle()
+    ) : HtmlElement()
+    
+    data class ListElement(
+        val tag: String, // "ul" or "ol"
+        val children: List<HtmlElement>,
+        val style: CssStyle = CssStyle()
+    ) : HtmlElement()
+    
+    data class ListItemElement(
+        val children: List<HtmlElement>,
+        val style: CssStyle = CssStyle()
+    ) : HtmlElement()
+    
+    data class BlockquoteElement(
+        val children: List<HtmlElement>,
         val style: CssStyle = CssStyle()
     ) : HtmlElement()
     
@@ -110,6 +136,15 @@ fun RenderHtmlElement(
         is HtmlElement.DetailsElement -> {
             RenderDetailsElement(element, onImageClick, onLinkClick)
         }
+        is HtmlElement.ListElement -> {
+            RenderListElement(element, onImageClick, onLinkClick)
+        }
+        is HtmlElement.ListItemElement -> {
+            RenderListItemElement(element, onImageClick, onLinkClick)
+        }
+        is HtmlElement.BlockquoteElement -> {
+            RenderBlockquoteElement(element, onImageClick, onLinkClick)
+        }
     }
 }
 
@@ -122,18 +157,65 @@ fun RenderTextElement(element: HtmlElement.TextElement) {
     
     Text(
         text = element.text,
-        color = style.color ?: Color.Unspecified,
-        fontSize = style.fontSize ?: 14.sp,
-        fontWeight = style.fontWeight ?: FontWeight.Normal,
-        fontStyle = style.fontStyle ?: androidx.compose.ui.text.font.FontStyle.Normal,
-        textDecoration = style.textDecoration ?: TextDecoration.None,
+        style = TextStyle(
+            color = style.color ?: Color.Unspecified,
+            fontSize = style.fontSize ?: 14.sp,
+            fontWeight = style.fontWeight ?: FontWeight.Normal,
+            fontStyle = style.fontStyle ?: androidx.compose.ui.text.font.FontStyle.Normal,
+            textDecoration = style.textDecoration ?: TextDecoration.None,
+            textAlign = style.textAlign ?: TextAlign.Start,
+            lineHeight = style.lineHeight ?: TextUnit.Unspecified,
+            fontFamily = when (style.fontFamily?.lowercase()) {
+                "serif" -> FontFamily.Serif
+                "sans-serif" -> FontFamily.SansSerif
+                "monospace" -> FontFamily.Monospace
+                "cursive" -> FontFamily.Cursive
+                else -> FontFamily.Default
+            },
+            shadow = style.boxShadow?.let {
+                Shadow(
+                    color = Color.Black.copy(alpha = 0.1f),
+                    offset = Offset(0f, 2f),
+                    blurRadius = 4f
+                )
+            }
+        ),
+        overflow = if (style.wordWrap == "break-word") androidx.compose.ui.text.style.TextOverflow.Clip else androidx.compose.ui.text.style.TextOverflow.Visible,
+        softWrap = true,
         modifier = Modifier
             .then(
-                if (style.backgroundColor != null) {
+                if (style.width != null) Modifier.width(style.width) else Modifier
+            )
+            .then(
+                if (style.maxWidth != null) Modifier.widthIn(max = style.maxWidth) else Modifier
+            )
+            .then(
+                if (style.backgroundGradient != null) {
+                    Modifier.background(
+                        brush = Brush.linearGradient(style.backgroundGradient),
+                        shape = RoundedCornerShape(style.borderRadius ?: 0.dp)
+                    )
+                } else if (style.backgroundColor != null) {
                     Modifier.background(
                         style.backgroundColor,
                         RoundedCornerShape(style.borderRadius ?: 0.dp)
                     )
+                } else Modifier
+            )
+            .then(
+                if (style.border != null || style.borderTop != null || style.borderBottom != null || style.borderLeft != null || style.borderRight != null) {
+                    Modifier.drawBehind {
+                        // 绘制整体边框
+                        style.border?.let {
+                            val color = parseBorderColor(it)
+                            drawRect(color = color, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
+                        }
+                        // 绘制分边框
+                        style.borderTop?.let { drawLine(parseBorderColor(it), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) }
+                        style.borderBottom?.let { drawLine(parseBorderColor(it), Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+                        style.borderLeft?.let { drawLine(parseBorderColor(it), Offset(0f, 0f), Offset(0f, size.height), 3.dp.toPx()) }
+                        style.borderRight?.let { drawLine(parseBorderColor(it), Offset(size.width, 0f), Offset(size.width, size.height), 1.dp.toPx()) }
+                    }
                 } else Modifier
             )
             .padding(
@@ -174,16 +256,23 @@ fun RenderImageElement(
             } else if (style.height != null) {
                 Modifier.height(style.height)
             } else {
-                Modifier.size(36.dp) // 默认大小
+                Modifier.widthIn(max = 200.dp) // 限制最大宽度
             }
         )
         .then(
+            if (style.minWidth != null) Modifier.widthIn(min = style.minWidth) else Modifier
+        )
+        .then(
+            if (style.minHeight != null) Modifier.heightIn(min = style.minHeight) else Modifier
+        )
+        .then(
             if (style.borderRadius != null) {
-                if (style.borderRadius == 50.dp || element.src.contains("qlogo.cn")) {
-                    Modifier.clip(CircleShape)
-                } else {
-                    Modifier.clip(RoundedCornerShape(style.borderRadius))
-                }
+                Modifier.clip(RoundedCornerShape(style.borderRadius))
+            } else Modifier
+        )
+        .then(
+            if (style.boxShadow != null) {
+                Modifier.padding(4.dp) // 为阴影留出空间
             } else Modifier
         )
         .then(
@@ -196,13 +285,19 @@ fun RenderImageElement(
         model = imageRequest,
         contentDescription = element.alt.ifEmpty { "图片" },
         modifier = imageModifier,
-        contentScale = ContentScale.Crop
+        contentScale = when (style.objectFit) {
+            "cover" -> ContentScale.Crop
+            "contain" -> ContentScale.Fit
+            "fill" -> ContentScale.FillBounds
+            else -> if (style.width != null && style.height != null) ContentScale.Crop else ContentScale.Fit
+        }
     )
 }
 
 /**
  * 渲染容器元素
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RenderContainerElement(
     element: HtmlElement.ContainerElement,
@@ -213,11 +308,45 @@ fun RenderContainerElement(
     
     val containerModifier = Modifier
         .then(
-            if (style.backgroundColor != null) {
+            if (style.width != null) Modifier.width(style.width) else Modifier
+        )
+        .then(
+            if (style.maxWidth != null) Modifier.widthIn(max = style.maxWidth) else Modifier
+        )
+        .then(
+            if (style.minWidth != null) Modifier.widthIn(min = style.minWidth) else Modifier
+        )
+        .then(
+            if (style.height != null) Modifier.height(style.height) else Modifier
+        )
+        .then(
+            if (style.minHeight != null) Modifier.heightIn(min = style.minHeight) else Modifier
+        )
+        .then(
+            if (style.backgroundGradient != null) {
+                Modifier.background(
+                    brush = Brush.linearGradient(style.backgroundGradient),
+                    shape = RoundedCornerShape(style.borderRadius ?: 0.dp)
+                )
+            } else if (style.backgroundColor != null) {
                 Modifier.background(
                     style.backgroundColor,
                     RoundedCornerShape(style.borderRadius ?: 0.dp)
                 )
+            } else Modifier
+        )
+        .then(
+            if (style.border != null || style.borderTop != null || style.borderBottom != null || style.borderLeft != null || style.borderRight != null) {
+                Modifier.drawBehind {
+                    style.border?.let {
+                        val color = parseBorderColor(it)
+                        drawRect(color = color, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
+                    }
+                    style.borderTop?.let { drawLine(parseBorderColor(it), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) }
+                    style.borderBottom?.let { drawLine(parseBorderColor(it), Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+                    style.borderLeft?.let { drawLine(parseBorderColor(it), Offset(0f, 0f), Offset(0f, size.height), 3.dp.toPx()) }
+                    style.borderRight?.let { drawLine(parseBorderColor(it), Offset(size.width, 0f), Offset(size.width, size.height), 1.dp.toPx()) }
+                }
             } else Modifier
         )
         .padding(
@@ -240,32 +369,170 @@ fun RenderContainerElement(
     
     when {
         style.display == "flex" -> {
-            Row(
-                modifier = containerModifier,
-                verticalAlignment = when (style.alignItems) {
-                    "flex-start" -> Alignment.Top
-                    "center" -> Alignment.CenterVertically
-                    "flex-end" -> Alignment.Bottom
-                    else -> Alignment.Top
+            if (style.flexWrap == "wrap") {
+                FlowRow(
+                    modifier = containerModifier,
+                    horizontalArrangement = when (style.justifyContent) {
+                        "center" -> Arrangement.Center
+                        "space-between" -> Arrangement.SpaceBetween
+                        else -> Arrangement.Start
+                    },
+                    verticalArrangement = Arrangement.spacedBy(style.gap ?: 0.dp)
+                ) {
+                    element.children.forEach { child ->
+                        val childModifier = if (child is HtmlElement.LinkElement && child.style.display == "block") {
+                            Modifier.fillMaxWidth()
+                        } else Modifier
+                        
+                        Box(modifier = childModifier) {
+                            RenderHtmlElement(child, onImageClick, onLinkClick)
+                        }
+                        if (style.gap != null && child != element.children.last()) {
+                            Spacer(modifier = Modifier.size(style.gap))
+                        }
+                    }
                 }
-            ) {
-                element.children.forEach { child ->
-                    val childModifier = if (child is HtmlElement.ContainerElement && child.style.flex != null) {
-                        Modifier.weight(child.style.flex)
-                    } else Modifier
-                    
-                    Box(modifier = childModifier) {
-                        RenderHtmlElement(child, onImageClick, onLinkClick)
+            } else if (style.flexDirection == "column") {
+                Column(
+                    modifier = containerModifier,
+                    verticalArrangement = if (style.justifyContent == "space-between") Arrangement.SpaceBetween else Arrangement.Top,
+                    horizontalAlignment = when (style.alignItems) {
+                        "center" -> Alignment.CenterHorizontally
+                        "flex-end" -> Alignment.End
+                        else -> Alignment.Start
+                    }
+                ) {
+                    element.children.forEach { child ->
+                        val childModifier = if (child is HtmlElement.ContainerElement && child.style.flex != null) {
+                            Modifier.weight(child.style.flex)
+                        } else if (child is HtmlElement.LinkElement && child.style.display == "block") {
+                            Modifier.fillMaxWidth()
+                        } else Modifier
+                        
+                        Box(modifier = childModifier) {
+                            RenderHtmlElement(child, onImageClick, onLinkClick)
+                        }
+                        if (style.gap != null && child != element.children.last()) {
+                            Spacer(modifier = Modifier.size(style.gap))
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = containerModifier,
+                    verticalAlignment = when (style.alignItems) {
+                        "center" -> Alignment.CenterVertically
+                        "flex-end" -> Alignment.Bottom
+                        else -> Alignment.Top
+                    },
+                    horizontalArrangement = when (style.justifyContent) {
+                        "center" -> Arrangement.Center
+                        "space-between" -> Arrangement.SpaceBetween
+                        else -> Arrangement.Start
+                    }
+                ) {
+                    element.children.forEach { child ->
+                        val childModifier = if (child is HtmlElement.ContainerElement && child.style.flex != null) {
+                            Modifier.weight(child.style.flex)
+                        } else if (child is HtmlElement.LinkElement && child.style.display == "block") {
+                            Modifier.fillMaxWidth()
+                        } else Modifier
+                        
+                        Box(modifier = childModifier) {
+                            RenderHtmlElement(child, onImageClick, onLinkClick)
+                        }
+                        if (style.gap != null && child != element.children.last()) {
+                            Spacer(modifier = Modifier.size(style.gap))
+                        }
                     }
                 }
             }
         }
         else -> {
-            Column(modifier = containerModifier) {
+            Column(
+                modifier = containerModifier,
+                horizontalAlignment = when (element.style.textAlign) {
+                    TextAlign.Center -> Alignment.CenterHorizontally
+                    TextAlign.Right -> Alignment.End
+                    else -> Alignment.Start
+                }
+            ) {
                 element.children.forEach { child ->
                     RenderHtmlElement(child, onImageClick, onLinkClick)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun RenderListElement(
+    element: HtmlElement.ListElement,
+    onImageClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
+) {
+    val style = element.style
+    Column(
+        modifier = Modifier
+            .padding(
+                top = style.paddingTop ?: style.padding ?: 0.dp,
+                bottom = style.paddingBottom ?: style.padding ?: 0.dp,
+                start = style.paddingLeft ?: style.padding ?: 8.dp,
+                end = style.paddingRight ?: style.padding ?: 0.dp
+            )
+    ) {
+        element.children.forEach { child ->
+            RenderHtmlElement(child, onImageClick, onLinkClick)
+        }
+    }
+}
+
+@Composable
+fun RenderListItemElement(
+    element: HtmlElement.ListItemElement,
+    onImageClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Text("• ", color = element.style.color ?: Color.Unspecified)
+        Column {
+            element.children.forEach { child ->
+                RenderHtmlElement(child, onImageClick, onLinkClick)
+            }
+        }
+    }
+}
+
+@Composable
+fun RenderBlockquoteElement(
+    element: HtmlElement.BlockquoteElement,
+    onImageClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
+) {
+    val style = element.style
+    Column(
+        modifier = Modifier
+            .drawBehind {
+                val color = style.borderLeft?.let { parseBorderColor(it) } ?: Color(0xFFEEEEEE)
+                drawLine(
+                    color = color,
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 3.dp.toPx()
+                )
+            }
+            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+            .then(
+                if (style.marginTop != null || style.marginBottom != null || style.margin != null) {
+                    Modifier.padding(
+                        top = style.marginTop ?: style.margin ?: 0.dp,
+                        bottom = style.marginBottom ?: style.margin ?: 0.dp
+                    )
+                } else Modifier
+            )
+    ) {
+        element.children.forEach { child ->
+            RenderHtmlElement(child, onImageClick, onLinkClick)
         }
     }
 }
@@ -281,33 +548,56 @@ fun RenderLinkElement(
 ) {
     val style = element.style
     
+    val linkModifier = Modifier
+        .then(
+            if (style.display == "block") Modifier.fillMaxWidth() else Modifier
+        )
+        .clickable { onLinkClick?.invoke(element.href) }
+        .then(
+            if (style.backgroundGradient != null) {
+                Modifier.background(
+                    brush = Brush.linearGradient(style.backgroundGradient),
+                    shape = RoundedCornerShape(style.borderRadius ?: 0.dp)
+                )
+            } else if (style.backgroundColor != null) {
+                Modifier.background(
+                    style.backgroundColor,
+                    RoundedCornerShape(style.borderRadius ?: 0.dp)
+                )
+            } else Modifier
+        )
+        .then(
+            if (style.border != null) {
+                Modifier.border(
+                    width = 1.dp,
+                    color = Color(0xFFE8E0D5),
+                    shape = RoundedCornerShape(style.borderRadius ?: 0.dp)
+                )
+            } else Modifier
+        )
+        .padding(
+            top = style.paddingTop ?: style.padding ?: 0.dp,
+            bottom = style.paddingBottom ?: style.padding ?: 0.dp,
+            start = style.paddingLeft ?: style.padding ?: 0.dp,
+            end = style.paddingRight ?: style.padding ?: 0.dp
+        )
+    
     Column(
-        modifier = Modifier
-            .clickable { onLinkClick?.invoke(element.href) }
-            .then(
-                if (style.backgroundColor != null) {
-                    Modifier.background(
-                        style.backgroundColor,
-                        RoundedCornerShape(style.borderRadius ?: 0.dp)
-                    )
-                } else Modifier
-            )
-            .padding(
-                top = style.paddingTop ?: style.padding ?: 0.dp,
-                bottom = style.paddingBottom ?: style.padding ?: 0.dp,
-                start = style.paddingLeft ?: style.padding ?: 0.dp,
-                end = style.paddingRight ?: style.padding ?: 0.dp
-            )
+        modifier = linkModifier,
+        horizontalAlignment = if (style.display == "block") Alignment.Start else Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         element.children.forEach { child ->
-            // 为链接内的文本元素添加下划线样式
+            // 为链接内的文本元素应用样式
             when (child) {
                 is HtmlElement.TextElement -> {
                     RenderTextElement(
                         child.copy(
                             style = child.style.copy(
-                                color = child.style.color ?: MaterialTheme.colorScheme.primary,
-                                textDecoration = TextDecoration.Underline
+                                color = child.style.color ?: if (style.backgroundColor != null) Color.White else MaterialTheme.colorScheme.primary,
+                                textDecoration = if (style.textDecoration == TextDecoration.None) TextDecoration.None else TextDecoration.Underline,
+                                fontWeight = style.fontWeight ?: child.style.fontWeight,
+                                fontSize = style.fontSize ?: child.style.fontSize
                             )
                         )
                     )
@@ -459,6 +749,12 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                         detailsStack.add(detailsContext)
                         tagStack.add(lowerName)
                     }
+                    "blockquote" -> {
+                        val children = mutableListOf<HtmlElement>()
+                        elementStack.add(children)
+                        styleStack.add(cssStyle)
+                        tagStack.add(lowerName)
+                    }
                     "summary" -> {
                         if (detailsStack.isNotEmpty()) {
                             val children = mutableListOf<HtmlElement>()
@@ -467,10 +763,38 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             tagStack.add(lowerName)
                         }
                     }
-                    "div", "p", "span", "strong" -> {
+                    "br" -> {
+                        val textElement = HtmlElement.TextElement("\n")
+                        if (detailsStack.isNotEmpty() && 
+                            (tagStack.isEmpty() || tagStack.last() != "summary")) {
+                            detailsStack.last().content.add(textElement)
+                        } else {
+                            elementStack.last().add(textElement)
+                        }
+                    }
+                    "h1", "h2", "h3", "h4", "h5", "h6", "div", "p", "span", "strong", "ul", "ol", "li" -> {
                         val children = mutableListOf<HtmlElement>()
                         elementStack.add(children)
-                        styleStack.add(cssStyle)
+                        
+                        // 应用标题默认样式
+                        val headingStyle = when (lowerName) {
+                            "h1" -> CssStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, marginBottom = 8.dp)
+                            "h2" -> CssStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, marginBottom = 6.dp)
+                            "h3" -> CssStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, marginBottom = 4.dp)
+                            "h4" -> CssStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, marginBottom = 4.dp)
+                            "h5" -> CssStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, marginBottom = 2.dp)
+                            "h6" -> CssStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, marginBottom = 2.dp)
+                            else -> CssStyle()
+                        }
+                        
+                        // 合并默认样式和内联样式
+                        val finalStyle = cssStyle.copy(
+                            fontSize = cssStyle.fontSize ?: headingStyle.fontSize,
+                            fontWeight = cssStyle.fontWeight ?: headingStyle.fontWeight,
+                            marginBottom = cssStyle.marginBottom ?: headingStyle.marginBottom
+                        )
+                        
+                        styleStack.add(finalStyle)
                         tagStack.add(lowerName)
                     }
                 }
@@ -532,7 +856,37 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             elementStack.last().add(detailsElement)
                         }
                     }
-                    "div", "p", "span", "strong" -> {
+                    "ul", "ol" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == lowerName) {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            val listElement = HtmlElement.ListElement(lowerName, children, style)
+                            
+                            if (detailsStack.isNotEmpty() && 
+                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
+                                detailsStack.last().content.add(listElement)
+                            } else {
+                                elementStack.last().add(listElement)
+                            }
+                        }
+                    }
+                    "li" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == "li") {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            val listItem = HtmlElement.ListItemElement(children, style)
+                            
+                            if (detailsStack.isNotEmpty() && 
+                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
+                                detailsStack.last().content.add(listItem)
+                            } else {
+                                elementStack.last().add(listItem)
+                            }
+                        }
+                    }
+                    "div", "p", "span", "strong", "h1", "h2", "h3", "h4", "h5", "h6" -> {
                         if (tagStack.isNotEmpty() && tagStack.last() == lowerName) {
                             tagStack.removeAt(tagStack.size - 1)
                             val style = styleStack.removeAt(styleStack.size - 1)
@@ -541,10 +895,26 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val containerElement = HtmlElement.ContainerElement(lowerName, children, style)
                             
                             // 如果在 details 内容中且不在 summary 中，添加到 details 内容
-                            if (detailsStack.isNotEmpty()) {
+                            if (detailsStack.isNotEmpty() && 
+                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
                                 detailsStack.last().content.add(containerElement)
                             } else {
                                 elementStack.last().add(containerElement)
+                            }
+                        }
+                    }
+                    "blockquote" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == "blockquote") {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            
+                            val blockquote = HtmlElement.BlockquoteElement(children, style)
+                            if (detailsStack.isNotEmpty() && 
+                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
+                                detailsStack.last().content.add(blockquote)
+                            } else {
+                                elementStack.last().add(blockquote)
                             }
                         }
                     }
@@ -557,4 +927,9 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
     parser.end()
     
     return elements
+}
+
+private fun parseBorderColor(borderStr: String): Color {
+    val parts = borderStr.split(" ")
+    return if (parts.size >= 3) CssParser.parseColor(parts[2]) ?: Color(0xFFEEEEEE) else Color(0xFFEEEEEE)
 }

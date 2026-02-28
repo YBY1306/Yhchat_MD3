@@ -23,7 +23,10 @@ data class CssStyle(
     val textDecoration: TextDecoration? = null,
     val textAlign: TextAlign? = null,
     val width: Dp? = null,
+    val maxWidth: Dp? = null,
+    val minWidth: Dp? = null,
     val height: Dp? = null,
+    val minHeight: Dp? = null,
     val margin: Dp? = null,
     val marginTop: Dp? = null,
     val marginRight: Dp? = null,
@@ -35,9 +38,24 @@ data class CssStyle(
     val paddingBottom: Dp? = null,
     val paddingLeft: Dp? = null,
     val borderRadius: Dp? = null,
+    val border: String? = null,
+    val borderTop: String? = null,
+    val borderRight: String? = null,
+    val borderBottom: String? = null,
+    val borderLeft: String? = null,
+    val boxShadow: String? = null,
+    val lineHeight: TextUnit? = null,
+    val fontFamily: String? = null,
+    val backgroundGradient: List<Color>? = null,
     val display: String? = null,
+    val flexDirection: String? = null,
     val alignItems: String? = null,
-    val flex: Float? = null
+    val gap: Dp? = null,
+    val flex: Float? = null,
+    val flexWrap: String? = null,
+    val justifyContent: String? = null,
+    val objectFit: String? = null,
+    val wordWrap: String? = null
 )
 
 /**
@@ -70,7 +88,10 @@ object CssParser {
             textDecoration = properties["text-decoration"]?.let { parseTextDecoration(it) },
             textAlign = properties["text-align"]?.let { parseTextAlign(it) },
             width = properties["width"]?.let { parseDimension(it) },
+            maxWidth = properties["max-width"]?.let { parseDimension(it) },
+            minWidth = properties["min-width"]?.let { parseDimension(it) },
             height = properties["height"]?.let { parseDimension(it) },
+            minHeight = properties["min-height"]?.let { parseDimension(it) },
             margin = properties["margin"]?.let { parseDimension(it) },
             marginTop = properties["margin-top"]?.let { parseDimension(it) },
             marginRight = properties["margin-right"]?.let { parseDimension(it) },
@@ -82,16 +103,50 @@ object CssParser {
             paddingBottom = properties["padding-bottom"]?.let { parseDimension(it) },
             paddingLeft = properties["padding-left"]?.let { parseDimension(it) },
             borderRadius = properties["border-radius"]?.let { parseDimension(it) },
+            border = properties["border"],
+            borderTop = properties["border-top"],
+            borderRight = properties["border-right"],
+            borderBottom = properties["border-bottom"],
+            borderLeft = properties["border-left"],
+            boxShadow = properties["box-shadow"],
+            lineHeight = properties["line-height"]?.let { parseFontSize(it) },
+            fontFamily = properties["font-family"],
+            backgroundGradient = properties["background"]?.let { parseGradient(it) } 
+                ?: properties["background-image"]?.let { parseGradient(it) },
             display = properties["display"],
+            flexDirection = properties["flex-direction"],
             alignItems = properties["align-items"],
-            flex = properties["flex"]?.toFloatOrNull()
+            gap = properties["gap"]?.let { parseDimension(it) },
+            flex = properties["flex"]?.toFloatOrNull(),
+            flexWrap = properties["flex-wrap"],
+            justifyContent = properties["justify-content"],
+            objectFit = properties["object-fit"],
+            wordWrap = properties["word-wrap"]
         )
+    }
+    
+    /**
+     * 解析渐变背景
+     */
+    private fun parseGradient(value: String): List<Color>? {
+        if (!value.contains("linear-gradient")) return null
+        return try {
+            val colors = mutableListOf<Color>()
+            val regex = "#[0-9a-fA-F]{3,8}|rgba?\\([^)]+\\)|[a-z]+".toRegex()
+            regex.findAll(value).forEach { match ->
+                val color = parseColor(match.value)
+                if (color != null) colors.add(color)
+            }
+            if (colors.size >= 2) colors else null
+        } catch (e: Exception) {
+            null
+        }
     }
     
     /**
      * 解析颜色值
      */
-    private fun parseColor(colorString: String): Color? {
+    fun parseColor(colorString: String): Color? {
         return try {
             val color = colorString.trim().lowercase()
             when {

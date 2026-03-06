@@ -1,42 +1,45 @@
 package com.yhchat.canary.ui.components
 
-import android.text.Spannable
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.TextPaint
-import android.text.method.LinkMovementMethod
-import android.text.style.ClickableSpan
-import android.text.style.ImageSpan
-import android.view.View
-import android.widget.TextView
-import androidx.compose.foundation.isSystemInDarkTheme
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import com.yhchat.canary.utils.UnifiedLinkHandler
-import io.noties.markwon.Markwon
-import io.noties.markwon.AbstractMarkwonPlugin
-import io.noties.markwon.MarkwonConfiguration
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.html.HtmlPlugin
-import io.noties.markwon.image.coil.CoilImagesPlugin
-import io.noties.markwon.linkify.LinkifyPlugin
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
-import coil.ImageLoader
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
-import android.os.Build
-import okhttp3.OkHttpClient
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.halilibo.richtext.markdown.Markdown
+import com.halilibo.richtext.ui.RichTextStyle
+import com.halilibo.richtext.ui.material3.Material3RichText
+import com.halilibo.richtext.ui.string.RichTextStringStyle
 
 /**
  * Markdown文本渲染组件
- * 支持Material Design 3主题，背景透明以适配消息气泡
+ *
+ * 方案：
+ * 1. 普通 Markdown 文本仍交给 Compose Rich Text 渲染
+ * 2. Markdown 图片单独提取出来，用 Compose 自己渲染
+ * 3. 这样可以精确控制图片宽度、请求头和点击预览行为
  */
 @Composable
 fun MarkdownText(
@@ -44,154 +47,440 @@ fun MarkdownText(
     modifier: Modifier = Modifier,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     backgroundColor: Color = Color.Transparent,
-    onImageClick: ((String) -> Unit)? = null
+    onImageClick: ((String) -> Unit)? = null,
+    imageReferer: String? = "https://myapp.jwznb.com"
 ) {
     val context = LocalContext.current
-    val isDarkTheme = isSystemInDarkTheme()
-    val textColorInt = textColor.toArgb()
-    val backgroundColorInt = backgroundColor.toArgb()
-    
-    val markwon = remember(context, isDarkTheme, textColorInt, onImageClick) {
-        // 创建支持GIF动画和自定义referer的ImageLoader
-        val imageLoader = ImageLoader.Builder(context)
-            .components {
-                // 根据Android版本选择合适的GIF解码器
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    add(ImageDecoderDecoder.Factory())  // Android 9+ 使用ImageDecoder，性能更好
-                } else {
-                    add(GifDecoder.Factory())  // Android 9以下使用GifDecoder
-                }
-            }
-            .okHttpClient {
-                okhttp3.OkHttpClient.Builder()
-                    .addInterceptor { chain ->
-                        val request = chain.request()
-                        val url = request.url.toString()
-                        
-                        // 为 *.jwznb.com 域名的图片添加 referer
-                        if (url.contains(".jwznb.com/")) {
-                            val newRequest = request.newBuilder()
-                                .addHeader("Referer", "https://myapp.jwznb.com")
-                                .build()
-                            chain.proceed(newRequest)
-                        } else {
-                            chain.proceed(request)
-                        }
-                    }
-                    .build()
-            }
-            .build()
-        
-        Markwon.builder(context)
-            .usePlugin(SoftBreakAddsNewLinePlugin.create())  // 支持软换行（单个回车换行）
-            .usePlugin(HtmlPlugin.create())
-            .usePlugin(CoilImagesPlugin.create(context, imageLoader))  // 使用自定义的ImageLoader支持GIF动画
-            .usePlugin(object : AbstractMarkwonPlugin() {
-                override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
-                    builder.linkResolver { view, link ->
-                        // 检查是否是图片链接
-                        if (onImageClick != null && (link.endsWith(".jpg") || link.endsWith(".jpeg") || 
-                            link.endsWith(".png") || link.endsWith(".gif") || link.endsWith(".webp"))) {
-                            onImageClick(link)
-                        } else {
-                            // 优先使用应用内链接处理器
-                            when {
-                                com.yhchat.canary.util.YunhuLinkHandler.containsYunhuLink(link) -> {
-                                    com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, link)
-                                }
-                                com.yhchat.canary.utils.ChatAddLinkHandler.isChatAddLink(link) -> {
-                                    com.yhchat.canary.utils.ChatAddLinkHandler.handleLink(context, link)
-                                }
-                                UnifiedLinkHandler.isHandleableLink(link) -> {
-                                    UnifiedLinkHandler.handleLink(context, link)
-                                }
-                                else -> {
-                                    // 使用默认浏览器打开其他链接
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
+
+    val richTextStyle = RichTextStyle(
+        stringStyle = RichTextStringStyle(
+            linkStyle = SpanStyle(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium
+            ),
+            codeStyle = SpanStyle(
+                fontFamily = FontFamily.Monospace,
+                background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                color = textColor
+            ),
+            boldStyle = SpanStyle(fontWeight = FontWeight.Bold),
+            italicStyle = SpanStyle(fontStyle = FontStyle.Italic),
+            strikethroughStyle = SpanStyle(
+                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+            )
+        ),
+        paragraphSpacing = 8.sp,
+        tableStyle = null
+    )
+
+    val segments = remember(markdown) { parseMarkdownSegments(markdown) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(backgroundColor),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        segments.forEach { segment ->
+            when (segment) {
+                is MarkdownSegment.Text -> {
+                    if (segment.content.isNotBlank()) {
+                        Material3RichText(
+                            style = richTextStyle,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Markdown(
+                                content = segment.content,
+                                onLinkClicked = { url: String ->
                                     try {
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                         context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()
+                                    } catch (_: Exception) {
                                     }
                                 }
-                            }
-                        }
-                    }
-                }
-            })
-            .usePlugin(LinkifyPlugin.create())
-            .usePlugin(StrikethroughPlugin.create())
-            .usePlugin(TablePlugin.create(context))
-            .build()
-    }
-    
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            TextView(ctx).apply {
-                // 设置链接可点击
-                movementMethod = LinkMovementMethod.getInstance()
-                setTextColor(textColorInt)
-                setBackgroundColor(backgroundColorInt)
-                textSize = 14f
-                setPadding(0, 0, 0, 0)
-                linksClickable = true
-            }
-        },
-        update = { textView ->
-            textView.setTextColor(textColorInt)
-            textView.setBackgroundColor(backgroundColorInt)
-            val spanned = markwon.toMarkdown(markdown)
-            markwon.setParsedMarkdown(textView, spanned)
-            
-            // 为图片添加点击事件
-            if (onImageClick != null) {
-                val text = textView.text
-                if (text is Spanned) {
-                    val spannable: Spannable = if (text is Spannable) {
-                        text
-                    } else {
-                        SpannableStringBuilder(text)
-                    }
-
-                    if (textView.text !== spannable) {
-                        textView.text = spannable
-                    }
-
-                    val imageSpans = spannable.getSpans(0, spannable.length, ImageSpan::class.java)
-
-                    imageSpans.forEach { span ->
-                        val start = spannable.getSpanStart(span)
-                        val end = spannable.getSpanEnd(span)
-                        val imageUrl = span.source
-
-                        if (!imageUrl.isNullOrEmpty()) {
-                            spannable.getSpans(start, end, ClickableSpan::class.java).forEach { existingSpan ->
-                                spannable.removeSpan(existingSpan)
-                            }
-
-                            val clickableSpan = object : ClickableSpan() {
-                                override fun onClick(widget: View) {
-                                    onImageClick(imageUrl)
-                                }
-
-                                override fun updateDrawState(ds: TextPaint) {
-                                    super.updateDrawState(ds)
-                                    ds.isUnderlineText = false
-                                }
-                            }
-
-                            spannable.setSpan(
-                                clickableSpan,
-                                start,
-                                end,
-                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                             )
                         }
                     }
-                    textView.movementMethod = LinkMovementMethod.getInstance()
+                }
+
+                is MarkdownSegment.Image -> {
+                    MarkdownInlineImage(
+                        url = segment.url,
+                        alt = segment.alt,
+                        imageReferer = imageReferer,
+                        onClick = { url ->
+                            onImageClick?.invoke(url) ?: run {
+                                previewImageUrl = url
+                            }
+                        }
+                    )
+                }
+
+                is MarkdownSegment.Table -> {
+                    MarkdownTableWithImages(
+                        tableMarkdown = segment.content,
+                        richTextStyle = richTextStyle,
+                        imageReferer = imageReferer,
+                        onImageClick = { url ->
+                            onImageClick?.invoke(url) ?: run {
+                                previewImageUrl = url
+                            }
+                        },
+                        onLinkClicked = { url ->
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                            }
+                        }
+                    )
                 }
             }
         }
+    }
+
+    previewImageUrl?.let { imageUrl ->
+        ImageViewer(
+            imageUrl = imageUrl,
+            onDismiss = { previewImageUrl = null }
+        )
+    }
+}
+
+@Composable
+private fun MarkdownInlineImage(
+    url: String,
+    alt: String?,
+    imageReferer: String?,
+    onClick: (String) -> Unit
+) {
+    val context = LocalContext.current
+
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(url)
+            .apply {
+                imageReferer?.let {
+                    setHeader("Referer", it)
+                }
+                setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                crossfade(true)
+            }
+            .build(),
+        contentDescription = alt ?: "Markdown图片",
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick(url) },
+        contentScale = ContentScale.FillWidth
     )
+}
+
+@Composable
+private fun MarkdownTableWithImages(
+    tableMarkdown: String,
+    richTextStyle: RichTextStyle,
+    imageReferer: String?,
+    onImageClick: (String) -> Unit,
+    onLinkClicked: (String) -> Unit
+) {
+    val tableData = remember(tableMarkdown) { parseTableData(tableMarkdown) }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        tableData.rows.forEach { row ->
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                row.cells.forEach { cell ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(4.dp),
+                        horizontalAlignment = when (cell.alignment) {
+                            TableAlignment.CENTER -> androidx.compose.ui.Alignment.CenterHorizontally
+                            TableAlignment.RIGHT -> androidx.compose.ui.Alignment.End
+                            else -> androidx.compose.ui.Alignment.Start
+                        }
+                    ) {
+                        when (cell.content) {
+                            is TableCellContent.Image -> {
+                                MarkdownInlineImage(
+                                    url = cell.content.url,
+                                    alt = cell.content.alt,
+                                    imageReferer = imageReferer,
+                                    onClick = onImageClick
+                                )
+                            }
+                            is TableCellContent.Text -> {
+                                if (cell.content.text.isNotBlank()) {
+                                    // 所有文本使用 Text 组件，支持对齐
+                                    androidx.compose.material3.Text(
+                                        text = cell.content.text,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(8.dp),
+                                        textAlign = when (cell.alignment) {
+                                            TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
+                                            TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
+                                            else -> androidx.compose.ui.text.style.TextAlign.Start
+                                        },
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private enum class TableAlignment {
+    LEFT, CENTER, RIGHT
+}
+
+private sealed interface TableCellContent {
+    data class Text(val text: String) : TableCellContent
+    data class Image(val url: String, val alt: String?) : TableCellContent
+}
+
+private data class TableCell(
+    val content: TableCellContent,
+    val alignment: TableAlignment
+)
+
+private data class TableRow(val cells: List<TableCell>)
+
+private data class TableData(val rows: List<TableRow>)
+
+private fun parseTableData(tableMarkdown: String): TableData {
+    val lines = tableMarkdown.lines().filter { it.trim().isNotBlank() }
+    if (lines.size < 2) return TableData(emptyList())
+    
+    // 解析对齐方式
+    val alignmentLine = lines.getOrNull(1)?.trim() ?: ""
+    val alignments = alignmentLine.split("|")
+        .filter { it.isNotBlank() }
+        .map { cell ->
+            val trimmed = cell.trim()
+            when {
+                trimmed.startsWith(":") && trimmed.endsWith(":") -> TableAlignment.CENTER
+                trimmed.endsWith(":") -> TableAlignment.RIGHT
+                else -> TableAlignment.LEFT
+            }
+        }
+    
+    val imageRegex = Regex("!\\[([^]]*)]\\(([^)\\s]+)(?:\\s+\"[^\"]*\")?\\)")
+    
+    val rows = mutableListOf<TableRow>()
+    
+    // 解析标题行和数据行
+    lines.forEachIndexed { index, line ->
+        if (index == 1) return@forEachIndexed // 跳过分隔符行
+        
+        val cellTexts = line.split("|")
+            .filter { it.isNotBlank() }
+            .map { it.trim() }
+        
+        val cells = cellTexts.mapIndexed { cellIndex, cellText ->
+            val alignment = alignments.getOrElse(cellIndex) { TableAlignment.LEFT }
+            
+            // 检查是否包含图片
+            val imageMatch = imageRegex.find(cellText)
+            val content = if (imageMatch != null) {
+                val alt = imageMatch.groupValues.getOrNull(1).orEmpty().ifBlank { null }
+                val url = imageMatch.groupValues.getOrNull(2).orEmpty()
+                TableCellContent.Image(url, alt)
+            } else {
+                TableCellContent.Text(cellText)
+            }
+            
+            TableCell(content, alignment)
+        }
+        
+        rows.add(TableRow(cells))
+    }
+    
+    return TableData(rows)
+}
+
+private sealed interface MarkdownSegment {
+    data class Text(val content: String) : MarkdownSegment
+    data class Image(val url: String, val alt: String?) : MarkdownSegment
+    data class Table(val content: String) : MarkdownSegment
+}
+
+private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
+    val segments = mutableListOf<MarkdownSegment>()
+    val lines = markdown.lines()
+    var i = 0
+    
+    while (i < lines.size) {
+        // 检查是否是表格的开始
+        if (i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1])) {
+            // 找到表格的所有行
+            val tableStart = i
+            i += 2 // 跳过标题行和分隔符行
+            while (i < lines.size && isTableLine(lines[i])) {
+                i++
+            }
+            
+            // 提取整个表格
+            val tableContent = lines.subList(tableStart, i).joinToString("\n")
+            segments += MarkdownSegment.Table(tableContent)
+        } else {
+            // 处理非表格内容
+            val contentStart = i
+            while (i < lines.size && !(i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1]))) {
+                i++
+            }
+            
+            val content = lines.subList(contentStart, i).joinToString("\n")
+            if (content.isNotBlank()) {
+                // 在非表格内容中提取图片
+                extractImagesFromContent(content, segments)
+            }
+        }
+    }
+    
+    if (segments.isEmpty()) {
+        segments += MarkdownSegment.Text(processLineBreaks(markdown))
+    }
+    
+    return segments
+}
+
+/**
+ * 从内容中提取图片，将图片和文本分离
+ */
+private fun extractImagesFromContent(content: String, segments: MutableList<MarkdownSegment>) {
+    val regex = Regex("!\\[([^]]*)]\\(([^)\\s]+)(?:\\s+\"[^\"]*\")?\\)")
+    var lastIndex = 0
+    
+    regex.findAll(content).forEach { match ->
+        val range = match.range
+        if (range.first > lastIndex) {
+            val textContent = content.substring(lastIndex, range.first)
+            if (textContent.isNotBlank()) {
+                segments += MarkdownSegment.Text(processLineBreaks(textContent))
+            }
+        }
+        
+        val alt = match.groupValues.getOrNull(1).orEmpty().ifBlank { null }
+        val url = match.groupValues.getOrNull(2).orEmpty()
+        if (url.isNotBlank()) {
+            segments += MarkdownSegment.Image(url = url, alt = alt)
+        }
+        
+        lastIndex = range.last + 1
+    }
+    
+    if (lastIndex < content.length) {
+        val textContent = content.substring(lastIndex)
+        if (textContent.isNotBlank()) {
+            segments += MarkdownSegment.Text(processLineBreaks(textContent))
+        }
+    }
+    
+    // 如果没有找到图片，整个内容作为文本
+    if (lastIndex == 0 && content.isNotBlank()) {
+        segments += MarkdownSegment.Text(processLineBreaks(content))
+    }
+}
+
+/**
+ * 检查是否是表格行（包含 | 符号）
+ */
+private fun isTableLine(line: String): Boolean {
+    val trimmed = line.trim()
+    return trimmed.contains("|") && trimmed.isNotBlank()
+}
+
+/**
+ * 检查是否是表格分隔符行（如 |:---:|）
+ */
+private fun isTableSeparatorLine(line: String): Boolean {
+    val trimmed = line.trim()
+    return trimmed.contains("|") &&
+           trimmed.contains("-") &&
+           trimmed.replace("|", "")
+                  .replace(":", "")
+                  .replace("-", "")
+                  .replace(" ", "")
+                  .isEmpty()
+}
+
+/**
+ * 处理文本换行，支持宽容换行
+ * 将单个换行符转换为 Markdown 硬换行（行尾加两个空格）
+ * 这样即使不按照严格的 Markdown 格式（双换行或行尾两空格），也能正确显示换行
+ */
+private fun processLineBreaks(text: String): String {
+    val lines = text.lines()
+    val result = mutableListOf<String>()
+    
+    var i = 0
+    while (i < lines.size) {
+        val line = lines[i]
+        val trimmedLine = line.trim()
+        
+        // 空行保持原样，作为段落分隔
+        if (trimmedLine.isEmpty()) {
+            result.add(line)
+            i++
+            continue
+        }
+        
+        // 检查是否是特殊 Markdown 语法行
+        val isSpecialLine = trimmedLine.startsWith("#") ||           // 标题
+                           trimmedLine.startsWith("-") ||            // 列表
+                           trimmedLine.startsWith("*") ||            // 列表或强调
+                           trimmedLine.startsWith("+") ||            // 列表
+                           trimmedLine.startsWith(">") ||            // 引用
+                           trimmedLine.startsWith("|") ||            // 表格
+                           trimmedLine.startsWith("```") ||          // 代码块
+                           trimmedLine.matches(Regex("^\\d+\\..*")) || // 有序列表
+                           line.trimEnd().endsWith("  ")             // 已有硬换行标记
+        
+        // 检查下一行是否是特殊语法行或空行
+        val nextLineIsSpecial = if (i + 1 < lines.size) {
+            val nextTrimmed = lines[i + 1].trim()
+            nextTrimmed.isEmpty() ||
+            nextTrimmed.startsWith("#") ||
+            nextTrimmed.startsWith("-") ||
+            nextTrimmed.startsWith("*") ||
+            nextTrimmed.startsWith("+") ||
+            nextTrimmed.startsWith(">") ||
+            nextTrimmed.startsWith("|") ||
+            nextTrimmed.startsWith("```") ||
+            nextTrimmed.matches(Regex("^\\d+\\..*"))
+        } else {
+            true // 最后一行
+        }
+        
+        // 如果当前行不是特殊语法，且下一行也不是特殊语法或空行，添加硬换行标记
+        if (!isSpecialLine && !nextLineIsSpecial) {
+            result.add("$line  ")
+        } else {
+            result.add(line)
+        }
+        
+        i++
+    }
+    
+    return result.joinToString("\n")
 }

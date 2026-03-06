@@ -58,23 +58,10 @@ import com.yhchat.canary.util.YunhuLinkHandler
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
-import android.widget.TextView
 import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
-import android.text.method.LinkMovementMethod
-import android.text.util.Linkify
-import io.noties.markwon.Markwon
-import io.noties.markwon.html.HtmlPlugin
-import io.noties.markwon.image.coil.CoilImagesPlugin
-import io.noties.markwon.linkify.LinkifyPlugin
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.core.MarkwonTheme
-import io.noties.markwon.AbstractMarkwonPlugin
-import io.noties.markwon.MarkwonConfiguration
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.ui.components.ImageViewer
@@ -716,92 +703,6 @@ fun CommentReplyItem(
     }
 }
 
-/**
- * Markwon Markdown渲染组件
- */
-@Composable
-fun MarkdownContent(
-    markdown: String,
-    modifier: Modifier = Modifier
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            TextView(ctx).apply {
-                val markwon = Markwon.builder(ctx)
-                    .usePlugin(SoftBreakAddsNewLinePlugin.create())  // 支持软换行（单个回车换行）
-                    .usePlugin(HtmlPlugin.create())
-                    .usePlugin(CoilImagesPlugin.create(ctx))
-                    .usePlugin(object : AbstractMarkwonPlugin() {
-                        override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
-                            builder.linkResolver { view, link ->
-                                // 处理链接点击
-                                if (UnifiedLinkHandler.isHandleableLink(link)) {
-                                    UnifiedLinkHandler.handleLink(ctx, link)
-                                } else {
-                                    // 使用默认浏览器打开其他链接
-                                    try {
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))
-                                        ctx.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(ctx, "无法打开链接", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        }
-                    })
-                    .usePlugin(LinkifyPlugin.create())
-                    .usePlugin(StrikethroughPlugin.create())
-                    .usePlugin(TablePlugin.create(ctx))
-                    .build()
-                
-                textSize = 16f
-                setPadding(0, 0, 0, 0)
-                setTextColor(textColor)
-                
-                // 设置链接可点击
-                movementMethod = LinkMovementMethod.getInstance()
-                linksClickable = true
-                
-                markwon.setMarkdown(this, markdown)
-            }
-        },
-        update = { textView ->
-            textView.setTextColor(textColor)
-            val markwon = Markwon.builder(context)
-                .usePlugin(SoftBreakAddsNewLinePlugin.create())  // 支持软换行（单个回车换行）
-                .usePlugin(HtmlPlugin.create())
-                .usePlugin(CoilImagesPlugin.create(context))
-                .usePlugin(object : AbstractMarkwonPlugin() {
-                    override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
-                        builder.linkResolver { view, link ->
-                            // 处理链接点击
-                            if (UnifiedLinkHandler.isHandleableLink(link)) {
-                                UnifiedLinkHandler.handleLink(context, link)
-                            } else {
-                                // 使用默认浏览器打开其他链接
-                                try {
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-                })
-                .usePlugin(LinkifyPlugin.create())
-                .usePlugin(StrikethroughPlugin.create())
-                .usePlugin(TablePlugin.create(context))
-                .build()
-            
-            markwon.setMarkdown(textView, markdown)
-        }
-    )
-}
 
 /**
  * 打赏对话框

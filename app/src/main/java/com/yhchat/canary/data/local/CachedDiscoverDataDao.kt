@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * 发现页面缓存数据DAO
+ * 发现页面缓存数据 DAO
  */
 @Dao
 interface CachedDiscoverDataDao {

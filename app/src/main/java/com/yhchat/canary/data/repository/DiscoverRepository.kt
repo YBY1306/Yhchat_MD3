@@ -1,7 +1,12 @@
 package com.yhchat.canary.data.repository
 
+import android.content.Context
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.api.ApiService
+import com.yhchat.canary.data.local.AppDatabase
+import com.yhchat.canary.data.local.CachedDiscoverData
 import com.yhchat.canary.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,10 +16,66 @@ import kotlinx.coroutines.withContext
  */
 class DiscoverRepository(
     private val apiService: ApiService,
-    private val tokenRepository: TokenRepository
+    private val tokenRepository: TokenRepository,
+    private val context: Context
 ) {
     companion object {
         private const val TAG = "DiscoverRepository"
+        private const val CACHE_VALIDITY_DURATION = 24 * 60 * 60 * 1000L // 1天
+    }
+
+    private val database = AppDatabase.getDatabase(context)
+    private val cachedDiscoverDataDao = database.cachedDiscoverDataDao()
+    private val gson = Gson()
+
+    /**
+     * 检查缓存是否有效
+     */
+    private fun isCacheValid(timestamp: Long): Boolean {
+        return System.currentTimeMillis() - timestamp < CACHE_VALIDITY_DURATION
+    }
+
+    /**
+     * 从缓存加载数据
+     */
+    suspend fun loadFromCache(): Pair<List<RecommendGroup>, List<RecommendBot>>? = withContext(Dispatchers.IO) {
+        try {
+            val cachedData = cachedDiscoverDataDao.getCachedData()
+            if (cachedData != null && isCacheValid(cachedData.timestamp)) {
+                val groupsType = object : TypeToken<List<RecommendGroup>>() {}.type
+                val botsType = object : TypeToken<List<RecommendBot>>() {}.type
+                val groups = gson.fromJson<List<RecommendGroup>>(cachedData.groupsJson, groupsType)
+                val bots = gson.fromJson<List<RecommendBot>>(cachedData.botsJson, botsType)
+                Log.d(TAG, "从缓存加载数据成功")
+                Pair(groups, bots)
+            } else {
+                Log.d(TAG, "缓存无效或已过期")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "从缓存加载数据失败", e)
+            null
+        }
+    }
+
+    /**
+     * 保存数据到缓存
+     */
+    suspend fun saveToCache(groups: List<RecommendGroup>, bots: List<RecommendBot>) = withContext(Dispatchers.IO) {
+        try {
+            val groupsJson = gson.toJson(groups)
+            val botsJson = gson.toJson(bots)
+            val cachedData = CachedDiscoverData(
+                id = 1,
+                groupsJson = groupsJson,
+                botsJson = botsJson,
+                timestamp = System.currentTimeMillis()
+            )
+            cachedDiscoverDataDao.insertCachedData(cachedData)
+            Log.d(TAG, "保存数据到缓存成功")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存数据到缓存失败", e)
+        }
     }
 
     /**

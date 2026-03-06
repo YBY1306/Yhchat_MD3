@@ -59,7 +59,7 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val viewModel = remember {
-        val repo = userRepository ?: com.yhchat.canary.data.repository.UserRepository(com.yhchat.canary.data.api.ApiClient.apiService, null)
+        val repo = userRepository ?: com.yhchat.canary.data.repository.UserRepository(com.yhchat.canary.data.api.ApiClient.apiService, null, context)
         if (tokenRepository != null) {
             repo.setTokenRepository(tokenRepository)
         }

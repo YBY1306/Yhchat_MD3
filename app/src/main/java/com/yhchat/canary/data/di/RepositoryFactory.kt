@@ -118,7 +118,8 @@ object RepositoryFactory {
      * 获取用户仓库实例
      */
     fun getUserRepository(context: Context): UserRepository {
-        return UserRepository(apiService, getTokenRepository(context))
+        val repository = UserRepository(apiService, getTokenRepository(context), context)
+        return repository
     }
     
     /**
@@ -154,7 +155,8 @@ object RepositoryFactory {
     fun getDiscoverRepository(context: Context): com.yhchat.canary.data.repository.DiscoverRepository {
         return com.yhchat.canary.data.repository.DiscoverRepository(
             apiService = apiService,
-            tokenRepository = getTokenRepository(context)
+            tokenRepository = getTokenRepository(context),
+            context = context
         )
     }
     

@@ -1,12 +1,18 @@
 package com.yhchat.canary.data.repository
 
+import android.content.Context
 import android.util.Log
+import com.google.gson.Gson
 import com.yhchat.canary.data.api.ApiService
+import com.yhchat.canary.data.local.AppDatabase
+import com.yhchat.canary.data.local.CachedProfileData
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
 // import com.google.protobuf.util.JsonFormat
 import yh_user.User as ProtoUser
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -21,14 +27,76 @@ import javax.inject.Singleton
 @Singleton
 class UserRepository @Inject constructor(
     private val apiService: ApiService,
-    private var tokenRepository: TokenRepository? = null
+    private var tokenRepository: TokenRepository? = null,
+    private var context: Context? = null
 ) {
+    
+    companion object {
+        private const val TAG = "UserRepository"
+        private const val CACHE_VALIDITY_DURATION = 24 * 60 * 60 * 1000L // 1天
+    }
     
     // Web API 服务，用于获取用户、群聊和机器人信息
     private val webApiService = com.yhchat.canary.data.api.ApiClient.webApiService
+    private val gson = Gson()
 
     fun setTokenRepository(tokenRepository: TokenRepository?) {
         this.tokenRepository = tokenRepository
+    }
+    
+    fun setContext(context: Context?) {
+        this.context = context
+    }
+    
+    /**
+     * 检查缓存是否有效
+     */
+    private fun isCacheValid(timestamp: Long): Boolean {
+        return System.currentTimeMillis() - timestamp < CACHE_VALIDITY_DURATION
+    }
+    
+    /**
+     * 从缓存加载用户资料
+     */
+    suspend fun loadProfileFromCache(): UserProfile? = withContext(Dispatchers.IO) {
+        try {
+            context?.let { ctx ->
+                val database = AppDatabase.getDatabase(ctx)
+                val cachedData = database.cachedProfileDataDao().getCachedData()
+                if (cachedData != null && isCacheValid(cachedData.timestamp)) {
+                    val profile = gson.fromJson(cachedData.profileJson, UserProfile::class.java)
+                    Log.d(TAG, "从缓存加载用户资料成功")
+                    profile
+                } else {
+                    Log.d(TAG, "用户资料缓存无效或已过期")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "从缓存加载用户资料失败", e)
+            null
+        }
+    }
+    
+    /**
+     * 保存用户资料到缓存
+     */
+    suspend fun saveProfileToCache(profile: UserProfile) = withContext(Dispatchers.IO) {
+        try {
+            context?.let { ctx ->
+                val database = AppDatabase.getDatabase(ctx)
+                val profileJson = gson.toJson(profile)
+                val cachedData = CachedProfileData(
+                    id = 1,
+                    profileJson = profileJson,
+                    timestamp = System.currentTimeMillis()
+                )
+                database.cachedProfileDataDao().insertCachedData(cachedData)
+                Log.d(TAG, "保存用户资料到缓存成功")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "保存用户资料到缓存失败", e)
+        }
     }
     
     private suspend fun getToken(): String? {

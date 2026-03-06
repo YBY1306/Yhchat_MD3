@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
@@ -70,6 +72,17 @@ fun DiscoverScreen(
     val hasMoreGroups = uiState.hasMoreGroups
     var selectedGroup by remember { mutableStateOf<RecommendGroup?>(null) }
     var selectedBot by remember { mutableStateOf<RecommendBot?>(null) }
+    
+    // 下拉刷新状态
+    var refreshing by remember { mutableStateOf(false) }
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = refreshing)
+    
+    // 刷新完成后关闭指示器
+    LaunchedEffect(isLoadingGroups, isLoadingBots) {
+        if (!isLoadingGroups && !isLoadingBots && refreshing) {
+            refreshing = false
+        }
+    }
 
     // 滚动到底部自动加载更多群聊
     LaunchedEffect(listState, groups.size, hasMoreGroups, isLoadingMoreGroups) {
@@ -95,6 +108,14 @@ fun DiscoverScreen(
             )
         }
     ) { padding ->
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = {
+                refreshing = true
+                viewModel.refreshAll()
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             state = listState,
             modifier = modifier
@@ -234,6 +255,7 @@ fun DiscoverScreen(
                 }
             }
         }
+        } // SwipeRefresh
     }
 
     // 群聊详情弹窗

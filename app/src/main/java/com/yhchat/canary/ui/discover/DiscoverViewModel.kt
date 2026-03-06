@@ -30,7 +30,25 @@ class DiscoverViewModel(
     val uiState: StateFlow<DiscoverUiState> = _uiState.asStateFlow()
 
     init {
+        loadCachedData()
         refreshAll()
+    }
+    
+    /**
+     * 从缓存加载数据
+     */
+    private fun loadCachedData() {
+        viewModelScope.launch {
+            val cachedData = discoverRepository.loadFromCache()
+            if (cachedData != null) {
+                _uiState.value = _uiState.value.copy(
+                    groups = cachedData.first,
+                    bots = cachedData.second,
+                    isLoadingGroups = false,
+                    isLoadingBots = false
+                )
+            }
+        }
     }
 
     fun refreshAll() {
@@ -57,6 +75,8 @@ class DiscoverViewModel(
                         hasMoreGroups = groupList.size >= 20,
                         groupsError = null
                     )
+                    // 保存到缓存
+                    saveCacheIfComplete()
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
@@ -65,6 +85,19 @@ class DiscoverViewModel(
                     )
                 }
             )
+        }
+    }
+    
+    /**
+     * 如果群聊和机器人数据都加载完成，保存到缓存
+     */
+    private fun saveCacheIfComplete() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            if (!state.isLoadingGroups && !state.isLoadingBots && 
+                state.groups.isNotEmpty() && state.bots.isNotEmpty()) {
+                discoverRepository.saveToCache(state.groups, state.bots)
+            }
         }
     }
 
@@ -115,6 +148,8 @@ class DiscoverViewModel(
                         isLoadingBots = false,
                         botsError = null
                     )
+                    // 保存到缓存
+                    saveCacheIfComplete()
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(

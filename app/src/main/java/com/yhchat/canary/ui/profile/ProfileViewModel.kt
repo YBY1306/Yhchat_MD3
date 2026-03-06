@@ -49,8 +49,26 @@ class ProfileViewModel(
     /**
      * 加载用户个人资料
      */
-    fun loadUserProfile() {
+    fun loadUserProfile(forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            // 如果不是强制刷新，先尝试从缓存加载
+            if (!forceRefresh) {
+                val cachedProfile = userRepository.loadProfileFromCache()
+                if (cachedProfile != null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        userProfile = cachedProfile,
+                        error = null
+                    )
+                    // 加载内测状态
+                    loadBetaInfo()
+                    // 后台刷新数据
+                    refreshProfileInBackground()
+                    return@launch
+                }
+            }
+            
+            // 缓存无效或强制刷新，从网络加载
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
             userRepository.getUserProfile().fold(
@@ -60,6 +78,8 @@ class ProfileViewModel(
                         userProfile = profile,
                         error = null
                     )
+                    // 保存到缓存
+                    userRepository.saveProfileToCache(profile)
                     // 加载用户资料成功后，同时加载内测状态
                     loadBetaInfo()
                 },
@@ -69,6 +89,28 @@ class ProfileViewModel(
                         isLoading = false,
                         error = exception.message ?: "加载用户资料失败"
                     )
+                }
+            )
+        }
+    }
+    
+    /**
+     * 后台刷新用户资料
+     */
+    private fun refreshProfileInBackground() {
+        viewModelScope.launch {
+            userRepository.getUserProfile().fold(
+                onSuccess = { profile ->
+                    _uiState.value = _uiState.value.copy(
+                        userProfile = profile,
+                        error = null
+                    )
+                    // 保存到缓存
+                    userRepository.saveProfileToCache(profile)
+                },
+                onFailure = { exception ->
+                    Log.e("ProfileViewModel", "后台刷新用户资料失败", exception)
+                    // 后台刷新失败不更新UI
                 }
             )
         }

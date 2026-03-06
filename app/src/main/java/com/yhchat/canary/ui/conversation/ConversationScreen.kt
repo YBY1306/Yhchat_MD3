@@ -322,12 +322,6 @@ fun ConversationScreen(
 
     // 扫描方式选择弹窗状态
     var showScanMethodDialog by remember { mutableStateOf(false) }
-
-    // 移除置顶栏滚动控制逻辑
-    
-    // 移除自动滚动逻辑，让用户自己控制滚动位置
-
-    // 允许返回后重新刷新（移除禁止刷新逻辑）
     
     // 设置tokenRepository（只在第一次或tokenRepository变化时执行）
     LaunchedEffect(tokenRepository) {
@@ -1161,26 +1155,12 @@ fun ConversationItem(
                     error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
                 )
                 
-                // 未读消息标识 - 开启免打扰时不显示红点
-                if (conversation.unreadMessage > 0 && conversation.doNotDisturb != 1) {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                CircleShape
-                            )
-                            .align(Alignment.TopEnd),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = conversation.unreadMessage.toString(),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                // 未读消息徽章
+                UnreadBadge(
+                    count = conversation.unreadMessage,
+                    isDoNotDisturb = conversation.doNotDisturb == 1,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
             }
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -1299,6 +1279,85 @@ fun ConversationItem(
                     .padding(start = 70.dp)
                     .height(0.5.dp)
                     .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            )
+        }
+    }
+}
+
+/**
+ * 未读消息徽章组件 - 圆形设计
+ *
+ * @param count 未读消息数量
+ * @param isDoNotDisturb 是否开启免打扰
+ * @param modifier 修饰符
+ */
+@Composable
+fun UnreadBadge(
+    count: Int,
+    isDoNotDisturb: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    // 免打扰模式下不显示徽章
+    if (isDoNotDisturb || count <= 0) return
+    
+    // 格式化显示文本：超过99显示"99+"
+    val displayText = remember(count) {
+        when {
+            count > 99 -> "99+"
+            else -> count.toString()
+        }
+    }
+    
+    // 根据数字位数动态调整圆形大小
+    val badgeSize by animateDpAsState(
+        targetValue = when {
+            count > 99 -> 22.dp  // 三位数（99+）
+            count > 9 -> 20.dp   // 两位数
+            else -> 18.dp        // 单位数
+        },
+        animationSpec = tween(durationMillis = 200),
+        label = "BadgeSize"
+    )
+    
+    // 根据数字位数自动调整字体大小
+    val fontSize = remember(count) {
+        when {
+            count > 99 -> 8.sp   // 三位数字体更小
+            count > 9 -> 9.sp    // 两位数字体
+            else -> 10.sp        // 单位数字体
+        }
+    }
+    
+    // 进入动画：缩放和淡入
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(animationSpec = tween(200)) + scaleIn(
+            initialScale = 0.3f,
+            animationSpec = tween(200)
+        ),
+        exit = fadeOut(animationSpec = tween(150)) + scaleOut(
+            targetScale = 0.3f,
+            animationSpec = tween(150)
+        )
+    ) {
+        Box(
+            modifier = modifier
+                .size(badgeSize)
+                .background(
+                    MaterialTheme.colorScheme.error,
+                    CircleShape  // 使用圆形
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = displayText,
+                color = MaterialTheme.colorScheme.onError,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    lineHeight = fontSize  // 确保行高与字体大小一致
+                )
             )
         }
     }

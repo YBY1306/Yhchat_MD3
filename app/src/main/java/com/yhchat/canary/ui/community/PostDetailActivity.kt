@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
@@ -369,53 +371,6 @@ fun PostContentCard(
             
             Spacer(modifier = Modifier.height(12.dp))
         }
-        
-        // 操作按钮 - 使用MD3图标
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ActionButton(
-                    icon = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                    text = "点赞",
-                    count = post.likeNum,
-                    isActive = post.isLiked == "1",
-                    onClick = onLikeClick
-                )
-                
-                ActionButton(
-                    icon = Icons.Default.Comment,
-                    text = "评论",
-                    count = post.commentNum,
-                    isActive = false,
-                    onClick = onCommentClick
-                )
-                
-                ActionButton(
-                    icon = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                    text = "收藏",
-                    count = post.collectNum,
-                    isActive = post.isCollected == 1,
-                    onClick = onCollectClick
-                )
-                
-                ActionButton(
-                    icon = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
-                    text = "打赏",
-                    count = post.amountNum.toInt(),
-                    isActive = post.isReward == 1,
-                    onClick = onRewardClick
-                )
-            }
-        }
     }
     
     // 图片预览器
@@ -441,46 +396,150 @@ fun PostContentCard(
 }
 
 /**
- * 操作按钮
+ * 统一底部操作栏 - 整合操作按钮和评论输入框
  */
 @Composable
-private fun ActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String,
-    count: Int,
-    isActive: Boolean,
-    onClick: () -> Unit,
+fun PostBottomActionBar(
+    post: CommunityPost,
+    commentText: String,
+    onCommentTextChange: (String) -> Unit,
+    onSendComment: (String) -> Unit,
+    onLikeClick: () -> Unit,
+    onCollectClick: () -> Unit,
+    onRewardClick: () -> Unit,
+    showCommentInput: Boolean,
+    onCommentInputToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.clickable { onClick() }
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .navigationBarsPadding() // 自动适配安卓手势线
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = if (isActive) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isActive) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isActive) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        HorizontalDivider()
+        
+        // 主操作行：评论输入框（左）+ 互动按钮（右）
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 左侧：评论输入框
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = onCommentTextChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("写下你的评论...") },
+                maxLines = 1,
+                singleLine = true,
+                shape = RoundedCornerShape(20.dp),
+                trailingIcon = {
+                    if (commentText.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                onSendComment(commentText)
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "发送",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            )
+            
+            // 右侧：互动按钮组
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 点赞按钮
+                IconButton(onClick = onLikeClick) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "点赞",
+                            tint = if (post.isLiked == "1") 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (post.likeNum > 0) {
+                            Text(
+                                text = post.likeNum.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isLiked == "1") 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // 收藏按钮
+                IconButton(onClick = onCollectClick) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = "收藏",
+                            tint = if (post.isCollected == 1) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (post.collectNum > 0) {
+                            Text(
+                                text = post.collectNum.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isCollected == 1) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // 打赏按钮
+                IconButton(onClick = onRewardClick) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                            contentDescription = "打赏",
+                            tint = if (post.isReward == 1) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (post.amountNum.toInt() > 0) {
+                            Text(
+                                text = post.amountNum.toInt().toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isReward == 1) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1015,18 +1074,32 @@ fun PostDetailScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            // 底部评论输入栏
-            BottomCommentInputBar(
-                commentText = commentText,
-                onCommentTextChange = { commentText = it },
-                onSendComment = { content ->
-                    viewModel.commentPostWithToken(postId, content)
-                    commentText = ""
-                    showCommentInput = false
-                },
-                isVisible = showCommentInput,
-                placeholder = "写下你的评论..."
-            )
+            // 统一底部操作栏
+            postDetailState.post?.let { post ->
+                PostBottomActionBar(
+                    post = post,
+                    commentText = commentText,
+                    onCommentTextChange = { commentText = it },
+                    onSendComment = { content ->
+                        viewModel.commentPostWithToken(postId, content)
+                        commentText = ""
+                        showCommentInput = false
+                    },
+                    onLikeClick = {
+                        viewModel.likePostWithToken(postId)
+                    },
+                    onCollectClick = {
+                        viewModel.collectPostWithToken(postId)
+                    },
+                    onRewardClick = {
+                        showRewardDialog = true
+                    },
+                    showCommentInput = showCommentInput,
+                    onCommentInputToggle = {
+                        showCommentInput = !showCommentInput
+                    }
+                )
+            }
         },
         topBar = {
             TopAppBar(
@@ -1125,9 +1198,6 @@ fun PostDetailScreen(
                                     },
                                     onCollectClick = {
                                         viewModel.collectPostWithToken(postId)
-                                    },
-                                    onCommentClick = {
-                                        showCommentInput = !showCommentInput
                                     },
                                     onRewardClick = {
                                         showRewardDialog = true

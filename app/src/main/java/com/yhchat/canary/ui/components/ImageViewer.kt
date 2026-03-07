@@ -87,6 +87,7 @@ fun ImageViewer(
                             setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
                         }
                     }
+                    .size(coil.size.Size.ORIGINAL) // 加载原始尺寸的高清图片
                     .crossfade(true)
                     .build(),
                 contentDescription = "预览图片",
@@ -377,6 +378,7 @@ fun AdvancedImageViewer(
                             setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
                         }
                     }
+                    .size(coil.size.Size.ORIGINAL) // 加载原始尺寸的高清图片
                     .crossfade(true)
                     .build(),
                 contentDescription = "预览图片",

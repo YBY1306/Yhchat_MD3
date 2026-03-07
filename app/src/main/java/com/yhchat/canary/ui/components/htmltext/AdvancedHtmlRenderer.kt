@@ -899,6 +899,12 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             elementStack.last().add(textElement)
                         }
                     }
+                    "table", "thead", "tbody", "tr", "td", "th" -> {
+                        val children = mutableListOf<HtmlElement>()
+                        elementStack.add(children)
+                        styleStack.add(cssStyle)
+                        tagStack.add(lowerName)
+                    }
                     "h1", "h2", "h3", "h4", "h5", "h6", "div", "p", "span", "strong", "ul", "ol", "li" -> {
                         val children = mutableListOf<HtmlElement>()
                         elementStack.add(children)
@@ -1037,11 +1043,85 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val children = elementStack.removeAt(elementStack.size - 1)
                             
                             val blockquote = HtmlElement.BlockquoteElement(children, style)
-                            if (detailsStack.isNotEmpty() && 
+                            if (detailsStack.isNotEmpty() &&
                                 (tagStack.isEmpty() || tagStack.last() != "summary")) {
                                 detailsStack.last().content.add(blockquote)
                             } else {
                                 elementStack.last().add(blockquote)
+                            }
+                        }
+                    }
+                    "td", "th" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == lowerName) {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            
+                            val cellElement = HtmlElement.TableCellElement(
+                                children = children,
+                                style = style,
+                                isHeader = lowerName == "th"
+                            )
+                            elementStack.last().add(cellElement)
+                        }
+                    }
+                    "tr" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == "tr") {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            
+                            // 收集所有 TableCellElement
+                            val cells = children.filterIsInstance<HtmlElement.TableCellElement>()
+                            
+                            // 检查是否所有单元格都是 header（来自 <th> 标签）
+                            val isHeaderRow = cells.isNotEmpty() && cells.all { it.isHeader }
+                            
+                            val rowElement = HtmlElement.TableRowElement(
+                                cells = cells,
+                                style = style,
+                                isHeader = isHeaderRow
+                            )
+                            elementStack.last().add(rowElement)
+                        }
+                    }
+                    "thead", "tbody" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == lowerName) {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            
+                            // 收集所有 TableRowElement，并标记 thead 中的行为 header
+                            val rows = children.filterIsInstance<HtmlElement.TableRowElement>()
+                            val updatedRows = if (lowerName == "thead") {
+                                rows.map { it.copy(isHeader = true) }
+                            } else {
+                                rows
+                            }
+                            
+                            // 将行添加到父元素（应该是 table 的 elementStack）
+                            elementStack.last().addAll(updatedRows)
+                        }
+                    }
+                    "table" -> {
+                        if (tagStack.isNotEmpty() && tagStack.last() == "table") {
+                            tagStack.removeAt(tagStack.size - 1)
+                            val style = styleStack.removeAt(styleStack.size - 1)
+                            val children = elementStack.removeAt(elementStack.size - 1)
+                            
+                            // 收集所有 TableRowElement
+                            val rows = children.filterIsInstance<HtmlElement.TableRowElement>()
+                            
+                            val tableElement = HtmlElement.TableElement(
+                                rows = rows,
+                                style = style
+                            )
+                            
+                            if (detailsStack.isNotEmpty() &&
+                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
+                                detailsStack.last().content.add(tableElement)
+                            } else {
+                                elementStack.last().add(tableElement)
                             }
                         }
                     }

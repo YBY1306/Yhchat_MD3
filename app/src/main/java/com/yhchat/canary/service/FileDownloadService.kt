@@ -132,11 +132,7 @@ class FileDownloadService : Service() {
         Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen)")
         
         // 创建下载目录
-        val downloadDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "yhchat")
-        } else {
-            File("/storage/emulated/0/Download/yhchat/")
-        }
+        val downloadDir = File("/storage/emulated/0/Download/yhchat/")
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
         }

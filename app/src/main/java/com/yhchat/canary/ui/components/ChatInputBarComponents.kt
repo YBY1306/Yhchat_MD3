@@ -87,6 +87,7 @@ fun QuotedMessageBar(
 /**
  * 附件菜单
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AttachmentMenu(
     onImageClick: (() -> Unit)?,
@@ -106,100 +107,84 @@ fun AttachmentMenu(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 第一行：图片、拍照、视频、文件
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                AttachmentMenuItem(
-                    icon = Icons.Default.Image,
-                    label = "图片",
-                    onClick = { onImageClick?.invoke() }
-                )
-                
-                AttachmentMenuItem(
-                    icon = Icons.Default.CameraAlt,
-                    label = "拍照",
-                    onClick = { onCameraClick?.invoke() }
-                )
-                
-                AttachmentMenuItem(
-                    icon = Icons.Default.VideoLibrary,
-                    label = "视频",
-                    onClick = { onVideoClick?.invoke() }
-                )
-                
-                AttachmentMenuItem(
-                    icon = Icons.Default.AttachFile,
-                    label = "文件",
-                    onClick = { onFileClick?.invoke() }
-                )
-            }
+            // 附件选项
+            AttachmentMenuItem(
+                icon = Icons.Default.Image,
+                label = "图片",
+                onClick = { onImageClick?.invoke() }
+            )
             
-            // 第二行：HTML、Markdown
+            AttachmentMenuItem(
+                icon = Icons.Default.CameraAlt,
+                label = "拍照",
+                onClick = { onCameraClick?.invoke() }
+            )
+            
+            AttachmentMenuItem(
+                icon = Icons.Default.VideoLibrary,
+                label = "视频",
+                onClick = { onVideoClick?.invoke() }
+            )
+            
+            AttachmentMenuItem(
+                icon = Icons.Default.AttachFile,
+                label = "文件",
+                onClick = { onFileClick?.invoke() }
+            )
+            
+            // 消息类型选项
             if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.TextFields,
-                        label = "文本",
-                        isSelected = selectedMessageType == 1,
-                        onClick = { onTextClick.invoke() }
-                    )
+                MessageTypeMenuItem(
+                    icon = Icons.Default.TextFields,
+                    label = "文本",
+                    isSelected = selectedMessageType == 1,
+                    onClick = { onTextClick.invoke() }
+                )
 
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.Code,
-                        label = "HTML",
-                        isSelected = selectedMessageType == 8,
-                        onClick = { onHtmlClick.invoke() }
-                    )
-                    
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.Article,
-                        label = "Markdown",
-                        isSelected = selectedMessageType == 3,
-                        onClick = { onMarkdownClick.invoke() }
-                    )
-                    
-                    // 占位，保持对齐
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+                MessageTypeMenuItem(
+                    icon = Icons.Default.Code,
+                    label = "HTML",
+                    isSelected = selectedMessageType == 8,
+                    onClick = { onHtmlClick.invoke() }
+                )
+                
+                MessageTypeMenuItem(
+                    icon = Icons.Default.Article,
+                    label = "Markdown",
+                    isSelected = selectedMessageType == 3,
+                    onClick = { onMarkdownClick.invoke() }
+                )
             }
 
+            // 默认消息类型选项
             if (onDefaultMessageTypeChange != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.TextFields,
-                        label = "默认文本",
-                        isSelected = defaultMessageType == 1,
-                        onClick = { onDefaultMessageTypeChange.invoke(1) }
-                    )
+                MessageTypeMenuItem(
+                    icon = Icons.Default.TextFields,
+                    label = "默认文本",
+                    isSelected = defaultMessageType == 1,
+                    onClick = { onDefaultMessageTypeChange.invoke(1) }
+                )
 
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.Article,
-                        label = "默认Markdown",
-                        isSelected = defaultMessageType == 3,
-                        onClick = { onDefaultMessageTypeChange.invoke(3) }
-                    )
+                MessageTypeMenuItem(
+                    icon = Icons.Default.Article,
+                    label = "默认Markdown",
+                    isSelected = defaultMessageType == 3,
+                    onClick = { onDefaultMessageTypeChange.invoke(3) }
+                )
 
-                    MessageTypeMenuItem(
-                        icon = Icons.Default.Code,
-                        label = "默认HTML",
-                        isSelected = defaultMessageType == 8,
-                        onClick = { onDefaultMessageTypeChange.invoke(8) }
-                    )
-                }
+                MessageTypeMenuItem(
+                    icon = Icons.Default.Code,
+                    label = "默认HTML",
+                    isSelected = defaultMessageType == 8,
+                    onClick = { onDefaultMessageTypeChange.invoke(8) }
+                )
             }
         }
     }
@@ -216,12 +201,14 @@ fun AttachmentMenuItem(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier
+            .width(72.dp)
+            .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(56.dp)
                 .background(
                     MaterialTheme.colorScheme.primaryContainer,
                     CircleShape
@@ -232,14 +219,14 @@ fun AttachmentMenuItem(
                 imageVector = icon,
                 contentDescription = label,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(28.dp)
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -257,17 +244,17 @@ fun MessageTypeMenuItem(
 ) {
     Surface(
         modifier = modifier
-            .clickable { onClick() }
-            .padding(4.dp),
+            .width(72.dp)
+            .clickable { onClick() },
         color = if (isSelected) 
             MaterialTheme.colorScheme.primaryContainer 
         else 
-            Color.Transparent,
-        shape = RoundedCornerShape(8.dp)
+            MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
@@ -276,12 +263,12 @@ fun MessageTypeMenuItem(
                     MaterialTheme.colorScheme.onPrimaryContainer 
                 else 
                     MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = if (isSelected) 
                     MaterialTheme.colorScheme.onPrimaryContainer 
                 else 

@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
 
 /**
- * 底部导航栏组件 - 固定显示
+ * 底部导航栏组件
  */
 @Composable
 fun BottomNavigationBar(

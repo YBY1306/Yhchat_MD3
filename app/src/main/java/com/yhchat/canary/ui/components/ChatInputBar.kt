@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -624,73 +623,51 @@ fun ChatInputBar(
                 }
             }
             
-            // 附件菜单（在输入框下方弹出）- 使用 offset 动画
-            val attachMenuOffsetY by animateDpAsState(
-                targetValue = if (showAttachMenu) 0.dp else (-200).dp,
-                animationSpec = tween(
-                    durationMillis = 275,
-                    easing = LinearOutSlowInEasing
-                ),
-                label = "attachMenuOffset"
+            // 附件菜单 DropdownMenu
+            AttachmentMenu(
+                expanded = showAttachMenu,
+                onDismissRequest = { showAttachMenu = false },
+                onImageClick = {
+                    onImageClick?.invoke()
+                    showAttachMenu = false
+                },
+                onFileClick = {
+                    onFileClick?.invoke()
+                    showAttachMenu = false
+                },
+                onCameraClick = {
+                    onCameraClick?.invoke()
+                    showAttachMenu = false
+                },
+                onVideoClick = {
+                    onVideoClick?.invoke()
+                    showAttachMenu = false
+                },
+                onTextClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(1)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onHtmlClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(8)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onMarkdownClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(3)
+                        showAttachMenu = false
+                    }
+                } else null,
+                defaultMessageType = defaultSendMessageType,
+                onDefaultMessageTypeChange = { newDefaultType ->
+                    defaultSendMessageType = newDefaultType
+                    chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
+                },
+                selectedMessageType = selectedMessageType
             )
-            
-            val attachMenuHeight by animateDpAsState(
-                targetValue = if (showAttachMenu) 200.dp else 0.dp,
-                animationSpec = tween(
-                    durationMillis = 275,
-                    easing = LinearOutSlowInEasing
-                ),
-                label = "attachMenuHeight"
-            )
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(attachMenuHeight)
-                    .offset(y = attachMenuOffsetY)
-            ) {
-                if (showAttachMenu || attachMenuOffsetY > (-200).dp) {
-                    AttachmentMenu(
-                        onImageClick = {
-                            onImageClick?.invoke()
-                            showAttachMenu = false
-                        },
-                        onFileClick = {
-                            onFileClick?.invoke()
-                            showAttachMenu = false
-                        },
-                        onCameraClick = {
-                            onCameraClick?.invoke()
-                            showAttachMenu = false
-                        },
-                        onVideoClick = {
-                            onVideoClick?.invoke()
-                            showAttachMenu = false
-                        },
-                        onTextClick = {
-                            onMessageTypeChange?.invoke(1)
-                            showAttachMenu = false
-                        },
-                        onHtmlClick = {
-                            onMessageTypeChange?.invoke(8)
-                            showAttachMenu = false
-                        },
-                        onMarkdownClick = {
-                            onMessageTypeChange?.invoke(3)
-                            showAttachMenu = false
-                        },
-                        defaultMessageType = defaultSendMessageType,
-                        onDefaultMessageTypeChange = { newDefaultType ->
-                            defaultSendMessageType = newDefaultType
-                            chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
-                        },
-                        selectedMessageType = selectedMessageType,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-            }
         }  // 关闭主输入栏容器Column
         
         // 表情选择器

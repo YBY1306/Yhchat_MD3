@@ -1,20 +1,37 @@
 package com.yhchat.canary.ui.components
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -79,7 +96,7 @@ fun MarkdownText(
         tableStyle = null
     )
 
-    val segments = remember(markdown) { parseMarkdownSegments(markdown) }
+    val segments = remember(markdown) { parseMarkdownSegments(processTaskLists(markdown)) }
 
     Column(
         modifier = modifier
@@ -91,26 +108,28 @@ fun MarkdownText(
             when (segment) {
                 is MarkdownSegment.Text -> {
                     if (segment.content.isNotBlank()) {
-                        Material3RichText(
-                            style = richTextStyle,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Markdown(
-                                content = segment.content,
-                                onLinkClicked = { url: String ->
-                                    try {
-                                        // 先检查是否是云湖内链
-                                        if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                            com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                        } else {
-                                            // 非云湖内链，使用系统默认方式打开
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                            context.startActivity(intent)
+                        SelectionContainer {
+                            Material3RichText(
+                                style = richTextStyle,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Markdown(
+                                    content = segment.content,
+                                    onLinkClicked = { url: String ->
+                                        try {
+                                            // 先检查是否是云湖内链
+                                            if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                                com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                            } else {
+                                                // 非云湖内链，使用系统默认方式打开
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                context.startActivity(intent)
+                                            }
+                                        } catch (_: Exception) {
                                         }
-                                    } catch (_: Exception) {
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
@@ -153,6 +172,13 @@ fun MarkdownText(
                         }
                     )
                 }
+                
+                is MarkdownSegment.CodeBlock -> {
+                    CodeBlockComponent(
+                        code = segment.code,
+                        language = segment.language
+                    )
+                }
             }
         }
     }
@@ -192,6 +218,82 @@ private fun MarkdownInlineImage(
             .clickable { onClick(url) },
         contentScale = ContentScale.FillWidth
     )
+}
+
+/**
+ * 代码块组件，带复制按钮
+ */
+@Composable
+private fun CodeBlockComponent(
+    code: String,
+    language: String?
+) {
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 语言标签和复制按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 语言标签
+                if (!language.isNullOrBlank()) {
+                    Text(
+                        text = language,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                
+                // 复制按钮
+                IconButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("code", code)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "复制代码",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            
+            // 代码内容
+            SelectionContainer {
+                Text(
+                    text = code,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 20.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(scrollState)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -251,102 +353,101 @@ private fun MarkdownTableWithImages(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
+            )
     ) {
-        tableData.rows.forEach { row ->
+        tableData.rows.forEachIndexed { rowIndex, row ->
             androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                row.cells.forEach { cell ->
-                    Column(
+                row.cells.forEachIndexed { cellIndex, cell ->
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(4.dp),
-                        horizontalAlignment = when (cell.alignment) {
-                            TableAlignment.CENTER -> androidx.compose.ui.Alignment.CenterHorizontally
-                            TableAlignment.RIGHT -> androidx.compose.ui.Alignment.End
-                            else -> androidx.compose.ui.Alignment.Start
+                            .border(
+                                width = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                            .padding(8.dp),
+                        contentAlignment = when (cell.alignment) {
+                            TableAlignment.CENTER -> androidx.compose.ui.Alignment.Center
+                            TableAlignment.RIGHT -> androidx.compose.ui.Alignment.CenterEnd
+                            else -> androidx.compose.ui.Alignment.CenterStart
                         }
                     ) {
-                        when (cell.content) {
-                            is TableCellContent.Image -> {
-                                MarkdownInlineImage(
-                                    url = cell.content.url,
-                                    alt = cell.content.alt,
-                                    imageReferer = imageReferer,
-                                    onClick = onImageClick
-                                )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = when (cell.alignment) {
+                                TableAlignment.CENTER -> androidx.compose.ui.Alignment.CenterHorizontally
+                                TableAlignment.RIGHT -> androidx.compose.ui.Alignment.End
+                                else -> androidx.compose.ui.Alignment.Start
                             }
-                            is TableCellContent.Text -> {
-                                if (cell.content.text.isNotBlank()) {
-                                    // 使用自定义解析支持 Markdown 格式和对齐
-                                    val annotatedText = parseSimpleMarkdown(
-                                        cell.content.text,
-                                        MaterialTheme.colorScheme.onSurface
-                                    )
-                                    
-                                    androidx.compose.material3.Text(
-                                        text = annotatedText,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(
-                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                RoundedCornerShape(4.dp)
-                                            )
-                                            .padding(8.dp),
-                                        textAlign = when (cell.alignment) {
-                                            TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                                            TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                                            else -> androidx.compose.ui.text.style.TextAlign.Start
-                                        }
+                        ) {
+                            when (cell.content) {
+                                is TableCellContent.Image -> {
+                                    MarkdownInlineImage(
+                                        url = cell.content.url,
+                                        alt = cell.content.alt,
+                                        imageReferer = imageReferer,
+                                        onClick = onImageClick
                                     )
                                 }
-                            }
-                            is TableCellContent.Mixed -> {
-                                // 混合内容（图片和文本）
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    cell.content.items.forEach { item ->
-                                        when (item) {
-                                            is TableCellContent.Image -> {
-                                                MarkdownInlineImage(
-                                                    url = item.url,
-                                                    alt = item.alt,
-                                                    imageReferer = imageReferer,
-                                                    onClick = onImageClick
-                                                )
-                                            }
-                                            is TableCellContent.Text -> {
-                                                if (item.text.isNotBlank()) {
-                                                    // 使用自定义解析支持 Markdown 格式和对齐
-                                                    val annotatedText = parseSimpleMarkdown(
-                                                        item.text,
-                                                        MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    
-                                                    androidx.compose.material3.Text(
-                                                        text = annotatedText,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .background(
-                                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                                RoundedCornerShape(4.dp)
-                                                            )
-                                                            .padding(8.dp),
-                                                        textAlign = when (cell.alignment) {
-                                                            TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                                                            TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                                                            else -> androidx.compose.ui.text.style.TextAlign.Start
-                                                        }
+                                is TableCellContent.Text -> {
+                                    if (cell.content.text.isNotBlank()) {
+                                        // 使用 Text 组件支持文本对齐
+                                        SelectionContainer {
+                                            Text(
+                                                text = cell.content.text,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                textAlign = when (cell.alignment) {
+                                                    TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
+                                                    TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
+                                                    else -> androidx.compose.ui.text.style.TextAlign.Start
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
+                                is TableCellContent.Mixed -> {
+                                    // 混合内容（图片和文本）
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        cell.content.items.forEach { item ->
+                                            when (item) {
+                                                is TableCellContent.Image -> {
+                                                    MarkdownInlineImage(
+                                                        url = item.url,
+                                                        alt = item.alt,
+                                                        imageReferer = imageReferer,
+                                                        onClick = onImageClick
                                                     )
                                                 }
-                                            }
-                                            is TableCellContent.Mixed -> {
-                                                // 不应该出现嵌套的 Mixed
+                                                is TableCellContent.Text -> {
+                                                    if (item.text.isNotBlank()) {
+                                                        // 使用 Text 组件支持文本对齐
+                                                        SelectionContainer {
+                                                            Text(
+                                                                text = item.text,
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                textAlign = when (cell.alignment) {
+                                                                    TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
+                                                                    TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
+                                                                    else -> androidx.compose.ui.text.style.TextAlign.Start
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                is TableCellContent.Mixed -> {
+                                                    // 不应该出现嵌套的 Mixed
+                                                }
                                             }
                                         }
                                     }
@@ -472,6 +573,7 @@ private sealed interface MarkdownSegment {
     data class Text(val content: String) : MarkdownSegment
     data class Image(val url: String, val alt: String?) : MarkdownSegment
     data class Table(val content: String) : MarkdownSegment
+    data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
 }
 
 private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
@@ -480,8 +582,29 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
     var i = 0
     
     while (i < lines.size) {
+        // 检查是否是代码块的开始
+        if (lines[i].trim().startsWith("```")) {
+            val codeBlockStart = i
+            val firstLine = lines[i].trim()
+            val language = firstLine.substring(3).trim().ifBlank { null }
+            i++ // 跳过开始标记
+            
+            // 找到代码块的结束
+            val codeLines = mutableListOf<String>()
+            while (i < lines.size && !lines[i].trim().startsWith("```")) {
+                codeLines.add(lines[i])
+                i++
+            }
+            
+            if (i < lines.size) {
+                i++ // 跳过结束标记
+            }
+            
+            val code = codeLines.joinToString("\n")
+            segments += MarkdownSegment.CodeBlock(code, language)
+        }
         // 检查是否是表格的开始
-        if (i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1])) {
+        else if (i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1])) {
             // 找到表格的所有行
             val tableStart = i
             i += 2 // 跳过标题行和分隔符行
@@ -493,15 +616,17 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
             val tableContent = lines.subList(tableStart, i).joinToString("\n")
             segments += MarkdownSegment.Table(tableContent)
         } else {
-            // 处理非表格内容
+            // 处理非表格、非代码块内容
             val contentStart = i
-            while (i < lines.size && !(i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1]))) {
+            while (i < lines.size &&
+                   !lines[i].trim().startsWith("```") &&
+                   !(i < lines.size - 1 && isTableLine(lines[i]) && isTableSeparatorLine(lines[i + 1]))) {
                 i++
             }
             
             val content = lines.subList(contentStart, i).joinToString("\n")
             if (content.isNotBlank()) {
-                // 在非表格内容中提取图片
+                // 在非表格、非代码块内容中提取图片
                 extractImagesFromContent(content, segments)
             }
         }
@@ -636,4 +761,30 @@ private fun processLineBreaks(text: String): String {
     }
     
     return result.joinToString("\n")
+}
+
+/**
+ * 处理任务列表语法
+ * 将 - [x] 转换为 ☑ (已完成)
+ * 将 - [ ] 转换为 ☐ (未完成)
+ */
+private fun processTaskLists(markdown: String): String {
+    return markdown.lines().joinToString("\n") { line ->
+        val trimmed = line.trimStart()
+        when {
+            // 已完成的任务 - [x] 或 - [X]
+            trimmed.startsWith("- [x]") || trimmed.startsWith("- [X]") -> {
+                val indent = line.takeWhile { it.isWhitespace() }
+                val content = trimmed.substring(5).trim()
+                "$indent☑ $content"
+            }
+            // 未完成的任务 - [ ]
+            trimmed.startsWith("- [ ]") -> {
+                val indent = line.takeWhile { it.isWhitespace() }
+                val content = trimmed.substring(5).trim()
+                "$indent☐ $content"
+            }
+            else -> line
+        }
+    }
 }

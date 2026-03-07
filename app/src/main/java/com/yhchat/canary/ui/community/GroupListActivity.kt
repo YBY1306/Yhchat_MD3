@@ -39,6 +39,7 @@ class GroupListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val boardId = intent.getIntExtra("board_id", 0)
         val boardName = intent.getStringExtra("board_name") ?: "群聊列表"
@@ -89,12 +90,8 @@ fun GroupListScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
-    // 获取状态
     val groupListState by viewModel.groupListState.collectAsState()
     var selectedGroup by remember { mutableStateOf<CommunityGroup?>(null) }
-    
-    // 下拉刷新状态
     val pullToRefreshState = rememberPullToRefreshState()
     
     // 加载数据
@@ -113,7 +110,6 @@ fun GroupListScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
@@ -183,12 +179,11 @@ fun GroupListScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(if (groupListState.isLoading) "加载中..." else "加载更多")
+                        Text(if (groupListState.isLoading) "加载�?.." else "加载更多")
                     }
                 }
             }
             
-            // 空状态
             if (groupListState.groups.isEmpty() && !groupListState.isLoading) {
                 item {
                     Box(
@@ -206,7 +201,6 @@ fun GroupListScreen(
                 }
             }
             
-            // 加载状态
             if (groupListState.isLoading && groupListState.groups.isEmpty()) {
                 item {
                     Box(
@@ -228,8 +222,16 @@ fun GroupListScreen(
         if (selectedGroup != null) {
             viewModel.joinRequestState.collect { state ->
                 if (state.isInConversations) {
-                    // 已在会话列表中，直接进入聊天
-                    // TODO: 跳转到聊天界面
+                    // 已在通讯录中，直接进入聊天
+                    val group = selectedGroup
+                    if (group != null) {
+                        val intent = android.content.Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
+                            putExtra("chat_id", group.groupId)
+                            putExtra("chat_type", 2L) // 2表示群聊
+                            putExtra("chat_name", group.name)
+                        }
+                        context.startActivity(intent)
+                    }
                     selectedGroup = null
                     viewModel.resetJoinRequestState()
                 } else if (state.isSuccess) {
@@ -260,8 +262,8 @@ fun GroupListScreen(
 }
 
 /**
- * 群聊列表项
- */
+ * 群聊列表
+  */
 @Composable
 fun GroupListItem(
     group: CommunityGroup,

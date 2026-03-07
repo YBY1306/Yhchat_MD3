@@ -53,6 +53,7 @@ class BotListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         setContent {
             YhchatCanaryTheme {
                 BotListScreen(
@@ -192,7 +193,7 @@ fun BotListScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Banner轮播图
+                        // Banner轮播
                         if (showBanner && banners.isNotEmpty()) {
                             item {
                                 BannerCarousel(
@@ -239,7 +240,7 @@ fun BannerCarousel(
     // 自动轮播
     LaunchedEffect(pagerState) {
         while (true) {
-            delay(3000) // 每3秒切换一次
+            delay(3000) // 3s切换一次
             val nextPage = (pagerState.currentPage + 1) % banners.size
             pagerState.animateScrollToPage(nextPage)
         }

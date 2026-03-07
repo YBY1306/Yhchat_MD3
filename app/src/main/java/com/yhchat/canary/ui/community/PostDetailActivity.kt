@@ -472,16 +472,14 @@ fun PostBottomActionBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                        if (post.likeNum > 0) {
-                            Text(
-                                text = post.likeNum.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isLiked == "1") 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = post.likeNum.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (post.isLiked == "1") 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 
@@ -499,16 +497,14 @@ fun PostBottomActionBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                        if (post.collectNum > 0) {
-                            Text(
-                                text = post.collectNum.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isCollected == 1) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = post.collectNum.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (post.isCollected == 1) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 
@@ -526,16 +522,14 @@ fun PostBottomActionBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                        if (post.amountNum.toInt() > 0) {
-                            Text(
-                                text = post.amountNum.toInt().toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isReward == 1) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = post.amountNum.toInt().toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (post.isReward == 1) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -1240,22 +1234,27 @@ fun PostDetailScreen(
                                 )
                             }
                             
-                            // 加载更多评论
+                            // 自动加载更多评论
                             if (commentListState.hasMore) {
                                 item {
-                                    Button(
-                                        onClick = { viewModel.loadMoreCommentsWithToken(postId) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        enabled = !commentListState.isLoading
-                                    ) {
-                                        if (commentListState.isLoading) {
+                                    LaunchedEffect(Unit) {
+                                        if (!commentListState.isLoading) {
+                                            viewModel.loadMoreCommentsWithToken(postId)
+                                        }
+                                    }
+                                    
+                                    if (commentListState.isLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             CircularProgressIndicator(
-                                                modifier = Modifier.size(16.dp),
+                                                modifier = Modifier.size(24.dp),
                                                 strokeWidth = 2.dp
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
                                         }
-                                        Text(if (commentListState.isLoading) "加载中..." else "加载更多评论")
                                     }
                                 }
                             }

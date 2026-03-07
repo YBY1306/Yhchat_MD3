@@ -51,11 +51,13 @@ class StickerPackDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val stickerPackId = intent.getStringExtra(EXTRA_STICKER_PACK_ID) ?: ""
         
         setContent {
             YhchatCanaryTheme {
+                com.yhchat.canary.ui.base.SystemBarUtils.SetSystemNavigationBarColor(this@StickerPackDetailActivity)
                 StickerPackDetailScreen(
                     stickerPackId = stickerPackId,
                     onBackClick = { finish() }

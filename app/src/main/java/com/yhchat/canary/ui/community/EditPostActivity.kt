@@ -29,6 +29,7 @@ class EditPostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val postId = intent.getIntExtra("post_id", 0)
         val token = intent.getStringExtra("token") ?: ""
@@ -109,7 +110,7 @@ fun EditPostScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 顶部应用栏
+            // 顶部应用
             TopAppBar(
                 title = {
                     Text(
@@ -226,9 +227,9 @@ fun EditPostScreen(
                     placeholder = { 
                         Text(
                             if (isMarkdownMode) 
-                                "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表项" 
+                                "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表"
                             else 
-                                "请输入文章内容..."
+                                "请输入文章内容.."
                         ) 
                     },
                     modifier = Modifier
@@ -249,14 +250,14 @@ fun EditPostScreen(
                             modifier = Modifier.padding(16.dp)
                         ) {
                             Text(
-                                text = "Markdown语法提示：",
+                                text = "Markdown语法提示:",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "• # 一级标题  ## 二级标题\n• **粗体文本**  *斜体文本*\n• - 无序列表  1. 有序列表\n• `代码`  ```代码块```\n• [链接](URL)  ![图片](URL)",
+                                text = "# 一级标体 ## 二级标题\n**粗体文本**  *斜体文本*\n- 无序列表  1. 有序列表\n`代码`  ```代码块```\n[链接](URL)  ![图片](URL)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )

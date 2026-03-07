@@ -218,7 +218,7 @@ fun InstructionManagementScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(instructions, key = { it.id }) { instruction ->
+                        items(instructions) { instruction ->
                             InstructionListItem(
                                 instruction = instruction,
                                 onEdit = { 

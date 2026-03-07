@@ -224,24 +224,27 @@ fun BoardDetailScreen(
                 )
             }
             
-            // 加载更多按钮
+            // 自动加载更多指示器
             if (postListState.posts.isNotEmpty() && postListState.hasMore) {
                 item {
-                    Button(
-                        onClick = { viewModel.loadMorePosts(token, boardId) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        enabled = !postListState.isLoading
-                    ) {
-                        if (postListState.isLoading) {
+                    LaunchedEffect(Unit) {
+                        if (!postListState.isLoading) {
+                            viewModel.loadMorePosts(token, boardId)
+                        }
+                    }
+                    
+                    if (postListState.isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(if (postListState.isLoading) "加载中..." else "加载更多")
                     }
                 }
             }

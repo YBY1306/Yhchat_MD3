@@ -85,11 +85,12 @@ fun QuotedMessageBar(
 }
 
 /**
- * 附件菜单
+ * 附件菜单 - DropdownMenu 版本
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AttachmentMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
     onImageClick: (() -> Unit)?,
     onFileClick: (() -> Unit)?,
     onCameraClick: (() -> Unit)?,
@@ -99,181 +100,120 @@ fun AttachmentMenu(
     onMarkdownClick: (() -> Unit)? = null,
     defaultMessageType: Int = 1,
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
-    selectedMessageType: Int = 1,
-    modifier: Modifier = Modifier
+    selectedMessageType: Int = 1
 ) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(12.dp)
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest
     ) {
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 附件选项
-            AttachmentMenuItem(
-                icon = Icons.Default.Image,
-                label = "图片",
-                onClick = { onImageClick?.invoke() }
-            )
-            
-            AttachmentMenuItem(
-                icon = Icons.Default.CameraAlt,
-                label = "拍照",
-                onClick = { onCameraClick?.invoke() }
-            )
-            
-            AttachmentMenuItem(
-                icon = Icons.Default.VideoLibrary,
-                label = "视频",
-                onClick = { onVideoClick?.invoke() }
-            )
-            
-            AttachmentMenuItem(
-                icon = Icons.Default.AttachFile,
-                label = "文件",
-                onClick = { onFileClick?.invoke() }
-            )
-            
-            // 消息类型选项
-            if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
-                MessageTypeMenuItem(
-                    icon = Icons.Default.TextFields,
-                    label = "文本",
-                    isSelected = selectedMessageType == 1,
-                    onClick = { onTextClick.invoke() }
-                )
-
-                MessageTypeMenuItem(
-                    icon = Icons.Default.Code,
-                    label = "HTML",
-                    isSelected = selectedMessageType == 8,
-                    onClick = { onHtmlClick.invoke() }
-                )
-                
-                MessageTypeMenuItem(
-                    icon = Icons.Default.Article,
-                    label = "Markdown",
-                    isSelected = selectedMessageType == 3,
-                    onClick = { onMarkdownClick.invoke() }
-                )
+        // 附件选项
+        DropdownMenuItem(
+            text = { Text("图片") },
+            onClick = { onImageClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.Image, contentDescription = null)
             }
-
-            // 默认消息类型选项
-            if (onDefaultMessageTypeChange != null) {
-                MessageTypeMenuItem(
-                    icon = Icons.Default.TextFields,
-                    label = "默认文本",
-                    isSelected = defaultMessageType == 1,
-                    onClick = { onDefaultMessageTypeChange.invoke(1) }
-                )
-
-                MessageTypeMenuItem(
-                    icon = Icons.Default.Article,
-                    label = "默认Markdown",
-                    isSelected = defaultMessageType == 3,
-                    onClick = { onDefaultMessageTypeChange.invoke(3) }
-                )
-
-                MessageTypeMenuItem(
-                    icon = Icons.Default.Code,
-                    label = "默认HTML",
-                    isSelected = defaultMessageType == 8,
-                    onClick = { onDefaultMessageTypeChange.invoke(8) }
-                )
-            }
-        }
-    }
-}
-
-/**
- * 附件菜单项
- */
-@Composable
-fun AttachmentMenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .width(72.dp)
-            .clickable { onClick() },
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-/**
- * 消息类型菜单项
- */
-@Composable
-fun MessageTypeMenuItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier
-            .width(72.dp)
-            .clickable { onClick() },
-        color = if (isSelected) 
-            MaterialTheme.colorScheme.primaryContainer 
-        else 
-            MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isSelected) 
-                    MaterialTheme.colorScheme.onPrimaryContainer 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
+        
+        DropdownMenuItem(
+            text = { Text("拍照") },
+            onClick = { onCameraClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.CameraAlt, contentDescription = null)
+            }
+        )
+        
+        DropdownMenuItem(
+            text = { Text("视频") },
+            onClick = { onVideoClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.VideoLibrary, contentDescription = null)
+            }
+        )
+        
+        DropdownMenuItem(
+            text = { Text("文件") },
+            onClick = { onFileClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.AttachFile, contentDescription = null)
+            }
+        )
+        
+        // 消息类型选项
+        if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
+            HorizontalDivider()
+            
+            DropdownMenuItem(
+                text = { Text("文本") },
+                onClick = { onTextClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 1) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isSelected) 
-                    MaterialTheme.colorScheme.onPrimaryContainer 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant
+
+            DropdownMenuItem(
+                text = { Text("HTML") },
+                onClick = { onHtmlClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 8) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+            
+            DropdownMenuItem(
+                text = { Text("Markdown") },
+                onClick = { onMarkdownClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.Article, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 3) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+        }
+
+        // 默认消息类型选项
+        if (onDefaultMessageTypeChange != null) {
+            HorizontalDivider()
+            
+            DropdownMenuItem(
+                text = { Text("默认文本") },
+                onClick = { onDefaultMessageTypeChange.invoke(1) },
+                leadingIcon = {
+                    Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 1) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认Markdown") },
+                onClick = { onDefaultMessageTypeChange.invoke(3) },
+                leadingIcon = {
+                    Icon(Icons.Default.Article, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 3) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认HTML") },
+                onClick = { onDefaultMessageTypeChange.invoke(8) },
+                leadingIcon = {
+                    Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 8) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
             )
         }
     }
 }
+

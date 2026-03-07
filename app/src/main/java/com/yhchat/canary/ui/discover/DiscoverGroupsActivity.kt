@@ -35,6 +35,7 @@ import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.RecommendGroup
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -49,6 +50,7 @@ class DiscoverGroupsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         setContent {
             YhchatCanaryTheme {
                 DiscoverGroupsScreen(
@@ -83,14 +85,14 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
         error = null
         discoverRepo.getGroupCategories().fold(
             onSuccess = { cats ->
-                // 添加"最新"到第一个
+                // 添加最新到第一个
                 categories = listOf("最新") + cats
                 isLoadingCategories = false
             },
             onFailure = { e ->
                 error = e.message
                 isLoadingCategories = false
-                categories = listOf("最新") // 至少显示最新
+                categories = listOf("最新") // 先显示最新
             }
         )
     }
@@ -109,7 +111,9 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
             searchError = null
             
             val apiService = com.yhchat.canary.data.api.ApiClient.apiService
-            val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+            val tokenRepo = RepositoryFactory.getTokenRepository(context)
+            val tokenFlow = tokenRepo.getToken()
+            val token = tokenFlow.first()?.token
             
             if (token != null) {
                 runCatching {
@@ -271,7 +275,9 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                                         onJoin = {
                                             scope.launch {
                                                 val api = com.yhchat.canary.data.api.ApiClient.apiService
-                                                val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+                                                val tokenRepo = RepositoryFactory.getTokenRepository(context)
+                                                val tokenFlow = tokenRepo.getToken()
+                                                val token = tokenFlow.first()?.token
                                                 if (token != null) {
                                                     runCatching {
                                                         api.addFriend(
@@ -333,7 +339,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                     CircularProgressIndicator()
                 }
             } else {
-                // 分类选项卡
+                // 分类选项
                 ScrollableTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     modifier = Modifier.fillMaxWidth(),
@@ -391,7 +397,7 @@ fun GroupListPage(
     var currentPage by remember { mutableStateOf(1) }
     var hasMoreData by remember { mutableStateOf(true) }
 
-    // 加载更多数据的函数
+    // 加载更多数据
     fun loadMoreGroups() {
         if (isLoadingMore || !hasMoreData) return
         
@@ -430,8 +436,7 @@ fun GroupListPage(
             onSuccess = { groupList ->
                 groups = groupList
                 isLoading = false
-                hasMoreData = groupList.size >= 20 // 如果返回的数据少于20条，说明没有更多数据了
-            },
+                hasMoreData = groupList.size >= 20   },
             onFailure = { e ->
                 error = e.message
                 isLoading = false
@@ -499,11 +504,11 @@ fun GroupListPage(
                             LaunchedEffect(Unit) {
                                 loadMoreGroups()
                             }
-                            // 占位符，用户看不到
-                            Spacer(modifier = Modifier.height(1.dp))
+                            // 占位符
+                     Spacer(modifier = Modifier.height(1.dp))
                         }
                     } else {
-                        // 没有更多数据的提示
+                        // 没有更多数据的dialog
                         item {
                             Box(
                                 modifier = Modifier
@@ -532,7 +537,9 @@ fun GroupListPage(
             onJoin = {
                 scope.launch {
                     val api = ApiClient.apiService
-                    val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+                    val tokenRepo = RepositoryFactory.getTokenRepository(context)
+                    val tokenFlow = tokenRepo.getToken()
+                    val token = tokenFlow.first()?.token
                     if (token != null) {
                         runCatching {
                             api.addFriend(
@@ -640,7 +647,7 @@ fun GroupCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${group.headcount}人",
+                    text = "${group.headcount} 人",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )

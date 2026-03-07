@@ -37,6 +37,7 @@ class UserStatsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         setContent {
             YhchatCanaryTheme {
@@ -73,7 +74,6 @@ fun UserStatsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
@@ -105,8 +105,7 @@ fun UserStatsScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    // 加载状态
-                    Box(
+                 Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
@@ -125,8 +124,7 @@ fun UserStatsScreen(
                 }
                 
                 uiState.error != null -> {
-                    // 错误状态
-                    Column(
+                   Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -151,7 +149,7 @@ fun UserStatsScreen(
                 }
                 
                 uiState.userStats != null -> {
-                    // 成功状态 - 显示统计数据
+                    // 显示统计数据
                     UserStatsContent(
                         userStats = uiState.userStats!!,
                         modifier = Modifier.fillMaxWidth()
@@ -159,8 +157,7 @@ fun UserStatsScreen(
                 }
                 
                 else -> {
-                    // 空状态
-                    Box(
+                   Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
@@ -192,7 +189,7 @@ private fun UserStatsContent(
             iconColor = MaterialTheme.colorScheme.primary,
             current = userStats.currentNumberTotal,
             target = userStats.targetNumberTotal,
-            description = "目前总用户数量 / 注册用户总目标"
+            description = "目前总用户数 / 注册用户总目标"
         )
         
         // 今日注册用户统计卡片
@@ -232,7 +229,6 @@ private fun StatsCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 标题和图标
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -288,7 +284,7 @@ private fun StatsCard(
                 }
             }
             
-            // 进度条
+            // 进度
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {

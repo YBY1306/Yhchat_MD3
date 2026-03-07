@@ -178,15 +178,23 @@ class GroupListViewModel(
     }
     
     /**
-     * 检查群聊是否已在会话列表中
+     * 检查群聊是否已在通讯录中
      */
-    suspend fun checkGroupInConversations(token: String, groupId: String): Boolean {
+    suspend fun checkGroupInAddressBook(groupId: String): Boolean {
         return try {
-            val result = conversationRepository.getConversations()
+            val result = friendRepository.getAddressBookList()
             if (result.isSuccess) {
-                val conversations = result.getOrNull() ?: emptyList()
-                conversations.any { conversation -> 
-                    conversation.chatId == groupId && conversation.chatType == 2 // 2表示群聊
+                val addressBook = result.getOrNull()
+                if (addressBook != null) {
+                    // 遍历所有分组，查找是否存在该群聊
+                    // list_name 为 "我加入的群聊" 的分组包含群聊
+                    addressBook.dataList.any { group ->
+                        group.listName == "我加入的群聊" && group.dataList.any { item ->
+                            item.chatId == groupId
+                        }
+                    }
+                } else {
+                    false
                 }
             } else {
                 false
@@ -207,16 +215,19 @@ class GroupListViewModel(
                     error = null
                 )
                 
-                val isInConversations = checkGroupInConversations(token, groupId)
+                val isInAddressBook = checkGroupInAddressBook(groupId)
                 
-                if (isInConversations) {
-                    // 已在会话列表中，直接进入聊天
+                if (isInAddressBook) {
+                    // 已在通讯录中，直接进入聊天
                     _joinRequestState.value = _joinRequestState.value.copy(
                         isChecking = false,
                         isInConversations = true
                     )
                 } else {
-                    // 不在会话列表中，申请加入
+                    // 不在通讯录中，申请加入
+                    _joinRequestState.value = _joinRequestState.value.copy(
+                        isChecking = false
+                    )
                     applyToJoinGroup(token, groupId)
                 }
             } catch (e: Exception) {

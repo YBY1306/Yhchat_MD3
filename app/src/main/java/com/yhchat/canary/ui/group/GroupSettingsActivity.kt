@@ -26,6 +26,7 @@ class GroupSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val groupId = intent.getStringExtra(EXTRA_GROUP_ID) ?: run {
             android.util.Log.e("GroupSettingsActivity", "Missing groupId in intent")

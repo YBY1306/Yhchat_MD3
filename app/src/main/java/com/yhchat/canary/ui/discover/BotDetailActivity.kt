@@ -35,6 +35,7 @@ import com.yhchat.canary.data.model.BotDetailGroup
 import com.yhchat.canary.data.model.BotDetailRequest
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class BotDetailActivity : ComponentActivity() {
@@ -52,6 +53,7 @@ class BotDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val botId = intent.getStringExtra(EXTRA_BOT_ID) ?: run {
             Toast.makeText(this, "参数错误", Toast.LENGTH_SHORT).show()
@@ -92,7 +94,9 @@ fun BotDetailScreen(
         error = null
         
         val api = ApiClient.apiService
-        val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+        val tokenRepo = RepositoryFactory.getTokenRepository(context)
+        val tokenFlow = tokenRepo.getToken()
+        val token = tokenFlow.first()?.token
         
         if (token != null) {
             runCatching {
@@ -125,7 +129,9 @@ fun BotDetailScreen(
         scope.launch {
             isAddingBot = true
             val api = ApiClient.apiService
-            val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+            val tokenRepo = RepositoryFactory.getTokenRepository(context)
+            val tokenFlow = tokenRepo.getToken()
+            val token = tokenFlow.first()?.token
             
             if (token != null && bot != null) {
                 runCatching {
@@ -163,7 +169,9 @@ fun BotDetailScreen(
         scope.launch {
             addingGroupId = groupId
             val api = ApiClient.apiService
-            val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
+            val tokenRepo = RepositoryFactory.getTokenRepository(context)
+            val tokenFlow = tokenRepo.getToken()
+            val token = tokenFlow.first()?.token
             
             if (token != null) {
                 runCatching {
@@ -270,7 +278,7 @@ fun BotDetailScreen(
                                     if (bot!!.avatarUrl.isNotEmpty()) {
                                         AsyncImage(
                                             model = ImageUtils.createBotImageRequest(context, bot!!.avatarUrl),
-                                            contentDescription = "机器人头像",
+                                            contentDescription = "机器人头头像",
                                             modifier = Modifier
                                                 .size(80.dp)
                                                 .clip(CircleShape),
@@ -312,15 +320,14 @@ fun BotDetailScreen(
                                     
                                     Spacer(modifier = Modifier.height(8.dp))
                                     
-                                    // 创建者
+                                    // 创建者         
                                     Text(
-                                        text = "创建者: ${bot!!.createBy}",
+                                        text = "创建者 ${bot!!.createBy}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     
-                                    // 简介
-                                    bot!!.introduction?.takeIf { it.isNotEmpty() }?.let { intro ->
+                                     bot!!.introduction?.takeIf { it.isNotEmpty() }?.let { intro ->
                                         Spacer(modifier = Modifier.height(16.dp))
                                         Text(
                                             text = intro,
@@ -360,7 +367,7 @@ fun BotDetailScreen(
                             }
                         }
                         
-                        // 绑定该机器人的群聊标题
+                        // 绑定该机器人的群聊
                         if (groups.isNotEmpty()) {
                             item {
                                 Text(

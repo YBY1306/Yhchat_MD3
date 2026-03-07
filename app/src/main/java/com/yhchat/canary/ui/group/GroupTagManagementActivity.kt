@@ -53,6 +53,7 @@ class GroupTagManagementActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val groupId = intent.getStringExtra(EXTRA_GROUP_ID) ?: run {
             finish()
@@ -68,8 +69,7 @@ class GroupTagManagementActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onBackClick = { finish() },
                     onTagClick = { tag ->
-                        // 跳转到标签详情页面
-                        GroupTagDetailActivity.start(this, groupId, tag.id, tag.tag)
+                        // 跳转到标签详情页�?                        GroupTagDetailActivity.start(this, groupId, tag.id, tag.tag)
                     }
                 )
             }
@@ -265,7 +265,6 @@ fun TagCard(
         }
     }
     
-    // 删除确认对话框
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

@@ -34,6 +34,7 @@ class CoinDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         setContent {
             YhchatCanaryTheme {
@@ -134,7 +135,7 @@ fun CoinDetailScreen(
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "获取金币的方式",
+                            text = "获取金币的方法",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -174,7 +175,7 @@ private fun TaskInfoCard(
             
             TaskInfoItem(
                 label = "修改头像",
-                value = if (taskInfo.avatarEditNumber > 0) "✓ 已完成" else "✗ 未完成",
+                value = if (taskInfo.avatarEditNumber > 0) "已完成" else "未完成",
                 isCompleted = taskInfo.avatarEditNumber > 0
             )
             
@@ -182,7 +183,7 @@ private fun TaskInfoCard(
             
             TaskInfoItem(
                 label = "修改昵称",
-                value = if (taskInfo.nicknameEditNumber > 0) "✓ 已完成" else "✗ 未完成",
+                value = if (taskInfo.nicknameEditNumber > 0) "已完成" else "未完成",
                 isCompleted = taskInfo.nicknameEditNumber > 0
             )
             
@@ -250,19 +251,19 @@ private fun TaskTipCard(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "• 观看广告",
+                text = "观看广告",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "• 修改个人头像",
+                text = "修改个人头像",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "• 修改个人昵称",
+                text = "修改个人昵称",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "• 参与抽奖活动",
+                text = "参与抽奖活动",
                 style = MaterialTheme.typography.bodySmall
             )
         }

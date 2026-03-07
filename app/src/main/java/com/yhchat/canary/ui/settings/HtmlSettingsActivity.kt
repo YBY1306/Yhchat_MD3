@@ -35,6 +35,7 @@ class HtmlSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         setContent {
             YhchatCanaryTheme {
@@ -112,7 +113,6 @@ fun HtmlSettingsScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
@@ -132,7 +132,7 @@ fun HtmlSettingsScreen(
             actions = {
                 TextButton(
                     onClick = {
-                        // 重置为默认设置
+                        // 重置
                         enableJavaScript = true
                         allowZoom = true
                         loadImages = true
@@ -157,8 +157,8 @@ fun HtmlSettingsScreen(
                     title = "基本设置",
                     content = {
                         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                         ) {
                             // JavaScript设置
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -170,7 +170,7 @@ fun HtmlSettingsScreen(
                                         text = "启用JavaScript",
                                         style = MaterialTheme.typography.titleSmall
                                     )
-                Text(
+                                    Text(
                                         text = "允许网页运行JavaScript代码",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -178,7 +178,7 @@ fun HtmlSettingsScreen(
                                 }
                                 Switch(
                                     checked = enableJavaScript,
-                    onCheckedChange = { 
+                                    onCheckedChange = { 
                                         enableJavaScript = it
                                         saveSettings()
                                     }
@@ -206,7 +206,7 @@ fun HtmlSettingsScreen(
                                 }
                                 Switch(
                                     checked = allowZoom,
-                    onCheckedChange = { 
+                                    onCheckedChange = { 
                                         allowZoom = it
                                         saveSettings()
                                     }
@@ -226,7 +226,7 @@ fun HtmlSettingsScreen(
                                         text = "加载图片",
                                         style = MaterialTheme.typography.titleSmall
                                     )
-                Text(
+                                    Text(
                                         text = "自动加载网页中的图片",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -234,7 +234,7 @@ fun HtmlSettingsScreen(
                                 }
                                 Switch(
                                     checked = loadImages,
-                    onCheckedChange = { 
+                                    onCheckedChange = { 
                                         loadImages = it
                                         saveSettings()
                                     }
@@ -255,7 +255,7 @@ fun HtmlSettingsScreen(
                         ) {
                             // 缓存模式
                             Column {
-                Text(
+                                Text(
                                     text = "缓存模式",
                                     style = MaterialTheme.typography.titleSmall,
                                     modifier = Modifier.padding(bottom = 8.dp)
@@ -339,10 +339,10 @@ fun HtmlSettingsScreen(
                     )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                            text = "• 这些设置将影响应用内所有网页的显示效果\n" +
-                                  "• 禁用JavaScript可能导致部分网页功能异常\n" +
-                                  "• 修改缓存模式会影响页面加载速度\n" +
-                                  "• 更改User Agent可能影响网站兼容性",
+                            text = "这些设置将影响应用内所有网页的显示效果\n" +
+                                  "禁用JavaScript可能导致部分网页功能异常\n" +
+                                  "修改缓存模式会影响页面加载速度\n" +
+                                  "更改User Agent可能影响网站兼容性",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -42,6 +42,7 @@ class ComprehensiveSearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         setContent {
             YhchatCanaryTheme {
@@ -64,7 +65,7 @@ private fun ComprehensiveSearchScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
     
-    val tabs = listOf("群聊", "用户", "机器人")
+    val tabs = listOf("群聊", "用户", "机器")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
     
@@ -75,7 +76,7 @@ private fun ComprehensiveSearchScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-        // 顶部应用栏和搜索框
+        // 顶部应用栏和搜索
         TopAppBar(
             title = {
                 OutlinedTextField(
@@ -142,7 +143,7 @@ private fun ComprehensiveSearchScreen(
             }
         )
         
-        // 标签栏
+        // 标签
         TabRow(
             selectedTabIndex = pagerState.currentPage,
             modifier = Modifier.fillMaxWidth()
@@ -193,7 +194,7 @@ private fun ComprehensiveSearchScreen(
                     userResult = uiState.userResult,
                     isLoading = uiState.isLoading,
                     onUserClick = { user ->
-                        // 直接跳转到用户资料页面
+                        
                         com.yhchat.canary.ui.user.UserDetailActivity.start(
                             context = context,
                             userId = user.userId ?: "",
@@ -225,7 +226,7 @@ private fun ComprehensiveSearchScreen(
         )
     }
     
-    // 用户搜索结果现在直接跳转到 UserDetailActivity，不再显示弹窗
+
     
     if (uiState.showBotDialog) {
         BotInfoDialog(

@@ -275,6 +275,39 @@ fun WebViewScreen(
                         setupWebViewSettings()
                         
                         webViewClient = object : WebViewClient() {
+                            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                                // 为所有请求添加 token 请求头
+                                if (token != null && request != null) {
+                                    val url = request.url.toString()
+                                    try {
+                                        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                                        connection.requestMethod = request.method
+                                        connection.setRequestProperty("token", token)
+                                        
+                                        // 复制原始请求头
+                                        request.requestHeaders.forEach { (key, value) ->
+                                            connection.setRequestProperty(key, value)
+                                        }
+                                        
+                                        connection.connect()
+                                        
+                                        val contentType = connection.contentType
+                                        val encoding = connection.contentEncoding
+                                        val inputStream = connection.inputStream
+                                        
+                                        return WebResourceResponse(
+                                            contentType?.split(";")?.firstOrNull() ?: "text/html",
+                                            encoding ?: "UTF-8",
+                                            inputStream
+                                        )
+                                    } catch (e: Exception) {
+                                        // 如果拦截失败，返回 null 让 WebView 自己处理
+                                        return null
+                                    }
+                                }
+                                return super.shouldInterceptRequest(view, request)
+                            }
+                            
                             override fun onPageStarted(view: WebView?, urlStr: String?, favicon: Bitmap?) {
                                 uiState = uiState.copy(
                                     url = urlStr ?: uiState.url,
@@ -342,7 +375,13 @@ fun WebViewScreen(
                             }
                         }
 
-                        loadUrl(initialUrl)
+                        // 加载 URL 时添加 token 请求头
+                        if (token != null) {
+                            val headers = mapOf("token" to token)
+                            loadUrl(initialUrl, headers)
+                        } else {
+                            loadUrl(initialUrl)
+                        }
                         webView = this
                     }
                 },

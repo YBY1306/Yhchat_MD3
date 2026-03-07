@@ -37,6 +37,7 @@ class CreatePostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val boardId = intent.getIntExtra("board_id", 0)
         val boardName = intent.getStringExtra("board_name") ?: "发布文章"
@@ -146,11 +147,10 @@ fun CreatePostScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
-                    text = "发布到: $boardName",
+                    text = "发布板块 $boardName",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -170,7 +170,7 @@ fun CreatePostScreen(
                 }
             },
             actions = {
-                // 草稿箱按钮
+                // 草稿箱
                 IconButton(
                     onClick = onDraftBoxClick
                 ) {
@@ -275,9 +275,9 @@ fun CreatePostScreen(
                 placeholder = { 
                     Text(
                         if (isMarkdownMode) 
-                            "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表项" 
+                            "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表"
                         else 
-                            "请输入文章内容..."
+                            "请输入文章内容.."
                     ) 
                 },
                 modifier = Modifier
@@ -305,7 +305,7 @@ fun CreatePostScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "• # 一级标题  ## 二级标题\n• **粗体文本**  *斜体文本*\n• - 无序列表  1. 有序列表\n• `代码`  ```代码块```\n• [链接](URL)  ![图片](URL)",
+                            text = "# 一级标题  ## 二级标题\n• **粗体文本**  *斜体文本*\n• - 无序列表  1. 有序列表\n• `代码`  ```代码块```\n• [链接](URL)  ![图片](URL)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -337,7 +337,7 @@ fun CreatePostScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (createPostState.isLoading) "发布中..." else "发布文章")
+                Text(if (createPostState.isLoading) "发布中.." else "发布文章")
             }
         }
     }
@@ -350,7 +350,7 @@ fun CreatePostScreen(
                 Text("保存草稿")
             },
             text = {
-                Text("您有未保存的内容，是否保存为草稿？")
+                Text("您有未保存的内容，是否保存为草稿")
             },
             confirmButton = {
                 TextButton(

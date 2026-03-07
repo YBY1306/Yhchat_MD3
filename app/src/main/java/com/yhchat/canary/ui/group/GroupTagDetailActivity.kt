@@ -60,6 +60,7 @@ class GroupTagDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val groupId = intent.getStringExtra(EXTRA_GROUP_ID) ?: run {
             finish()
@@ -186,7 +187,7 @@ fun GroupTagDetailScreen(
                             TagMemberCard(
                                 member = member,
                                 onClick = {
-                                    // 跳转到用户资料页面
+                                    // 跳转到用户资料页�?
                                     UserDetailActivity.start(context = context, userId = member.userId, userName = member.name, groupId = groupId)
                                 },
                                 onRemoveClick = {
@@ -491,7 +492,7 @@ fun TagMemberCard(
         }
     }
     
-    // 移除确认对话框
+    // 移除确认对话�?
     if (showRemoveDialog) {
         AlertDialog(
             onDismissRequest = { showRemoveDialog = false },

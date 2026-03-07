@@ -40,6 +40,7 @@ class DraftBoxActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val token = intent.getStringExtra("token") ?: ""
         
@@ -59,7 +60,7 @@ class DraftBoxActivity : ComponentActivity() {
                     token = token,
                     onBackClick = { finish() },
                     onDraftClick = { draft ->
-                        // 返回到CreatePostActivity并加载草稿
+                        // 返回到CreatePostActivity并加载草稿   
                         val intent = Intent(this@DraftBoxActivity, CreatePostActivity::class.java).apply {
                             putExtra("board_id", draft.boardId)
                             putExtra("board_name", draft.boardName)
@@ -82,8 +83,7 @@ class DraftBoxActivity : ComponentActivity() {
 }
 
 /**
- * 草稿箱界面
- */
+ * 草稿箱界面 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DraftBoxScreen(
@@ -95,7 +95,6 @@ fun DraftBoxScreen(
     val context = LocalContext.current
     val draftRepository = remember { DraftRepository(context) }
     
-    // 草稿数据状态
     var drafts by remember { mutableStateOf(listOf<Draft>()) }
     var isLoading by remember { mutableStateOf(true) }
     
@@ -112,7 +111,6 @@ fun DraftBoxScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
@@ -136,7 +134,6 @@ fun DraftBoxScreen(
         
         // 草稿列表
         if (isLoading) {
-            // 加载状态
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -144,7 +141,6 @@ fun DraftBoxScreen(
                 CircularProgressIndicator()
             }
         } else if (drafts.isEmpty()) {
-            // 空状态
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -194,8 +190,7 @@ fun DraftBoxScreen(
 }
 
 /**
- * 草稿项
- */
+ * 草稿箱 */
 @Composable
 fun DraftItem(
     draft: Draft,
@@ -269,7 +264,7 @@ fun DraftItem(
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
-                                text = "MD",
+                                text = "MarkDown",
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -298,8 +293,7 @@ fun DraftItem(
 }
 
 /**
- * 格式化时间
- */
+ * 格式化时间 */
 private fun formatTime(timestamp: Long): String {
     val date = Date(timestamp)
     val now = Date()
@@ -308,7 +302,7 @@ private fun formatTime(timestamp: Long): String {
     
     return when {
         diffInHours < 1 -> "刚刚"
-        diffInHours < 24 -> "${diffInHours}小时前"
+        diffInHours < 24 -> "${diffInHours}小时"
         diffInHours < 24 * 7 -> "${diffInHours / 24}天前"
         else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
     }

@@ -120,6 +120,7 @@ fun MessageItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp)
             .then(
                 if (isHighlighted) Modifier.background(
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
@@ -164,9 +165,7 @@ fun MessageItem(
         }
 
         Column(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .widthIn(max = 280.dp),
+            modifier = Modifier.weight(1f, fill = false),
             horizontalAlignment = if (isMyMessage) Alignment.End else Alignment.Start
         ) {
             SenderNameAndTags(

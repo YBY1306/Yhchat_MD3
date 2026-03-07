@@ -48,23 +48,13 @@ class SearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val token = intent.getStringExtra("token") ?: ""
         
         setContent {
             YhchatCanaryTheme {
-                val view = LocalView.current
-                val darkTheme = isSystemInDarkTheme()
-                
-                SideEffect {
-                    val window = (view.context as ComponentActivity).window
-                    window.
-
-                    statusBarColor = Color.Transparent.toArgb()
-                    window.navigationBarColor = Color.Transparent.toArgb()
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
-                }
+                com.yhchat.canary.ui.base.SystemBarUtils.SetSystemNavigationBarColor(this@SearchActivity)
                 
                 val viewModel: SearchViewModel = viewModel {
                     SearchViewModel(
@@ -301,7 +291,7 @@ fun SearchScreen(
                                 CircularProgressIndicator()
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "搜索中...",
+                                    text = "搜索...",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -314,9 +304,7 @@ fun SearchScreen(
     }
 }
 
-/**
- * 搜索分区项
- */
+// 搜索分区
 @Composable
 fun SearchBoardItem(
     board: CommunityBoard,
@@ -378,19 +366,18 @@ fun SearchBoardItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "${board.memberNum} 成员 • ${board.postNum} 文章 • ${board.groupNum} 群聊",
+                    text = "${board.memberNum} 成员 ${board.postNum} 文章 ${board.groupNum} 群聊",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Text(
-                    text = "创建于 ${board.createTimeText}",
+                    text = "创建时间 ${board.createTimeText}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            // 关注状态
             if (board.isFollowed == "1") {
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
@@ -409,7 +396,7 @@ fun SearchBoardItem(
 }
 
 /**
- * 搜索文章项
+ * 搜索文章
  */
 @Composable
 fun SearchPostItem(
@@ -426,7 +413,7 @@ fun SearchPostItem(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // 文章标题和类型
+            // 文章标题
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {

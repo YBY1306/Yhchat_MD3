@@ -654,7 +654,25 @@ fun RenderTableElement(
                     ) {
                         Column {
                             cell.children.forEach { child ->
-                                RenderHtmlElement(child, onImageClick, onLinkClick)
+                                // 如果是文本元素，需要继承行或单元格的颜色
+                                when (child) {
+                                    is HtmlElement.TextElement -> {
+                                        val inheritedColor = child.style.color
+                                            ?: cell.style.color
+                                            ?: row.style.color
+                                        RenderTextElement(
+                                            child.copy(
+                                                style = child.style.copy(
+                                                    color = inheritedColor,
+                                                    textAlign = child.style.textAlign ?: cell.style.textAlign
+                                                )
+                                            )
+                                        )
+                                    }
+                                    else -> {
+                                        RenderHtmlElement(child, onImageClick, onLinkClick)
+                                    }
+                                }
                             }
                         }
                     }

@@ -56,6 +56,7 @@ class ChatAddActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         try {
             // 检查是否为分享链接
@@ -139,7 +140,6 @@ class ChatAddActivity : ComponentActivity() {
             android.util.Log.w("ChatAddActivity", "无效的参数")
             finish()
         } catch (e: Exception) {
-            // 防止崩溃，记录错误日志
             android.util.Log.e("ChatAddActivity", "初始化失败", e)
             finish()
         }
@@ -166,17 +166,17 @@ fun ChatAddScreen(
     LaunchedEffect(chatAddInfo, shareKey, shareTs) {
         when {
             chatAddInfo != null -> {
-                // 直接加载聊天信息（yunhu://chat-add）
+                // 直接加载聊天信息（yunhu://chat-add
                 viewModel.loadChatInfo(chatAddInfo)
             }
             shareKey != null && shareTs != null -> {
-                // 先获取分享信息，再加载聊天信息（yhfx分享链接）
+                // 先获取分享信息，再加载聊天信息（yhfx分享链接
                 viewModel.loadShareInfo(shareKey, shareTs)
             }
         }
     }
     
-    // 成功后自动关闭
+    // 成功后自动关
     LaunchedEffect(uiState.isAddSuccess) {
         if (uiState.isAddSuccess) {
             kotlinx.coroutines.delay(2000)
@@ -197,7 +197,6 @@ fun ChatAddScreen(
             Column(
                 modifier = Modifier.padding(24.dp)
             ) {
-                // 标题栏
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -207,7 +206,7 @@ fun ChatAddScreen(
                     text = when (chatAddInfo?.type) {
                         ChatAddType.USER -> "用户详情"
                         ChatAddType.GROUP -> "群聊详情"
-                        ChatAddType.BOT -> "机器人详情"
+                        ChatAddType.BOT -> "机器人详请"
                         null -> "详情"
                     },
                     style = MaterialTheme.typography.headlineSmall,
@@ -226,7 +225,6 @@ fun ChatAddScreen(
                 
                 when {
                     uiState.isLoading -> {
-                        // 加载状态
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -238,7 +236,6 @@ fun ChatAddScreen(
                     }
                     
                     uiState.error != null -> {
-                        // 错误状态
                         val errorMessage = uiState.error
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -410,7 +407,7 @@ private fun ChatDetailContent(
                 }
                 Text(
                     text = when {
-                        addState.isAdding -> "添加中..."
+                        addState.isAdding -> "添加中.."
                         addState.isAddSuccess -> "已添加"
                         else -> when (chatInfo.type) {
                             ChatAddType.USER -> "添加好友"

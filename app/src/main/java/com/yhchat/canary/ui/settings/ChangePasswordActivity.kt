@@ -45,6 +45,7 @@ class ChangePasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val userEmail = intent.getStringExtra("user_email") ?: ""
         
@@ -75,7 +76,7 @@ fun CaptchaImage(
     if (!captchaImage.isNullOrEmpty()) {
         val imageResult = remember(captchaImage) {
             try {
-                // 处理特殊格式: "image//png;base64,..." 或 "data:image/png;base64,..." -> 提取base64部分
+                // 处理特殊格式: "data:image/png;base64,..." -> 提取base64部分
                 val base64Data = when {
                     captchaImage.startsWith("data:image/") -> {
                         val parts = captchaImage.split(";base64,")
@@ -104,7 +105,7 @@ fun CaptchaImage(
             imageResult.isSuccess -> {
                 Image(
                     bitmap = imageResult.getOrNull()!!.asImageBitmap(),
-                    contentDescription = "验证码",
+                    contentDescription = "验证",
                     modifier = Modifier
                         .fillMaxSize()
                         .clickable { onRefresh() },
@@ -162,7 +163,7 @@ fun ChangePasswordScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var success by remember { mutableStateOf(false) }
     
-    // 获取验证码
+    // 获取验证码  
     fun getCaptcha() {
         scope.launch {
             isLoading = true
@@ -216,7 +217,7 @@ fun ChangePasswordScreen(
             return
         }
         if (newPassword != confirmPassword) {
-            error = "两次输入的密码不一致"
+            error = "两次输入的密码不一样"
             return
         }
         
@@ -248,8 +249,7 @@ fun ChangePasswordScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-    ) {
-        // 顶部应用栏
+    ) {      
         TopAppBar(
             title = { Text("更改密码") },
             navigationIcon = {
@@ -267,7 +267,7 @@ fun ChangePasswordScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 邮箱输入框
+            // 邮箱输入
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -291,7 +291,7 @@ fun ChangePasswordScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // 验证码图片容器
+                    // 验证码图片
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -361,11 +361,11 @@ fun ChangePasswordScreen(
             OutlinedTextField(
                 value = emailVerificationCode,
                 onValueChange = { emailVerificationCode = it },
-                label = { Text("邮箱验证码") },
+                label = { Text("邮箱验证") },
                 modifier = Modifier.fillMaxWidth()
             )
             
-            // 新密码输入
+            // 新密码输入            
             OutlinedTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
@@ -431,12 +431,12 @@ fun ChangePasswordScreen(
         }
     }
     
-    // 成功对话框
+    // 成功
     if (success) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("更改成功") },
-            text = { Text("密码已成功更改，请使用新密码登录。") },
+            text = { Text("密码已成功更改，请使用新密码登录") },
             confirmButton = {
                 TextButton(
                     onClick = {

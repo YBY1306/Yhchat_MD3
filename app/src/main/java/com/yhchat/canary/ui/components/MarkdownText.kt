@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
@@ -397,18 +398,26 @@ private fun MarkdownTableWithImages(
                                 }
                                 is TableCellContent.Text -> {
                                     if (cell.content.text.isNotBlank()) {
-                                        // 使用 Text 组件支持文本对齐
+                                        // 使用 Material3RichText 渲染 Markdown，支持链接
                                         SelectionContainer {
-                                            Text(
-                                                text = cell.content.text,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                textAlign = when (cell.alignment) {
-                                                    TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                                                    TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                                                    else -> androidx.compose.ui.text.style.TextAlign.Start
-                                                },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentAlignment = when (cell.alignment) {
+                                                    TableAlignment.CENTER -> androidx.compose.ui.Alignment.Center
+                                                    TableAlignment.RIGHT -> androidx.compose.ui.Alignment.CenterEnd
+                                                    else -> androidx.compose.ui.Alignment.CenterStart
+                                                }
+                                            ) {
+                                                Material3RichText(
+                                                    style = richTextStyle,
+                                                    modifier = Modifier.wrapContentWidth()
+                                                ) {
+                                                    Markdown(
+                                                        content = cell.content.text,
+                                                        onLinkClicked = onLinkClicked
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -430,18 +439,26 @@ private fun MarkdownTableWithImages(
                                                 }
                                                 is TableCellContent.Text -> {
                                                     if (item.text.isNotBlank()) {
-                                                        // 使用 Text 组件支持文本对齐
+                                                        // 使用 Material3RichText 渲染 Markdown，支持链接
                                                         SelectionContainer {
-                                                            Text(
-                                                                text = item.text,
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                textAlign = when (cell.alignment) {
-                                                                    TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                                                                    TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                                                                    else -> androidx.compose.ui.text.style.TextAlign.Start
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                            )
+                                                            Box(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                contentAlignment = when (cell.alignment) {
+                                                                    TableAlignment.CENTER -> androidx.compose.ui.Alignment.Center
+                                                                    TableAlignment.RIGHT -> androidx.compose.ui.Alignment.CenterEnd
+                                                                    else -> androidx.compose.ui.Alignment.CenterStart
+                                                                }
+                                                            ) {
+                                                                Material3RichText(
+                                                                    style = richTextStyle,
+                                                                    modifier = Modifier.wrapContentWidth()
+                                                                ) {
+                                                                    Markdown(
+                                                                        content = item.text,
+                                                                        onLinkClicked = onLinkClicked
+                                                                    )
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }

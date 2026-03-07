@@ -165,7 +165,16 @@ fun MessageItem(
         }
 
         Column(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .then(
+                    // 只有图片类型消息限制最大宽度
+                    if (message.contentType == 2) {
+                        Modifier.widthIn(max = 280.dp)
+                    } else {
+                        Modifier
+                    }
+                ),
             horizontalAlignment = if (isMyMessage) Alignment.End else Alignment.Start
         ) {
             SenderNameAndTags(

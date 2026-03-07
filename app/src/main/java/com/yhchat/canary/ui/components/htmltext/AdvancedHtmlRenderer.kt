@@ -109,6 +109,23 @@ sealed class HtmlElement {
         val children: List<HtmlElement>,
         val style: CssStyle = CssStyle()
     ) : HtmlElement()
+    
+    data class TableElement(
+        val rows: List<TableRowElement>,
+        val style: CssStyle = CssStyle()
+    ) : HtmlElement()
+    
+    data class TableRowElement(
+        val cells: List<TableCellElement>,
+        val style: CssStyle = CssStyle(),
+        val isHeader: Boolean = false
+    ) : HtmlElement()
+    
+    data class TableCellElement(
+        val children: List<HtmlElement>,
+        val style: CssStyle = CssStyle(),
+        val isHeader: Boolean = false
+    ) : HtmlElement()
 }
 
 /**
@@ -144,6 +161,15 @@ fun RenderHtmlElement(
         }
         is HtmlElement.BlockquoteElement -> {
             RenderBlockquoteElement(element, onImageClick, onLinkClick)
+        }
+        is HtmlElement.TableElement -> {
+            RenderTableElement(element, onImageClick, onLinkClick)
+        }
+        is HtmlElement.TableRowElement -> {
+            // 不应该单独渲染行，应该在表格中渲染
+        }
+        is HtmlElement.TableCellElement -> {
+            // 不应该单独渲染单元格，应该在行中渲染
         }
     }
 }
@@ -533,6 +559,107 @@ fun RenderBlockquoteElement(
     ) {
         element.children.forEach { child ->
             RenderHtmlElement(child, onImageClick, onLinkClick)
+        }
+    }
+}
+
+/**
+ * 渲染表格元素
+ */
+@Composable
+fun RenderTableElement(
+    element: HtmlElement.TableElement,
+    onImageClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
+) {
+    val style = element.style
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (style.backgroundColor != null) {
+                    Modifier.background(
+                        style.backgroundColor,
+                        RoundedCornerShape(style.borderRadius ?: 0.dp)
+                    )
+                } else Modifier
+            )
+            .then(
+                if (style.border != null || style.boxShadow != null) {
+                    Modifier.drawBehind {
+                        style.border?.let {
+                            val color = parseBorderColor(it)
+                            drawRect(color = color, style = Stroke(width = 1.dp.toPx()))
+                        }
+                    }
+                } else Modifier
+            )
+            .padding(
+                top = style.paddingTop ?: style.padding ?: 0.dp,
+                bottom = style.paddingBottom ?: style.padding ?: 0.dp,
+                start = style.paddingLeft ?: style.padding ?: 0.dp,
+                end = style.paddingRight ?: style.padding ?: 0.dp
+            )
+            .then(
+                if (style.marginTop != null || style.marginBottom != null ||
+                    style.marginLeft != null || style.marginRight != null || style.margin != null) {
+                    Modifier.padding(
+                        top = style.marginTop ?: style.margin ?: 0.dp,
+                        bottom = style.marginBottom ?: style.margin ?: 0.dp,
+                        start = style.marginLeft ?: style.margin ?: 0.dp,
+                        end = style.marginRight ?: style.margin ?: 0.dp
+                    )
+                } else Modifier
+            )
+    ) {
+        element.rows.forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (row.style.backgroundColor != null) {
+                            Modifier.background(row.style.backgroundColor)
+                        } else Modifier
+                    )
+                    .then(
+                        if (row.style.borderBottom != null) {
+                            Modifier.drawBehind {
+                                val color = parseBorderColor(row.style.borderBottom)
+                                drawLine(
+                                    color = color,
+                                    start = Offset(0f, size.height),
+                                    end = Offset(size.width, size.height),
+                                    strokeWidth = 1.dp.toPx()
+                                )
+                            }
+                        } else Modifier
+                    )
+            ) {
+                row.cells.forEach { cell ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (cell.style.backgroundColor != null) {
+                                    Modifier.background(cell.style.backgroundColor)
+                                } else Modifier
+                            )
+                            .padding(
+                                top = cell.style.paddingTop ?: cell.style.padding ?: 1.dp,
+                                bottom = cell.style.paddingBottom ?: cell.style.padding ?: 1.dp,
+                                start = cell.style.paddingLeft ?: cell.style.padding ?: 12.dp,
+                                end = cell.style.paddingRight ?: cell.style.padding ?: 12.dp
+                            )
+                    ) {
+                        Column {
+                            cell.children.forEach { child ->
+                                RenderHtmlElement(child, onImageClick, onLinkClick)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

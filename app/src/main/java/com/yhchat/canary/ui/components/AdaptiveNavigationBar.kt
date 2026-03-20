@@ -8,7 +8,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
 
@@ -120,10 +123,14 @@ private fun AnimatedBottomNavigationBar(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true
 ) {
+    var barHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val fallbackOffsetPx = with(density) { 100.dp.roundToPx() }
+
     // 使用Material风格的tween动画，模拟LibChecker的HideBottomViewOnScrollBehavior
     // LinearOutSlowInEasing = 缓出效果，更有缓冲感
-    val offsetY by animateDpAsState(
-        targetValue = if (isVisible) 0.dp else 100.dp,
+    val offsetYPx by animateIntAsState(
+        targetValue = if (isVisible) 0 else (if (barHeightPx > 0) barHeightPx else fallbackOffsetPx),
         animationSpec = tween(
             durationMillis = 275, // 加长动画时长，增加缓冲感
             easing = LinearOutSlowInEasing // 缓出效果，从匀速到慢速
@@ -135,7 +142,9 @@ private fun AnimatedBottomNavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 3.dp,
-        modifier = modifier.offset(y = offsetY)
+        modifier = modifier
+            .onSizeChanged { barHeightPx = it.height }
+            .offset { IntOffset(x = 0, y = offsetYPx) }
     ) {
         visibleItems.forEach { item ->
             NavigationBarItem(
@@ -180,9 +189,13 @@ fun GradientBottomNavigationBar(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true
 ) {
+    var barHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val fallbackOffsetPx = with(density) { 100.dp.roundToPx() }
+
     // 使用Material风格的tween动画
-    val offsetY by animateDpAsState(
-        targetValue = if (isVisible) 0.dp else 100.dp,
+    val offsetYPx by animateIntAsState(
+        targetValue = if (isVisible) 0 else (if (barHeightPx > 0) barHeightPx else fallbackOffsetPx),
         animationSpec = tween(
             durationMillis = 400,
             easing = LinearOutSlowInEasing
@@ -191,7 +204,9 @@ fun GradientBottomNavigationBar(
     )
     
     Surface(
-        modifier = modifier.offset(y = offsetY),
+        modifier = modifier
+            .onSizeChanged { barHeightPx = it.height }
+            .offset { IntOffset(x = 0, y = offsetYPx) },
         tonalElevation = 3.dp,
         shadowElevation = 8.dp,
         color = MaterialTheme.colorScheme.surface

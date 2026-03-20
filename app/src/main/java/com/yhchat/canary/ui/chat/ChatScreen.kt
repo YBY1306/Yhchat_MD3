@@ -55,7 +55,6 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
@@ -235,6 +234,10 @@ fun ChatScreen(
     
     // 滚动到底部按钮状态
     var showScrollToBottomButton by remember { mutableStateOf(false) }
+    // 用户是否处于“粘底”状态（只由用户滚动行为改变，不受新消息插入瞬时布局影响）
+    var shouldStickToBottom by remember { mutableStateOf(true) }
+    // WS 新消息到来后的待执行自动滚动标记（等列表插入完成后再滚动）
+    var pendingAutoScrollToBottom by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
     // 引用消息状态
@@ -295,11 +298,6 @@ fun ChatScreen(
         }
         layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
-    
-    // 性能优化：预计算反转后的消息列表，避免在LazyColumn内部重复计算
-    val reversedMessages by remember {
-        derivedStateOf { messages.reversed() }
     }
     
     // 初始化聊天
@@ -463,45 +461,45 @@ fun ChatScreen(
         lastInputTime = System.currentTimeMillis()
     }
     
-    // 监听滚动状态，当不在底部时显示"回到最新消息"按钮
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        // 当用户滚动查看历史消息时（不在最新消息位置），显示回到底部按钮
-        // 因为是 reverseLayout，第一个可见项目的索引大于0表示不在最新消息位置
-        showScrollToBottomButton = listState.firstVisibleItemIndex > 0 || 
-                                   (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset > 100)
+    // 与“回到最新消息”按钮保持一致：index=0 且 offset<=100 视为在底部
+    fun isAtBottom(): Boolean {
+        return listState.firstVisibleItemIndex == 0 &&
+                listState.firstVisibleItemScrollOffset <= 100
+    }
+
+    // 监听滚动状态：更新“粘底”状态，并决定是否显示“回到最新消息”按钮
+    LaunchedEffect(
+        listState.firstVisibleItemIndex,
+        listState.firstVisibleItemScrollOffset,
+        listState.isScrollInProgress
+    ) {
+        val atBottomNow = isAtBottom()
+
+        // 只有用户在滚动，或已经回到底部时，才更新粘底状态；
+        // 避免新消息插入导致的瞬时偏移把“粘底”误判为 false
+        if (listState.isScrollInProgress || atBottomNow) {
+            shouldStickToBottom = atBottomNow
+        }
+
+        showScrollToBottomButton = !atBottomNow && !shouldStickToBottom
     }
     
-    // WebSocket新消息处理：智能自动滚动
+    // WebSocket 新消息处理：仅在底部时自动滚动
     LaunchedEffect(uiState.newMessageReceived) {
         if (uiState.newMessageReceived) {
-            // 获取最新消息（reversedMessages的第一条就是最新的）
-            val latestMessage = reversedMessages.firstOrNull()
-            
-            // 判断条件1：用户是否在底部附近（允许一些偏移量）
-            val isNearBottom = listState.firstVisibleItemIndex <= 4 && 
-                              !listState.isScrollInProgress
-            
-            // 判断条件2：最新消息是否是当前用户发送的
-            val isMyMessage = latestMessage?.sender?.chatId == userId
-            
-            // 判断条件3：最新消息时间戳是否很新（5秒内）
-            val currentTime = System.currentTimeMillis()
-            val isRecentMessage = latestMessage?.let { 
-                currentTime - it.sendTime <= 500000 
-            } ?: false
-            
-            // 自动滚动逻辑：
-            // 1. 如果是自己发的消息，总是滚动到底部
-            // 2. 如果用户在底部附近且消息是最近的，也自动滚动
-            val shouldAutoScroll = isMyMessage || (isNearBottom && isRecentMessage)
-            
-            if (shouldAutoScroll) {
-                // 平滑滚动到新消息
-                listState.animateScrollToItem(0)
-            }
+            // 记录是否需要在“消息真正插入后”执行自动滚动
+            pendingAutoScrollToBottom = shouldStickToBottom
             
             // 重置新消息标记
             viewModel.resetNewMessageFlag()
+        }
+    }
+
+    // 消息数量变化后再执行自动滚动，避免时序问题导致“未滚到最新”
+    LaunchedEffect(messages.size, pendingAutoScrollToBottom) {
+        if (pendingAutoScrollToBottom) {
+            listState.animateScrollToItem(0)
+            pendingAutoScrollToBottom = false
         }
     }
 
@@ -631,7 +629,25 @@ fun ChatScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                val reversedMessages = remember(messages) { messages.asReversed() }
+                // 取当前帧的不可变快照，避免 count/key/item 在列表变化时不同步
+                val reversedMessages = messages.asReversed().toList()
+                // 为 LazyColumn 预生成稳定且唯一的 key，避免重复 key 崩溃
+                val messageItemKeys = run {
+                    val keyUsageCount = mutableMapOf<String, Int>()
+                    reversedMessages.map { message ->
+                        val baseKey = when {
+                            message.msgId.isNotBlank() -> "msg_${message.msgId}"
+                            (message.msgSeq ?: 0L) > 0L -> "seq_${message.msgSeq}"
+                            else -> {
+                                "local_${message.sendTime}_${message.sender.chatId}_${message.chatId ?: ""}_${message.chatType ?: -1}_${message.direction}_${message.recvId ?: ""}_${message.contentType}"
+                            }
+                        }
+
+                        val used = keyUsageCount.getOrDefault(baseKey, 0)
+                        keyUsageCount[baseKey] = used + 1
+                        if (used == 0) baseKey else "${baseKey}#dup$used"
+                    }
+                }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
@@ -641,15 +657,7 @@ fun ChatScreen(
                 ) {
                     items(
                         count = reversedMessages.size,
-                        key = { index -> 
-                            // 极高唯一性的 Key 方案：组合消息ID、发送者ID、时间戳、索引以及内容的 Hash
-                            // 确保在各种极端数据（如消息重发、本地缓存冲突、分页加载）下都不会碰撞
-                            val message = reversedMessages[index]
-                            val contentHash = message.content.hashCode()
-                            val msgId = if (message.msgId.isNotBlank()) message.msgId else "local_${message.sendTime}"
-                            
-                            "${msgId}_${message.sender.chatId}_${message.sendTime}_${contentHash}_${index}"
-                        },
+                        key = { index -> messageItemKeys[index] },
                         contentType = { index ->
                             reversedMessages[index].contentType
                         }
@@ -1095,6 +1103,8 @@ fun ChatScreen(
                 FloatingActionButton(
                     onClick = {
                         coroutineScope.launch {
+                            shouldStickToBottom = true
+                            pendingAutoScrollToBottom = false
                             // 滚动到最新消息（索引0，因为是 reverseLayout）
                             listState.animateScrollToItem(0)
                         }
@@ -1260,6 +1270,8 @@ fun ChatScreen(
                                 selectedInstruction = null
                                 // 发送消息后自动滚动到最新消息
                                 coroutineScope.launch {
+                                    shouldStickToBottom = true
+                                    pendingAutoScrollToBottom = false
                                     listState.animateScrollToItem(0)
                                 }
                                 // 发送成功后清除草稿

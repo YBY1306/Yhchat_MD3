@@ -157,7 +157,6 @@ class ChatViewModel @Inject constructor(
         // 如果是群聊，加载群成员信息、机器人列表和菜单按钮
         if (chatType == 2) { // 群聊
             loadGroupInfo(chatId)
-            loadGroupMembers(chatId)
             loadGroupBotsAndBoards(chatId)
             loadGroupMenuButtons(chatId)
         } else if (chatType == 3) { // 机器人
@@ -184,7 +183,11 @@ class ChatViewModel @Inject constructor(
             groupRepository.getGroupInfo(groupId).fold(
                 onSuccess = { groupDetail ->
                     Log.d(tag, "✅ Group info loaded successfully")
-                    _uiState.value = _uiState.value.copy(groupInfo = groupDetail)
+                    _uiState.value = _uiState.value.copy(
+                        groupInfo = groupDetail,
+                        groupMemberCount = groupDetail.memberCount,
+                        groupMembers = emptyMap()
+                    )
                 },
                 onFailure = { error ->
                     Log.e(tag, "❌ Failed to load group info", error)
@@ -2161,7 +2164,9 @@ class ChatViewModel @Inject constructor(
      */
     fun getCurrentUserPermission(): Int {
         val currentUser = _uiState.value.groupMembers[currentUserId]
-        return currentUser?.permissionLevel ?: 0
+        return currentUser?.permissionLevel
+            ?: _uiState.value.groupInfo?.permissionLevel
+            ?: 0
     }
     
     /**

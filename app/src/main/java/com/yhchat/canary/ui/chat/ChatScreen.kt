@@ -648,6 +648,8 @@ fun ChatScreen(
                         if (used == 0) baseKey else "${baseKey}#dup$used"
                     }
                 }
+                val groupOwnerId = uiState.groupInfo?.ownerId
+                val groupAdminIds = uiState.groupInfo?.adminIds ?: emptyList()
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
@@ -1037,7 +1039,9 @@ fun ChatScreen(
                                     }
                                 }
                             },
-                            memberPermission = memberPermission
+                            memberPermission = memberPermission,
+                            groupOwnerId = groupOwnerId,
+                            groupAdminIds = groupAdminIds
                         )
                     }
 

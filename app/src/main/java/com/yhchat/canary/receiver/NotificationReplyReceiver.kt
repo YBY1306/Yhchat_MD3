@@ -75,7 +75,7 @@ class NotificationReplyReceiver : BroadcastReceiver() {
                     chatId = chatId,
                     chatType = chatType,
                     text = replyText,
-                    contentType = 1 // 文本消息
+                    contentType = 1 // 纯文本
                 )
                 
                 result.fold(
@@ -126,7 +126,7 @@ class NotificationReplyReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, "chat_messages")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(chatName)
-            .setContentText("正在发送...")
+            .setContentText("发送中...")
             .setProgress(0, 0, true)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -161,8 +161,8 @@ class NotificationReplyReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, "chat_messages")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setStyle(messagingStyle)
-            .setContentText("✓ 消息已发送")
-            .setTimeoutAfter(3000) // 3秒后自动消失
+            .setContentText("消息已发送")
+            .setTimeoutAfter(3000)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
         
@@ -182,8 +182,8 @@ class NotificationReplyReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, "chat_messages")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(chatName)
-            .setContentText("✗ 发送失败: ${errorMessage ?: "未知错误"}")
-            .setTimeoutAfter(5000) // 5秒后自动消失
+            .setContentText("发送失败: ${errorMessage ?: "未知错误"}")
+            .setTimeoutAfter(5000)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
         

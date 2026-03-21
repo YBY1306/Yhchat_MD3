@@ -63,8 +63,10 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
+
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.components.ImageUtils
+
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -96,7 +98,9 @@ fun MessageItem(
     onSpeechToText: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
     onQuoteMessageClick: (String) -> Unit = {},
-    memberPermission: Int? = null
+    memberPermission: Int? = null,
+    groupOwnerId: String? = null,
+    groupAdminIds: List<String> = emptyList()
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -169,7 +173,7 @@ fun MessageItem(
                 .weight(1f, fill = false)
                 .then(
                     // 只有图片类型消息限制最大宽度
-                    if (message.contentType == 2) {
+                    if (message.contentType == 2 || message.contentType == 4 || message.contentType == 6) {
                         Modifier.widthIn(max = 280.dp)
                     } else {
                         Modifier
@@ -182,7 +186,9 @@ fun MessageItem(
                 isMyMessage = isMyMessage,
                 tagsExpanded = tagsExpanded,
                 onToggleExpand = { tagsExpanded = !tagsExpanded },
-                memberPermission = memberPermission
+                memberPermission = memberPermission,
+                groupOwnerId = groupOwnerId,
+                groupAdminIds = groupAdminIds
             )
 
             if (message.cmd != null && message.cmd.name.isNotEmpty()) {
@@ -476,7 +482,9 @@ fun SenderNameAndTags(
     isMyMessage: Boolean,
     tagsExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    memberPermission: Int? = null
+    memberPermission: Int? = null,
+    groupOwnerId: String? = null,
+    groupAdminIds: List<String> = emptyList()
 ) {
     val context = LocalContext.current
     val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
@@ -486,6 +494,12 @@ fun SenderNameAndTags(
 
     val tags = message.sender.tag ?: emptyList()
     val hasMultipleTags = tags.size > 1
+    val resolvedMemberPermission = resolveMemberPermission(
+        senderChatId = message.sender.chatId,
+        memberPermission = memberPermission,
+        groupOwnerId = groupOwnerId,
+        groupAdminIds = groupAdminIds
+    )
 
     Column(
         modifier = Modifier
@@ -522,7 +536,7 @@ fun SenderNameAndTags(
                 }
             }
 
-            when (memberPermission) {
+            when (resolvedMemberPermission) {
                 100 -> if (showOwnerBadge) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -647,7 +661,9 @@ fun AnimatedMessageItem(
     onSpeechToText: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
     onQuoteMessageClick: (String) -> Unit = {},
-    memberPermission: Int? = null
+    memberPermission: Int? = null,
+    groupOwnerId: String? = null,
+    groupAdminIds: List<String> = emptyList()
 ) {
     val isNewMessage = remember(message.msgId) {
         val currentTime = System.currentTimeMillis()
@@ -701,7 +717,9 @@ fun AnimatedMessageItem(
                     onSpeechToText = onSpeechToText,
                     onPlusOne = onPlusOne,
                     onQuoteMessageClick = onQuoteMessageClick,
-                    memberPermission = memberPermission
+                    memberPermission = memberPermission,
+                    groupOwnerId = groupOwnerId,
+                    groupAdminIds = groupAdminIds
                 )
             }
         }
@@ -754,11 +772,25 @@ fun AnimatedMessageItem(
                     onSpeechToText = onSpeechToText,
                     onPlusOne = onPlusOne,
                     onQuoteMessageClick = onQuoteMessageClick,
-                    memberPermission = memberPermission
+                    memberPermission = memberPermission,
+                    groupOwnerId = groupOwnerId,
+                    groupAdminIds = groupAdminIds
                 )
             }
         }
     }
+}
+
+private fun resolveMemberPermission(
+    senderChatId: String,
+    memberPermission: Int?,
+    groupOwnerId: String?,
+    groupAdminIds: List<String>
+): Int? {
+    if (memberPermission != null) return memberPermission
+    if (groupOwnerId != null && senderChatId == groupOwnerId) return 100
+    if (groupAdminIds.contains(senderChatId)) return 2
+    return null
 }
 
 fun formatTimestamp(timestamp: Long): String {

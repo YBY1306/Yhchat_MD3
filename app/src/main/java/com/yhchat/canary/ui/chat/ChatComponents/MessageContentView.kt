@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -435,7 +436,7 @@ fun MessageContentView(
             Spacer(modifier = Modifier.height(4.dp))
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .widthIn(max = 280.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .combinedClickable(
                         onClick = {
@@ -530,7 +531,11 @@ fun MessageContentView(
                     }
 
                     // 引用消息文本 - 支持文本选择
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.widthIn(
+                            max = if (hasQuoteMedia) 180.dp else 240.dp
+                        )
+                    ) {
                         SelectionContainer {
                             Text(
                                 text = quoteText,

@@ -1,11 +1,15 @@
 package com.yhchat.canary.ui.group
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.repository.GroupRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.utils.ImageUploadUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +23,7 @@ data class GroupSettingsUiState(
     val groupInfo: GroupDetail? = null,
     val isEditing: Boolean = false,
     val isSaving: Boolean = false,
+    val isUploadingAvatar: Boolean = false,
     val saveError: String? = null,
     val isSaveSuccess: Boolean = false,
     // 编辑状态
@@ -237,6 +242,56 @@ class GroupSettingsViewModel @Inject constructor(
     /**
      * 更新编辑字段
      */
+    fun uploadGroupAvatar(context: Context, imageUri: Uri) {
+        val currentState = _uiState.value
+        if (!currentState.isEditing || currentState.groupInfo == null) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isUploadingAvatar = true,
+                saveError = null
+            )
+
+            try {
+                val userToken = tokenRepository.getTokenSync().orEmpty()
+                if (userToken.isEmpty()) {
+                    throw Exception("未登录")
+                }
+
+                val tokenResponse = ApiClient.apiService.getQiniuImageToken(userToken)
+                if (!tokenResponse.isSuccessful || tokenResponse.body()?.data == null) {
+                    throw Exception("获取上传token失败")
+                }
+
+                val uploadToken = tokenResponse.body()!!.data.token
+                val uploadResult = ImageUploadUtil.uploadImage(context, imageUri, uploadToken)
+
+                uploadResult.fold(
+                    onSuccess = { uploadResponse ->
+                        val imageUrl = "https://chat-img.jwznb.com/${uploadResponse.key}"
+                        val updatedGroupInfo = _uiState.value.groupInfo?.copy(avatarUrl = imageUrl)
+                        _uiState.value = _uiState.value.copy(
+                            isUploadingAvatar = false,
+                            editedAvatarUrl = imageUrl,
+                            groupInfo = updatedGroupInfo
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            isUploadingAvatar = false,
+                            saveError = "头像上传失败: ${error.message}"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isUploadingAvatar = false,
+                    saveError = "头像上传失败: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun updateEditedName(name: String) {
         _uiState.value = _uiState.value.copy(editedName = name)
     }

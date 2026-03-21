@@ -1,5 +1,8 @@
 package com.yhchat.canary.ui.group
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.ImageUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +59,7 @@ fun GroupSettingsScreenRoot(
                     if (uiState.isEditing) {
                         IconButton(
                             onClick = { viewModel.saveEditing() },
-                            enabled = !uiState.isSaving
+                            enabled = !uiState.isSaving && !uiState.isUploadingAvatar
                         ) {
                             if (uiState.isSaving) {
                                 CircularProgressIndicator(
@@ -132,6 +137,15 @@ private fun GroupSettingsContent(
 ) {
     val context = LocalContext.current
     val groupInfo = uiState.groupInfo!!
+    val currentAvatarUrl = if (uiState.isEditing) uiState.editedAvatarUrl else groupInfo.avatarUrl
+    var showImageViewer by remember { mutableStateOf(false) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            viewModel.uploadGroupAvatar(context, selectedUri)
+        }
+    }
     
     LazyColumn(
         modifier = modifier,
@@ -148,18 +162,52 @@ private fun GroupSettingsContent(
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(contentAlignment = Alignment.BottomEnd) {
                     AsyncImage(
                         model = ImageUtils.createImageRequest(
                             context = LocalContext.current,
-                            url = if (uiState.isEditing) uiState.editedAvatarUrl else groupInfo.avatarUrl
+                            url = currentAvatarUrl
                         ),
                         contentDescription = "群头像",
                         modifier = Modifier
                             .size(100.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable(enabled = currentAvatarUrl.isNotBlank()) {
+                                showImageViewer = true
+                            },
                         contentScale = ContentScale.Crop
                     )
-                    
+                    if (uiState.isEditing) {
+                        Surface(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clickable(enabled = !uiState.isUploadingAvatar) {
+                                    imagePickerLauncher.launch("image/*")
+                                },
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            tonalElevation = 4.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (uiState.isUploadingAvatar) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoCamera,
+                                        contentDescription = "edit_avatar",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    }
+                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     if (uiState.isEditing) {
@@ -263,7 +311,7 @@ private fun GroupSettingsContent(
                         )
                     }
                     
-                    // 群口令（所有成员可见和编辑）
+                    // 群口令
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     var showKeywordDialog by remember { mutableStateOf(false) }
@@ -619,6 +667,13 @@ private fun GroupSettingsContent(
     }
     
     // 消息类型限制对话框
+    if (showImageViewer && currentAvatarUrl.isNotBlank()) {
+        ImageViewer(
+            imageUrl = currentAvatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
+
     if (uiState.showMessageTypeLimitDialog) {
         MessageTypeLimitDialog(
             selectedTypes = uiState.selectedMessageTypes,

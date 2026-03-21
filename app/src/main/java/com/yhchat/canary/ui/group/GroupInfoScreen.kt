@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.settings.SettingsGroup
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,7 @@ fun GroupInfoScreenRoot(
 
     YhchatCanaryTheme {
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
                 Column {
                     TopAppBar(
@@ -306,16 +308,13 @@ private fun GroupInfoContent(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 群聊基本信息卡片 - 紧凑版
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            SettingsGroup(
+                items = listOf({
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -376,17 +375,15 @@ private fun GroupInfoContent(
                         )
                     }
                 }
-            }
+                })
+            )
         }
         
         // 群聊简介卡片
         if (groupInfo.introduction.isNotEmpty()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
+                SettingsGroup(
+                    items = listOf({
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -417,17 +414,15 @@ private fun GroupInfoContent(
                             )
                         }
                     }
-                }
+                    })
+                )
             }
         }
         
         // 成员按钮
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            SettingsGroup(
+                items = listOf({
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -467,16 +462,14 @@ private fun GroupInfoContent(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-            }
+                })
+            )
         }
 
         // 免打扰
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            SettingsGroup(
+                items = listOf({
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -533,16 +526,14 @@ private fun GroupInfoContent(
                         )
                     }
                 }
-            }
+                })
+            )
         }
         
         // 功能选项
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            SettingsGroup(
+                items = listOf({
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
                     FunctionMenuItem(
                         icon = Icons.Default.Search,
@@ -698,7 +689,8 @@ private fun GroupInfoContent(
                         isDangerous = true
                     )
                 }
-            }
+                })
+            )
         }
         
     }
@@ -891,5 +883,3 @@ fun ExitGroupDialog(
         }
     )
 }
-
-

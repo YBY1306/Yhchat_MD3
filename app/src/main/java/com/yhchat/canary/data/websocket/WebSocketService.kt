@@ -59,9 +59,13 @@ class WebSocketService @Inject constructor(
     
     private var webSocket: WebSocket? = null
     private var heartbeatJob: Job? = null
+    private var reconnectJob: Job? = null
     private var isConnected = false
+    private var isConnecting = false
     private var shouldReconnect = true
+    private var reconnectAttempts = 0
     private var currentUserId: String? = null
+    private var currentPlatform: String = "windows"
     private var currentDeviceId: String = UUID.randomUUID().toString().replace("-", "")
     
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -129,10 +133,22 @@ class WebSocketService @Inject constructor(
      * 连接WebSocket
      */
     suspend fun connect(userId: String, platform: String = "windows") {
+        shouldReconnect = true
+        currentUserId = userId
+        currentPlatform = platform
+
         if (isConnected && webSocket != null) {
             Log.d(tag, "Already connected")
             return
         }
+        if (isConnecting) {
+            Log.d(tag, "Connect already in progress, skip duplicate request")
+            return
+        }
+
+        reconnectJob?.cancel()
+        reconnectJob = null
+        isConnecting = true
         
         // 确保完全清理旧连接
         webSocket?.let { oldSocket ->
@@ -141,17 +157,17 @@ class WebSocketService @Inject constructor(
             oldSocket.close(1000, "Reconnecting")
             webSocket = null
             // 等待旧连接完全关闭
-            delay(500)
+            delay(300)
         }
 
         val token = tokenRepository.getTokenSync()
         if (token == null) {
             Log.e(tag, "No token available")
+            isConnecting = false
+            scheduleReconnect("missing_token")
             _connectionState.emit(ConnectionState.Error("未登录"))
             return
         }
-        
-        currentUserId = userId
         
         try {
             Log.d(tag, "Connecting to WebSocket...")
@@ -163,8 +179,16 @@ class WebSocketService @Inject constructor(
             
             webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore onOpen from stale socket")
+                        return
+                    }
                     Log.d(tag, "WebSocket opened")
                     isConnected = true
+                    isConnecting = false
+                    reconnectAttempts = 0
+                    reconnectJob?.cancel()
+                    reconnectJob = null
                     
                     // 发送登录请求 - 参考yh_user_sdk/core/ws.py
                     val loginData = JsonObject().apply {
@@ -191,6 +215,10 @@ class WebSocketService @Inject constructor(
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore binary message from stale socket")
+                        return
+                    }
                     try {
                         Log.d(tag, "📩 Received binary message (${bytes.size} bytes)")
                         handleBinaryMessage(bytes.toByteArray())
@@ -201,6 +229,10 @@ class WebSocketService @Inject constructor(
                 }
                 
                 override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore text message from stale socket")
+                        return
+                    }
                     try {
                         Log.d(tag, "Received text message (unexpected): $text")
                         // WebSocket 应该只返回二进制 protobuf 消息，不应该有文本消息
@@ -211,51 +243,107 @@ class WebSocketService @Inject constructor(
                 }
                 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore onClosing from stale socket")
+                        return
+                    }
                     Log.d(tag, "WebSocket closing: $code $reason")
-                    cleanup()
                 }
                 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore onClosed from stale socket")
+                        return
+                    }
                     Log.d(tag, "WebSocket closed: $code $reason")
                     cleanup()
+                    this@WebSocketService.webSocket = null
+                    isConnecting = false
                     
                     scope.launch {
                         _connectionState.emit(ConnectionState.Disconnected)
-                        
-                        // 自动重连
-                        if (shouldReconnect) {
-                            delay(5000)
-                            connect(userId, platform)
-                        }
                     }
+                    scheduleReconnect("closed_$code")
                 }
                 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    if (!isCurrentSocket(webSocket)) {
+                        Log.w(tag, "Ignore onFailure from stale socket")
+                        return
+                    }
                     Log.e(tag, "❌ WebSocket failure: ${t.javaClass.simpleName} - ${t.message}", t)
                     if (response != null) {
                         Log.e(tag, "Response code: ${response.code}, message: ${response.message}")
                     }
                     cleanup()
+                    this@WebSocketService.webSocket = null
+                    isConnecting = false
                     
                     scope.launch {
                         _connectionState.emit(ConnectionState.Error(t.message ?: "连接失败"))
-                        
-                        // 自动重连
-                        if (shouldReconnect) {
-                            Log.d(tag, "⏳ Will reconnect in 5 seconds...")
-                            delay(5000)
-                            connect(userId, platform)
-                        }
                     }
+                    scheduleReconnect("failure_${t.javaClass.simpleName}")
                 }
             })
             
         } catch (e: Exception) {
+            isConnecting = false
             Log.e(tag, "Error connecting to WebSocket", e)
             _connectionState.emit(ConnectionState.Error(e.message ?: "连接失败"))
+            scheduleReconnect("connect_exception_${e.javaClass.simpleName}")
         }
     }
     
+    private fun isCurrentSocket(socket: WebSocket): Boolean {
+        return socket === webSocket
+    }
+
+    private fun scheduleReconnect(reason: String) {
+        if (!shouldReconnect) {
+            Log.d(tag, "Reconnect disabled, skip. reason=$reason")
+            return
+        }
+
+        val userId = currentUserId
+        if (userId.isNullOrEmpty()) {
+            Log.w(tag, "No userId cached, skip reconnect. reason=$reason")
+            return
+        }
+
+        if (isConnected) {
+            Log.d(tag, "Already connected, skip reconnect scheduling")
+            return
+        }
+
+        if (reconnectJob?.isActive == true) {
+            Log.d(tag, "Reconnect already scheduled, skip duplicate. reason=$reason")
+            return
+        }
+
+        val attempt = reconnectAttempts + 1
+        val maxExp = (attempt - 1).coerceAtMost(4)
+        val backoffDelay = 2000L * (1L shl maxExp)
+        val jitter = (0L..600L).random()
+        val delayMs = (backoffDelay + jitter).coerceAtMost(30000L)
+
+        reconnectJob = scope.launch {
+            Log.d(tag, "Scheduling reconnect in ${delayMs}ms (attempt=$attempt, reason=$reason)")
+            delay(delayMs)
+
+            if (!shouldReconnect || isConnected) {
+                Log.d(tag, "Reconnect canceled by state change")
+                return@launch
+            }
+
+            reconnectAttempts = attempt
+            runCatching {
+                connect(userId, currentPlatform)
+            }.onFailure { e ->
+                Log.e(tag, "Reconnect attempt failed", e)
+            }
+        }
+    }
+
     /**
      * 发送草稿同步消息
      */
@@ -293,6 +381,10 @@ class WebSocketService @Inject constructor(
     fun disconnect() {
         Log.d(tag, "Disconnecting WebSocket")
         shouldReconnect = false
+        reconnectJob?.cancel()
+        reconnectJob = null
+        reconnectAttempts = 0
+        isConnecting = false
         cleanup()
         webSocket?.close(1000, "User disconnect")
         webSocket = null
@@ -973,6 +1065,7 @@ class WebSocketService @Inject constructor(
      */
     private fun cleanup() {
         isConnected = false
+        isConnecting = false
         heartbeatJob?.cancel()
         heartbeatJob = null
     }

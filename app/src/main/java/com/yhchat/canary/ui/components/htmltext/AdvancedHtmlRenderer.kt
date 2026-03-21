@@ -856,6 +856,15 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
     val detailsStack = mutableListOf<DetailsContext>()
     
     elementStack.add(elements)
+
+    fun appendElement(element: HtmlElement) {
+        val isDirectChildOfDetails = detailsStack.isNotEmpty() && tagStack.lastOrNull() == "details"
+        if (isDirectChildOfDetails) {
+            detailsStack.last().content.add(element)
+        } else {
+            elementStack.last().add(element)
+        }
+    }
     
     val parser = KsoupHtmlParser(
         handler = object : KsoupHtmlHandler {
@@ -873,9 +882,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                         val src = attributes["src"] ?: ""
                         val alt = attributes["alt"] ?: ""
                         if (src.isNotEmpty()) {
-                            elementStack.last().add(
-                                HtmlElement.ImageElement(src, alt, cssStyle)
-                            )
+                            appendElement(HtmlElement.ImageElement(src, alt, cssStyle))
                         }
                     }
                     "a" -> {
@@ -910,12 +917,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                     }
                     "br" -> {
                         val textElement = HtmlElement.TextElement("\n")
-                        if (detailsStack.isNotEmpty() && 
-                            (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                            detailsStack.last().content.add(textElement)
-                        } else {
-                            elementStack.last().add(textElement)
-                        }
+                        appendElement(textElement)
                     }
                     "table", "thead", "tbody", "tr", "td", "th" -> {
                         val children = mutableListOf<HtmlElement>()
@@ -957,12 +959,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                     val textElement = HtmlElement.TextElement(text.trim(), currentStyle)
                     
                     // 如果在 details 内容中且不在 summary 中，添加到 details 内容
-                    if (detailsStack.isNotEmpty() && 
-                        (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                        detailsStack.last().content.add(textElement)
-                    } else {
-                        elementStack.last().add(textElement)
-                    }
+                    appendElement(textElement)
                 }
             }
             
@@ -976,9 +973,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val style = styleStack.removeAt(styleStack.size - 1)
                             val children = elementStack.removeAt(elementStack.size - 1)
                             
-                            elementStack.last().add(
-                                HtmlElement.LinkElement(href, children, style)
-                            )
+                            appendElement(HtmlElement.LinkElement(href, children, style))
                         }
                     }
                     "summary" -> {
@@ -1004,7 +999,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                                 style = detailsContext.style,
                                 isOpen = detailsContext.isOpen
                             )
-                            elementStack.last().add(detailsElement)
+                            appendElement(detailsElement)
                         }
                     }
                     "ul", "ol" -> {
@@ -1014,12 +1009,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val children = elementStack.removeAt(elementStack.size - 1)
                             val listElement = HtmlElement.ListElement(lowerName, children, style)
                             
-                            if (detailsStack.isNotEmpty() && 
-                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                                detailsStack.last().content.add(listElement)
-                            } else {
-                                elementStack.last().add(listElement)
-                            }
+                            appendElement(listElement)
                         }
                     }
                     "li" -> {
@@ -1029,12 +1019,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val children = elementStack.removeAt(elementStack.size - 1)
                             val listItem = HtmlElement.ListItemElement(children, style)
                             
-                            if (detailsStack.isNotEmpty() && 
-                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                                detailsStack.last().content.add(listItem)
-                            } else {
-                                elementStack.last().add(listItem)
-                            }
+                            appendElement(listItem)
                         }
                     }
                     "div", "p", "span", "strong", "h1", "h2", "h3", "h4", "h5", "h6" -> {
@@ -1046,12 +1031,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val containerElement = HtmlElement.ContainerElement(lowerName, children, style)
                             
                             // 如果在 details 内容中且不在 summary 中，添加到 details 内容
-                            if (detailsStack.isNotEmpty() && 
-                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                                detailsStack.last().content.add(containerElement)
-                            } else {
-                                elementStack.last().add(containerElement)
-                            }
+                            appendElement(containerElement)
                         }
                     }
                     "blockquote" -> {
@@ -1061,12 +1041,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                             val children = elementStack.removeAt(elementStack.size - 1)
                             
                             val blockquote = HtmlElement.BlockquoteElement(children, style)
-                            if (detailsStack.isNotEmpty() &&
-                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                                detailsStack.last().content.add(blockquote)
-                            } else {
-                                elementStack.last().add(blockquote)
-                            }
+                            appendElement(blockquote)
                         }
                     }
                     "td", "th" -> {
@@ -1135,12 +1110,7 @@ fun parseHtmlToElements(html: String): List<HtmlElement> {
                                 style = style
                             )
                             
-                            if (detailsStack.isNotEmpty() &&
-                                (tagStack.isEmpty() || tagStack.last() != "summary")) {
-                                detailsStack.last().content.add(tableElement)
-                            } else {
-                                elementStack.last().add(tableElement)
-                            }
+                            appendElement(tableElement)
                         }
                     }
                 }

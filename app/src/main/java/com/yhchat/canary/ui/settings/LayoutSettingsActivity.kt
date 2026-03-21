@@ -113,12 +113,14 @@ fun LayoutSettingsScreen(
 @Composable
 private fun ConversationLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+    val displayPrefs = remember { context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) }
     
     var showTitle by remember { mutableStateOf(prefs.getBoolean("conversation_show_title", true)) }
     var showSearchBox by remember { mutableStateOf(prefs.getBoolean("conversation_show_search", true)) }
     var showAddButton by remember { mutableStateOf(prefs.getBoolean("conversation_show_add", true)) }
     var showUnreadBadge by remember { mutableStateOf(prefs.getBoolean("conversation_show_unread_badge", true)) }
     var showConversationList by remember { mutableStateOf(prefs.getBoolean("conversation_show_list", true)) }
+    var showStickyConversations by remember { mutableStateOf(displayPrefs.getBoolean("show_sticky_conversations", true)) }
     var showAddUser by remember { mutableStateOf(prefs.getBoolean("add_menu_show_user", true)) }
     var showAddGroup by remember { mutableStateOf(prefs.getBoolean("add_menu_show_group", true)) }
     var showScan by remember { mutableStateOf(prefs.getBoolean("add_menu_show_scan", true)) }
@@ -210,6 +212,18 @@ private fun ConversationLayoutSettingsGroup(context: Context) {
     SettingsGroup(
         title = "会话列表 - 显示项",
         items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.PushPin,
+                    title = "显示置顶会话",
+                    subtitle = "在会话列表中显示置顶的会话",
+                    checked = showStickyConversations,
+                    onCheckedChange = {
+                        showStickyConversations = it
+                        displayPrefs.edit().putBoolean("show_sticky_conversations", it).apply()
+                    }
+                )
+            },
             {
                 SettingsSwitchItem(
                     icon = Icons.Default.NotificationsActive,
@@ -675,6 +689,7 @@ private fun ProfileLayoutSettingsGroup(context: Context) {
 @Composable
 private fun ChatLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+    val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
     
     var hideTopAppBar by remember { mutableStateOf(prefs.getBoolean("chat_hide_top_app_bar", false)) }
     var hideBackButtonInLargeScreen by remember { mutableStateOf(prefs.getBoolean("chat_hide_back_button_large_screen", true)) }
@@ -686,6 +701,8 @@ private fun ChatLayoutSettingsGroup(context: Context) {
     var showMicButton by remember { mutableStateOf(prefs.getBoolean("input_show_mic_button", true)) }
     var showInstructionButton by remember { mutableStateOf(prefs.getBoolean("input_show_instruction_button", true)) }
     var showExpressionButton by remember { mutableStateOf(prefs.getBoolean("input_show_expression_button", true)) }
+    var showBotBoard by remember { mutableStateOf(chatPrefs.getBoolean("show_bot_board", true)) }
+    var showMenuButtons by remember { mutableStateOf(chatPrefs.getBoolean("show_menu_buttons", true)) }
     
     SettingsGroup(
         title = "聊天界面 - TopAppBar",
@@ -819,6 +836,36 @@ private fun ChatLayoutSettingsGroup(context: Context) {
                     onCheckedChange = {
                         showExpressionButton = it
                         prefs.edit().putBoolean("input_show_expression_button", it).apply()
+                    }
+                )
+            }
+        )
+    )
+
+    SettingsGroup(
+        title = "聊天界面 - 其他显示",
+        items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.SmartToy,
+                    title = "显示机器人看板",
+                    subtitle = if (showBotBoard) "在聊天界面显示群聊机器人看板和单机器人看板" else "隐藏所有机器人看板",
+                    checked = showBotBoard,
+                    onCheckedChange = {
+                        showBotBoard = it
+                        chatPrefs.edit().putBoolean("show_bot_board", it).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Menu,
+                    title = "显示菜单按钮栏",
+                    subtitle = if (showMenuButtons) "在聊天输入框上方显示菜单按钮栏" else "隐藏菜单按钮栏",
+                    checked = showMenuButtons,
+                    onCheckedChange = {
+                        showMenuButtons = it
+                        chatPrefs.edit().putBoolean("show_menu_buttons", it).apply()
                     }
                 )
             }

@@ -228,11 +228,6 @@ fun SettingsScreen(
                 DisplaySettingsGroup(context = context)
             }
             
-            // TTS设置
-            item {
-                TTSSettingsGroup(context = context)
-            }
-
             // 主题设置
             item {
                 ThemeSettingsGroup(context = context)
@@ -498,10 +493,6 @@ private fun DisplaySettingsGroup(
         context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) 
     }
     
-    var showStickyConversations by remember { 
-        mutableStateOf(prefs.getBoolean("show_sticky_conversations", true)) 
-    }
-    
     // 内联表情显示开关
     var showInlineExpressions by remember { 
         mutableStateOf(prefs.getBoolean("show_inline_expressions", true)) 
@@ -515,18 +506,6 @@ private fun DisplaySettingsGroup(
     SettingsGroup(
         title = "显示设置",
         items = listOf(
-            {
-                SettingsSwitchItem(
-                    icon = Icons.Default.PushPin,
-                    title = "显示置顶会话",
-                    subtitle = "在会话列表中显示置顶的会话",
-                    checked = showStickyConversations,
-                    onCheckedChange = { checked ->
-                        showStickyConversations = checked
-                        prefs.edit().putBoolean("show_sticky_conversations", checked).apply()
-                    }
-                )
-            },
             {
                 SettingsSwitchItem(
                     icon = Icons.Default.EmojiEmotions,
@@ -557,8 +536,6 @@ private fun DisplaySettingsGroup(
             { MemoryAutoCleanSettingItem(context = context) },
             { DataSaverSettingItem(context = context) },
             { WebSocketSettingItem(context = context) },
-            { BotBoardSettingItem(context = context) },
-            { MenuButtonsSettingItem(context = context) },
             { WebPQualitySettingItem(context = context) },
             { HtmlRawTextSettingItem(context = context) },
             { MarkdownRawTextSettingItem(context = context) }

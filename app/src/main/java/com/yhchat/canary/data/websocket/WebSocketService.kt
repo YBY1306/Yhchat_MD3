@@ -20,6 +20,7 @@ import androidx.core.app.TaskStackBuilder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.BitmapCompat
 import androidx.core.graphics.drawable.IconCompat
 import coil.ImageLoader
 import coil.request.ImageRequest
@@ -1104,7 +1105,7 @@ class WebSocketService @Inject constructor(
 
 
 //            notificationBuilder.setBubbleMetadata(  NotificationCompat.BubbleMetadata.Builder(pendingIntent, null).build());
-            android.app.Notification.BubbleMetadata.Builder(
+       val bubbleMetadata= NotificationCompat.BubbleMetadata.Builder(
                 PendingIntent.getActivity(
                     context,
                     //wxid.hashCode()  // Launch BubbleActivity as the expanded bubble.
@@ -1134,8 +1135,10 @@ class WebSocketService @Inject constructor(
                     },
                                                 PendingIntent.FLAG_MUTABLE /*0x4000000*/
                 ),
-                Icon.createWithAdaptiveBitmap(conversationAvatarBitmap)
-            ).setDesiredHeight(Int.MAX_VALUE).build()
+//           IconCompat.createWithAdaptiveBitmap(BitmapCompat(conversationAvatarBitmap))
+           if (conversationAvatarBitmap !=null)  IconCompat.createWithAdaptiveBitmap(conversationAvatarBitmap) else TODO()
+       ).setDesiredHeight(Int.MAX_VALUE).build()
+            notificationBuilder.setBubbleMetadata(bubbleMetadata);
 //
 
 

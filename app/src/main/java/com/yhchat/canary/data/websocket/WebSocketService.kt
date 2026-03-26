@@ -1,5 +1,6 @@
 package com.yhchat.canary.data.websocket
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -51,6 +52,8 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private lateinit var bubbleMetadata: Notification.BubbleMetadata
+
 /**
  * WebSocket服务，用于实时接收聊天消息和发送草稿同步
  */
@@ -61,7 +64,7 @@ class WebSocketService @Inject constructor(
 ) {
     private val tag = "WebSocketService"
     private val gson = Gson()
-    
+
     private var webSocket: WebSocket? = null
     private var heartbeatJob: Job? = null
     private var reconnectJob: Job? = null
@@ -72,9 +75,9 @@ class WebSocketService @Inject constructor(
     private var currentUserId: String? = null
     private var currentPlatform: String = "windows"
     private var currentDeviceId: String = UUID.randomUUID().toString().replace("-", "")
-    
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    
+
     // 消息事件流 - 用于UI更新
     private val _messageEvents = MutableSharedFlow<MessageEvent>(
         replay = 0,
@@ -104,8 +107,9 @@ class WebSocketService @Inject constructor(
     val draftUpdates: SharedFlow<DraftUpdate> = _draftUpdates.asSharedFlow()
 
     // 通知消息历史 - 用于消息堆叠显示（chatId -> 消息列表）
-    private val notificationMessageHistory = mutableMapOf<String, MutableList<NotificationMessage>>()
-    
+    private val notificationMessageHistory =
+        mutableMapOf<String, MutableList<NotificationMessage>>()
+
     // 头像缓存 - 避免重复加载（avatarUrl -> Bitmap）
     private val avatarBitmapCache = mutableMapOf<String, Bitmap>()
 
@@ -1069,9 +1073,9 @@ class WebSocketService @Inject constructor(
                         }
 
                     )
-                            if (conversationAvatarBitmap != null) shortcutBuilder?.setIcon(
-                                Icon.createWithAdaptiveBitmap(conversationAvatarBitmap)
-                            )
+            if (conversationAvatarBitmap != null) shortcutBuilder?.setIcon(
+                Icon.createWithAdaptiveBitmap(conversationAvatarBitmap)
+            )
             val shortcut = shortcutBuilder?.build()
 //
 //
@@ -1097,6 +1101,42 @@ class WebSocketService @Inject constructor(
 //
 //
             notificationBuilder.setShortcutId(shortcutid)
+
+
+//            notificationBuilder.setBubbleMetadata(  NotificationCompat.BubbleMetadata.Builder(pendingIntent, null).build());
+            android.app.Notification.BubbleMetadata.Builder(
+                PendingIntent.getActivity(
+                    context,
+                    //wxid.hashCode()  // Launch BubbleActivity as the expanded bubble.
+                    notificationId,  // Launch BubbleActivity as the expanded bubble.
+//                                                Intent(
+//                                                    context,
+//                                                    MainActivity
+//                                                ).setAction(Intent.ACTION_VIEW)
+//                                                    .putExtra("Intro_Is_Muti_Talker", false)
+//                                                    .putExtra("Main_User", wxid)
+////                                        .putExtra("talkerCount", 1)
+////                                        .putExtra("notification_title", "服务通知")
+////                                        .putExtra("nofification_type", "new_msg_nofification")
+////                                        .putExtra("MainUI_FromFinderNotification", false)
+////                                        .putExtra("notification_create_time", 123456789L)
+////                                        .putExtra("notification_msg_id", 123456789L)
+////                                        .putExtra("MainUI_User_Last_Msg_Type", 1)
+//                                                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                                                    .setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
+
+                    Intent(context, ChatActivity::class.java).apply {
+                        putExtra("chatId", targetChatId)
+                        putExtra("chatType", targetChatType)
+                        putExtra("chatName", conversationTitle)
+//                                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            .setAction("what.todo.todo")
+                    },
+                                                PendingIntent.FLAG_MUTABLE /*0x4000000*/
+                ),
+                Icon.createWithAdaptiveBitmap(conversationAvatarBitmap)
+            ).setDesiredHeight(Int.MAX_VALUE).build()
+//
 
 
             val notification = notificationBuilder.build()

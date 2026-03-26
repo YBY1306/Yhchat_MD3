@@ -987,8 +987,8 @@ class WebSocketService @Inject constructor(
                                 putExtra("chatId", targetChatId)
                                 putExtra("chatType", targetChatType)
                                 putExtra("chatName", conversationTitle)
-                                setAction("what.todo.todo") //TODO
-//                              flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO
+                                setAction("what.todo.todo") //TODO 这个不填会报错
+//                                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
                             }
                         )
                 if (conversationAvatarBitmap != null)
@@ -1002,13 +1002,13 @@ class WebSocketService @Inject constructor(
                 val notificationBubbleMetadata = NotificationCompat.BubbleMetadata.Builder(
                     PendingIntent.getActivity(
                         context,
-                        notificationId,  // Launch BubbleActivity as the expanded bubble. //TODO 这个填啥
+                        notificationId,  // Launch BubbleActivity as the expanded bubble. //TODO 这个填什么好呢
                         Intent(context, ChatActivity::class.java).apply {
                             putExtra("chatId", targetChatId)
                             putExtra("chatType", targetChatType)
                             putExtra("chatName", conversationTitle)
-//                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO
-//                            setAction("what.todo.todo") //TODO
+//                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
+//                            setAction("what.todo.todo") //TODO 这个要填吗
                         },
                         PendingIntent.FLAG_MUTABLE /*0x4000000*/
                     ),

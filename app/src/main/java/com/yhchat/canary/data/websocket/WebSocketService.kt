@@ -953,7 +953,7 @@ class WebSocketService @Inject constructor(
             // 添加历史消息
             messageHistory.forEach { msg ->
                 // 为每个发送者创建或复用Person对象
-                val senderPerson = senderPersonCache.getOrPut(msg.senderName) {//todo 同昵称
+                val senderPerson = senderPersonCache.getOrPut(msg.senderName/*TODO 撞昵称*/) {
                     val personBuilder = androidx.core.app.Person.Builder()
                         .setName(msg.senderName)
 

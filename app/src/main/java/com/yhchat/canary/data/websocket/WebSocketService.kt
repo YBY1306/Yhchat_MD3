@@ -3,10 +3,15 @@ package com.yhchat.canary.data.websocket
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.LocusId
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -76,7 +81,7 @@ class WebSocketService @Inject constructor(
         extraBufferCapacity = 100
     )
     val messageEvents: SharedFlow<MessageEvent> = _messageEvents.asSharedFlow()
-    
+
     // 连接状态流
     private val _connectionState = MutableSharedFlow<ConnectionState>(
         replay = 1,
@@ -90,20 +95,20 @@ class WebSocketService @Inject constructor(
         extraBufferCapacity = 50
     )
     val conversationUpdates: SharedFlow<ConversationUpdate> = _conversationUpdates.asSharedFlow()
-    
+
     // 草稿更新流 - 用于多端草稿同步
     private val _draftUpdates = MutableSharedFlow<DraftUpdate>(
         replay = 0,
         extraBufferCapacity = 100
     )
     val draftUpdates: SharedFlow<DraftUpdate> = _draftUpdates.asSharedFlow()
-    
+
     // 通知消息历史 - 用于消息堆叠显示（chatId -> 消息列表）
     private val notificationMessageHistory = mutableMapOf<String, MutableList<NotificationMessage>>()
     
     // 头像缓存 - 避免重复加载（avatarUrl -> Bitmap）
     private val avatarBitmapCache = mutableMapOf<String, Bitmap>()
-    
+
     // 通知消息数据类
     private data class NotificationMessage(
         val senderName: String,
@@ -124,11 +129,11 @@ class WebSocketService @Inject constructor(
         private const val NOTIFICATION_CHANNEL_ID = "chat_messages"
         private const val NOTIFICATION_ID_BASE = 1000
     }
-    
+
     init {
         createNotificationChannel()
     }
-    
+
     /**
      * 连接WebSocket
      */
@@ -149,7 +154,7 @@ class WebSocketService @Inject constructor(
         reconnectJob?.cancel()
         reconnectJob = null
         isConnecting = true
-        
+
         // 确保完全清理旧连接
         webSocket?.let { oldSocket ->
             Log.d(tag, "Cleaning up old WebSocket connection")
@@ -168,15 +173,15 @@ class WebSocketService @Inject constructor(
             _connectionState.emit(ConnectionState.Error("未登录"))
             return
         }
-        
+
         try {
             Log.d(tag, "Connecting to WebSocket...")
             _connectionState.emit(ConnectionState.Connecting)
-            
+
             val request = Request.Builder()
                 .url("wss://chat-ws-go.jwzhd.com/ws")
                 .build()
-            
+
             webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     if (!isCurrentSocket(webSocket)) {
@@ -189,7 +194,7 @@ class WebSocketService @Inject constructor(
                     reconnectAttempts = 0
                     reconnectJob?.cancel()
                     reconnectJob = null
-                    
+
                     // 发送登录请求 - 参考yh_user_sdk/core/ws.py
                     val loginData = JsonObject().apply {
                         addProperty("seq", UUID.randomUUID().toString().replace("-", ""))
@@ -201,15 +206,15 @@ class WebSocketService @Inject constructor(
                             addProperty("deviceId", currentDeviceId)
                         })
                     }
-                    
+
                     val loginJson = gson.toJson(loginData)
                     Log.d(tag, "Sending login: $loginJson")
                     webSocket.send(loginJson)
-                    
+
                     scope.launch {
                         _connectionState.emit(ConnectionState.Connected)
                     }
-                    
+
                     // 启动心跳 - 30秒间隔
                     startHeartbeat(webSocket)
                 }
@@ -227,7 +232,7 @@ class WebSocketService @Inject constructor(
                         // 不要因为解析错误而断开连接，继续接收下一条消息
                     }
                 }
-                
+
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     if (!isCurrentSocket(webSocket)) {
                         Log.w(tag, "Ignore text message from stale socket")
@@ -241,7 +246,7 @@ class WebSocketService @Inject constructor(
                         Log.e(tag, "Error handling text message", e)
                     }
                 }
-                
+
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                     if (!isCurrentSocket(webSocket)) {
                         Log.w(tag, "Ignore onClosing from stale socket")
@@ -249,7 +254,7 @@ class WebSocketService @Inject constructor(
                     }
                     Log.d(tag, "WebSocket closing: $code $reason")
                 }
-                
+
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     if (!isCurrentSocket(webSocket)) {
                         Log.w(tag, "Ignore onClosed from stale socket")
@@ -259,13 +264,13 @@ class WebSocketService @Inject constructor(
                     cleanup()
                     this@WebSocketService.webSocket = null
                     isConnecting = false
-                    
+
                     scope.launch {
                         _connectionState.emit(ConnectionState.Disconnected)
                     }
                     scheduleReconnect("closed_$code")
                 }
-                
+
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     if (!isCurrentSocket(webSocket)) {
                         Log.w(tag, "Ignore onFailure from stale socket")
@@ -278,14 +283,14 @@ class WebSocketService @Inject constructor(
                     cleanup()
                     this@WebSocketService.webSocket = null
                     isConnecting = false
-                    
+
                     scope.launch {
                         _connectionState.emit(ConnectionState.Error(t.message ?: "连接失败"))
                     }
                     scheduleReconnect("failure_${t.javaClass.simpleName}")
                 }
             })
-            
+
         } catch (e: Exception) {
             isConnecting = false
             Log.e(tag, "Error connecting to WebSocket", e)
@@ -293,7 +298,7 @@ class WebSocketService @Inject constructor(
             scheduleReconnect("connect_exception_${e.javaClass.simpleName}")
         }
     }
-    
+
     private fun isCurrentSocket(socket: WebSocket): Boolean {
         return socket === webSocket
     }
@@ -352,7 +357,7 @@ class WebSocketService @Inject constructor(
             Log.w(tag, "WebSocket not connected, cannot send draft")
             return
         }
-        
+
         try {
             // 参考用户提供的草稿同步格式
             val dataObject = JsonObject().apply {
@@ -365,16 +370,16 @@ class WebSocketService @Inject constructor(
                 addProperty("cmd", "inputInfo")
                 add("data", dataObject)
             }
-            
+
             val draftJson = gson.toJson(draftData)
             Log.d(tag, "Sending draft input: $draftJson")
             webSocket?.send(draftJson)
-            
+
         } catch (e: Exception) {
             Log.e(tag, "Error sending draft input", e)
         }
     }
-    
+
     /**
      * 断开连接
      */
@@ -389,7 +394,7 @@ class WebSocketService @Inject constructor(
         webSocket?.close(1000, "User disconnect")
         webSocket = null
     }
-    
+
     /**
      * 启动心跳 - 参考yh_user_sdk/core/ws.py
      */
@@ -398,17 +403,17 @@ class WebSocketService @Inject constructor(
             while (isConnected && currentCoroutineContext().isActive) {
                 try {
                     delay(30000) // 30秒心跳间隔
-                    
+
                     val heartbeatData = JsonObject().apply {
                         addProperty("seq", UUID.randomUUID().toString().replace("-", ""))
                         addProperty("cmd", "heartbeat")
                         add("data", JsonObject())
                     }
-                    
+
                     val heartbeatJson = gson.toJson(heartbeatData)
                     Log.d(tag, "Sending heartbeat")
                     webSocket.send(heartbeatJson)
-                    
+
                 } catch (e: Exception) {
                     Log.e(tag, "Error sending heartbeat", e)
                     break
@@ -426,77 +431,89 @@ class WebSocketService @Inject constructor(
             val tempMsg = heartbeat_ack.parseFrom(bytes)
             val cmd = tempMsg.info.cmd
             val seq = tempMsg.info.seq
-            
+
             Log.d(tag, "Message command: $cmd, seq: $seq")
-            
+
             when (cmd) {
                 "login_ack" -> {
                     Log.d(tag, "✅ Received login_ack (binary protobuf)")
                     // 登录响应，连接已完全建立（如果服务器有发送的话）
                 }
-                
+
                 "heartbeat_ack" -> {
                     Log.d(tag, "✅ Received heartbeat_ack")
                     // 心跳响应，连接正常
                 }
-                
+
                 "push_message" -> {
                     // 新消息推送
                     val pushMessage = push_message.parseFrom(bytes)
                     if (pushMessage.hasData() && pushMessage.data.hasMsg()) {
                         val protoMsg = pushMessage.data.msg
                         val chatMessage = convertWsMsgToMessage(protoMsg)
-                        
+
                         // 详细日志用于调试
                         Log.d(tag, "Push message details:")
                         Log.d(tag, "  - Message ID: ${chatMessage.msgId}")
-                        Log.d(tag, "  - Sender: ${chatMessage.sender.chatId} (type: ${chatMessage.sender.chatType})")
-                        Log.d(tag, "  - Target Chat: ${chatMessage.chatId} (type: ${chatMessage.chatType})")
+                        Log.d(
+                            tag,
+                            "  - Sender: ${chatMessage.sender.chatId} (type: ${chatMessage.sender.chatType})"
+                        )
+                        Log.d(
+                            tag,
+                            "  - Target Chat: ${chatMessage.chatId} (type: ${chatMessage.chatType})"
+                        )
                         Log.d(tag, "  - Receiver: ${chatMessage.recvId}")
-                        Log.d(tag, "  - Content: ${chatMessage.content.text?.take(50) ?: "[非文本消息]"}")
-                        
+                        Log.d(
+                            tag,
+                            "  - Content: ${chatMessage.content.text?.take(50) ?: "[非文本消息]"}"
+                        )
+
                         scope.launch {
                             // 发送消息事件供UI更新
                             _messageEvents.emit(MessageEvent.NewMessage(chatMessage))
-                            
+
                             // 更新会话列表
                             _conversationUpdates.emit(ConversationUpdate.NewMessage(chatMessage))
-                            
+
                             // 显示通知（在协程中）
                             showMessageNotificationAsync(chatMessage)
                         }
-                        
+
                         Log.d(tag, "Received new message: ${chatMessage.msgId}")
                     }
                 }
-                
+
                 "edit_message" -> {
                     // 消息编辑
                     val editMessage = edit_message.parseFrom(bytes)
                     if (editMessage.hasData() && editMessage.data.hasMsg()) {
                         val protoMsg = editMessage.data.msg
                         val chatMessage = convertWsMsgToMessage(protoMsg)
-                        
+
                         scope.launch {
                             _messageEvents.emit(MessageEvent.MessageEdited(chatMessage))
                             _conversationUpdates.emit(ConversationUpdate.MessageEdited(chatMessage))
                         }
-                        
+
                         Log.d(tag, "Received edited message: ${chatMessage.msgId}")
                     }
                 }
-                
+
                 "draft_input" -> {
                     // 草稿同步（多端输入同步）
                     val draftInput = draft_input.parseFrom(bytes)
                     if (draftInput.hasData() && draftInput.data.hasDraft()) {
                         val draft = draftInput.data.draft
-                        val displayInput = if (draft.input.length > 50) 
-                            "${draft.input.take(50)}..." 
-                        else 
+                        val displayInput = if (draft.input.length > 50)
+                            "${draft.input.take(50)}..."
+                        else
                             draft.input
-                        Log.d(tag, "📝 收到多端草稿同步: chatId=${draft.chatId}, length=${draft.input.length}, content='$displayInput'")
-                        
+                        Log.d(
+                            tag,
+                            "📝 收到多端草稿同步: chatId=${draft.chatId}, length=${draft.input.length}, content='$displayInput'"
+                        )
+
                         scope.launch {
                             // 直接发射草稿更新事件，只需要chatId判断就够了
                             _draftUpdates.emit(
@@ -505,57 +522,67 @@ class WebSocketService @Inject constructor(
                                     input = draft.input
                                 )
                             )
-                            
+
                             Log.d(tag, "✅ 草稿更新事件已发射")
                         }
                     }
                 }
-                
+
                 "bot_board_message" -> {
                     // 机器人公告
                     val botBoardMessage = bot_board_message.parseFrom(bytes)
                     if (botBoardMessage.hasData() && botBoardMessage.data.hasBoard()) {
                         val board = botBoardMessage.data.board
-                        Log.d(tag, "Received bot board message from ${board.botId}: ${board.content}")
-                        
+                        Log.d(
+                            tag,
+                            "Received bot board message from ${board.botId}: ${board.content}"
+                        )
+
                         scope.launch {
-                            _messageEvents.emit(MessageEvent.BotBoardMessage(
-                                board.botId, 
-                                board.chatId, 
-                                board.content
-                            ))
+                            _messageEvents.emit(
+                                MessageEvent.BotBoardMessage(
+                                    board.botId,
+                                    board.chatId,
+                                    board.content
+                                )
+                            )
                         }
                     }
                 }
-                
+
                 "stream_message" -> {
                     // 流式消息
                     val streamMsg = stream_message.parseFrom(bytes)
                     if (streamMsg.hasData() && streamMsg.data.hasMsg()) {
                         val msg = streamMsg.data.msg
-                        Log.d(tag, "Received stream message for chat ${msg.chatId}, msgId: ${msg.msgId}, content: ${msg.content}")
-                        
+                        Log.d(
+                            tag,
+                            "Received stream message for chat ${msg.chatId}, msgId: ${msg.msgId}, content: ${msg.content}"
+                        )
+
                         scope.launch {
-                            _messageEvents.emit(MessageEvent.StreamMessage(
-                                msgId = msg.msgId,
-                                recvId = msg.recvId,
-                                chatId = msg.chatId,
-                                content = msg.content
-                            ))
+                            _messageEvents.emit(
+                                MessageEvent.StreamMessage(
+                                    msgId = msg.msgId,
+                                    recvId = msg.recvId,
+                                    chatId = msg.chatId,
+                                    content = msg.content
+                                )
+                            )
                         }
                     }
                 }
-                
+
                 else -> {
                     Log.d(tag, "Unhandled message command: $cmd")
                 }
             }
-            
+
         } catch (e: Exception) {
             Log.e(tag, "Error parsing binary message", e)
         }
     }
-    
+
     /**
      * 将WebSocket Proto消息转换为应用内消息模型
      * 注意：消息应该放在protoMsg.chatId对应的会话中，而不是sender.chatId
@@ -615,7 +642,7 @@ class WebSocketService @Inject constructor(
         } else {
             "left" // 对方发送的消息
         }
-        
+
         return ChatMessage(
             msgId = protoMsg.msgId,
             sender = sender,
@@ -634,7 +661,7 @@ class WebSocketService @Inject constructor(
             recvId = protoMsg.recvId
         )
     }
-    
+
     /**
      * 从缓存或网络加载头像（用于通知显示）
      * 优先使用内存缓存，然后是Coil磁盘缓存，最后从网络加载
@@ -644,45 +671,48 @@ class WebSocketService @Inject constructor(
             Log.d(tag, "⚠️ 头像URL为空")
             return null
         }
-        
+
         // 1. 检查内存缓存
         avatarBitmapCache[avatarUrl]?.let {
             Log.d(tag, "✅ 从内存缓存加载头像")
             return it
         }
-        
+
         return try {
             // 提取文件名（用于日志）
             val fileName = avatarUrl.substringAfterLast("/").substringBefore("?")
             Log.d(tag, "🖼️ 加载通知头像: $fileName")
-            
+
             // 2. 使用Coil加载（会自动使用磁盘缓存）
             val imageLoader = coil.Coil.imageLoader(context)
             val request = ImageRequest.Builder(context)
                 .data(avatarUrl)
                 .addHeader("Referer", "https://myapp.jwznb.com")
-                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                .addHeader(
+                    "User-Agent",
+                    "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36"
+                )
                 .allowHardware(false) // 不使用硬件加速，以便转换为Bitmap
                 .size(128, 128) // 限制大小，节省内存和加载时间
                 .build()
-            
+
             val result = imageLoader.execute(request)
             if (result is SuccessResult) {
                 val drawable = result.drawable
                 if (drawable is BitmapDrawable) {
                     val bitmap = drawable.bitmap
                     Log.d(tag, "✅ 头像加载成功: ${bitmap.width}x${bitmap.height}")
-                    
+
                     // 存入内存缓存
                     avatarBitmapCache[avatarUrl] = bitmap
-                    
+
                     // 限制缓存大小（最多缓存50个头像）
                     if (avatarBitmapCache.size > 50) {
                         val oldestKey = avatarBitmapCache.keys.first()
                         avatarBitmapCache.remove(oldestKey)
                         Log.d(tag, "🗑️ 清理头像缓存: $oldestKey")
                     }
-                    
+
                     bitmap
                 } else {
                     Log.w(tag, "⚠️ 头像不是BitmapDrawable类型: ${drawable.javaClass.simpleName}")
@@ -697,7 +727,7 @@ class WebSocketService @Inject constructor(
             null
         }
     }
-    
+
     /**
      * 获取会话头像URL（从数据库）
      */
@@ -706,7 +736,7 @@ class WebSocketService @Inject constructor(
             val cacheRepository = CacheRepository(context)
             val conversation = cacheRepository.getCachedConversationsSync()
                 .firstOrNull { it.chatId == chatId && it.chatType == chatType }
-            
+
             conversation?.avatarUrl?.also {
                 Log.d(tag, "✅ 从数据库获取会话头像: $it")
             }
@@ -715,7 +745,7 @@ class WebSocketService @Inject constructor(
             null
         }
     }
-    
+
     /**
      * 显示消息通知（异步版本，支持加载头像）
      */
@@ -728,7 +758,7 @@ class WebSocketService @Inject constructor(
             }
         }
     }
-    
+
     /**
      * 显示消息通知
      */
@@ -762,14 +792,18 @@ class WebSocketService @Inject constructor(
             val isMuted = cacheRepository.getCachedConversationsSync()
                 .firstOrNull { it.chatId == targetChatId && it.chatType == targetChatType }
                 ?.doNotDisturb == 1
-            
+
             if (isMuted) {
-                Log.d(tag, "Conversation is muted (doNotDisturb==1), skip notification: chatId=$targetChatId")
+                Log.d(
+                    tag,
+                    "Conversation is muted (doNotDisturb==1), skip notification: chatId=$targetChatId"
+                )
                 return
             }
-            
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            
+
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
             // 构建通知内容
             val senderName = message.sender.name.ifEmpty { "未知用户" }
             val messageContent = when (message.contentType) {
@@ -785,19 +819,19 @@ class WebSocketService @Inject constructor(
                     else -> "[消息]"
                 }
             }
-            
+
             // 确定会话名称和头像 - 尝试从缓存获取真实信息
             val conversationTitle = getConversationTitle(targetChatId, targetChatType, senderName)
-            
+
             // 获取会话头像URL（用于通知的大图标）
             // 1. 对于私聊和机器人，使用对方的头像
             // 2. 对于群聊，使用群头像
             val conversationAvatarUrl = getConversationAvatarUrl(targetChatId, targetChatType)
             Log.d(tag, "🎭 会话头像URL: $conversationAvatarUrl (chatType=$targetChatType)")
-            
+
             // 加载会话头像Bitmap（用于通知的大图标）
             val conversationAvatarBitmap = loadAvatarBitmap(context, conversationAvatarUrl)
-            
+
             val chatIntent = Intent(context, ChatActivity::class.java).apply {
                 putExtra("chatId", targetChatId)
                 putExtra("chatType", targetChatType)
@@ -813,28 +847,44 @@ class WebSocketService @Inject constructor(
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             }
-            
+
             // 创建快捷回复输入框
-            val remoteInput = RemoteInput.Builder(com.yhchat.canary.receiver.NotificationReplyReceiver.KEY_TEXT_REPLY)
-                .setLabel("输入消息...")
-                .build()
-            
+            val remoteInput =
+                RemoteInput.Builder(com.yhchat.canary.receiver.NotificationReplyReceiver.KEY_TEXT_REPLY)
+                    .setLabel("输入消息...")
+                    .build()
+
             // 创建快捷回复Intent
             val notificationId = NOTIFICATION_ID_BASE + targetChatId.hashCode()
-            val replyIntent = Intent(context, com.yhchat.canary.receiver.NotificationReplyReceiver::class.java).apply {
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_ID, targetChatId)
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_TYPE, targetChatType)
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_NAME, conversationTitle)
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+            val replyIntent = Intent(
+                context,
+                com.yhchat.canary.receiver.NotificationReplyReceiver::class.java
+            ).apply {
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_ID,
+                    targetChatId
+                )
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_TYPE,
+                    targetChatType
+                )
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_NAME,
+                    conversationTitle
+                )
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_NOTIFICATION_ID,
+                    notificationId
+                )
             }
-            
+
             val replyPendingIntent = PendingIntent.getBroadcast(
                 context,
                 targetChatId.hashCode() + 1000, // 使用不同的requestCode
                 replyIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE // 必须使用MUTABLE才能接收RemoteInput
             )
-            
+
             // 创建回复动作
             val replyAction = NotificationCompat.Action.Builder(
                 android.R.drawable.ic_menu_send, // 使用系统发送图标
@@ -846,7 +896,7 @@ class WebSocketService @Inject constructor(
                 .setShowsUserInterface(false) // 不显示UI，直接在通知中回复
                 .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY) // 标记为回复动作
                 .build()
-            
+
             // 添加到消息历史
             val historyKey = "$targetChatId-$targetChatType"
             if (!notificationMessageHistory.containsKey(historyKey)) {
@@ -854,34 +904,34 @@ class WebSocketService @Inject constructor(
             }
             notificationMessageHistory[historyKey]?.add(
                 NotificationMessage(
-                    senderName = senderName, 
-                    content = messageContent, 
+                    senderName = senderName,
+                    content = messageContent,
                     timestamp = message.sendTime,
                     senderAvatarUrl = message.sender.avatarUrl
                 )
             )
-            
+
             // 限制历史消息数量（最多保留10条）
             val messageHistory = notificationMessageHistory[historyKey] ?: mutableListOf()
             if (messageHistory.size > 10) {
                 messageHistory.removeAt(0)
             }
-            
+
             // 创建"我"的Person对象
             val mePerson = androidx.core.app.Person.Builder()
                 .setName("我")
                 .build()
-            
+
             // 使用 MessagingStyle 显示消息历史堆叠
             val messagingStyle = NotificationCompat.MessagingStyle(mePerson)
                 .setConversationTitle(conversationTitle)
                 .setGroupConversation(targetChatType == 2) // 群聊时显示为群组会话
-            
+
             // 为每个发送者创建Person对象（包含头像）
             // 预加载所有发送者的头像（限制最多加载5个不同的发送者头像，避免性能问题）
             val uniqueSenders = messageHistory.distinctBy { it.senderAvatarUrl }.take(5)
             val avatarCache = mutableMapOf<String?, Bitmap?>()
-            
+
             uniqueSenders.forEach { msg ->
                 if (msg.senderAvatarUrl != null && !avatarCache.containsKey(msg.senderAvatarUrl)) {
                     val bitmap = loadAvatarBitmap(context, msg.senderAvatarUrl)
@@ -891,52 +941,61 @@ class WebSocketService @Inject constructor(
                     }
                 }
             }
-            
+
             // 为每个发送者创建Person对象
             val senderPersonCache = mutableMapOf<String, androidx.core.app.Person>()
-            
+
             // 添加历史消息
             messageHistory.forEach { msg ->
                 // 为每个发送者创建或复用Person对象
-                val senderPerson = senderPersonCache.getOrPut(msg.senderName) {
+                val senderPerson = senderPersonCache.getOrPut(msg.senderName) {//todo 同昵称
                     val personBuilder = androidx.core.app.Person.Builder()
                         .setName(msg.senderName)
-                    
+
                     // 使用缓存的头像
                     val cachedAvatar = avatarCache[msg.senderAvatarUrl]
                     if (cachedAvatar != null) {
                         personBuilder.setIcon(IconCompat.createWithBitmap(cachedAvatar))
                         Log.d(tag, "🎭 为发送者 ${msg.senderName} 设置头像")
                     }
-                    
+
                     personBuilder.build()
                 }
-                
+
                 messagingStyle.addMessage(
                     msg.content,
                     msg.timestamp,
                     senderPerson
                 )
             }
-            
+
             // 计算未读消息数
             val unreadCount = messageHistory.size
             Log.d(tag, "📊 会话 $conversationTitle 有 $unreadCount 条未读消息")
-            
+
             // 创建"标记为已读"动作
-            val markReadIntent = Intent(context, com.yhchat.canary.receiver.NotificationReplyReceiver::class.java).apply {
+            val markReadIntent = Intent(
+                context,
+                com.yhchat.canary.receiver.NotificationReplyReceiver::class.java
+            ).apply {
                 action = "ACTION_MARK_AS_READ"
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_ID, targetChatId)
-                putExtra(com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_CHAT_ID,
+                    targetChatId
+                )
+                putExtra(
+                    com.yhchat.canary.receiver.NotificationReplyReceiver.EXTRA_NOTIFICATION_ID,
+                    notificationId
+                )
             }
-            
+
             val markReadPendingIntent = PendingIntent.getBroadcast(
                 context,
                 targetChatId.hashCode() + 2000,
                 markReadIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            
+
             val markReadAction = NotificationCompat.Action.Builder(
                 android.R.drawable.ic_menu_view,
                 "标记已读",
@@ -944,7 +1003,7 @@ class WebSocketService @Inject constructor(
             )
                 .setShowsUserInterface(false)
                 .build()
-            
+
             // 构建通知
             val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -958,7 +1017,7 @@ class WebSocketService @Inject constructor(
                 .addAction(markReadAction) // 添加标记已读动作
                 .setOnlyAlertOnce(false) // 每次新消息都提醒
                 .setGroup("chat_group_$targetChatId") // 按会话分组
-            
+
             // 设置大图标（会话头像）
             if (conversationAvatarBitmap != null) {
                 notificationBuilder.setLargeIcon(conversationAvatarBitmap)
@@ -966,21 +1025,94 @@ class WebSocketService @Inject constructor(
             } else {
                 Log.d(tag, "⚠️ 会话头像未加载，使用默认图标")
             }
-            
+
+
+//                            //  创建shortcut
+            val shortcutid = "shortcut_${targetChatId}"
+            val shortcutlocusid = "shortcut_locus_${targetChatId}"
+            val shortcutBuilder =
+                context?.let {
+                    ShortcutInfo.Builder(context, shortcutid)
+                        .setLocusId(LocusId(shortcutlocusid))
+                        .setActivity(
+                            ComponentName(
+                                it,
+//                                                "com.tencent.mm.ui.LauncherUI".toClass()
+                                MainActivity::class.java
+                            )
+                        )
+                }?.setShortLabel(conversationTitle)
+                    ?.setLongLived(true)
+////                            .setCategories(set1)
+                    ?.setIntent(
+//                                        Intent(
+//                                            context,
+////                                            "com.tencent.mm.ui.LauncherUI".toClass()
+//                                            MainActivity::class.java
+//                                        ).setAction(Intent.ACTION_VIEW)
+//                                            .putExtra("Intro_Is_Muti_Talker", false)
+////                                            .putExtra("Main_User", wxid)
+////                                        .putExtra("talkerCount", 1)
+////                                        .putExtra("notification_title", "服务通知")
+////                                        .putExtra("nofification_type", "new_msg_nofification")
+////                                        .putExtra("MainUI_FromFinderNotification", false)
+////                                        .putExtra("notification_create_time", 123456789L)
+////                                        .putExtra("notification_msg_id", 123456789L)
+////                                        .putExtra("MainUI_User_Last_Msg_Type", 1)
+
+                        Intent(context, ChatActivity::class.java).apply {
+                            putExtra("chatId", targetChatId)
+                            putExtra("chatType", targetChatType)
+                            putExtra("chatName", conversationTitle)
+//                                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                .setAction("what.todo.todo")
+                        }
+
+                    )
+                            if (conversationAvatarBitmap != null) shortcutBuilder?.setIcon(
+                                Icon.createWithAdaptiveBitmap(conversationAvatarBitmap)
+                            )
+            val shortcut = shortcutBuilder?.build()
+//
+//
+            val shortcutManager =
+                context?.getSystemService(Context.SHORTCUT_SERVICE) as ShortcutManager
+            if (shortcut != null) shortcutManager.pushDynamicShortcut(shortcut)//添加图标
+////                      if (shortcut != null) shortcutManager.removeDynamicShortcuts(
+////                            listOf<String>(shortcutid)
+////                      )//移除图标
+////                      if (shortcut != null) shortcutManager.removeAllDynamicShortcuts()//移除图标
+//                            Thread {
+//                                Thread.sleep(1000)
+//                                if (shortcut != null) shortcutManager.removeDynamicShortcuts(
+//                                    listOf<String>(shortcutid)
+//                                )//移除图标
+//                            }//.start()
+//
+//                            //设置通知绑定的shortcutid
+//                            val mShortcutIdField =
+//                                "android.app.Notification".toClass().getDeclaredField("mShortcutId")
+//                            mShortcutIdField.isAccessible = true;
+//                            mShortcutIdField.set(notification, shortcutid);
+//
+//
+            notificationBuilder.setShortcutId(shortcutid)
+
+
             val notification = notificationBuilder.build()
-            
+
             // 显示通知，使用正确的chatId的哈希作为通知ID
             notificationManager.notify(notificationId, notification)
-            
+
             Log.d(tag, "✅ 显示带快捷回复的通知: $conversationTitle (ID: $notificationId)")
-            
+
             Log.d(tag, "Shown notification for message from $senderName")
-            
+
         } catch (e: Exception) {
             Log.e(tag, "Error showing notification", e)
         }
     }
-    
+
     /**
      * 清除指定会话的通知消息历史（当用户打开会话时调用）
      */
@@ -990,7 +1122,7 @@ class WebSocketService @Inject constructor(
         notificationMessageHistory.remove(historyKey)
         Log.d(tag, "🗑️ 清除会话通知历史: $historyKey")
     }
-    
+
     /**
      * 清除头像缓存
      */
@@ -998,14 +1130,14 @@ class WebSocketService @Inject constructor(
         avatarBitmapCache.clear()
         Log.d(tag, "🗑️ 清除头像缓存")
     }
-    
+
     /**
      * 获取缓存统计信息
      */
     fun getCacheStats(): String {
         return "消息历史: ${notificationMessageHistory.size} 个会话, 头像缓存: ${avatarBitmapCache.size} 个"
     }
-    
+
     /**
      * 获取会话标题
      */
@@ -1016,9 +1148,9 @@ class WebSocketService @Inject constructor(
             val cachedConversations = runBlocking {
                 cacheRepository.getCachedConversationsSync()
             }
-            
+
             val cachedConversation = cachedConversations.find { it.chatId == chatId }
-            
+
             if (cachedConversation != null && cachedConversation.name.isNotEmpty()) {
                 cachedConversation.name
             } else {
@@ -1041,7 +1173,7 @@ class WebSocketService @Inject constructor(
             }
         }
     }
-    
+
     /**
      * 创建通知渠道
      */
@@ -1054,12 +1186,13 @@ class WebSocketService @Inject constructor(
             ).apply {
                 description = "接收新的聊天消息通知"
             }
-            
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
-    
+
     /**
      * 清理资源
      */
@@ -1098,8 +1231,15 @@ sealed class MessageEvent {
     data class MessageEdited(val message: ChatMessage) : MessageEvent()
     data class MessageDeleted(val msgId: String) : MessageEvent()
     data class DraftUpdated(val chatId: String, val input: String) : MessageEvent()
-    data class BotBoardMessage(val botId: String, val chatId: String, val content: String) : MessageEvent()
-    data class StreamMessage(val msgId: String, val recvId: String, val chatId: String, val content: String) : MessageEvent()
+    data class BotBoardMessage(val botId: String, val chatId: String, val content: String) :
+        MessageEvent()
+
+    data class StreamMessage(
+        val msgId: String,
+        val recvId: String,
+        val chatId: String,
+        val content: String
+    ) : MessageEvent()
 }
 
 /**

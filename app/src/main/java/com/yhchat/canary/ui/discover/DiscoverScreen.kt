@@ -1,5 +1,7 @@
 package com.yhchat.canary.ui.discover
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,6 +31,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.RecommendGroup
 import com.yhchat.canary.data.model.RecommendBot
+import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,6 +53,7 @@ fun DiscoverScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val discoverRepo = remember { RepositoryFactory.getDiscoverRepository(context) }
+    val friendRepository = remember { RepositoryFactory.getFriendRepository(context) }
     val viewModel = remember { DiscoverViewModel(discoverRepo) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -265,6 +269,15 @@ fun DiscoverScreen(
             onDismiss = { selectedGroup = null },
             onJoin = {
                 scope.launch {
+                    val inContacts = friendRepository.getAddressBookList()
+                        .getOrNull()
+                        ?.dataList
+                        ?.any { data -> data.dataList.any { it.chatId == group.chatId } } == true
+                    if (inContacts) {
+                        openChat(context, group.chatId, 2, group.nickname)
+                        selectedGroup = null
+                        return@launch
+                    }
                     val api = ApiClient.apiService
                     val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
                     if (token != null) {
@@ -312,6 +325,15 @@ fun DiscoverScreen(
             onDismiss = { selectedBot = null },
             onAdd = {
                 scope.launch {
+                    val inContacts = friendRepository.getAddressBookList()
+                        .getOrNull()
+                        ?.dataList
+                        ?.any { data -> data.dataList.any { it.chatId == bot.chatId } } == true
+                    if (inContacts) {
+                        openChat(context, bot.chatId, 3, bot.nickname)
+                        selectedBot = null
+                        return@launch
+                    }
                     val api = ApiClient.apiService
                     val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
                     if (token != null) {
@@ -657,4 +679,14 @@ fun BotDetailDialog(
             }
         }
     )
+}
+
+private fun openChat(context: Context, chatId: String, chatType: Int, chatName: String) {
+    val intent = Intent(context, ChatActivity::class.java).apply {
+        putExtra("chatId", chatId)
+        putExtra("chatType", chatType)
+        putExtra("chatName", chatName)
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    }
+    context.startActivity(intent)
 }

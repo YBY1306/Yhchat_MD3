@@ -33,6 +33,7 @@ import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.RecommendGroup
+import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.flow.first
@@ -67,6 +68,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val discoverRepo = remember { RepositoryFactory.getDiscoverRepository(context) }
+    val friendRepository = remember { RepositoryFactory.getFriendRepository(context) }
 
     var categories by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingCategories by remember { mutableStateOf(true) }
@@ -274,6 +276,15 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                                         onDismiss = { selectedGroup = null },
                                         onJoin = {
                                             scope.launch {
+                                                val inContacts = friendRepository.getAddressBookList()
+                                                    .getOrNull()
+                                                    ?.dataList
+                                                    ?.any { data -> data.dataList.any { it.chatId == sg.chatId } } == true
+                                                if (inContacts) {
+                                                    openChat(context, sg.chatId, 2, sg.nickname)
+                                                    selectedGroup = null
+                                                    return@launch
+                                                }
                                                 val api = com.yhchat.canary.data.api.ApiClient.apiService
                                                 val tokenRepo = RepositoryFactory.getTokenRepository(context)
                                                 val tokenFlow = tokenRepo.getToken()
@@ -389,6 +400,7 @@ fun GroupListPage(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val friendRepository = remember { RepositoryFactory.getFriendRepository(context) }
     var groups by remember { mutableStateOf<List<RecommendGroup>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
@@ -536,6 +548,15 @@ fun GroupListPage(
             onDismiss = { selectedGroup = null },
             onJoin = {
                 scope.launch {
+                    val inContacts = friendRepository.getAddressBookList()
+                        .getOrNull()
+                        ?.dataList
+                        ?.any { data -> data.dataList.any { it.chatId == group.chatId } } == true
+                    if (inContacts) {
+                        openChat(context, group.chatId, 2, group.nickname)
+                        selectedGroup = null
+                        return@launch
+                    }
                     val api = ApiClient.apiService
                     val tokenRepo = RepositoryFactory.getTokenRepository(context)
                     val tokenFlow = tokenRepo.getToken()
@@ -774,3 +795,12 @@ fun GroupDetailDialog(
     )
 }
 
+private fun openChat(context: Context, chatId: String, chatType: Int, chatName: String) {
+    val intent = Intent(context, ChatActivity::class.java).apply {
+        putExtra("chatId", chatId)
+        putExtra("chatType", chatType)
+        putExtra("chatName", chatName)
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    }
+    context.startActivity(intent)
+}

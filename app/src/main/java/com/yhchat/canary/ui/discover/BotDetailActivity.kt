@@ -33,6 +33,7 @@ import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.BotDetail
 import com.yhchat.canary.data.model.BotDetailGroup
 import com.yhchat.canary.data.model.BotDetailRequest
+import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.flow.first
@@ -80,6 +81,7 @@ fun BotDetailScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val friendRepository = remember { RepositoryFactory.getFriendRepository(context) }
     
     var bot by remember { mutableStateOf<BotDetail?>(null) }
     var groups by remember { mutableStateOf<List<BotDetailGroup>>(emptyList()) }
@@ -128,6 +130,15 @@ fun BotDetailScreen(
     fun addBot() {
         scope.launch {
             isAddingBot = true
+            val inContacts = friendRepository.getAddressBookList()
+                .getOrNull()
+                ?.dataList
+                ?.any { data -> data.dataList.any { it.chatId == bot?.botId } } == true
+            if (inContacts && bot != null) {
+                openChat(context, bot!!.botId, 3, bot!!.nickname)
+                isAddingBot = false
+                return@launch
+            }
             val api = ApiClient.apiService
             val tokenRepo = RepositoryFactory.getTokenRepository(context)
             val tokenFlow = tokenRepo.getToken()
@@ -168,6 +179,16 @@ fun BotDetailScreen(
     fun addGroup(groupId: String) {
         scope.launch {
             addingGroupId = groupId
+            val inContacts = friendRepository.getAddressBookList()
+                .getOrNull()
+                ?.dataList
+                ?.any { data -> data.dataList.any { it.chatId == groupId } } == true
+            if (inContacts) {
+                val groupName = groups.firstOrNull { it.groupId == groupId }?.name ?: ""
+                openChat(context, groupId, 2, groupName)
+                addingGroupId = null
+                return@launch
+            }
             val api = ApiClient.apiService
             val tokenRepo = RepositoryFactory.getTokenRepository(context)
             val tokenFlow = tokenRepo.getToken()
@@ -483,3 +504,12 @@ fun GroupListItem(
     }
 }
 
+private fun openChat(context: Context, chatId: String, chatType: Int, chatName: String) {
+    val intent = Intent(context, ChatActivity::class.java).apply {
+        putExtra("chatId", chatId)
+        putExtra("chatType", chatType)
+        putExtra("chatName", chatName)
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    }
+    context.startActivity(intent)
+}

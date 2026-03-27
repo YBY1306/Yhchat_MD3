@@ -8,12 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -22,9 +18,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.R
 import com.yhchat.canary.data.di.RepositoryFactory
@@ -91,6 +91,10 @@ class CreatePostActivity : ComponentActivity() {
         SideEffect {
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                isAppearanceLightStatusBars = isLightTheme
+                isAppearanceLightNavigationBars = isLightTheme
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 var flags = window.decorView.systemUiVisibility
@@ -279,81 +283,84 @@ fun CreatePostScreen(
             }
         }
         
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .fillMaxWidth()
+                .weight(1f)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 标题输入
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("文章标题") },
-                placeholder = { Text("请输入文章标题...") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            
-            // 内容输入
-            TextField(
-                value = content,
-                onValueChange = { content = it },
-                label = { 
-                    Text(if (isMarkdownMode) "文章内容 (Markdown)" else "文章内容") 
-                },
-                placeholder = { 
-                    Text(
-                        if (isMarkdownMode) 
-                            "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表"
-                        else 
-                            "请输入文章内容.."
-                    ) 
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 320.dp),
-                minLines = 12,
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    errorIndicatorColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    errorContainerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            )
-            
-            // 提示信息
-            if (isMarkdownMode) {
-                Card(
+            item {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("文章标题") },
+                    placeholder = { Text("请输入文章标题...") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    singleLine = true
+                )
+            }
+
+            item {
+                TextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = {
+                        Text(if (isMarkdownMode) "文章内容 (Markdown)" else "文章内容")
+                    },
+                    placeholder = {
+                        Text(
+                            if (isMarkdownMode)
+                                "支持Markdown语法，如：\n# 标题\n**粗体**\n*斜体*\n- 列表"
+                            else
+                                "请输入文章内容.."
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillParentMaxHeight()
+                        .heightIn(min = 320.dp),
+                    minLines = 12,
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        errorIndicatorColor = Color.Transparent,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        errorContainerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            if (isMarkdownMode) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     ) {
-                        Text(
-                            text = "Markdown语法提示：",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "# 一级标题  ## 二级标题\n• **粗体文本**  *斜体文本*\n• - 无序列表  1. 有序列表\n• `代码`  ```代码块```\n• [链接](URL)  ![图片](URL)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Markdown语法提示：",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "# 一级标题  ## 二级标题\n• **粗体文本**  *斜体文本*\n• - 无序列表  1. 有序列表\n• `代码`  ```代码块```\n• [链接](URL)  ![图片](URL)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
-            
         }
     }
     

@@ -69,7 +69,7 @@ class GroupTagManagementActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onBackClick = { finish() },
                     onTagClick = { tag ->
-                        // 跳转到标签详情页�?                        GroupTagDetailActivity.start(this, groupId, tag.id, tag.tag)
+                        GroupTagDetailActivity.start(this, groupId, tag.id, tag.tag)
                     }
                 )
             }
@@ -412,4 +412,3 @@ fun TagEditDialog(
         }
     )
 }
-

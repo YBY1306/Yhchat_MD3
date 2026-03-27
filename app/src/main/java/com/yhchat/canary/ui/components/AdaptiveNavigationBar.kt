@@ -27,9 +27,7 @@ fun AdaptiveNavigationBar(
     visibleItems: List<NavigationItem>,
     onScreenChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isVisible: Boolean = true,
-    showConversationUnreadBadge: Boolean = true,
-    conversationUnreadCount: Int = 0
+    isVisible: Boolean = true
 ) {
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
@@ -43,9 +41,7 @@ fun AdaptiveNavigationBar(
             currentScreen = currentScreen,
             visibleItems = visibleItems,
             onScreenChange = onScreenChange,
-            modifier = modifier,
-            showConversationUnreadBadge = showConversationUnreadBadge,
-            conversationUnreadCount = conversationUnreadCount
+            modifier = modifier
         )
     } else {
         // 底部导航栏 - 手机模式，支持自动隐藏
@@ -54,9 +50,7 @@ fun AdaptiveNavigationBar(
             visibleItems = visibleItems,
             onScreenChange = onScreenChange,
             modifier = modifier,
-            isVisible = isVisible,
-            showConversationUnreadBadge = showConversationUnreadBadge,
-            conversationUnreadCount = conversationUnreadCount
+            isVisible = isVisible
         )
     }
 }
@@ -69,9 +63,7 @@ private fun NavigationRailBar(
     currentScreen: String,
     visibleItems: List<NavigationItem>,
     onScreenChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    showConversationUnreadBadge: Boolean = true,
-    conversationUnreadCount: Int = 0
+    modifier: Modifier = Modifier
 ) {
     NavigationRail(
         modifier = modifier
@@ -84,10 +76,10 @@ private fun NavigationRailBar(
         visibleItems.forEach { item ->
             NavigationRailItem(
                 icon = {
-                    NavigationItemIcon(
-                        item = item,
-                        showConversationUnreadBadge = showConversationUnreadBadge,
-                        conversationUnreadCount = conversationUnreadCount
+                    Icon(
+                        imageVector = item.getIcon(),
+                        contentDescription = item.title,
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 label = {
@@ -126,9 +118,7 @@ private fun AnimatedBottomNavigationBar(
     visibleItems: List<NavigationItem>,
     onScreenChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isVisible: Boolean = true,
-    showConversationUnreadBadge: Boolean = true,
-    conversationUnreadCount: Int = 0
+    isVisible: Boolean = true
 ) {
     // 使用Material风格的tween动画，模拟LibChecker的HideBottomViewOnScrollBehavior
     // LinearOutSlowInEasing = 缓出效果，更有缓冲感
@@ -150,10 +140,10 @@ private fun AnimatedBottomNavigationBar(
         visibleItems.forEach { item ->
             NavigationBarItem(
                 icon = {
-                    NavigationItemIcon(
-                        item = item,
-                        showConversationUnreadBadge = showConversationUnreadBadge,
-                        conversationUnreadCount = conversationUnreadCount
+                    Icon(
+                        imageVector = item.getIcon(),
+                        contentDescription = item.title,
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 label = {
@@ -188,9 +178,7 @@ fun GradientBottomNavigationBar(
     visibleItems: List<NavigationItem>,
     onScreenChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isVisible: Boolean = true,
-    showConversationUnreadBadge: Boolean = true,
-    conversationUnreadCount: Int = 0
+    isVisible: Boolean = true
 ) {
     // 使用Material风格的tween动画
     val offsetY by animateDpAsState(
@@ -215,10 +203,10 @@ fun GradientBottomNavigationBar(
             visibleItems.forEach { item ->
                 NavigationBarItem(
                     icon = {
-                        NavigationItemIcon(
-                            item = item,
-                            showConversationUnreadBadge = showConversationUnreadBadge,
-                            conversationUnreadCount = conversationUnreadCount
+                        Icon(
+                            imageVector = item.getIcon(),
+                            contentDescription = item.title,
+                            modifier = Modifier.size(24.dp)
                         )
                     },
                     label = {
@@ -242,39 +230,5 @@ fun GradientBottomNavigationBar(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun NavigationItemIcon(
-    item: NavigationItem,
-    showConversationUnreadBadge: Boolean,
-    conversationUnreadCount: Int
-) {
-    val validUnreadCount = conversationUnreadCount.coerceAtLeast(0)
-    val shouldShowBadge =
-        item.id == "conversation" && showConversationUnreadBadge && validUnreadCount > 0
-
-    if (shouldShowBadge) {
-        val displayText = if (validUnreadCount > 99) "99+" else validUnreadCount.toString()
-        BadgedBox(
-            badge = {
-                Badge {
-                    Text(displayText)
-                }
-            }
-        ) {
-            Icon(
-                imageVector = item.getIcon(),
-                contentDescription = item.title,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    } else {
-        Icon(
-            imageVector = item.getIcon(),
-            contentDescription = item.title,
-            modifier = Modifier.size(24.dp)
-        )
     }
 }

@@ -226,9 +226,9 @@ fun GroupListScreen(
                     val group = selectedGroup
                     if (group != null) {
                         val intent = android.content.Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
-                            putExtra("chat_id", group.groupId)
-                            putExtra("chat_type", 2L) // 2表示群聊
-                            putExtra("chat_name", group.name)
+                            putExtra("chatId", group.groupId)
+                            putExtra("chatType", 2)
+                            putExtra("chatName", group.name)
                         }
                         context.startActivity(intent)
                     }
@@ -491,4 +491,3 @@ fun GroupDetailDialog(
         }
     )
 }
-

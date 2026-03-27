@@ -166,29 +166,6 @@ class MainActivity : BaseActivity() {
         
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()
-        val conversations by conversationViewModel.conversations.collectAsStateWithLifecycle()
-        val conversationUnreadCount = remember(conversations) {
-            conversations.sumOf { it.unreadMessage.coerceAtLeast(0) }
-        }
-
-        val layoutPrefs = remember {
-            this@MainActivity.getSharedPreferences("layout_settings", MODE_PRIVATE)
-        }
-        var showConversationUnreadBadge by remember {
-            mutableStateOf(layoutPrefs.getBoolean("conversation_show_unread_badge", true))
-        }
-
-        DisposableEffect(layoutPrefs) {
-            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-                if (key == "conversation_show_unread_badge") {
-                    showConversationUnreadBadge = prefs.getBoolean(key, true)
-                }
-            }
-            layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
-            onDispose {
-                layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener)
-            }
-        }
         
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
@@ -309,9 +286,7 @@ class MainActivity : BaseActivity() {
                                 }
                                 currentScreen = screen
                             },
-                            isVisible = true,
-                            showConversationUnreadBadge = showConversationUnreadBadge,
-                            conversationUnreadCount = conversationUnreadCount
+                            isVisible = true
                         )
                         
                         // 主内容区域
@@ -891,8 +866,6 @@ class MainActivity : BaseActivity() {
                                 currentScreen = screen
                             },
                             isVisible = navigationState.isVisible,
-                            showConversationUnreadBadge = showConversationUnreadBadge,
-                            conversationUnreadCount = conversationUnreadCount,
                             modifier = Modifier.align(Alignment.BottomCenter)
                         )
                     }

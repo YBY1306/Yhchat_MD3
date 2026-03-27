@@ -1,21 +1,27 @@
 package com.yhchat.canary.ui.community
 
-import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Markdown
+import androidx.compose.material.icons.outlined.Markdown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +45,7 @@ class EditPostActivity : ComponentActivity() {
         
         setContent {
             YhchatCanaryTheme {
+                SetSystemNavigationBarColor()
                 val viewModel: EditPostViewModel = viewModel {
                     EditPostViewModel(
                         communityRepository = RepositoryFactory.getCommunityRepository(this@EditPostActivity),
@@ -55,6 +62,50 @@ class EditPostActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onBackClick = { finish() },
                     onPostUpdated = { finish() }
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun SetSystemNavigationBarColor() {
+        val isLightTheme = !isSystemInDarkTheme()
+        SideEffect {
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                var flags = window.decorView.systemUiVisibility
+                flags = if (isLightTheme) {
+                    flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                } else {
+                    flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    flags = if (isLightTheme) {
+                        flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                    } else {
+                        flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                    }
+                }
+                window.decorView.systemUiVisibility = flags
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val appearance = if (isLightTheme) {
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                } else {
+                    0
+                }
+                window.insetsController?.setSystemBarsAppearance(
+                    appearance,
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                 )
             }
         }
@@ -135,6 +186,15 @@ fun EditPostScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { isMarkdownMode = !isMarkdownMode }
+                    ) {
+                        Icon(
+                            imageVector = if (isMarkdownMode) Icons.Filled.Markdown else Icons.Outlined.Markdown,
+                            contentDescription = "Markdown"
+                        )
+                    }
+
                     // 保存按钮
                     IconButton(
                         onClick = {
@@ -201,24 +261,8 @@ fun EditPostScreen(
                     singleLine = true
                 )
                 
-                // Markdown模式切换
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Markdown模式",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Switch(
-                        checked = isMarkdownMode,
-                        onCheckedChange = { isMarkdownMode = it }
-                    )
-                }
-                
                 // 内容输入
-                OutlinedTextField(
+                TextField(
                     value = content,
                     onValueChange = { content = it },
                     label = { 
@@ -234,8 +278,18 @@ fun EditPostScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
-                    minLines = 10
+                        .heightIn(min = 320.dp),
+                    minLines = 12,
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        errorIndicatorColor = Color.Transparent,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        errorContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
                 )
                 
                 // 提示信息
@@ -265,32 +319,6 @@ fun EditPostScreen(
                     }
                 }
                 
-                // 保存按钮
-                Button(
-                    onClick = {
-                        if (title.isNotBlank() && content.isNotBlank()) {
-                            viewModel.editPost(
-                                token = token,
-                                postId = postId,
-                                title = title.trim(),
-                                content = content.trim(),
-                                contentType = if (isMarkdownMode) 2 else 1
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = title.isNotBlank() && content.isNotBlank() && !editPostState.isLoading
-                ) {
-                    if (editPostState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(if (editPostState.isLoading) "保存中..." else "保存修改")
-                }
             }
         }
         

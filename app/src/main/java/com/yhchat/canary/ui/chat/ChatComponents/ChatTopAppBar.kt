@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,9 @@ fun ChatTopAppBar(
     chatName: String,
     uiState: ChatUiState,
     showTtsButton: Boolean,
+    showRefreshButton: Boolean,
     onBackClick: () -> Unit,
+    onRefreshClick: () -> Unit,
     onTtsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -108,6 +111,14 @@ fun ChatTopAppBar(
             }
         },
         actions = {
+            if (showRefreshButton) {
+                IconButton(onClick = onRefreshClick) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "刷新消息"
+                    )
+                }
+            }
             // TTS按钮（受布局设置控制）
             if (showTtsButton) {
                 IconButton(onClick = onTtsClick) {

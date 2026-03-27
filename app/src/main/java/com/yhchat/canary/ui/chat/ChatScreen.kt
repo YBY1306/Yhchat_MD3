@@ -288,11 +288,13 @@ fun ChatScreen(
     // 读取布局设置：TTS按钮和TopAppBar显隐
     val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
     var showTtsButton by remember { mutableStateOf(layoutPrefs.getBoolean("chat_show_tts_button", true)) }
+    var showRefreshButton by remember { mutableStateOf(layoutPrefs.getBoolean("chat_show_refresh_button", true)) }
     var hideTopAppBar by remember { mutableStateOf(layoutPrefs.getBoolean("chat_hide_top_app_bar", false)) }
     DisposableEffect(layoutPrefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
                 "chat_show_tts_button" -> showTtsButton = layoutPrefs.getBoolean("chat_show_tts_button", true)
+                "chat_show_refresh_button" -> showRefreshButton = layoutPrefs.getBoolean("chat_show_refresh_button", true)
                 "chat_hide_top_app_bar" -> hideTopAppBar = layoutPrefs.getBoolean("chat_hide_top_app_bar", false)
             }
         }
@@ -555,7 +557,9 @@ fun ChatScreen(
                 chatName = chatName,
                 uiState = uiState,
                 showTtsButton = showTtsButton,
+                showRefreshButton = showRefreshButton,
                 onBackClick = onBackClick,
+                onRefreshClick = { viewModel.refreshLatestMessages() },
                 onTtsClick = { showFloatingTtsWindow = true }
             )
         }
@@ -768,7 +772,7 @@ fun ChatScreen(
                                 // 设置引用消息，格式：发送者名称 : 内容
                                 val senderName = message.sender.name
                                 val content = message.content.text ?: ""
-                                val quotedText = "$senderName : $content"
+                                val quotedText = "$senderName：$content"
                                 quotedMessageId = msgId
                                 quotedMessageText = quotedText
                                 

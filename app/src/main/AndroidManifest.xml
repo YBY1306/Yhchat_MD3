@@ -4,35 +4,23 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    
-    <!-- 音频播放权限 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    
-    <!-- 文件下载权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    
-    <!-- 录音权限 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    
-    <!-- 存储权限用于保存图片和文件 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    
-    <!-- 通知权限 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- Android 11+ TTS查询权限声明（关键！没有这个TTS引擎检测会失败） -->
+
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
-        <!-- 声明已知的TTS引擎包名，提升检测成功率 -->
         <package android:name="com.google.android.tts" />
         <package android:name="com.xiaomi.mibrain.speech" />
         <package android:name="com.huawei.tts" />
@@ -54,14 +42,11 @@
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.YhchatCanary">
-        <!-- 登录 Activity -->
         <activity
             android:name=".ui.login.LoginActivity"
             android:exported="false"
             android:label="登录"
             android:theme="@style/Theme.YhchatCanary" />
-
-        <!-- 聊天界面 Activity -->
         <activity
             android:name=".ui.chat.ChatActivity"
             android:exported="false"
@@ -149,8 +134,7 @@
             android:exported="false"
             android:label="推荐文章"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 分区详情Activity -->
+
         <activity
             android:name=".ui.community.BoardDetailActivity"
             android:exported="true"
@@ -164,29 +148,26 @@
                       android:host="alley-detail" />
             </intent-filter>
         </activity>
-            
-        <!-- 创建文章Activity -->
+
         <activity
             android:name=".ui.community.CreatePostActivity"
             android:exported="false"
             android:label="发布文章"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 草稿箱Activity -->
+
         <activity
             android:name=".ui.community.DraftBoxActivity"
             android:exported="false"
             android:label="草稿箱"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 文章详情Activity -->
+
         <activity
             android:name=".ui.community.PostDetailActivity"
             android:exported="true"
             android:label="文章详情"
             android:theme="@style/Theme.YhchatCanary">
             
-            <!-- 处理yunhu://深度链接 -->
+            <!-- 处理yunhu://链接 -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -202,36 +183,31 @@
             android:exported="false"
             android:label="网页"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 设置 Activity -->
+
         <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:label="设置"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- HTML 设置 Activity -->
+
         <activity
             android:name=".ui.settings.HtmlSettingsActivity"
             android:exported="false"
             android:label="HTML 设置"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 导航栏设置 Activity -->
+
         <activity
             android:name=".ui.settings.NavigationSettingsActivity"
             android:exported="false"
             android:label="导航栏管理"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 布局设置 Activity -->
+
         <activity
             android:name=".ui.settings.LayoutSettingsActivity"
             android:exported="false"
             android:label="布局设置"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 应用详情 Activity -->
+
         <activity
             android:name=".ui.settings.AppInfoActivity"
             android:exported="false"
@@ -244,56 +220,48 @@
             android:label="已保存的语音"
             android:theme="@style/Theme.YhchatCanary" />
 
-        <!-- 用户资料 Activity -->
         <activity
             android:name=".ui.profile.UserProfileActivity"
             android:exported="false"
             android:label="用户资料"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 邮箱修改 Activity -->
+
         <activity
             android:name=".ui.profile.EmailModificationActivity"
             android:exported="false"
             android:label="修改邮箱"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 邮箱绑定 Activity -->
+
         <activity
             android:name=".ui.profile.EmailBindingActivity"
             android:exported="false"
             android:label="绑定邮箱"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 用户详情 Activity -->
+
         <activity
             android:name=".ui.user.UserDetailActivity"
             android:exported="false"
             android:label="用户详情"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 表情包详情 -->
         <activity
             android:name=".ui.sticker.StickerPackDetailActivity"
             android:exported="false"
             android:label="表情包详情"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 群聊列表 Activity -->
+
         <activity
             android:name=".ui.community.GroupListActivity"
             android:exported="false"
             android:label="群聊列表"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 聊天添加 Activity -->
+
         <activity
             android:name=".ui.chat.ChatAddActivity"
             android:exported="true"
             android:label="添加聊天"
             android:theme="@style/Theme.YhchatCanary">
             
-            <!-- 处理yunhu://chat-add深度链接 -->
+            <!-- 处理yunhu://chat-add链接 -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -306,83 +274,73 @@
                       android:host="jwznb.com" />
             </intent-filter>
         </activity>
-            
-        <!-- 搜索 Activity -->
+
         <activity
             android:name=".ui.community.SearchActivity"
             android:exported="false"
             android:label="搜索"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 屏蔽用户列表 Activity -->
+
         <activity
             android:name=".ui.community.BlockedUsersActivity"
             android:exported="false"
             android:label="屏蔽用户"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 在线设备 Activity -->
+
         <activity
             android:name=".ui.settings.OnlineDevicesActivity"
             android:exported="false"
             android:label="在线设备"
             android:theme="@style/Theme.YhchatCanary" />
+
         <activity
             android:name=".ui.settings.ChangePasswordActivity"
             android:exported="false"
             android:label="更改密码"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 机器人信息 Activity -->
+
         <activity
             android:name=".ui.bot.BotInfoActivity"
             android:exported="false"
             android:label="机器人信息"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 机器人详细信息 Activity -->
+
         <activity
             android:name=".ui.bot.BotDetailActivity"
             android:exported="false"
             android:label="机器人详细信息"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 机器人管理 Activity -->
+
         <activity
             android:name=".ui.bot.BotManagementActivity"
             android:exported="false"
             android:label="机器人管理"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 机器人编辑 Activity -->
+
         <activity
             android:name=".ui.bot.BotEditActivity"
             android:exported="false"
             android:label="编辑机器人"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 金币商城 Activity -->
+
         <activity
             android:name=".ui.coin.CoinShopActivity"
             android:exported="false"
             android:label="金币商城"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 任务中心 Activity -->
+
         <activity
             android:name=".ui.coin.CoinDetailActivity"
             android:exported="false"
             android:label="任务中心"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 金币明细 Activity -->
+
         <activity
             android:name=".ui.coin.CoinRecordActivity"
             android:exported="false"
             android:label="金币明细"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 用户统计 Activity -->
+
         <activity
             android:name=".ui.stats.UserStatsActivity"
             android:exported="false"
@@ -394,43 +352,36 @@
             android:exported="false"
             android:label="商品详情"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 聊天背景设置 Activity -->
+
         <activity
             android:name=".ui.background.ChatBackgroundActivity"
             android:exported="false"
             android:label="聊天背景"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- 群网盘 Activity -->
+
         <activity
             android:name=".ui.disk.GroupDiskActivity"
             android:exported="false"
             android:label="群网盘"
             android:theme="@style/Theme.YhchatCanary" />
-            
-        <!-- WebDAV 浏览器 Activity -->
+
         <activity
             android:name=".ui.disk.webdav.WebDAVBrowserActivity"
             android:exported="false"
             android:label="WebDAV"
             android:theme="@style/Theme.YhchatCanary" />
-       
-       <!-- WebDAV 设置 Activity -->
+
         <activity
             android:name=".ui.disk.webdav.WebDAVSettingsActivity"
             android:exported="false"
             android:label="WebDAV 设置"
             android:theme="@style/Theme.YhchatCanary" />
 
-        <!-- WebDAV 下载列表 Activity -->
         <activity
             android:name=".ui.disk.webdav.WebDAVDownloadListActivity"
             android:exported="false"
             android:label="下载列表"
             android:theme="@style/Theme.YhchatCanary" />
-        
-        <!-- 综合搜索 Activity -->
 
         <activity
             android:name=".ui.search.SearchActivity"

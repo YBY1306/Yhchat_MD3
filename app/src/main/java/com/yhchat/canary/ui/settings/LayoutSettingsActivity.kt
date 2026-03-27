@@ -694,6 +694,7 @@ private fun ChatLayoutSettingsGroup(context: Context) {
     var hideTopAppBar by remember { mutableStateOf(prefs.getBoolean("chat_hide_top_app_bar", false)) }
     var hideBackButtonInLargeScreen by remember { mutableStateOf(prefs.getBoolean("chat_hide_back_button_large_screen", true)) }
     var showTtsButton by remember { mutableStateOf(prefs.getBoolean("chat_show_tts_button", true)) }
+    var showRefreshButton by remember { mutableStateOf(prefs.getBoolean("chat_show_refresh_button", true)) }
     var showOwnerBadge by remember { mutableStateOf(prefs.getBoolean("chat_show_owner_badge", true)) }
     var showAdminBadge by remember { mutableStateOf(prefs.getBoolean("chat_show_admin_badge", true)) }
     var showMemberTags by remember { mutableStateOf(prefs.getBoolean("chat_show_member_tags", true)) }
@@ -740,6 +741,18 @@ private fun ChatLayoutSettingsGroup(context: Context) {
                     onCheckedChange = {
                         showTtsButton = it
                         prefs.edit().putBoolean("chat_show_tts_button", it).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Refresh,
+                    title = "刷新按钮",
+                    subtitle = if (showRefreshButton) "显示顶部刷新按钮" else "隐藏顶部刷新按钮",
+                    checked = showRefreshButton,
+                    onCheckedChange = {
+                        showRefreshButton = it
+                        prefs.edit().putBoolean("chat_show_refresh_button", it).apply()
                     }
                 )
             }

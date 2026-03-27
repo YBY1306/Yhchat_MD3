@@ -1407,7 +1407,10 @@ class MessageRepository @Inject constructor(
             fileUrl = if (protoMsg.content.fileUrl.isNotEmpty()) protoMsg.content.fileUrl else null,
             form = if (protoMsg.content.form.isNotEmpty()) protoMsg.content.form else null,
             quoteMsgText = if (protoMsg.content.quoteMsgText.isNotEmpty()) protoMsg.content.quoteMsgText else null,
-            quoteImageUrl = null, // Proto中可能没有这个字段，暂时设为null
+            quoteImageUrl = if (protoMsg.content.quoteImageUrl.isNotEmpty()) protoMsg.content.quoteImageUrl else null,
+            quoteImageName = if (protoMsg.content.quoteImageName.isNotEmpty()) protoMsg.content.quoteImageName else null,
+            quoteVideoUrl = if (protoMsg.content.quoteVideoUrl.isNotEmpty()) protoMsg.content.quoteVideoUrl else null,
+            quoteVideoTime = if (protoMsg.content.quoteVideoTime > 0) protoMsg.content.quoteVideoTime else null,
             stickerUrl = if (protoMsg.content.stickerUrl.isNotEmpty()) protoMsg.content.stickerUrl else null,
             postId = if (protoMsg.content.postId.isNotEmpty()) protoMsg.content.postId else null,
             postTitle = if (protoMsg.content.postTitle.isNotEmpty()) protoMsg.content.postTitle else null,

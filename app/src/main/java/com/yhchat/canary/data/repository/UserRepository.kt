@@ -752,7 +752,10 @@ class UserRepository @Inject constructor(
                                 fileUrl = protoMsg.content.fileUrl.takeIf { it.isNotEmpty() },
                                 form = protoMsg.content.form.takeIf { it.isNotEmpty() },
                                 quoteMsgText = protoMsg.content.quoteMsgText.takeIf { it.isNotEmpty() },
-                                quoteImageUrl = null, // Proto中可能没有这个字段
+                                quoteImageUrl = protoMsg.content.quoteImageUrl.takeIf { it.isNotEmpty() },
+                                quoteImageName = protoMsg.content.quoteImageName.takeIf { it.isNotEmpty() },
+                                quoteVideoUrl = protoMsg.content.quoteVideoUrl.takeIf { it.isNotEmpty() },
+                                quoteVideoTime = if (protoMsg.content.quoteVideoTime > 0) protoMsg.content.quoteVideoTime else null,
                                 stickerUrl = protoMsg.content.stickerUrl.takeIf { it.isNotEmpty() },
                                 postId = protoMsg.content.postId.takeIf { it.isNotEmpty() },
                                 postTitle = protoMsg.content.postTitle.takeIf { it.isNotEmpty() },

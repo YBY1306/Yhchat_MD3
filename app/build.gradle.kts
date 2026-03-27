@@ -34,7 +34,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "21.4"
+        versionName = "21.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -128,7 +128,7 @@ dependencies {
     // 权限处理
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     
-    // WebDAV 客户端库（Android 兼容版，避免 Apache HttpClient 冲突）
+    // WebDAV 客户端
     implementation("com.github.thegrizzlylabs:sardine-android:0.8")
     
     // Compose Rich Text - Markdown 渲染

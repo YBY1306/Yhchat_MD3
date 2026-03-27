@@ -13,8 +13,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Markdown
-import androidx.compose.material.icons.outlined.Markdown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -22,9 +20,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yhchat.canary.R
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -190,7 +190,9 @@ fun EditPostScreen(
                         onClick = { isMarkdownMode = !isMarkdownMode }
                     ) {
                         Icon(
-                            imageVector = if (isMarkdownMode) Icons.Filled.Markdown else Icons.Outlined.Markdown,
+                            painter = painterResource(
+                                id = if (isMarkdownMode) R.drawable.ic_markdown else R.drawable.ic_markdown_outline
+                            ),
                             contentDescription = "Markdown"
                         )
                     }

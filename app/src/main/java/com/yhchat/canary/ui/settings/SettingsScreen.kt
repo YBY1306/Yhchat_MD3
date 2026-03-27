@@ -63,6 +63,8 @@ fun SettingsScreen(
     // 聊天界面动画偏好
     val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
     var enableChatAnimations by remember { mutableStateOf(chatPrefs.getBoolean("enable_chat_animations", true)) }
+    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+    var enableBottomNavSwipe by remember { mutableStateOf(layoutPrefs.getBoolean("bottom_nav_swipe_enabled", true)) }
 
     // 获取用户信息
     var userEmail by remember { mutableStateOf("") }
@@ -149,6 +151,18 @@ fun SettingsScreen(
                             )
                         }
                         ,
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.SwapHoriz,
+                                title = "底部导航左右滑动",
+                                subtitle = if (enableBottomNavSwipe) "允许左右滑动切换页面" else "禁止左右滑动切换页面",
+                                checked = enableBottomNavSwipe,
+                                onCheckedChange = { checked ->
+                                    enableBottomNavSwipe = checked
+                                    layoutPrefs.edit().putBoolean("bottom_nav_swipe_enabled", checked).apply()
+                                }
+                            )
+                        },
                         {
                             SettingsSwitchItem(
                                 icon = Icons.Default.PlayArrow,

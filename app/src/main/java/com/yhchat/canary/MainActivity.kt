@@ -1,6 +1,8 @@
 package com.yhchat.canary
 
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -131,6 +134,7 @@ class MainActivity : BaseActivity() {
     
     @Composable
     private fun MainContent() {
+        val context = LocalContext.current
         // 使用MainViewModel
         val mainViewModel: MainViewModel = viewModel()
         val isInitialized by mainViewModel.isInitialized.collectAsStateWithLifecycle()
@@ -166,6 +170,20 @@ class MainActivity : BaseActivity() {
         
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()
+
+        val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
+        var enableBottomNavSwipe by remember {
+            mutableStateOf(layoutPrefs.getBoolean("bottom_nav_swipe_enabled", true))
+        }
+        DisposableEffect(layoutPrefs) {
+            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key == "bottom_nav_swipe_enabled") {
+                    enableBottomNavSwipe = layoutPrefs.getBoolean("bottom_nav_swipe_enabled", true)
+                }
+            }
+            layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
         
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
@@ -298,7 +316,7 @@ class MainActivity : BaseActivity() {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize(),
-                                userScrollEnabled = true
+                                userScrollEnabled = enableBottomNavSwipe
                             ) { page ->
                                     val navItem = visibleNavItems[page]
                                     when (navItem.id) {
@@ -762,7 +780,7 @@ class MainActivity : BaseActivity() {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    userScrollEnabled = true
+                                    userScrollEnabled = enableBottomNavSwipe
                                 ) { page ->
                                         val navItem = visibleNavItems[page]
                                         when (navItem.id) {

@@ -780,16 +780,7 @@ fun ChatScreen(
                                 when (message.contentType) {
                                     2 -> {
                                         // 图片消息
-                                        val rawImageUrl = message.content.imageUrl
-                                        quotedImageUrl = rawImageUrl?.let { url ->
-                                            when {
-                                                url.startsWith("http://") || url.startsWith("https://") -> url
-                                                url.startsWith("//") -> "https:$url"
-                                                url.startsWith("chat-img.jwznb.com") -> "https://$url"
-                                                url.startsWith("/") -> "https://chat-img.jwznb.com$url"
-                                                else -> "https://chat-img.jwznb.com/$url"
-                                            }
-                                        }
+                                        quotedImageUrl = message.content.imageUrl
                                         quotedImageName = message.content.fileName ?: "image.jpg"
                                         android.util.Log.d("ChatScreen", "📷 引用图片消息: url=$quotedImageUrl")
                                     }

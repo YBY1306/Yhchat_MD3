@@ -41,6 +41,7 @@ fun BotBoardContent(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val safeBoardContent = boardData.content.ifBlank { "[空内容]" }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -59,7 +60,7 @@ fun BotBoardContent(
                 1 -> { // 文本 - 支持选择复制
                     SelectionContainer {
                         Text(
-                            text = boardData.content,
+                            text = safeBoardContent,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -67,14 +68,14 @@ fun BotBoardContent(
                 }
                 2 -> { // Markdown - MarkdownText组件内部支持选择
                     MarkdownText(
-                        markdown = boardData.content,
+                        markdown = safeBoardContent,
                         modifier = Modifier.fillMaxWidth(),
                         onImageClick = onImageClick
                     )
                 }
                 3 -> { // HTML - HtmlWebView内部支持选择
                     HtmlWebView(
-                        htmlContent = boardData.content,
+                        htmlContent = safeBoardContent,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 300.dp),
@@ -84,7 +85,7 @@ fun BotBoardContent(
                 else -> { // 默认按文本处理 - 支持选择复制
                     SelectionContainer {
                         Text(
-                            text = boardData.content,
+                            text = safeBoardContent,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -206,7 +207,7 @@ fun GroupBotBoardsSection(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "${boardData.botName}的看板",
+                                text = "${boardData.botName.ifBlank { "机器人" }}的看板",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

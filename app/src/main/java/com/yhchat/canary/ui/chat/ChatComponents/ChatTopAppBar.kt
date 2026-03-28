@@ -41,6 +41,7 @@ fun ChatTopAppBar(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val isLargeScreen = screenWidthDp >= 600
+    val safeChatName = chatName.ifBlank { "聊天" }
     
     // 读取大屏下隐藏返回键的设置
     val layoutPrefs = remember { 
@@ -71,7 +72,7 @@ fun ChatTopAppBar(
             // 标题部分 - 强制单行显示，不被按钮挤压
             Column {
                 Text(
-                    text = chatName,
+                    text = safeChatName,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -136,7 +137,7 @@ fun ChatTopAppBar(
                     com.yhchat.canary.ui.user.UserDetailActivity.start(
                         context = context,
                         userId = chatId,
-                        userName = chatName
+                        userName = safeChatName
                     )
                 }) {
                     Icon(
@@ -151,7 +152,7 @@ fun ChatTopAppBar(
                     android.util.Log.d("ChatTopAppBar", "Opening group info: chatId=$chatId, chatName=$chatName")
                     val intent = Intent(context, com.yhchat.canary.ui.group.GroupInfoActivity::class.java)
                     intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_ID, chatId)
-                    intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_NAME, chatName)
+                    intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_NAME, safeChatName)
                     context.startActivity(intent)
                 }) {
                     Icon(
@@ -167,7 +168,7 @@ fun ChatTopAppBar(
                     com.yhchat.canary.ui.bot.BotDetailActivity.start(
                         context = context,
                         botId = chatId,
-                        botName = chatName,
+                        botName = safeChatName,
                         chatType = chatType
                     )
                 }) {

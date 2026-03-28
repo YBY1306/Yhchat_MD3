@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,7 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import coil.size.Precision
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,6 +58,10 @@ fun ImageViewer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val requestWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() * 2 }
+    val requestHeight = with(density) { configuration.screenHeightDp.dp.roundToPx() * 2 }
     
     // 缩放和位移状态 - 支持无限缩放
     var scale by remember { mutableFloatStateOf(1f) }
@@ -87,7 +93,8 @@ fun ImageViewer(
                             setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
                         }
                     }
-                    .size(coil.size.Size.ORIGINAL) // 加载原始尺寸的高清图片
+                    .size(requestWidth, requestHeight)
+                    .precision(Precision.INEXACT)
                     .crossfade(true)
                     .build(),
                 contentDescription = "预览图片",
@@ -343,7 +350,10 @@ fun AdvancedImageViewer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
+    val requestWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() * 2 }
+    val requestHeight = with(density) { configuration.screenHeightDp.dp.roundToPx() * 2 }
     
     // 手势状态
     var scale by remember { mutableFloatStateOf(1f) }
@@ -378,7 +388,8 @@ fun AdvancedImageViewer(
                             setHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
                         }
                     }
-                    .size(coil.size.Size.ORIGINAL) // 加载原始尺寸的高清图片
+                    .size(requestWidth, requestHeight)
+                    .precision(Precision.INEXACT)
                     .crossfade(true)
                     .build(),
                 contentDescription = "预览图片",

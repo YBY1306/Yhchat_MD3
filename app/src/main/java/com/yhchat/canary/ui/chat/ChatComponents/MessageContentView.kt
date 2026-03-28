@@ -433,6 +433,7 @@ fun MessageContentView(
 
         // 引用消息
         content.quoteMsgText?.let { quoteText: String ->
+            val safeQuoteText = quoteText.ifBlank { "[引用消息]" }
             Spacer(modifier = Modifier.height(4.dp))
             Surface(
                 modifier = Modifier
@@ -538,7 +539,7 @@ fun MessageContentView(
                     ) {
                         SelectionContainer {
                             Text(
-                                text = quoteText,
+                                text = safeQuoteText,
                                 color = textColor.copy(alpha = 0.8f),
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 2,

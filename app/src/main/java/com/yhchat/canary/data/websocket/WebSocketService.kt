@@ -1012,7 +1012,11 @@ class WebSocketService @Inject constructor(
                         },
                         PendingIntent.FLAG_MUTABLE /*0x4000000*/
                     ),
-                    if (conversationAvatarBitmap != null) IconCompat.createWithAdaptiveBitmap(conversationAvatarBitmap) else TODO("无头像")
+                    if (conversationAvatarBitmap != null) {
+                        IconCompat.createWithAdaptiveBitmap(conversationAvatarBitmap)
+                    } else {
+                        IconCompat.createWithResource(context, R.mipmap.ic_launcher)
+                    }
                 ).setDesiredHeight(Int.MAX_VALUE/*TODO*/).build()
                 notificationBuilder.setBubbleMetadata(notificationBubbleMetadata)
             }

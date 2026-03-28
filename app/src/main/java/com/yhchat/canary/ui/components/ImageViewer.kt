@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -106,12 +107,16 @@ fun ImageViewer(
         pageCount = { sanitizedUrls.size }
     )
     val zoomedPages = remember { mutableStateMapOf<Int, Boolean>() }
+    val gestureLockedPages = remember { mutableStateMapOf<Int, Boolean>() }
     var controlsVisible by remember { mutableStateOf(true) }
     val currentImageUrl by remember {
         derivedStateOf { sanitizedUrls[pagerState.currentPage.coerceIn(0, sanitizedUrls.lastIndex)] }
     }
     val isCurrentPageZoomed by remember {
         derivedStateOf { zoomedPages[pagerState.currentPage] == true }
+    }
+    val isCurrentPageGestureLocked by remember {
+        derivedStateOf { gestureLockedPages[pagerState.currentPage] == true }
     }
 
     Dialog(
@@ -130,13 +135,14 @@ fun ImageViewer(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = !isCurrentPageZoomed,
+                userScrollEnabled = !isCurrentPageZoomed && !isCurrentPageGestureLocked,
                 key = { page -> sanitizedUrls[page] }
             ) { page ->
                 ZoomableImagePage(
                     imageUrl = sanitizedUrls[page],
                     onToggleControls = { controlsVisible = !controlsVisible },
-                    onZoomStateChange = { isZoomed -> zoomedPages[page] = isZoomed }
+                    onZoomStateChange = { isZoomed -> zoomedPages[page] = isZoomed },
+                    onGestureLockChange = { locked -> gestureLockedPages[page] = locked }
                 )
             }
 
@@ -210,7 +216,7 @@ fun ImageViewer(
                     shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
-                        text = if (sanitizedUrls.size > 1) "左右滑动切换图片" else "双击缩放，单击切换工具栏",
+                        text = if (sanitizedUrls.size > 1) "双指缩放，左右滑动切换图片" else "双指或双击缩放，单击切换工具栏",
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelMedium
@@ -257,7 +263,8 @@ private fun viewerButtonColors() = IconButtonDefaults.filledIconButtonColors(
 private fun ZoomableImagePage(
     imageUrl: String,
     onToggleControls: () -> Unit,
-    onZoomStateChange: (Boolean) -> Unit
+    onZoomStateChange: (Boolean) -> Unit,
+    onGestureLockChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -327,14 +334,35 @@ private fun ZoomableImagePage(
                             translationY = offsetY
                         )
                         .pointerInput(imageUrl) {
+                            awaitEachGesture {
+                                var lockPager = false
+                                var hasPressedPointers: Boolean
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val pressedCount = event.changes.count { it.pressed }
+                                    val shouldLock = pressedCount > 1 || scale > 1.02f
+                                    hasPressedPointers = event.changes.any { it.pressed }
+                                    if (shouldLock != lockPager) {
+                                        lockPager = shouldLock
+                                        onGestureLockChange(lockPager)
+                                    }
+                                } while (hasPressedPointers)
+                                if (lockPager) {
+                                    onGestureLockChange(false)
+                                }
+                            }
+                        }
+                        .pointerInput(imageUrl) {
                             detectTransformGestures { centroid, pan, zoom, _ ->
                                 val previousScale = scale
                                 val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                onGestureLockChange(true)
 
                                 if (newScale == 1f) {
                                     scale = 1f
                                     offsetX = 0f
                                     offsetY = 0f
+                                    onGestureLockChange(false)
                                     return@detectTransformGestures
                                 }
 
@@ -368,10 +396,12 @@ private fun ZoomableImagePage(
                                         scale = 1f
                                         offsetX = 0f
                                         offsetY = 0f
+                                        onGestureLockChange(false)
                                     } else {
                                         scale = 2.2f
                                         offsetX = 0f
                                         offsetY = 0f
+                                        onGestureLockChange(true)
                                     }
                                 },
                                 onTap = {

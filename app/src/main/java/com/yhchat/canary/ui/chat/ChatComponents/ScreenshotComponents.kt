@@ -42,11 +42,10 @@ suspend fun generateMessagesImage(
     val imageWidth = (400 * density).toInt()
 
     val completableDeferred = kotlinx.coroutines.CompletableDeferred<Bitmap>()
-    
-    // 将ComposeView添加到Activity的根视图中，确保它附加到窗口
-    val activity = context as? android.app.Activity
-    val rootView = activity?.findViewById<android.view.ViewGroup>(android.R.id.content)
-    rootView?.addView(composeView)
+    composeView.layoutParams = android.view.ViewGroup.LayoutParams(
+        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+    )
 
     composeView.setContent {
         YhchatCanaryTheme {
@@ -109,6 +108,9 @@ suspend fun generateMessagesImage(
 
     composeView.post {
         try {
+            if (composeView.measuredWidth <= 0 || composeView.measuredHeight <= 0) {
+                error("Screenshot content measured to an empty size")
+            }
             val bitmap = Bitmap.createBitmap(
                 composeView.measuredWidth,
                 composeView.measuredHeight,
@@ -120,19 +122,10 @@ suspend fun generateMessagesImage(
             completableDeferred.complete(bitmap)
         } catch (e: Exception) {
             completableDeferred.completeExceptionally(e)
-        } finally {
-            // 清理：从根视图中移除ComposeView
-            rootView?.removeView(composeView)
         }
     }
 
-    try {
-        completableDeferred.await()
-    } catch (e: Exception) {
-        // 确保在异常情况下也清理ComposeView
-        rootView?.removeView(composeView)
-        throw e
-    }
+    completableDeferred.await()
 }
 
 /**

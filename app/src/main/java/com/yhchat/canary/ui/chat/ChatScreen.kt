@@ -731,10 +731,10 @@ fun ChatScreen(
                                 selectedMessageIds = setOf(message.msgId)
                             },
                             onImageClick = { imageUrl ->
-                                val gallery = if (chatImageGallery.isEmpty()) {
-                                    listOf(imageUrl)
-                                } else {
+                                val gallery = if (chatImageGallery.isNotEmpty() && chatImageGallery.contains(imageUrl)) {
                                     chatImageGallery
+                                } else {
+                                    listOf(imageUrl)
                                 }
                                 currentImageUrl = imageUrl
                                 currentImageGallery = gallery

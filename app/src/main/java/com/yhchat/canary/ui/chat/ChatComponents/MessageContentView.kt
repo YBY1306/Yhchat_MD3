@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,7 +137,11 @@ fun MessageContentView(
                         ),
                         contentDescription = "图片",
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .sizeIn(
+                                minWidth = 120.dp,
+                                maxWidth = 280.dp,
+                                maxHeight = 360.dp
+                            )
                             .clip(RoundedCornerShape(8.dp))
                             .combinedClickable(
                                 onClick = { onImageClick(imageUrl) },

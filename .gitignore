@@ -48,3 +48,4 @@ app/build.gradle.kts
 main.dart.js
 resour/
 TTS-master/
+release/

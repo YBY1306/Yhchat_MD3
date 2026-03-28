@@ -364,7 +364,8 @@ fun MessageContentView(
                     VideoMessageView(
                         videoUrl = videoUrl,
                         textColor = textColor,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onLongClick = onLongClick
                     )
                 }
             }

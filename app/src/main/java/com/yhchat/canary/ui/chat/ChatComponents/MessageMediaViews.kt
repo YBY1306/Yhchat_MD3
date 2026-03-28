@@ -5,6 +5,8 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -92,10 +93,12 @@ fun handleFileDownload(
  * 视频消息视图
  */
 @Composable
-fun VideoMessageView(
+@OptIn(ExperimentalFoundationApi::class)
+fun VideoDownloadMessageView(
     videoUrl: String,
     textColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var downloadState by remember { mutableStateOf<DownloadState>(DownloadState.NotStarted) }
@@ -103,22 +106,25 @@ fun VideoMessageView(
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable {
-                if (downloadState == DownloadState.NotStarted) {
-                    downloadState = DownloadState.Downloading
-                    val fileName = videoUrl.substringAfterLast("/").ifEmpty { "video_${System.currentTimeMillis()}.mp4" }
+            .combinedClickable(
+                onClick = {
+                    if (downloadState == DownloadState.NotStarted) {
+                        downloadState = DownloadState.Downloading
+                        val fileName = videoUrl.substringAfterLast("/").ifEmpty { "video_${System.currentTimeMillis()}.mp4" }
 
-                    FileDownloadService.startDownload(
-                        context = context,
-                        fileUrl = videoUrl,
-                        fileName = fileName,
-                        fileSize = 0L,
-                        autoOpen = true
-                    )
+                        FileDownloadService.startDownload(
+                            context = context,
+                            fileUrl = videoUrl,
+                            fileName = fileName,
+                            fileSize = 0L,
+                            autoOpen = true
+                        )
 
-                    Toast.makeText(context, "开始下载视频：$fileName", Toast.LENGTH_SHORT).show()
-                }
-            },
+                        Toast.makeText(context, "开始下载视频：$fileName", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onLongClick = onLongClick
+            ),
         color = textColor.copy(alpha = 0.1f)
     ) {
         Row(

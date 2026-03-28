@@ -106,6 +106,8 @@ protobuf {
 }
 
 dependencies {
+    add("withPlayerImplementation", project(":player"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")

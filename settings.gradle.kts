@@ -47,3 +47,4 @@ dependencyResolutionManagement {
 rootProject.name = "Yhchat Canary"
 
 include(":app")
+include(":player")

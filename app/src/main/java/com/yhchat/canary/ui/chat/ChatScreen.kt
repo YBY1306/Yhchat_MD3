@@ -104,7 +104,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.yhchat.canary.ui.bot.BotInfoActivity
+import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
@@ -231,6 +231,11 @@ fun ChatScreen(
     // 图片预览状态
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf<String?>(null) }
+    var currentImageGallery by remember { mutableStateOf<List<String>>(emptyList()) }
+    var currentImageIndex by remember { mutableIntStateOf(0) }
+    val chatImageGallery by remember {
+        derivedStateOf { buildChatImageGallery(messages) }
+    }
     
     // 滚动到底部按钮状态
     var showScrollToBottomButton by remember { mutableStateOf(false) }
@@ -571,6 +576,8 @@ fun ChatScreen(
             uiState = uiState,
             onImageClick = { url ->
                 currentImageUrl = url
+                currentImageGallery = listOf(url)
+                currentImageIndex = 0
                 showImageViewer = true
             }
         )
@@ -582,6 +589,8 @@ fun ChatScreen(
             groupBotBoards = uiState.groupBotBoards,
             onImageClick = { url ->
                 currentImageUrl = url
+                currentImageGallery = listOf(url)
+                currentImageIndex = 0
                 showImageViewer = true
             }
         )
@@ -722,15 +731,22 @@ fun ChatScreen(
                                 selectedMessageIds = setOf(message.msgId)
                             },
                             onImageClick = { imageUrl ->
+                                val gallery = if (chatImageGallery.isEmpty()) {
+                                    listOf(imageUrl)
+                                } else {
+                                    chatImageGallery
+                                }
                                 currentImageUrl = imageUrl
+                                currentImageGallery = gallery
+                                currentImageIndex = gallery.indexOf(imageUrl).takeIf { it >= 0 } ?: 0
                                 showImageViewer = true
                             },
                             onAvatarClick = { senderId, name, senderChatType ->
                                 // 处理头像点击事件
                                 if (senderChatType == 3) { // 机器人
-                                    val intent = Intent(context, BotInfoActivity::class.java).apply {
-                                        putExtra(BotInfoActivity.EXTRA_BOT_ID, senderId)
-                                        putExtra(BotInfoActivity.EXTRA_BOT_NAME, name)
+                                    val intent = Intent(context, BotDetailActivity::class.java).apply {
+                                        putExtra(BotDetailActivity.EXTRA_BOT_ID, senderId)
+                                        putExtra(BotDetailActivity.EXTRA_BOT_NAME, name)
                                     }
                                     context.startActivity(intent)
                                 } else if (senderChatType == 1) {
@@ -1463,10 +1479,13 @@ fun ChatScreen(
     // 图片预览器
     if (showImageViewer && !currentImageUrl.isNullOrEmpty()) {
         ImageViewer(
-            imageUrl = currentImageUrl!!,
+            imageUrls = currentImageGallery.ifEmpty { listOf(currentImageUrl!!) },
+            initialIndex = currentImageIndex,
             onDismiss = {
                 showImageViewer = false
                 currentImageUrl = null
+                currentImageGallery = emptyList()
+                currentImageIndex = 0
             }
         )
     }
@@ -1485,7 +1504,10 @@ fun ChatScreen(
                     chatType = chatType,
                     msgId = messageToEdit!!.msgId,
                     content = content,
-                    contentType = contentType
+                    contentType = contentType,
+                    quoteMsgId = messageToEdit!!.quoteMsgId,
+                    quoteMsgText = messageToEdit!!.content.quoteMsgText,
+                    buttons = messageToEdit!!.content.buttons
                 )
                 showEditDialog = false
                 messageToEdit = null
@@ -1589,4 +1611,20 @@ fun ChatScreen(
     )
     
     
+}
+
+private fun buildChatImageGallery(messages: List<ChatMessage>): List<String> {
+    return messages.asSequence()
+        .mapNotNull { message ->
+            when (message.contentType) {
+                2 -> message.content.imageUrl?.takeIf { it.isNotBlank() }
+                7 -> message.content.imageUrl?.takeIf { it.isNotBlank() }
+                    ?: message.content.stickerUrl
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { if (it.startsWith("http")) it else "https://chat-img.jwznb.com/$it" }
+                else -> null
+            }
+        }
+        .distinct()
+        .toList()
 }

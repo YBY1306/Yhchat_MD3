@@ -1916,7 +1916,10 @@ class ChatViewModel @Inject constructor(
         chatType: Int,
         msgId: String,
         content: String,
-        contentType: Int
+        contentType: Int,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        buttons: String? = null
     ) {
         viewModelScope.launch {
             try {
@@ -1927,7 +1930,10 @@ class ChatViewModel @Inject constructor(
                     chatType = chatType,
                     msgId = msgId,
                     content = content,
-                    contentType = contentType
+                    contentType = contentType,
+                    quoteMsgId = quoteMsgId,
+                    quoteMsgText = quoteMsgText,
+                    buttons = buttons
                 )
                 
                 result.fold(
@@ -1938,7 +1944,12 @@ class ChatViewModel @Inject constructor(
                         if (index != -1) {
                             val message = _messages[index]
                             _messages[index] = message.copy(
-                                content = message.content.copy(text = content),
+                                content = message.content.copy(
+                                    text = content,
+                                    quoteMsgText = quoteMsgText ?: message.content.quoteMsgText,
+                                    buttons = buttons ?: message.content.buttons
+                                ),
+                                quoteMsgId = quoteMsgId ?: message.quoteMsgId,
                                 contentType = contentType,
                                 editTime = System.currentTimeMillis()
                             )

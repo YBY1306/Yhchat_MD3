@@ -1,0 +1,2 @@
+-dontwarn androidx.media3.**
+-dontwarn coil.video.**

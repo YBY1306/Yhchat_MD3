@@ -383,6 +383,8 @@ fun BoardInfoCard(
     followState: FollowState,
     modifier: Modifier = Modifier
 ) {
+    var showImageViewer by remember(board.avatar) { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -399,7 +401,10 @@ fun BoardInfoCard(
                 contentDescription = board.name,
                 modifier = Modifier
                     .size(64.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(enabled = board.avatar.isNotBlank()) {
+                        showImageViewer = true
+                    },
                 contentScale = ContentScale.Crop
             )
             
@@ -476,6 +481,13 @@ fun BoardInfoCard(
             }
         }
     }
+
+    if (showImageViewer && board.avatar.isNotBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = board.avatar,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 /**
@@ -515,6 +527,8 @@ fun PostListItem(
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showImageViewer by remember(post.senderAvatar) { mutableStateOf(false) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -539,7 +553,10 @@ fun PostListItem(
                     contentDescription = post.senderNickname,
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable(enabled = post.senderAvatar.isNotBlank()) {
+                            showImageViewer = true
+                        },
                     contentScale = ContentScale.Crop
                 )
                 
@@ -648,6 +665,13 @@ fun PostListItem(
                 }
             }
         }
+    }
+
+    if (showImageViewer && post.senderAvatar.isNotBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = post.senderAvatar,
+            onDismiss = { showImageViewer = false }
+        )
     }
 }
 

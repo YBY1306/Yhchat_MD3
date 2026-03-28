@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Wallpaper
@@ -38,10 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -132,7 +136,10 @@ fun UserDetailScreen(
     val view = LocalView.current
     val activity = context as? Activity
     var uiState by remember { mutableStateOf(UserDetailUiState()) }
+    val listState = rememberLazyListState()
+    val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     var showAddFriendDialog by remember { mutableStateOf(false) }
+    var showUserInfoDialog by remember { mutableStateOf(false) }
     var addFriendRemark by remember { mutableStateOf("") }
     var isAddingFriend by remember { mutableStateOf(false) }
     var isInAddressBook by remember { mutableStateOf(false) }
@@ -148,6 +155,8 @@ fun UserDetailScreen(
     var showReportDialog by remember { mutableStateOf(false) }
     var showDeleteFriendDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var showImageViewer by remember { mutableStateOf(false) }
+    var currentImageUrl by remember { mutableStateOf("") }
 
     var isNoNotify by remember { mutableStateOf(false) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
@@ -278,7 +287,13 @@ fun UserDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("用户详情") },
+                title = {
+                    Text(
+                        text = if (showCollapsedTitle) uiState.userDetail?.name ?: userName else "",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
@@ -309,7 +324,8 @@ fun UserDetailScreen(
                     IconButton(onClick = { showMoreSheet = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { paddingValues ->
@@ -347,10 +363,47 @@ fun UserDetailScreen(
                         userDetail = uiState.userDetail!!,
                         createdBoards = uiState.createdBoards,
                         isLoadingBoards = uiState.isLoadingBoards,
-                        token = token
+                        token = token,
+                        listState = listState,
+                        isInAddressBook = isInAddressBook,
+                        isCheckingAddressBook = isCheckingAddressBook,
+                        onPrimaryAction = {
+                            if (isInAddressBook) {
+                                val intent = Intent(context, ChatActivity::class.java).apply {
+                                    putExtra("chatId", userId)
+                                    putExtra("chatType", 1)
+                                    putExtra("chatName", uiState.userDetail?.name ?: userName)
+                                }
+                                context.startActivity(intent)
+                            } else {
+                                showAddFriendDialog = true
+                            }
+                        },
+                        onShowUserInfo = { showUserInfoDialog = true },
+                        onAvatarClick = { avatarUrl ->
+                            currentImageUrl = avatarUrl
+                            showImageViewer = true
+                        }
                     )
                 }
             }
+        }
+
+        if (showUserInfoDialog && uiState.userDetail != null) {
+            UserInfoDialog(
+                userDetail = uiState.userDetail!!,
+                onDismiss = { showUserInfoDialog = false }
+            )
+        }
+
+        if (showImageViewer && currentImageUrl.isNotBlank()) {
+            com.yhchat.canary.ui.components.ImageViewer(
+                imageUrl = currentImageUrl,
+                onDismiss = {
+                    showImageViewer = false
+                    currentImageUrl = ""
+                }
+            )
         }
         
         if (showAddFriendDialog) {
@@ -439,6 +492,15 @@ fun UserDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     SheetSectionHeader(title = "互动")
+
+                    SheetActionItem(
+                        icon = Icons.Default.Search,
+                        title = "账号信息",
+                        onClick = {
+                            showMoreSheet = false
+                            showUserInfoDialog = true
+                        }
+                    )
 
                     SheetActionItem(
                         icon = Icons.Default.Share,
@@ -777,277 +839,85 @@ fun UserDetailContent(
     userDetail: UserDetail,
     createdBoards: List<com.yhchat.canary.data.model.BoardsByCreateItem>,
     isLoadingBoards: Boolean,
-    token: String
+    token: String,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    isInAddressBook: Boolean,
+    isCheckingAddressBook: Boolean,
+    onPrimaryAction: () -> Unit,
+    onShowUserInfo: () -> Unit,
+    onAvatarClick: (String) -> Unit
 ) {
     val context = LocalContext.current
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 用户头部信息卡片
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 左侧头像
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(userDetail.avatarUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "用户头像",
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        // 右侧信息
-                        Column {
-                            // 昵称和VIP
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = userDetail.name,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                if (userDetail.isVip == 1) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(16.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "VIP",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "VIP",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            // 用户ID
-                            Text(
-                                text = "ID: ${userDetail.id}",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clickable {
-                                    val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    val clip = android.content.ClipData.newPlainText("userId", userDetail.id)
-                                    clipboardManager.setPrimaryClip(clip)
-                                    Toast.makeText(context, "已复制用户ID", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }
-                    }
-                    
-                    // 勋章列表（显示在头像下方，与头像左对齐，但这里为了布局方便，放在Row下面，整体padding已经对齐了）
-                    // 用户要求：勋章显示在用户id下面，和头像的左边位置对齐
-                    // 实际上上面的布局是 Row(Avatar, Column(Name, ID))
-                    // 要让勋章在ID下面且和头像左对齐，应该把勋章放在最外层的Column里
-                    
-                    if (userDetail.medalList.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // 勋章一行显示
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            userDetail.medalList.forEach { medal ->
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        text = medal.name,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            UserHeroCard(
+                avatarUrl = userDetail.avatarUrl,
+                name = userDetail.name,
+                idText = userDetail.id,
+                isVip = userDetail.isVip == 1,
+                medals = userDetail.medalList,
+                isPrimaryLoading = isCheckingAddressBook,
+                primaryButtonText = if (isInAddressBook) "发消息" else "添加",
+                onPrimaryAction = onPrimaryAction,
+                onInfoClick = onShowUserInfo,
+                onAvatarClick = onAvatarClick
+            )
         }
-        
-        // 备注信息
+
         userDetail.remarkInfo?.let { remark ->
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "备注信息",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        if (remark.remarkName.isNotEmpty()) {
-                            InfoRow("备注名", remark.remarkName)
-                        }
-                        if (remark.phoneNumber.isNotEmpty()) {
-                            InfoRow("手机号", remark.phoneNumber)
-                        }
-                        if (remark.extraRemark.isNotEmpty()) {
-                            InfoRow("其他备注", remark.extraRemark)
-                        }
+                InfoSectionCard(title = "备注信息") {
+                    if (remark.remarkName.isNotEmpty()) {
+                        InfoRow("备注名", remark.remarkName)
+                    }
+                    if (remark.phoneNumber.isNotEmpty()) {
+                        InfoRow("手机号", remark.phoneNumber)
+                    }
+                    if (remark.extraRemark.isNotEmpty()) {
+                        InfoRow("其他备注", remark.extraRemark)
                     }
                 }
             }
         }
-        
-        // 个人资料
+
         userDetail.profileInfo?.let { profile ->
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "个人资料",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
+                InfoSectionCard(title = "个人资料") {
                         if (profile.lastActiveTime.isNotEmpty()) {
                             InfoRow("上次活跃", profile.lastActiveTime)
                         }
-                        
                         if (profile.introduction.isNotEmpty()) {
                             InfoRow("简介", profile.introduction)
                         }
-                        
                         val genderText = when (profile.gender) {
                             1 -> "男"
                             2 -> "女"
                             else -> "其他"
                         }
                         InfoRow("性别", genderText)
-                        
                         if (profile.birthday > 0) {
                             val birthdayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
                                 .format(java.util.Date(profile.birthday * 1000))
                             InfoRow("生日", birthdayDate)
                         }
-                        
                         if (profile.city.isNotEmpty()) {
                             InfoRow("城市", profile.city)
                         }
-                        
                         if (profile.district.isNotEmpty()) {
                             InfoRow("地区", profile.district)
                         }
-                    }
-                }
-            }
-        }
-        
-        // 账号信息
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "账号信息",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    InfoRow("注册时间", userDetail.registerTime)
-                    InfoRow("在线天数", "${userDetail.onlineDay} 天")
-                    InfoRow("连续在线", "${userDetail.continuousOnlineDay} 天")
-
-                    if (userDetail.ipGeo.isNotEmpty()) {
-                        InfoRow("IP归属地", userDetail.ipGeo)
-                    }
-                    
-                    if (userDetail.isVip == 1 && userDetail.vipExpiredTime > 0) {
-                        val expireDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                            .format(java.util.Date(userDetail.vipExpiredTime * 1000))
-                        InfoRow("VIP到期时间", expireDate)
-                    }
-                    
-                    if (userDetail.banTime > 0) {
-                        val banDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                            .format(java.util.Date(userDetail.banTime * 1000))
-                        InfoRow("封禁结束时间", banDate, MaterialTheme.colorScheme.error)
-                    }
                 }
             }
         }
 
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "创建的分区",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+            InfoSectionCard(title = "创建的分区") {
                     Spacer(modifier = Modifier.height(8.dp))
-
                     when {
                         isLoadingBoards -> {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -1061,7 +931,7 @@ fun UserDetailContent(
                         }
                         else -> {
                             createdBoards.forEach { board ->
-                                Row(
+                                Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -1072,34 +942,270 @@ fun UserDetailContent(
                                             }
                                             context.startActivity(intent)
                                         }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(vertical = 4.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                                 ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(board.avatar)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = null,
+                                    Row(
                                         modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = board.name,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(board.avatar)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = board.name,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "ID: ${board.id}",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserHeroCard(
+    avatarUrl: String,
+    name: String,
+    idText: String,
+    isVip: Boolean,
+    medals: List<MedalInfo>,
+    isPrimaryLoading: Boolean,
+    primaryButtonText: String,
+    onPrimaryAction: () -> Unit,
+    onInfoClick: () -> Unit,
+    onAvatarClick: (String) -> Unit
+) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(avatarUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "用户头像",
+                    modifier = Modifier
+                        .size(86.dp)
+                        .clip(CircleShape)
+                        .clickable(enabled = avatarUrl.isNotBlank()) {
+                            onAvatarClick(avatarUrl)
+                        },
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (isVip) {
+                            VipBadge()
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "ID: $idText",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable {
+                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("userId", idText))
+                            Toast.makeText(context, "已复制用户ID", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            }
+            if (medals.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    medals.take(4).forEach { medal ->
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+                        ) {
+                            Text(
+                                text = medal.name,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onPrimaryAction,
+                    shape = RoundedCornerShape(18.dp),
+                    enabled = !isPrimaryLoading
+                ) {
+                    if (isPrimaryLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(primaryButtonText)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onInfoClick,
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("账号信息")
                 }
             }
         }
     }
+}
+
+@Composable
+private fun VipBadge() {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = "VIP",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+            Text(
+                text = "VIP",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoSectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            content = {
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                content()
+            }
+        )
+    }
+}
+
+@Composable
+private fun UserInfoDialog(
+    userDetail: UserDetail,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("确定")
+            }
+        },
+        title = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(userDetail.name)
+                if (userDetail.isVip == 1) {
+                    VipBadge()
+                }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoRow("UID", userDetail.id)
+                InfoRow("注册时间", userDetail.registerTime)
+                InfoRow("在线天数", "${userDetail.onlineDay} 天")
+                InfoRow("连续在线", "${userDetail.continuousOnlineDay} 天")
+                if (userDetail.ipGeo.isNotEmpty()) {
+                    InfoRow("IP归属地", userDetail.ipGeo)
+                }
+                if (userDetail.isVip == 1 && userDetail.vipExpiredTime > 0) {
+                    val expireDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                        .format(java.util.Date(userDetail.vipExpiredTime * 1000))
+                    InfoRow("VIP到期时间", expireDate)
+                }
+                if (userDetail.banTime > 0) {
+                    val banDate = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                        .format(java.util.Date(userDetail.banTime * 1000))
+                    InfoRow("封禁结束时间", banDate, MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    )
 }
 
 @Composable

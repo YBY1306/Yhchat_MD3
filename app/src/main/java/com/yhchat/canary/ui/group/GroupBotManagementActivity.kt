@@ -39,7 +39,7 @@ import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.components.ImageUtils
-import com.yhchat.canary.ui.bot.BotInfoActivity
+import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.CoroutineScope
@@ -181,7 +181,7 @@ fun GroupBotManagementScreen(
                                 },
                                 onBotClick = {
                                     // 跳转到机器人详情页
-                                  BotInfoActivity.start(context, bot.botId, bot.name)
+                                  BotDetailActivity.start(context, bot.botId, bot.name)
                                 },
                                 canRemove = true // TODO: 根据用户权限设置，普通成员设为 false
                             )
@@ -571,4 +571,3 @@ data class GroupBotManagementUiState(
     val operationSuccess: Boolean = false,
     val operationError: String? = null
 )
-

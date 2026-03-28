@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -89,6 +90,7 @@ fun BotDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var isAddingBot by remember { mutableStateOf(false) }
     var addingGroupId by remember { mutableStateOf<String?>(null) }
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
     
     // 加载机器人详情
     LaunchedEffect(botId) {
@@ -302,7 +304,10 @@ fun BotDetailScreen(
                                             contentDescription = "机器人头头像",
                                             modifier = Modifier
                                                 .size(80.dp)
-                                                .clip(CircleShape),
+                                                .clip(CircleShape)
+                                                .clickable {
+                                                    previewImageUrl = bot!!.avatarUrl
+                                                },
                                             contentScale = ContentScale.Crop
                                         )
                                     } else {
@@ -403,7 +408,10 @@ fun BotDetailScreen(
                                 GroupListItem(
                                     group = group,
                                     isAdding = addingGroupId == group.groupId,
-                                    onAddClick = { addGroup(group.groupId) }
+                                    onAddClick = { addGroup(group.groupId) },
+                                    onAvatarClick = {
+                                        previewImageUrl = group.avatarUrl
+                                    }
                                 )
                             }
                         }
@@ -412,13 +420,21 @@ fun BotDetailScreen(
             }
         }
     }
+
+    previewImageUrl?.let { imageUrl ->
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = imageUrl,
+            onDismiss = { previewImageUrl = null }
+        )
+    }
 }
 
 @Composable
 fun GroupListItem(
     group: BotDetailGroup,
     isAdding: Boolean,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onAvatarClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -437,7 +453,10 @@ fun GroupListItem(
                     contentDescription = "群聊头像",
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable {
+                            onAvatarClick()
+                        },
                     contentScale = ContentScale.Crop
                 )
             } else {

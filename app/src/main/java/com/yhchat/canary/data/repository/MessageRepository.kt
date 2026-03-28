@@ -531,7 +531,10 @@ class MessageRepository @Inject constructor(
         chatType: Int,
         msgId: String,
         content: String,
-        contentType: Int
+        contentType: Int,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        buttons: String? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()
@@ -551,14 +554,26 @@ class MessageRepository @Inject constructor(
             // 构建protobuf请求
             val contentBuilder = edit_message_send.Content.newBuilder()
                 .setText(content)
+
+            if (!buttons.isNullOrEmpty()) {
+                contentBuilder.setButtons(buttons)
+            }
+            if (!quoteMsgText.isNullOrEmpty()) {
+                contentBuilder.setQuoteMsgText(quoteMsgText)
+            }
             
-            val request = edit_message_send.newBuilder()
+            val requestBuilder = edit_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType)
                 .setContent(contentBuilder.build())
                 .setContentType(contentType.toLong())
-                .build()
+            
+            if (!quoteMsgId.isNullOrEmpty()) {
+                requestBuilder.setQuoteMsgId(quoteMsgId)
+            }
+
+            val request = requestBuilder.build()
             
             val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
             

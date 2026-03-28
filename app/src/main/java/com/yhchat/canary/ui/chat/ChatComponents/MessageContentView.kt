@@ -230,6 +230,26 @@ fun MessageContentView(
                     )
                 }
             }
+            14 -> {
+                content.text?.let { text ->
+                    val a2UiSpec = remember(text) { parseA2UiSpec(text) }
+                    if (a2UiSpec != null) {
+                        A2UiFormMessage(
+                            spec = a2UiSpec,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else if (text.isNotBlank()) {
+                        SelectionContainer {
+                            Text(
+                                text = text,
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
             3 -> {
                 // Markdown消息
                 content.text?.let { markdownText ->

@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -105,8 +103,9 @@ private fun HtmlGenericNode(
         else -> CssStyle()
     }
     val merged = headingStyle.mergeText(node.style.mergeText(inheritedText))
+    val forceBlockLayout = shouldRenderAsBlockNode(node)
 
-    if (isBlockTag(node.tag) && !isInlineTag(node.tag)) {
+    if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
         Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
             RenderInlineFlow(node.children, merged, onImageClick, onLinkClick)
         }
@@ -156,7 +155,7 @@ private fun RenderInlineFlow(
         when (child) {
             is HtmlNode.Text -> inlineBuffer += child
             is HtmlNode.Element -> {
-                if (isInlineTag(child.tag) || (!isBlockTag(child.tag) && child.tag != "img")) {
+                if (shouldRenderInline(child)) {
                     inlineBuffer += child
                 } else {
                     flushInline()
@@ -166,6 +165,36 @@ private fun RenderInlineFlow(
         }
     }
     flushInline()
+}
+
+private fun shouldRenderInline(node: HtmlNode.Element): Boolean {
+    if (node.tag == "img") return false
+    if (node.style.display != null) {
+        when (node.style.display.lowercase()) {
+            "block", "flex", "table", "table-row", "table-cell", "list-item" -> return false
+            "inline-block" -> return false
+        }
+    }
+    if (isBlockTag(node.tag) && !isInlineTag(node.tag)) return false
+    if (node.children.any { child ->
+            when (child) {
+                is HtmlNode.Text -> false
+                is HtmlNode.Element -> !shouldRenderInline(child)
+            }
+        }
+    ) return false
+    return true
+}
+
+private fun shouldRenderAsBlockNode(node: HtmlNode.Element): Boolean {
+    if (node.style.display != null) {
+        when (node.style.display.lowercase()) {
+            "block", "flex", "table", "table-row", "table-cell", "list-item", "inline-block" -> return true
+        }
+    }
+    return node.children.any { child ->
+        child is HtmlNode.Element && !shouldRenderInline(child)
+    }
 }
 
 @Composable
@@ -254,10 +283,13 @@ private fun HtmlImageNode(
     AsyncImage(
         model = model,
         contentDescription = node.attrs["alt"] ?: "图片",
-        modifier = Modifier
+        modifier = (if (onImageClick != null) {
+            Modifier.clickable { onImageClick(src) }
+        } else {
+            Modifier
+        })
             .defaultMinSize(minWidth = 120.dp, minHeight = 80.dp)
-            .heightIn(max = 240.dp)
-            .then(if (onImageClick != null) Modifier.clickable { onImageClick(src) } else Modifier),
+            .heightIn(max = 240.dp),
         contentScale = ContentScale.Fit
     )
 }
@@ -285,7 +317,7 @@ private fun HtmlDetailsNode(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 6.dp)
             )
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 if (summary != null) {
                     RenderHtmlNode(summary, inheritedText, onImageClick, onLinkClick)
                 } else {
@@ -346,7 +378,7 @@ private fun HtmlListNode(
                         style = inheritedText.toComposeTextStyle(),
                         modifier = Modifier.padding(end = 4.dp)
                     )
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         RenderInlineFlow(item.children, item.style.mergeText(inheritedText), onImageClick, onLinkClick)
                     }
                 }
@@ -417,7 +449,6 @@ private fun HtmlTableNode(
     val table = remember(node) { extractTable(node) }
     if (table.rows.isEmpty()) return
     val hState = rememberScrollState()
-    val vState = rememberScrollState()
 
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(table.style)) {
         Box(
@@ -425,11 +456,7 @@ private fun HtmlTableNode(
                 .fillMaxWidth()
                 .horizontalScroll(hState)
         ) {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 260.dp)
-                    .verticalScroll(vState)
-            ) {
+            Column {
                 table.rows.forEach { row ->
                     Row(
                         modifier = Modifier
@@ -453,12 +480,14 @@ private fun HtmlTableNode(
                                         end = cell.node.style.paddingRight ?: cell.node.style.padding ?: 12.dp
                                     )
                             ) {
-                                RenderInlineFlow(
-                                    children = cell.node.children,
-                                    inheritedText = cell.node.style.mergeText(baseText),
-                                    onImageClick = onImageClick,
-                                    onLinkClick = onLinkClick
-                                )
+                                Column {
+                                    RenderInlineFlow(
+                                        children = cell.node.children,
+                                        inheritedText = cell.node.style.mergeText(baseText),
+                                        onImageClick = onImageClick,
+                                        onLinkClick = onLinkClick
+                                    )
+                                }
                             }
                         }
                     }

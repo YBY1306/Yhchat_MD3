@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -605,6 +606,8 @@ fun GroupCard(
     group: RecommendGroup,
     onClick: () -> Unit
 ) {
+    var showImageViewer by remember(group.avatarUrl) { mutableStateOf(false) }
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -624,7 +627,10 @@ fun GroupCard(
                     contentDescription = "群聊头像",
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable {
+                            showImageViewer = true
+                        },
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -675,6 +681,13 @@ fun GroupCard(
             }
         }
     }
+
+    if (showImageViewer && !group.avatarUrl.isNullOrBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = group.avatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 @Composable
@@ -687,6 +700,7 @@ fun GroupDetailDialog(
     val createDate = remember(group.createTime) {
         dateFormat.format(Date(group.createTime * 1000))
     }
+    var showImageViewer by remember(group.avatarUrl) { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -703,7 +717,10 @@ fun GroupDetailDialog(
                         contentDescription = "群聊头像",
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable {
+                                showImageViewer = true
+                            },
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -793,6 +810,13 @@ fun GroupDetailDialog(
             }
         }
     )
+
+    if (showImageViewer && !group.avatarUrl.isNullOrBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = group.avatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 private fun openChat(context: Context, chatId: String, chatType: Int, chatName: String) {

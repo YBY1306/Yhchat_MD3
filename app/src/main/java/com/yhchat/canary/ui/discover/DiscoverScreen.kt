@@ -2,6 +2,7 @@ package com.yhchat.canary.ui.discover
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -454,6 +455,7 @@ fun GroupDiscoverCard(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
+    var showImageViewer by remember(group.avatarUrl) { mutableStateOf(false) }
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -475,7 +477,10 @@ fun GroupDiscoverCard(
                     contentDescription = "群聊头像",
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable {
+                            showImageViewer = true
+                        },
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -525,6 +530,13 @@ fun GroupDiscoverCard(
             }
         }
     }
+
+    if (showImageViewer && !group.avatarUrl.isNullOrBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = group.avatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 @Composable
@@ -533,6 +545,7 @@ fun BotDiscoverCard(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
+    var showImageViewer by remember(bot.avatarUrl) { mutableStateOf(false) }
     Card(
         onClick = onClick,
         modifier = Modifier.width(140.dp),
@@ -552,7 +565,10 @@ fun BotDiscoverCard(
                     contentDescription = "机器人头像",
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable {
+                            showImageViewer = true
+                        },
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -588,6 +604,13 @@ fun BotDiscoverCard(
             )
         }
     }
+
+    if (showImageViewer && !bot.avatarUrl.isNullOrBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = bot.avatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 @Composable
@@ -597,6 +620,7 @@ fun BotDetailDialog(
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
+    var showImageViewer by remember(bot.avatarUrl) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("机器人详情") },
@@ -615,7 +639,10 @@ fun BotDetailDialog(
                         contentDescription = "机器人头像",
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable {
+                                showImageViewer = true
+                            },
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -679,6 +706,13 @@ fun BotDetailDialog(
             }
         }
     )
+
+    if (showImageViewer && !bot.avatarUrl.isNullOrBlank()) {
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = bot.avatarUrl,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 }
 
 private fun openChat(context: Context, chatId: String, chatType: Int, chatName: String) {

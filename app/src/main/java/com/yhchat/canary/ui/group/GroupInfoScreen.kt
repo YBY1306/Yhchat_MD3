@@ -279,6 +279,7 @@ private fun GroupInfoContent(
 ) {
     var isNoNotify by remember(groupInfo.doNotDisturb) { mutableStateOf(groupInfo.doNotDisturb) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     
     // 检测滚动到底部并加载更多
@@ -330,7 +331,10 @@ private fun GroupInfoContent(
                         contentDescription = "群头像",
                         modifier = Modifier
                             .size(60.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable(enabled = groupInfo.avatarUrl.isNotBlank()) {
+                                previewImageUrl = groupInfo.avatarUrl
+                            },
                         contentScale = ContentScale.Crop
                     )
                     
@@ -693,6 +697,13 @@ private fun GroupInfoContent(
             )
         }
         
+    }
+
+    previewImageUrl?.let { imageUrl ->
+        com.yhchat.canary.ui.components.ImageViewer(
+            imageUrl = imageUrl,
+            onDismiss = { previewImageUrl = null }
+        )
     }
 }
 

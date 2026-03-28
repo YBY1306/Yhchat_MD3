@@ -9,6 +9,7 @@ import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -143,12 +145,18 @@ private fun BotDetailScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMoreSheet by remember { mutableStateOf(false) }
+    var showBotInfoDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var isInAddressBook by remember { mutableStateOf(false) }
+    var isCheckingAddressBook by remember { mutableStateOf(true) }
+    var isAddingBot by remember { mutableStateOf(false) }
     
     var isNoNotify by remember { mutableStateOf(false) }
     var isSettingNoNotify by remember { mutableStateOf(false) }
@@ -160,6 +168,19 @@ private fun BotDetailScreen(
             .getCachedConversationsSync()
             .firstOrNull { it.chatId == botId && it.chatType == 3 }
         isNoNotify = cachedConversation?.doNotDisturb == 1
+        val friendRepository = RepositoryFactory.getFriendRepository(context)
+        friendRepository.getAddressBookList().fold(
+            onSuccess = { addressBook ->
+                isInAddressBook = addressBook.dataList.any { group ->
+                    group.dataList.any { item -> item.chatId == botId }
+                }
+                isCheckingAddressBook = false
+            },
+            onFailure = {
+                isInAddressBook = false
+                isCheckingAddressBook = false
+            }
+        )
     }
 
     Scaffold(
@@ -167,8 +188,10 @@ private fun BotDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "机器人详细信息",
-                        fontWeight = FontWeight.Bold
+                        text = if (showCollapsedTitle) uiState.botInfo?.data?.name ?: botName else "",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -183,7 +206,8 @@ private fun BotDetailScreen(
                     IconButton(onClick = { showMoreSheet = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { paddingValues ->
@@ -235,6 +259,42 @@ private fun BotDetailScreen(
                     boardInfo = uiState.boardInfo,
                     isBoardLoading = uiState.isBoardLoading,
                     modifier = Modifier.padding(paddingValues),
+                    listState = listState,
+                    isInAddressBook = isInAddressBook,
+                    isCheckingAddressBook = isCheckingAddressBook,
+                    isAddingBot = isAddingBot,
+                    onPrimaryAction = {
+                        if (isInAddressBook) {
+                            val intent = Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
+                                putExtra("chatId", botId)
+                                putExtra("chatType", 3)
+                                putExtra("chatName", uiState.botInfo?.data?.name ?: botName)
+                            }
+                            context.startActivity(intent)
+                        } else if (!isAddingBot) {
+                            isAddingBot = true
+                            CoroutineScope(Dispatchers.Main).launch {
+                                val friendRepository = RepositoryFactory.getFriendRepository(context)
+                                val tokenRepository = RepositoryFactory.getTokenRepository(context)
+                                val localToken = tokenRepository.getTokenSync() ?: ""
+                                friendRepository.applyFriend(
+                                    token = localToken,
+                                    chatId = botId,
+                                    chatType = 3,
+                                    remark = "添加机器人"
+                                ).let { result ->
+                                    if (result.code == 1) {
+                                        isInAddressBook = true
+                                        Toast.makeText(context, "已添加机器人", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "添加机器人失败: ${result.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                isAddingBot = false
+                            }
+                        }
+                    },
+                    onShowInfo = { showBotInfoDialog = true },
                     onAvatarClick = { url ->
                         currentImageUrl = url
                         showImageViewer = true
@@ -242,6 +302,13 @@ private fun BotDetailScreen(
                 )
             }
         }
+    }
+
+    if (showBotInfoDialog && uiState.botInfo != null) {
+        BotInfoDialog(
+            botInfo = uiState.botInfo!!,
+            onDismiss = { showBotInfoDialog = false }
+        )
     }
     
     // 图片预览器
@@ -286,6 +353,15 @@ private fun BotDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 SheetSectionHeader(title = "互动")
+
+                SheetActionItem(
+                    icon = Icons.Default.Search,
+                    title = "账号信息",
+                    onClick = {
+                        showMoreSheet = false
+                        showBotInfoDialog = true
+                    }
+                )
 
                 SheetActionItem(
                     icon = Icons.Default.Share,
@@ -499,188 +575,132 @@ private fun BotDetailContent(
     boardInfo: Bot.board?,
     isBoardLoading: Boolean,
     modifier: Modifier = Modifier,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    isInAddressBook: Boolean,
+    isCheckingAddressBook: Boolean,
+    isAddingBot: Boolean,
+    onPrimaryAction: () -> Unit,
+    onShowInfo: () -> Unit,
     onAvatarClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 头像和基本信息卡片 - 美化版
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // 头像 - 增加阴影效果
-                Surface(
-                    modifier = Modifier.size(120.dp),
-                    shape = CircleShape,
-                    shadowElevation = 0.dp,
-                    tonalElevation = 0.dp
-                ) {
-                    AsyncImage(
-                        model = if (botInfo.data.avatarUrl.isNotBlank()) {
-                            ImageUtils.createBotImageRequest(
-                                context = LocalContext.current,
-                                url = botInfo.data.avatarUrl
-                            )
-                        } else {
-                            null
-                        },
-                        contentDescription = "机器人头像",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable {
-                                if (botInfo.data.avatarUrl.isNotBlank()) {
-                                    onAvatarClick(botInfo.data.avatarUrl)
-                                }
-                            },
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                // 机器人名称 - 增加渐变效果
-                Text(
-                    text = botInfo.data.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // 机器人ID - 美化样式
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                    modifier = Modifier.clickable {
-                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("botId", botInfo.data.botId)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "已复制机器人ID", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Text(
-                        text = "ID: ${botInfo.data.botId}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-                
-                // 运行状态指示器
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                        contentDescription = null,
-                        tint = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = if (botInfo.data.isStop == 0) "正常运行" else "已停用",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-        
-        // 机器人简介
-        if (botInfo.data.introduction.isNotBlank()) {
+        item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(86.dp),
+                            shape = CircleShape,
+                            shadowElevation = 0.dp,
+                            tonalElevation = 0.dp
+                        ) {
+                            AsyncImage(
+                                model = if (botInfo.data.avatarUrl.isNotBlank()) {
+                                    ImageUtils.createBotImageRequest(
+                                        context = LocalContext.current,
+                                        url = botInfo.data.avatarUrl
+                                    )
+                                } else null,
+                                contentDescription = "机器人头像",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(enabled = botInfo.data.avatarUrl.isNotBlank()) {
+                                        onAvatarClick(botInfo.data.avatarUrl)
+                                    },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = botInfo.data.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "ID: ${botInfo.data.botId}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable {
+                                    val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("botId", botInfo.data.botId))
+                                    Toast.makeText(context, "已复制机器人ID", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Button(
+                            onClick = onPrimaryAction,
+                            shape = RoundedCornerShape(18.dp),
+                            enabled = !isCheckingAddressBook && !isAddingBot
+                        ) {
+                            if (isCheckingAddressBook || isAddingBot) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(if (isInAddressBook) "进入聊天" else "添加")
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onShowInfo,
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Text("账号信息")
+                        }
                         Icon(
-                            imageVector = Icons.Default.Info,
+                            imageVector = if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                            tint = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "机器人简介",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
+                            text = if (botInfo.data.isStop == 0) "正常运行" else "已停用",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                    
-                    // 使用SelectionContainer支持文本选择
+                }
+            }
+        }
+
+        if (botInfo.data.introduction.isNotBlank()) {
+            item {
+                BotInfoSectionCard(title = "机器人简介") {
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(
                             text = botInfo.data.introduction,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.45
                         )
                     }
                 }
             }
         }
-        
-        // 统计信息 - 美化版
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "统计信息",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
+
+        item {
+            BotInfoSectionCard(title = "统计信息") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -691,14 +711,12 @@ private fun BotDetailContent(
                         value = botInfo.data.headcount.toString(),
                         modifier = Modifier.weight(1f)
                     )
-                    
                     VerticalDivider(
                         modifier = Modifier
                             .height(60.dp)
                             .padding(horizontal = 16.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
-                    
                     EnhancedStatisticItem(
                         icon = Icons.Default.CalendarToday,
                         label = "创建时间",
@@ -708,124 +726,31 @@ private fun BotDetailContent(
                 }
             }
         }
-        
-        // 详细信息
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "详细信息",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                DetailItem(
-                    icon = Icons.Default.Person,
-                    label = "创建者ID",
-                    value = botInfo.data.createBy
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.private == 1) Icons.Default.Lock else Icons.Default.Public,
-                    label = "可见性",
-                    value = if (botInfo.data.private == 1) "私有" else "公开"
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                    label = "运行状态",
-                    value = if (botInfo.data.isStop == 0) "正常运行" else "已停用"
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.alwaysAgree == 1) Icons.Default.Check else Icons.Default.Close,
-                    label = "自动加群",
-                    value = if (botInfo.data.alwaysAgree == 1) "是" else "否"
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.doNotDisturb == 1) Icons.Default.NotificationsOff else Icons.Default.Notifications,
-                    label = "免打扰",
-                    value = if (botInfo.data.doNotDisturb == 1) "是" else "否"
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.top == 1) Icons.Default.PushPin else Icons.Default.Remove,
-                    label = "置顶",
-                    value = if (botInfo.data.top == 1) "是" else "否"
-                )
-                
-                DetailItem(
-                    icon = if (botInfo.data.groupLimit == 1) Icons.Default.Block else Icons.Default.GroupAdd,
-                    label = "限制进群",
-                    value = if (botInfo.data.groupLimit == 1) "是" else "否"
-                )
+
+        item {
+            BotInfoSectionCard(title = "详细信息") {
+                DetailItem(Icons.Default.Person, "创建者ID", botInfo.data.createBy)
+                DetailItem(if (botInfo.data.private == 1) Icons.Default.Lock else Icons.Default.Public, "可见性", if (botInfo.data.private == 1) "私有" else "公开")
+                DetailItem(if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel, "运行状态", if (botInfo.data.isStop == 0) "正常运行" else "已停用")
+                DetailItem(if (botInfo.data.alwaysAgree == 1) Icons.Default.Check else Icons.Default.Close, "自动加群", if (botInfo.data.alwaysAgree == 1) "是" else "否")
+                DetailItem(if (botInfo.data.doNotDisturb == 1) Icons.Default.NotificationsOff else Icons.Default.Notifications, "免打扰", if (botInfo.data.doNotDisturb == 1) "是" else "否")
+                DetailItem(if (botInfo.data.top == 1) Icons.Default.PushPin else Icons.Default.Remove, "置顶", if (botInfo.data.top == 1) "是" else "否")
+                DetailItem(if (botInfo.data.groupLimit == 1) Icons.Default.Block else Icons.Default.GroupAdd, "限制进群", if (botInfo.data.groupLimit == 1) "是" else "否")
             }
         }
-        
-        // 看板信息
+
         if (boardInfo != null && boardInfo.boardCount > 0) {
             val boardData = boardInfo.getBoardList().firstOrNull()
             if (boardData != null && boardData.content.isNotBlank()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Dashboard,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "看板信息",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                    
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Box(modifier = Modifier.padding(16.dp)) {
-                            when (boardData.contentType) {
-                                1 -> { // 文本
-                                    androidx.compose.foundation.text.selection.SelectionContainer {
+                item {
+                    BotInfoSectionCard(title = "看板信息") {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Box(modifier = Modifier.padding(16.dp)) {
+                                when (boardData.contentType) {
+                                    1 -> androidx.compose.foundation.text.selection.SelectionContainer {
                                         Text(
                                             text = boardData.content,
                                             style = MaterialTheme.typography.bodyLarge,
@@ -833,23 +758,17 @@ private fun BotDetailContent(
                                             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
                                         )
                                     }
-                                }
-                                2 -> { // Markdown
-                                    MarkdownText(
+                                    2 -> MarkdownText(
                                         markdown = boardData.content,
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                }
-                                3 -> { // HTML
-                                    com.yhchat.canary.ui.components.HtmlWebView(
+                                    3 -> HtmlWebView(
                                         htmlContent = boardData.content,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .heightIn(min = 200.dp, max = 400.dp)
                                     )
-                                }
-                                else -> { // 默认按文本处理
-                                    androidx.compose.foundation.text.selection.SelectionContainer {
+                                    else -> androidx.compose.foundation.text.selection.SelectionContainer {
                                         Text(
                                             text = boardData.content,
                                             style = MaterialTheme.typography.bodyLarge,
@@ -862,34 +781,84 @@ private fun BotDetailContent(
                     }
                 }
             }
-            }
         } else if (isBoardLoading) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+            item {
+                BotInfoSectionCard(title = "看板信息") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                        Text(
-                            "加载看板信息中...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                            Text(
+                                "加载看板信息中...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun BotInfoSectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun BotInfoDialog(
+    botInfo: Bot.bot_info,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("确定")
+            }
+        },
+        title = { Text(botInfo.data.name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoRow("机器人ID", botInfo.data.botId)
+                InfoRow("创建者ID", botInfo.data.createBy)
+                InfoRow("创建时间", formatDate(botInfo.data.createTime))
+                InfoRow("使用人数", botInfo.data.headcount.toString())
+                InfoRow("可见性", if (botInfo.data.private == 1) "私有" else "公开")
+                InfoRow("运行状态", if (botInfo.data.isStop == 0) "正常运行" else "已停用")
+                InfoRow("自动加群", if (botInfo.data.alwaysAgree == 1) "是" else "否")
+                InfoRow("限制进群", if (botInfo.data.groupLimit == 1) "是" else "否")
+            }
+        }
+    )
 }
 
 @Composable
@@ -1009,5 +978,30 @@ private fun formatDate(timestamp: Long): String {
         formatter.format(date)
     } catch (e: Exception) {
         "-"
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor
+        )
     }
 }

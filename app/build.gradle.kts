@@ -54,6 +54,12 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -145,7 +151,10 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     
     // WebDAV 客户端
-    implementation("com.github.thegrizzlylabs:sardine-android:0.8")
+    implementation("com.github.thegrizzlylabs:sardine-android:0.8") {
+        exclude(group = "xpp3", module = "xpp3")
+        exclude(group = "xmlpull", module = "xmlpull")
+    }
     
     // Compose Rich Text - Markdown 渲染
     implementation("com.halilibo.compose-richtext:richtext-ui-material3:0.17.0")

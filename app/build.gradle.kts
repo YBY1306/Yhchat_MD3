@@ -57,8 +57,22 @@ android {
         }
     }
 
+    flavorDimensions += "player"
+
+    productFlavors {
+        create("standard") {
+            dimension = "player"
+            buildConfigField("boolean", "WITH_PLAYER", "false")
+        }
+        create("withPlayer") {
+            dimension = "player"
+            buildConfigField("boolean", "WITH_PLAYER", "true")
+        }
+    }
+
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

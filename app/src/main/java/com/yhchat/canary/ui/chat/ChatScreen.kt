@@ -780,8 +780,12 @@ fun ChatScreen(
                                 when (message.contentType) {
                                     2 -> {
                                         // 图片消息
-                                        quotedImageUrl = message.content.imageUrl
-                                        quotedImageName = message.content.fileName ?: "image.jpg"
+                                        val imageUrl = message.content.imageUrl?.takeIf { it.isNotBlank() }
+                                        quotedImageUrl = imageUrl
+                                        quotedImageName = imageUrl
+                                            ?.substringAfterLast("/")
+                                            ?.substringBefore("?")
+                                            ?.takeIf { it.isNotBlank() }
                                         android.util.Log.d("ChatScreen", "📷 引用图片消息: url=$quotedImageUrl")
                                     }
                                     10 -> {

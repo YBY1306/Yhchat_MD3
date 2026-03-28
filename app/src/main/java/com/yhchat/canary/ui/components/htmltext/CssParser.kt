@@ -45,6 +45,7 @@ data class CssStyle(
     val borderLeft: String? = null,
     val boxShadow: String? = null,
     val lineHeight: TextUnit? = null,
+    val lineHeightMultiplier: Float? = null,
     val fontFamily: String? = null,
     val backgroundGradient: List<Color>? = null,
     val display: String? = null,
@@ -55,13 +56,24 @@ data class CssStyle(
     val flexWrap: String? = null,
     val justifyContent: String? = null,
     val objectFit: String? = null,
-    val wordWrap: String? = null
+    val wordWrap: String? = null,
+    val whiteSpace: String? = null,
+    val borderCollapse: String? = null,
+    val borderSpacing: Dp? = null,
+    val listStyleType: String? = null
 )
 
 /**
  * CSS 解析器
  */
 object CssParser {
+
+    private data class BoxValues(
+        val top: Dp? = null,
+        val right: Dp? = null,
+        val bottom: Dp? = null,
+        val left: Dp? = null
+    )
     
     /**
      * 解析 style 属性字符串
@@ -78,7 +90,11 @@ object CssParser {
                 properties[property] = value
             }
         }
-        
+
+        val marginBox = parseBoxValues(properties["margin"])
+        val paddingBox = parseBoxValues(properties["padding"])
+        val parsedLineHeight = properties["line-height"]?.let { parseLineHeight(it) }
+
         return CssStyle(
             color = properties["color"]?.let { parseColor(it) },
             backgroundColor = properties["background-color"]?.let { parseColor(it) },
@@ -92,16 +108,16 @@ object CssParser {
             minWidth = properties["min-width"]?.let { parseDimension(it) },
             height = properties["height"]?.let { parseDimension(it) },
             minHeight = properties["min-height"]?.let { parseDimension(it) },
-            margin = properties["margin"]?.let { parseDimension(it) },
-            marginTop = properties["margin-top"]?.let { parseDimension(it) },
-            marginRight = properties["margin-right"]?.let { parseDimension(it) },
-            marginBottom = properties["margin-bottom"]?.let { parseDimension(it) },
-            marginLeft = properties["margin-left"]?.let { parseDimension(it) },
-            padding = properties["padding"]?.let { parseDimension(it) },
-            paddingTop = properties["padding-top"]?.let { parseDimension(it) },
-            paddingRight = properties["padding-right"]?.let { parseDimension(it) },
-            paddingBottom = properties["padding-bottom"]?.let { parseDimension(it) },
-            paddingLeft = properties["padding-left"]?.let { parseDimension(it) },
+            margin = properties["margin"]?.let { parseSingleDimension(it) },
+            marginTop = properties["margin-top"]?.let { parseDimension(it) } ?: marginBox.top,
+            marginRight = properties["margin-right"]?.let { parseDimension(it) } ?: marginBox.right,
+            marginBottom = properties["margin-bottom"]?.let { parseDimension(it) } ?: marginBox.bottom,
+            marginLeft = properties["margin-left"]?.let { parseDimension(it) } ?: marginBox.left,
+            padding = properties["padding"]?.let { parseSingleDimension(it) },
+            paddingTop = properties["padding-top"]?.let { parseDimension(it) } ?: paddingBox.top,
+            paddingRight = properties["padding-right"]?.let { parseDimension(it) } ?: paddingBox.right,
+            paddingBottom = properties["padding-bottom"]?.let { parseDimension(it) } ?: paddingBox.bottom,
+            paddingLeft = properties["padding-left"]?.let { parseDimension(it) } ?: paddingBox.left,
             borderRadius = properties["border-radius"]?.let { parseDimension(it) },
             border = properties["border"],
             borderTop = properties["border-top"],
@@ -109,7 +125,8 @@ object CssParser {
             borderBottom = properties["border-bottom"],
             borderLeft = properties["border-left"],
             boxShadow = properties["box-shadow"],
-            lineHeight = properties["line-height"]?.let { parseFontSize(it) },
+            lineHeight = parsedLineHeight?.first,
+            lineHeightMultiplier = parsedLineHeight?.second,
             fontFamily = properties["font-family"],
             backgroundGradient = properties["background"]?.let { parseGradient(it) } 
                 ?: properties["background-image"]?.let { parseGradient(it) },
@@ -121,8 +138,45 @@ object CssParser {
             flexWrap = properties["flex-wrap"],
             justifyContent = properties["justify-content"],
             objectFit = properties["object-fit"],
-            wordWrap = properties["word-wrap"]
+            wordWrap = properties["word-wrap"],
+            whiteSpace = properties["white-space"],
+            borderCollapse = properties["border-collapse"],
+            borderSpacing = properties["border-spacing"]?.let { parseSingleDimension(it) },
+            listStyleType = properties["list-style-type"]
         )
+    }
+
+    private fun parseBoxValues(value: String?): BoxValues {
+        if (value.isNullOrBlank()) return BoxValues()
+        val parts = value.trim().split(Regex("\\s+")).mapNotNull { parseDimension(it) }
+        if (parts.isEmpty()) return BoxValues()
+        return when (parts.size) {
+            1 -> BoxValues(parts[0], parts[0], parts[0], parts[0])
+            2 -> BoxValues(parts[0], parts[1], parts[0], parts[1])
+            3 -> BoxValues(parts[0], parts[1], parts[2], parts[1])
+            else -> BoxValues(parts[0], parts[1], parts[2], parts[3])
+        }
+    }
+
+    private fun parseLineHeight(value: String): Pair<TextUnit?, Float?> {
+        val trimmed = value.trim().lowercase()
+        return when {
+            trimmed == "normal" -> null to null
+            trimmed.endsWith("px") || trimmed.endsWith("sp") || trimmed.endsWith("em") || trimmed.endsWith("pt") ->
+                parseFontSize(trimmed) to null
+            trimmed.endsWith("%") -> {
+                val percent = trimmed.removeSuffix("%").toFloatOrNull()
+                null to percent?.div(100f)
+            }
+            else -> {
+                val number = trimmed.toFloatOrNull()
+                if (number != null && number <= 10f) {
+                    null to number
+                } else {
+                    parseFontSize(trimmed) to null
+                }
+            }
+        }
     }
     
     /**
@@ -317,6 +371,11 @@ object CssParser {
     /**
      * 解析尺寸值（px、dp、sp、em等）
      */
+    private fun parseSingleDimension(dimensionString: String): Dp? {
+        if (dimensionString.trim().contains(" ")) return null
+        return parseDimension(dimensionString)
+    }
+
     private fun parseDimension(dimensionString: String): Dp? {
         return try {
             val dimension = dimensionString.trim().lowercase()

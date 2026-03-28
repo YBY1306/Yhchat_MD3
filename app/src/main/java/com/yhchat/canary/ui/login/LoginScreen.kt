@@ -52,6 +52,7 @@ fun LoginScreen(
     tokenRepository: TokenRepository? = null,
     viewModel: LoginViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val captchaData by viewModel.captchaData.collectAsState()
     
@@ -384,6 +385,8 @@ fun LoginScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
             
             Spacer(modifier = Modifier.height(16.dp))
             

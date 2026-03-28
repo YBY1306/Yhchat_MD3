@@ -571,7 +571,7 @@ fun ChatInputBar(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
-                            if (text.isNotBlank()) 
+                            if (text.isNotEmpty()) 
                                 MaterialTheme.colorScheme.primary 
                             else 
                                 MaterialTheme.colorScheme.surfaceVariant,
@@ -581,14 +581,14 @@ fun ChatInputBar(
                         .pointerInput(currentLongPressSendMarkdownEnabled, currentLongPressSendMarkdownSeconds) {
                             detectTapGestures(
                                 onTap = {
-                                    if (currentText.isNotBlank()) {
+                                    if (currentText.isNotEmpty()) {
                                         Log.d("ChatInputBar", "Send button tapped")
                                         currentOnSendMessage()
                                     }
                                 },
                                 onLongPress = {
                                     val mtc = currentMtc
-                                    if (currentText.isNotBlank() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                    if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
                                         Log.d("ChatInputBar", "Send button long pressed -> Markdown")
                                         val previousType = currentSelectedMessageType
                                         coroutineScope.launch {
@@ -600,7 +600,7 @@ fun ChatInputBar(
                                                 mtc.invoke(previousType)
                                             }
                                         }
-                                    } else if (currentText.isNotBlank()) {
+                                    } else if (currentText.isNotEmpty()) {
                                         // 如果没开启长按发送 Markdown，则长按也作为普通发送
                                         Log.d("ChatInputBar", "Send button long pressed (normal send)")
                                         currentOnSendMessage()
@@ -613,7 +613,7 @@ fun ChatInputBar(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
-                        tint = if (text.isNotBlank())
+                        tint = if (text.isNotEmpty())
                             MaterialTheme.colorScheme.onPrimary
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant,

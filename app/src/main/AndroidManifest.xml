@@ -47,9 +47,10 @@
         android:theme="@style/Theme.YhchatCanary">
         <activity
             android:name=".ui.login.LoginActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="登录"
-            android:theme="@style/Theme.YhchatCanary" />
+            android:theme="@style/Theme.YhchatCanary">
+        </activity>
         <activity
             android:name=".ui.chat.ChatActivity"
             android:exported="false"

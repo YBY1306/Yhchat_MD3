@@ -119,6 +119,10 @@ fun WebViewScreen(
     // 外部跳转拦截对话框状态
     var showJumpDialog by remember { mutableStateOf(false) }
     var pendingJumpUrl by remember { mutableStateOf("") }
+    var showDownloadDialog by remember { mutableStateOf(false) }
+    var pendingDownloadUrl by remember { mutableStateOf("") }
+    var pendingContentDisposition by remember { mutableStateOf<String?>(null) }
+    var pendingMimeType by remember { mutableStateOf<String?>(null) }
 
     // 处理物理返回键
     BackHandler(enabled = uiState.canGoBack) {
@@ -352,27 +356,10 @@ fun WebViewScreen(
                         }
 
                         setDownloadListener { downloadUrl, _, contentDisposition, mimetype, _ ->
-                            if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
-                                Toast.makeText(ctx, "外部存储不可用", Toast.LENGTH_LONG).show()
-                                return@setDownloadListener
-                            }
-                            try {
-                                val fileName = URLUtil.guessFileName(downloadUrl, contentDisposition, mimetype)
-                                val request = DownloadManager.Request(downloadUrl.toUri()).apply {
-                                    setMimeType(mimetype)
-                                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                                    setTitle(fileName)
-                                    setDescription("正在下载文件...")
-                                    setAllowedOverRoaming(true)
-                                    setAllowedOverMetered(true)
-                                }
-                                val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                                dm.enqueue(request)
-                                Toast.makeText(ctx, "开始下载: $fileName", Toast.LENGTH_SHORT).show()
-                            } catch (e: Exception) {
-                                Toast.makeText(ctx, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
-                            }
+                            pendingDownloadUrl = downloadUrl
+                            pendingContentDisposition = contentDisposition
+                            pendingMimeType = mimetype
+                            showDownloadDialog = true
                         }
 
                         // 加载 URL 时添加 token 请求头
@@ -429,6 +416,63 @@ fun WebViewScreen(
             dismissButton = {
                 TextButton(onClick = { showJumpDialog = false }) {
                     Text("忽略")
+                }
+            }
+        )
+    }
+
+    if (showDownloadDialog) {
+        val fileName = URLUtil.guessFileName(
+            pendingDownloadUrl,
+            pendingContentDisposition,
+            pendingMimeType
+        )
+        AlertDialog(
+            onDismissRequest = { showDownloadDialog = false },
+            title = { Text("下载文件") },
+            text = {
+                Column {
+                    Text("该网站请求下载文件，是否继续？")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = fileName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showDownloadDialog = false
+                    if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
+                        Toast.makeText(context, "外部存储不可用", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
+                    try {
+                        val request = DownloadManager.Request(pendingDownloadUrl.toUri()).apply {
+                            setMimeType(pendingMimeType)
+                            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                            setTitle(fileName)
+                            setDescription("正在下载文件...")
+                            setAllowedOverRoaming(true)
+                            setAllowedOverMetered(true)
+                        }
+                        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                        dm.enqueue(request)
+                        Toast.makeText(context, "开始下载: $fileName", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }) {
+                    Text("下载")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadDialog = false }) {
+                    Text("取消")
                 }
             }
         )

@@ -40,7 +40,7 @@ fun HtmlTextMessage(
     onUriClick: ((String) -> Unit)? = null,
     onImageClick: ((String) -> Unit)? = null,
     enableCssSupport: Boolean = true,
-    useAdvancedRenderer: Boolean = false
+    useAdvancedRenderer: Boolean = true
 ) {
     if (useAdvancedRenderer) {
         // 使用高级渲染器处理复杂的 CSS 布局

@@ -120,12 +120,7 @@ fun MessageContentView(
                             onUriClick = { url ->
                                 UnifiedLinkHandler.handleLink(context, url)
                             },
-                            useAdvancedRenderer = htmlContent.contains("display:", ignoreCase = true) ||
-                                    htmlContent.contains("flex", ignoreCase = true) ||
-                                    htmlContent.contains("margin:", ignoreCase = true) ||
-                                    htmlContent.contains("padding:", ignoreCase = true) ||
-                                    htmlContent.contains("<details", ignoreCase = true) ||
-                                    htmlContent.contains("<summary", ignoreCase = true)
+                            useAdvancedRenderer = true
                         )
                     }
                 }

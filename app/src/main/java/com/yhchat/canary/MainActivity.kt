@@ -171,19 +171,7 @@ class MainActivity : BaseActivity() {
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()
 
-        val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
-        var enableBottomNavSwipe by remember {
-            mutableStateOf(layoutPrefs.getBoolean("bottom_nav_swipe_enabled", true))
-        }
-        DisposableEffect(layoutPrefs) {
-            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                if (key == "bottom_nav_swipe_enabled") {
-                    enableBottomNavSwipe = layoutPrefs.getBoolean("bottom_nav_swipe_enabled", true)
-                }
-            }
-            layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
-            onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
-        }
+        // 左右滑动切换主页面已废除：固定禁用 pager 的手势滑动
         
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
@@ -316,7 +304,7 @@ class MainActivity : BaseActivity() {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize(),
-                                userScrollEnabled = enableBottomNavSwipe
+                                userScrollEnabled = false
                             ) { page ->
                                     val navItem = visibleNavItems[page]
                                     when (navItem.id) {
@@ -780,7 +768,7 @@ class MainActivity : BaseActivity() {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    userScrollEnabled = enableBottomNavSwipe
+                                    userScrollEnabled = false
                                 ) { page ->
                                         val navItem = visibleNavItems[page]
                                         when (navItem.id) {

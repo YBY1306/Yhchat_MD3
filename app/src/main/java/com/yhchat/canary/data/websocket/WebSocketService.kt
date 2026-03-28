@@ -3,10 +3,15 @@ package com.yhchat.canary.data.websocket
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.LocusId
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -965,6 +970,51 @@ class WebSocketService @Inject constructor(
                 Log.d(tag, "🎭 通知设置会话头像 (大图标)")
             } else {
                 Log.d(tag, "⚠️ 会话头像未加载，使用默认图标")
+            }
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // 为聊天创建桌面图标（用于绑定成对话通知）
+                val conversationShortcutId = "shortcut_${targetChatId}" //TODO 变量取什么呢
+                val conversationShortcutLocusId = "shortcut_locus_${targetChatId}"//TODO 变量取什么呢
+                val conversationShortcutBuilder =
+                    ShortcutInfo.Builder(context, conversationShortcutId)
+                        .setLocusId(LocusId(conversationShortcutLocusId))
+                        .setActivity(ComponentName(context, MainActivity::class.java))
+                        .setShortLabel(conversationTitle)
+                        .setLongLived(true)
+                        .setIntent(
+                            Intent(context, ChatActivity::class.java).apply {
+                                putExtra("chatId", targetChatId)
+                                putExtra("chatType", targetChatType)
+                                putExtra("chatName", conversationTitle)
+                                setAction("what.todo.todo") //TODO 这个不填会报错
+//                                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
+                            }
+                        )
+                if (conversationAvatarBitmap != null)
+                    conversationShortcutBuilder.setIcon(Icon.createWithAdaptiveBitmap(conversationAvatarBitmap))
+                val conversationShortcut = conversationShortcutBuilder.build()
+                val shortcutManager = context.getSystemService(Context.SHORTCUT_SERVICE) as ShortcutManager
+                shortcutManager.pushDynamicShortcut(conversationShortcut) //添加图标到桌面APP的长按菜单中
+                notificationBuilder.setShortcutId(conversationShortcutId)
+
+                // 通知气泡（悬浮窗）
+                val notificationBubbleMetadata = NotificationCompat.BubbleMetadata.Builder(
+                    PendingIntent.getActivity(
+                        context,
+                        notificationId,  // Launch BubbleActivity as the expanded bubble. //TODO 这个填什么好呢
+                        Intent(context, ChatActivity::class.java).apply {
+                            putExtra("chatId", targetChatId)
+                            putExtra("chatType", targetChatType)
+                            putExtra("chatName", conversationTitle)
+//                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
+//                            setAction("what.todo.todo") //TODO 这个要填吗
+                        },
+                        PendingIntent.FLAG_MUTABLE /*0x4000000*/
+                    ),
+                    if (conversationAvatarBitmap != null) IconCompat.createWithAdaptiveBitmap(conversationAvatarBitmap) else TODO("无头像")
+                ).setDesiredHeight(Int.MAX_VALUE/*TODO*/).build()
+                notificationBuilder.setBubbleMetadata(notificationBubbleMetadata)
             }
             
             val notification = notificationBuilder.build()

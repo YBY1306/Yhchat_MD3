@@ -51,11 +51,8 @@ internal fun String.buildTableMarkdownAnnotatedString(
     settings: TableAnnotatorSettings,
 ): AnnotatedString {
     val parsedTree = MarkdownParser(GFMFlavourDescriptor()).buildMarkdownTreeFromString(this)
-    val textNode = parsedTree.children.firstOrNull { node ->
-        node.type == MarkdownTokenTypes.TEXT || node.type == MarkdownElementTypes.PARAGRAPH
-    } ?: return AnnotatedString("")
     return buildTableMarkdownAnnotatedString(
-        textNode = textNode,
+        textNode = parsedTree,
         style = style,
         settings = settings
     )

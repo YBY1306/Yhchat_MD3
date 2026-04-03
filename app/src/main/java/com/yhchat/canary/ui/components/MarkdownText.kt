@@ -525,55 +525,56 @@ private fun RenderMarkdownTableCell(
             )
         }
     }
+    val hasImage = remember(cellSegments) { cellSegments.any { it is MarkdownSegment.Image } }
+    val baseStyle = if (isHeader) {
+        MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+        )
+    } else {
+        MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+    val linkTextStyle = TextLinkStyles(
+        style = SpanStyle(
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium,
+            textDecoration = TextDecoration.Underline
+        )
+    )
+    val codeSpanStyle = baseStyle.toSpanStyle().copy(
+        fontFamily = FontFamily.Monospace,
+        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    )
+    val annotatedText = remember(tableMarkdown, cellNode, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
+        tableMarkdown.buildTableMarkdownAnnotatedString(
+            textNode = cellNode,
+            style = baseStyle,
+            settings = TableAnnotatorSettings(
+                linkTextSpanStyle = linkTextStyle,
+                codeSpanStyle = codeSpanStyle,
+                referenceLinks = referenceLinks,
+                linkInteractionListener = LinkInteractionListener { link ->
+                    val url = (link as? LinkAnnotation.Url)?.url
+                    if (!url.isNullOrBlank()) {
+                        onLinkClicked(url)
+                    }
+                }
+            )
+        )
+    }
+
+    if (annotatedText.text.isNotBlank()) {
+        BasicText(
+            text = annotatedText,
+            style = baseStyle,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 
     cellSegments.forEach { segment ->
         when (segment) {
-            is MarkdownSegment.Text -> {
-                if (segment.content.isBlank()) return@forEach
-                val baseStyle = if (isHeader) {
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                val linkTextStyle = TextLinkStyles(
-                    style = SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        textDecoration = TextDecoration.Underline
-                    )
-                )
-                val codeSpanStyle = baseStyle.toSpanStyle().copy(
-                    fontFamily = FontFamily.Monospace,
-                    background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                )
-                val annotatedText = remember(segment.content, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
-                    segment.content.buildTableMarkdownAnnotatedString(
-                        style = baseStyle,
-                        settings = TableAnnotatorSettings(
-                            linkTextSpanStyle = linkTextStyle,
-                            codeSpanStyle = codeSpanStyle,
-                            referenceLinks = referenceLinks,
-                            linkInteractionListener = LinkInteractionListener { link ->
-                                val url = (link as? LinkAnnotation.Url)?.url
-                                if (!url.isNullOrBlank()) {
-                                    onLinkClicked(url)
-                                }
-                            }
-                        )
-                    )
-                }
-                BasicText(
-                    text = annotatedText,
-                    style = baseStyle,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
             is MarkdownSegment.Image -> {
                 MarkdownInlineImage(
                     url = segment.url,
@@ -581,6 +582,16 @@ private fun RenderMarkdownTableCell(
                     imageReferer = imageReferer,
                     onClick = onImageClick
                 )
+            }
+
+            is MarkdownSegment.Text -> {
+                if (hasImage.not() && annotatedText.text.isBlank() && segment.content.isNotBlank()) {
+                    BasicText(
+                        text = parseSimpleMarkdown(segment.content, MaterialTheme.colorScheme.onSurface),
+                        style = baseStyle,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             else -> Unit

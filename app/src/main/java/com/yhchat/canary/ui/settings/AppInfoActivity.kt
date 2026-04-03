@@ -263,7 +263,7 @@ private fun AppInfoScreen(
                 title = "许可证",
                 content = {
                     Text(
-                        text = "AGPL v3",
+                        text = "GPL v3",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -273,7 +273,7 @@ private fun AppInfoScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "全球首款纯净自由的云湖第三方客户端，由坚如磐石的AGPL协议与世界顶级人工智能技术强力驱动。",
+                text = "全球首款纯净自由的云湖第三方客户端，由坚如磐石的GPL协议与世界顶级人工智能技术强力驱动。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)

@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -419,11 +418,6 @@ private fun ZoomableImagePage(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(enabled = false) { }
-        )
     }
 }
 

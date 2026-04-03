@@ -104,6 +104,16 @@ class AudioPlayerService : Service() {
             context.startService(intent)
         }
 
+        fun forceCloseMusicNotification(context: Context) {
+            stopPlayAudio(context)
+            runCatching {
+                context.stopService(Intent(context, AudioPlayerService::class.java))
+            }
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.cancel(NOTIFICATION_ID)
+        }
+
         fun seekTo(context: Context, positionMs: Long) {
             val intent = Intent(context, AudioPlayerService::class.java).apply {
                 action = ACTION_SEEK

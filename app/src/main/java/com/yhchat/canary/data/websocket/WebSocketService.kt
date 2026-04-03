@@ -1003,8 +1003,10 @@ class WebSocketService @Inject constructor(
                     putExtra("chatId", targetChatId)
                     putExtra("chatType", targetChatType)
                     putExtra("chatName", conversationTitle)
+                    putExtra("fromBubble", true)
                     action = "com.yhchat.canary.action.OPEN_CHAT_BUBBLE_$targetChatId"
-                    flags = Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                    setPackage(context.packageName)
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 val bubbleHeight = (context.resources.displayMetrics.density * 640).toInt()
                 val notificationBubbleMetadata = NotificationCompat.BubbleMetadata.Builder(

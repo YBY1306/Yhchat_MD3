@@ -24,6 +24,7 @@ zxingEmbedded = "4.3.0"
 zxingCore = "3.5.3"
 reorderable = "0.9.6"
 ksoupHtml = "0.6.0"
+jetbrainsMarkdown = "0.7.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -64,6 +65,7 @@ zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embe
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 reorderable = { group = "org.burnoutcrew.composereorderable", name = "reorderable", version.ref = "reorderable" }
 ksoup-html = { group = "com.mohamedrejeb.ksoup", name = "ksoup-html", version.ref = "ksoupHtml" }
+jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

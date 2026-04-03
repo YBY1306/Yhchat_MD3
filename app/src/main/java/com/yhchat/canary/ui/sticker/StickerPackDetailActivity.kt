@@ -79,7 +79,7 @@ fun StickerPackDetailScreen(
     
     // 图片预览状态
     var showImageViewer by remember { mutableStateOf(false) }
-    var currentImageUrl by remember { mutableStateOf("") }
+    var currentImageIndex by remember { mutableIntStateOf(0) }
     
     LaunchedEffect(stickerPackId) {
         viewModel.loadStickerPackDetail(stickerPackId)
@@ -134,8 +134,8 @@ fun StickerPackDetailScreen(
                     val stickerPackData = uiState.stickerPack!!
                         StickerPackDetailContent(
                             stickerPackData = stickerPackData,
-                            onImageClick = { imageUrl ->
-                                currentImageUrl = imageUrl
+                            onImageClick = { imageIndex ->
+                                currentImageIndex = imageIndex
                                 showImageViewer = true
                             },
                             onCreatorClick = { userId ->
@@ -148,12 +148,21 @@ fun StickerPackDetailScreen(
     }
     
     // 图片预览器
-    if (showImageViewer && currentImageUrl.isNotEmpty()) {
+    val previewImageUrls = remember(uiState.stickerPack) {
+        uiState.stickerPack
+            ?.stickerPack
+            ?.stickerItems
+            ?.map { sticker -> sticker.toStickerImageUrl() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+    }
+    if (showImageViewer && previewImageUrls.isNotEmpty()) {
         ImageViewer(
-            imageUrl = currentImageUrl,
+            imageUrls = previewImageUrls,
+            initialIndex = currentImageIndex.coerceIn(0, previewImageUrls.lastIndex),
             onDismiss = {
                 showImageViewer = false
-                currentImageUrl = ""
+                currentImageIndex = 0
             }
         )
     }
@@ -162,7 +171,7 @@ fun StickerPackDetailScreen(
 @Composable
 fun StickerPackDetailContent(
     stickerPackData: com.yhchat.canary.data.model.StickerPackDetailData,
-    onImageClick: (String) -> Unit = {},
+    onImageClick: (Int) -> Unit = {},
     onCreatorClick: (String) -> Unit = {}
 ) {
     val stickerPack = stickerPackData.stickerPack
@@ -285,10 +294,10 @@ fun StickerPackDetailContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(stickerPack.stickerItems) { sticker ->
+            items(stickerPack.stickerItems.size) { index ->
                 StickerItemView(
-                    sticker = sticker,
-                    onImageClick = onImageClick
+                    sticker = stickerPack.stickerItems[index],
+                    onImageClick = { onImageClick(index) }
                 )
             }
         }
@@ -300,11 +309,7 @@ fun StickerItemView(
     sticker: com.yhchat.canary.data.model.StickerItem,
     onImageClick: (String) -> Unit = {}
 ) {
-    val imageUrl = if (sticker.url.startsWith("http")) {
-        sticker.url
-    } else {
-        "https://chat-img.jwznb.com/${sticker.url}"
-    }
+    val imageUrl = sticker.toStickerImageUrl()
     
     Card(
         modifier = Modifier
@@ -343,6 +348,14 @@ fun StickerItemView(
                     .padding(4.dp)
             )
         }
+    }
+}
+
+private fun com.yhchat.canary.data.model.StickerItem.toStickerImageUrl(): String {
+    return if (url.startsWith("http")) {
+        url
+    } else {
+        "https://chat-img.jwznb.com/$url"
     }
 }
 

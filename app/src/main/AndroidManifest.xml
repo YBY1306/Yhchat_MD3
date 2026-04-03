@@ -54,7 +54,7 @@
         <activity
             android:name=".ui.chat.ChatActivity"
             android:allowEmbedded="true"
-            android:documentLaunchMode="always"
+            android:documentLaunchMode="intoExisting"
             android:exported="false"
             android:label="聊天"
             android:resizeableActivity="true"

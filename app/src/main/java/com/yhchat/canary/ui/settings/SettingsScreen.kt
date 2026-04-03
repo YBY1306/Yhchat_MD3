@@ -38,10 +38,10 @@ import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.model.UserProfile
-
 import com.yhchat.canary.data.repository.AccountRepository
 import com.yhchat.canary.data.model.SavedAccount
 import com.yhchat.canary.ui.login.LoginActivity
+import com.yhchat.canary.service.AudioPlayerService
 import kotlinx.coroutines.launch
 
 /**
@@ -221,6 +221,30 @@ fun SettingsScreen(
             // 内容设置
             item {
                 ContentSettingsGroup(context = context)
+            }
+
+            item {
+                SettingsGroup(
+                    title = "通知",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Close,
+                                title = "强制关闭音乐通知",
+                                subtitle = "立即关闭语音/音频播放前台通知，不影响普通消息通知",
+                                onClick = {
+                                    AudioPlayerService.forceCloseMusicNotification(context)
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "已尝试关闭音乐通知",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                isDestructive = true
+                            )
+                        }
+                    )
+                )
             }
             
             // 显示设置

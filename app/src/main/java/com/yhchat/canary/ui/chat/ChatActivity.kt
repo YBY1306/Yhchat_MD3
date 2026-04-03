@@ -17,9 +17,13 @@ import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
+import androidx.compose.ui.Alignment
 
 @AndroidEntryPoint
 class ChatActivity : BaseActivity() {
@@ -32,6 +36,7 @@ class ChatActivity : BaseActivity() {
     // 搜索跳转参数
     private var searchTargetMsgId by mutableStateOf<String?>(null)
     private var searchTargetMsgSeq by mutableStateOf<Long?>(null)
+    private var launchedFromBubble by mutableStateOf(false)
     
     // 图片选择器 - 使用与 ChatBackgroundActivity 相同的 API
     private val imagePickerLauncher = registerForActivityResult(
@@ -116,72 +121,75 @@ class ChatActivity : BaseActivity() {
                     }
                 }
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    ChatScreen(
-                        chatId = chatId,
-                        chatType = chatType,
-                        chatName = chatName,
-                        enableAnimations = enableAnimations,
-                        userId = "",
-                        onBackClick = { finish() },
-                        onAvatarClick = { userId, userName, chatType, currentUserPermission ->
-                            if (chatType != 3) {
-                                // 如果是群聊环境，传递群聊信息和当前用户权限
-                                UserDetailActivity.start(
-                                    context = this@ChatActivity,
-                                    userId = userId,
-                                    userName = userName,
-                                    groupId = if (this@ChatActivity.chatType == 2) this@ChatActivity.chatId else null
-                                )
-                            }
-                        },
-                        onImagePickerClick = {
-                            // 启动图片选择器 - 使用与 ChatBackgroundActivity 相同的 API
-                            imagePickerLauncher.launch("image/*")
-                        },
-                        onCameraClick = {
-                            // 启动相机拍照
-                            val photoFile = java.io.File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
-                            cameraImageUri = androidx.core.content.FileProvider.getUriForFile(
-                                this@ChatActivity,
-                                "${packageName}.fileprovider",
-                                photoFile
+                    if (chatId.isBlank()) {
+                        Box(
+                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (launchedFromBubble) "对话泡未拿到会话参数" else "会话参数为空",
+                                color = MaterialTheme.colorScheme.onBackground
                             )
-                            cameraImageUri?.let { uri ->
-                                cameraLauncher.launch(uri)
-                            }
-                        },
-                        onFilePickerClick = {
-                            // 启动文件选择器 - 选择所有类型文件
-                            android.util.Log.d("ChatActivity", "📁 启动文件选择器")
-                            filePickerLauncher.launch("*/*")
-                        },
-                        onVideoPickerClick = {
-                            // 启动视频选择器 - 选择视频文件
-                            android.util.Log.d("ChatActivity", "📹 启动视频选择器")
-                            videoPickerLauncher.launch("video/*")
-                        },
-                        imageUriToSend = imageUriToSend,
-                        fileUriToSend = fileUriToSend,
-                        videoUriToSend = videoUriToSend,
-                        onImageSent = {
-                            // 图片发送后清空
-                            imageUriToSend = null
-                            cameraImageUri = null
-                        },
-                        onFileSent = {
-                            // 文件发送后清空
-                            android.util.Log.d("ChatActivity", "📁 文件发送完成，清空URI")
-                            fileUriToSend = null
-                        },
-                        onVideoSent = {
-                            // 视频发送后清空
-                            android.util.Log.d("ChatActivity", "📹 视频发送完成，清空URI")
-                            videoUriToSend = null
-                        },
-                        // 传递搜索跳转参数
-                        searchTargetMsgId = searchTargetMsgId,
-                        searchTargetMsgSeq = searchTargetMsgSeq
-                    )
+                        }
+                    } else {
+                        ChatScreen(
+                            chatId = chatId,
+                            chatType = chatType,
+                            chatName = chatName,
+                            enableAnimations = enableAnimations,
+                            userId = "",
+                            onBackClick = { finish() },
+                            onAvatarClick = { userId, userName, chatType, currentUserPermission -> 
+                                if (chatType != 3) {
+                                    UserDetailActivity.start(
+                                        context = this@ChatActivity,
+                                        userId = userId,
+                                        userName = userName,
+                                        groupId = if (this@ChatActivity.chatType == 2) this@ChatActivity.chatId else null
+                                    )
+                                }
+                            },
+                            onImagePickerClick = {
+                                imagePickerLauncher.launch("image/*")
+                            },
+                            onCameraClick = {
+                                val photoFile = java.io.File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                cameraImageUri = androidx.core.content.FileProvider.getUriForFile(
+                                    this@ChatActivity,
+                                    "${packageName}.fileprovider",
+                                    photoFile
+                                )
+                                cameraImageUri?.let { uri ->
+                                    cameraLauncher.launch(uri)
+                                }
+                            },
+                            onFilePickerClick = {
+                                android.util.Log.d("ChatActivity", "📁 启动文件选择器")
+                                filePickerLauncher.launch("*/*")
+                            },
+                            onVideoPickerClick = {
+                                android.util.Log.d("ChatActivity", "📹 启动视频选择器")
+                                videoPickerLauncher.launch("video/*")
+                            },
+                            imageUriToSend = imageUriToSend,
+                            fileUriToSend = fileUriToSend,
+                            videoUriToSend = videoUriToSend,
+                            onImageSent = {
+                                imageUriToSend = null
+                                cameraImageUri = null
+                            },
+                            onFileSent = {
+                                android.util.Log.d("ChatActivity", "📁 文件发送完成，清空URI")
+                                fileUriToSend = null
+                            },
+                            onVideoSent = {
+                                android.util.Log.d("ChatActivity", "📹 视频发送完成，清空URI")
+                                videoUriToSend = null
+                            },
+                            searchTargetMsgId = searchTargetMsgId,
+                            searchTargetMsgSeq = searchTargetMsgSeq
+                        )
+                    }
                 }
             }
         }
@@ -214,6 +222,7 @@ class ChatActivity : BaseActivity() {
         chatName = newChatName
         searchTargetMsgId = newSearchTargetMsgId
         searchTargetMsgSeq = newSearchTargetMsgSeq
+        launchedFromBubble = intent.getBooleanExtra("fromBubble", false)
     }
     
     companion object {

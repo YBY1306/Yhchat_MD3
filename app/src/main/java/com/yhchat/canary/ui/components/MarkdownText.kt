@@ -12,18 +12,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -43,7 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.halilibo.richtext.markdown.Markdown
@@ -62,7 +64,6 @@ import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.utils.*
 import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.ASTNode
-import org.intellij.markdown.ast.findChildOfType
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.ROW
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.TABLE
@@ -390,19 +391,22 @@ private fun MarkdownTableWithImages(
     onLinkClicked: (String) -> Unit
 ) {
     val tableNode = remember(tableMarkdown) { parseMarkdownTableNode(tableMarkdown) } ?: return
+    val referenceLinks = remember(tableMarkdown, tableNode) { buildReferenceLinkMap(tableNode, tableMarkdown) }
     val tableCellWidth = 160.dp
     val tableCellPadding = 16.dp
     val tableCornerSize = 8.dp
     val columnCount = remember(tableNode) {
-        tableNode.findChildOfType(HEADER)?.children?.count { it.type == CELL } ?: 0
+        tableNode.children.firstOrNull { it.type == HEADER }?.children?.count { it.type == CELL } ?: 0
     }
     if (columnCount <= 0) return
 
     val tableWidth = columnCount * tableCellWidth
+    val horizontalScrollState = rememberScrollState()
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .horizontalScroll(horizontalScrollState)
             .clip(RoundedCornerShape(tableCornerSize))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .border(
@@ -411,15 +415,10 @@ private fun MarkdownTableWithImages(
                 shape = RoundedCornerShape(tableCornerSize)
             )
     ) {
-        val scrollable = maxWidth <= tableWidth
         Column(
-            modifier = if (scrollable) {
-                Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .requiredWidth(tableWidth)
-            } else {
-                Modifier.fillMaxWidth()
-            }
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(min = tableWidth)
         ) {
             tableNode.children.forEach { child ->
                 when (child.type) {
@@ -429,6 +428,7 @@ private fun MarkdownTableWithImages(
                         tableWidth = tableWidth,
                         isHeader = true,
                         tableCellPadding = tableCellPadding,
+                        referenceLinks = referenceLinks,
                         richTextStyle = richTextStyle,
                         imageReferer = imageReferer,
                         onImageClick = onImageClick,
@@ -441,6 +441,7 @@ private fun MarkdownTableWithImages(
                         tableWidth = tableWidth,
                         isHeader = false,
                         tableCellPadding = tableCellPadding,
+                        referenceLinks = referenceLinks,
                         richTextStyle = richTextStyle,
                         imageReferer = imageReferer,
                         onImageClick = onImageClick,
@@ -461,6 +462,7 @@ private fun MarkdownAstTableRow(
     tableWidth: Dp,
     isHeader: Boolean,
     tableCellPadding: Dp,
+    referenceLinks: Map<String, String?>,
     richTextStyle: RichTextStyle,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
@@ -469,8 +471,7 @@ private fun MarkdownAstTableRow(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .widthIn(min = tableWidth)
-            .height(IntrinsicSize.Max)
+            .fillMaxWidth()
             .background(
                 if (isHeader) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                 else Color.Transparent
@@ -488,6 +489,7 @@ private fun MarkdownAstTableRow(
                     RenderMarkdownTableCell(
                         tableMarkdown = tableMarkdown,
                         cellNode = cell,
+                        referenceLinks = referenceLinks,
                         richTextStyle = richTextStyle,
                         imageReferer = imageReferer,
                         onImageClick = onImageClick,
@@ -503,6 +505,7 @@ private fun MarkdownAstTableRow(
 private fun RenderMarkdownTableCell(
     tableMarkdown: String,
     cellNode: ASTNode,
+    referenceLinks: Map<String, String?>,
     richTextStyle: RichTextStyle,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
@@ -527,18 +530,48 @@ private fun RenderMarkdownTableCell(
         when (segment) {
             is MarkdownSegment.Text -> {
                 if (segment.content.isBlank()) return@forEach
-                val textContent = if (isHeader) "**${segment.content.trim()}**" else segment.content
-                SelectionContainer {
-                    Material3RichText(
-                        style = richTextStyle,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Markdown(
-                            content = textContent,
-                            onLinkClicked = onLinkClicked
-                        )
-                    }
+                val baseStyle = if (isHeader) {
+                    MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
+                val linkTextStyle = TextLinkStyles(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        textDecoration = TextDecoration.Underline
+                    )
+                )
+                val codeSpanStyle = baseStyle.toSpanStyle().copy(
+                    fontFamily = FontFamily.Monospace,
+                    background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+                val annotatedText = remember(segment.content, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
+                    segment.content.buildTableMarkdownAnnotatedString(
+                        style = baseStyle,
+                        settings = TableAnnotatorSettings(
+                            linkTextSpanStyle = linkTextStyle,
+                            codeSpanStyle = codeSpanStyle,
+                            referenceLinks = referenceLinks,
+                            linkInteractionListener = LinkInteractionListener { link ->
+                                val url = (link as? LinkAnnotation.Url)?.url
+                                if (!url.isNullOrBlank()) {
+                                    onLinkClicked(url)
+                                }
+                            }
+                        )
+                    )
+                }
+                BasicText(
+                    text = annotatedText,
+                    style = baseStyle,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             is MarkdownSegment.Image -> {

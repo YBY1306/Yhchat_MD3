@@ -2,7 +2,10 @@ package com.yhchat.canary.ui.components
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -36,9 +39,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 表情选择器（模仿Telegram风格）
+ * 表情选择器
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ExpressionPicker(
     onExpressionClick: (Expression) -> Unit,  // 点击表情后的回调（传递完整的Expression对象）
@@ -65,7 +68,30 @@ fun ExpressionPicker(
     
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) } // 0: 默认, 1: 收藏, 2+: 表情包
-    var selectedStickerPackIndex by remember { mutableIntStateOf(0) }
+    val totalTabs = remember(uiState.stickerPacks.size) { 2 + uiState.stickerPacks.size }
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { totalTabs }
+    )
+
+    LaunchedEffect(totalTabs) {
+        if (selectedTab >= totalTabs) {
+            selectedTab = 0
+        }
+    }
+
+    LaunchedEffect(selectedTab, totalTabs) {
+        val target = selectedTab.coerceIn(0, totalTabs - 1)
+        if (target != pagerState.currentPage && !pagerState.isScrollInProgress) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedTab != pagerState.currentPage) {
+            selectedTab = pagerState.currentPage
+        }
+    }
     
     Surface(
         modifier = modifier
@@ -102,10 +128,7 @@ fun ExpressionPicker(
                     val tabIndex = index + 2
                     Tab(
                         selected = selectedTab == tabIndex,
-                        onClick = { 
-                            selectedTab = tabIndex
-                            selectedStickerPackIndex = index
-                        }
+                        onClick = { selectedTab = tabIndex }
                     ) {
                         // 使用表情包第一个贴纸作为图标
                         val firstSticker = stickerPack.stickerItems.firstOrNull()
@@ -164,162 +187,171 @@ fun ExpressionPicker(
                     }
                 }
                 
-                selectedTab == 0 -> {
-                    // 默认表情
-                    if (uiState.defaultExpressions.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无默认表情",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(7), // 默认表情显示更小，一行7个
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(uiState.defaultExpressions) { fileName ->
-                                // fileName example: [.书呆]​​.svg
-                                val name = fileName.substringBeforeLast(".svg").trim() // [.书呆]
-                                
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(fileName)}")
-                                        .decoderFactory(SvgDecoder.Factory())
-                                        .build(),
-                                    contentDescription = name,
-                                    modifier = Modifier
-                                        .aspectRatio(1f)
-                                        .clickable {
-                                            onDefaultExpressionClick(name)
-                                            if (autoDismissAfterPick) {
-                                                onDismiss()
-                                            }
-                                        },
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
-                        }
-                    }
-                }
+                else -> {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        when {
+                            page == 0 -> {
+                                // 默认表情
+                                if (uiState.defaultExpressions.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "暂无默认表情",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(7), // 默认表情显示更小，一行7个
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        items(uiState.defaultExpressions) { fileName ->
+                                            // fileName example: [.书呆]​​.svg
+                                            val name = fileName.substringBeforeLast(".svg").trim() // [.书呆]
 
-                selectedTab == 1 -> {
-                    // 我的表情
-                    if (uiState.expressions.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无收藏的表情\n长按聊天中的图片添加到表情收藏",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(4),
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.expressions) { expression ->
-                                AsyncImage(
-                                    model = expression.getFullUrl(),
-                                    contentDescription = "表情",
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clickable {
-                                            onExpressionClick(expression)  // 传递完整的Expression对象
-                                            if (autoDismissAfterPick) {
-                                                onDismiss()
-                                            }
-                                        },
-                                    contentScale = ContentScale.Fit
-                                )
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(context)
+                                                    .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(fileName)}")
+                                                    .decoderFactory(SvgDecoder.Factory())
+                                                    .build(),
+                                                contentDescription = name,
+                                                modifier = Modifier
+                                                    .aspectRatio(1f)
+                                                    .clickable {
+                                                        onDefaultExpressionClick(name)
+                                                        if (autoDismissAfterPick) {
+                                                            onDismiss()
+                                                        }
+                                                    },
+                                                contentScale = ContentScale.Fit
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                        }
-                    }
-                }
-                
-                selectedTab > 1 -> {
-                    // 表情包内容
-                    val selectedStickerPack = uiState.stickerPacks.getOrNull(selectedStickerPackIndex)
-                    if (selectedStickerPack != null) {
-                        if (selectedStickerPack.stickerItems.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "该表情包暂无内容",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+
+                            page == 1 -> {
+                                // 我的表情
+                                if (uiState.expressions.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "暂无收藏的表情\n长按聊天中的图片添加到表情收藏",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                } else {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(4),
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(uiState.expressions) { expression ->
+                                            AsyncImage(
+                                                model = expression.getFullUrl(),
+                                                contentDescription = "表情",
+                                                modifier = Modifier
+                                                    .size(80.dp)
+                                                    .clickable {
+                                                        onExpressionClick(expression)  // 传递完整的Expression对象
+                                                        if (autoDismissAfterPick) {
+                                                            onDismiss()
+                                                        }
+                                                    },
+                                                contentScale = ContentScale.Fit
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(4),
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(selectedStickerPack.stickerItems) { stickerItem ->
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .clickable {
-                                                onStickerClick(stickerItem)
-                                                if (autoDismissAfterPick) {
-                                                    onDismiss()
+
+                            else -> {
+                                // 表情包内容
+                                val selectedStickerPack = uiState.stickerPacks.getOrNull(page - 2)
+                                if (selectedStickerPack != null) {
+                                    if (selectedStickerPack.stickerItems.isEmpty()) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "该表情包暂无内容",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    } else {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Fixed(4),
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentPadding = PaddingValues(8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            items(selectedStickerPack.stickerItems) { stickerItem ->
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    modifier = Modifier
+                                                        .clickable {
+                                                            onStickerClick(stickerItem)
+                                                            if (autoDismissAfterPick) {
+                                                                onDismiss()
+                                                            }
+                                                        }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = ImageUtils.createStickerImageRequest(
+                                                            context = context,
+                                                            url = stickerItem.getFullUrl()
+                                                        ),
+                                                        contentDescription = stickerItem.name,
+                                                        modifier = Modifier
+                                                            .size(64.dp),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                                    Text(
+                                                        text = stickerItem.name,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 }
                                             }
+                                        }
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        AsyncImage(
-                                            model = ImageUtils.createStickerImageRequest(
-                                                context = context,
-                                                url = stickerItem.getFullUrl()
-                                            ),
-                                            contentDescription = stickerItem.name,
-                                            modifier = Modifier
-                                                .size(64.dp),
-                                            contentScale = ContentScale.Fit
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        
                                         Text(
-                                            text = stickerItem.name,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center
+                                            text = "表情包加载失败",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "表情包加载失败",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }

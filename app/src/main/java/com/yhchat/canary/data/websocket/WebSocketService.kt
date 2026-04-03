@@ -987,8 +987,8 @@ class WebSocketService @Inject constructor(
                                 putExtra("chatId", targetChatId)
                                 putExtra("chatType", targetChatType)
                                 putExtra("chatName", conversationTitle)
-                                setAction("what.todo.todo") //TODO 这个不填会报错
-//                                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
+                                action = "com.yhchat.canary.action.OPEN_CHAT_SHORTCUT_$targetChatId"
+                                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                             }
                         )
                 if (conversationAvatarBitmap != null)
@@ -999,25 +999,27 @@ class WebSocketService @Inject constructor(
                 notificationBuilder.setShortcutId(conversationShortcutId)
 
                 // 通知气泡（悬浮窗）
+                val bubbleIntent = Intent(context, ChatActivity::class.java).apply {
+                    putExtra("chatId", targetChatId)
+                    putExtra("chatType", targetChatType)
+                    putExtra("chatName", conversationTitle)
+                    action = "com.yhchat.canary.action.OPEN_CHAT_BUBBLE_$targetChatId"
+                    flags = Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                }
+                val bubbleHeight = (context.resources.displayMetrics.density * 640).toInt()
                 val notificationBubbleMetadata = NotificationCompat.BubbleMetadata.Builder(
                     PendingIntent.getActivity(
                         context,
-                        notificationId,  // Launch BubbleActivity as the expanded bubble. //TODO 这个填什么好呢
-                        Intent(context, ChatActivity::class.java).apply {
-                            putExtra("chatId", targetChatId)
-                            putExtra("chatType", targetChatType)
-                            putExtra("chatName", conversationTitle)
-//                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP //TODO 这个要填吗
-//                            setAction("what.todo.todo") //TODO 这个要填吗
-                        },
-                        PendingIntent.FLAG_MUTABLE /*0x4000000*/
+                        notificationId,
+                        bubbleIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     ),
                     if (conversationAvatarBitmap != null) {
                         IconCompat.createWithAdaptiveBitmap(conversationAvatarBitmap)
                     } else {
                         IconCompat.createWithResource(context, R.mipmap.ic_launcher)
                     }
-                ).setDesiredHeight(Int.MAX_VALUE/*TODO*/).build()
+                ).setDesiredHeight(bubbleHeight).build()
                 notificationBuilder.setBubbleMetadata(notificationBubbleMetadata)
             }
             
@@ -1101,16 +1103,28 @@ class WebSocketService @Inject constructor(
      */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 "聊天消息",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "接收新的聊天消息通知"
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setAllowBubbles(true)
+                }
             }
-            
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+
+            // 兼容已存在渠道：确保气泡开关也被应用
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID)?.let { existing ->
+                    if (!existing.canBubble()) {
+                        existing.setAllowBubbles(true)
+                        notificationManager.createNotificationChannel(existing)
+                    }
+                }
+            }
         }
     }
     

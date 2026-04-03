@@ -222,6 +222,38 @@ fun ChatInputBar(
     val currentLongPressSendMarkdownSeconds by rememberUpdatedState(longPressSendMarkdownSeconds)
 
     Column {
+        // 表情选择器（显示在输入框上方，贴输入区而不是贴屏幕底部）
+        if (showExpressionPicker && onExpressionClick != null) {
+            ExpressionPicker(
+                onExpressionClick = { expression ->
+                    onExpressionClick.invoke(expression)
+                    showExpressionPicker = false
+                },
+                onStickerClick = { stickerItem ->
+                    onStickerClick?.invoke(stickerItem)
+                    showExpressionPicker = false
+                },
+                onDefaultExpressionClick = { expressionName ->
+                    onTextChange(text + expressionName)
+                },
+                onDismiss = { showExpressionPicker = false },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+
+        // 指令选择器（显示在输入框上方）
+        if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null)) {
+            InstructionPicker(
+                groupId = groupId,
+                botId = botId,
+                onInstructionClick = { instruction ->
+                    onInstructionClick.invoke(instruction)
+                    showInstructionPicker = false
+                },
+                onDismiss = { showInstructionPicker = false }
+            )
+        }
+
         // 主输入栏容器
         Column(
             modifier = modifier.fillMaxWidth()
@@ -669,38 +701,7 @@ fun ChatInputBar(
                 selectedMessageType = selectedMessageType
             )
         }  // 关闭主输入栏容器Column
-        
-        // 表情选择器
-        if (showExpressionPicker && onExpressionClick != null) {
-            ExpressionPicker(
-                onExpressionClick = { expression ->
-                    onExpressionClick?.invoke(expression)
-                    showExpressionPicker = false
-                },
-                onStickerClick = { stickerItem ->
-                    onStickerClick?.invoke(stickerItem)
-                    showExpressionPicker = false
-                },
-                onDefaultExpressionClick = { expressionName ->
-                    onTextChange(text + expressionName)
-                },
-                onDismiss = { showExpressionPicker = false }
-            )
-        }
-        
-        // 指令选择器（在Surface外面）
-        if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null)) {
-            InstructionPicker(
-                groupId = groupId,
-                botId = botId,
-                onInstructionClick = { instruction ->
-                    onInstructionClick?.invoke(instruction)
-                    showInstructionPicker = false
-                },
-                onDismiss = { showInstructionPicker = false }
-            )
-        }
-        
+
         // 语音转文字选择对话框
         if (showVoiceToTextDialog && pendingVoiceFile != null) {
             VoiceToTextChoiceDialog(

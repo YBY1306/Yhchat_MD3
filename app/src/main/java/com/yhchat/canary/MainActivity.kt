@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -24,6 +25,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
@@ -55,6 +57,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.utils.ChatAddLinkHandler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -227,8 +230,13 @@ class MainActivity : BaseActivity() {
             }
             else -> {
                 // 主界面，包含底部导航栏和HorizontalPager
-                val coroutineScope = rememberCoroutineScope()
                 val pagerState = rememberPagerState { visibleNavItems.size }
+                var isPageFading by remember { mutableStateOf(false) }
+                val pagerAlpha by animateFloatAsState(
+                    targetValue = if (isPageFading) 0f else 1f,
+                    animationSpec = tween(durationMillis = 140),
+                    label = "mainPagerAlpha"
+                )
                 
                 // 滚动感知导航栏状态
                 val navigationState = rememberScrollAwareNavigationState()
@@ -240,11 +248,19 @@ class MainActivity : BaseActivity() {
                     currentScreen
                 }
 
+                suspend fun switchPageWithFade(targetIndex: Int) {
+                    if (targetIndex !in visibleNavItems.indices || targetIndex == pagerState.currentPage) return
+                    isPageFading = true
+                    delay(90)
+                    pagerState.scrollToPage(targetIndex)
+                    isPageFading = false
+                }
+
                 // 页面同步逻辑
                 LaunchedEffect(currentScreen, visibleNavItems) {
                     val targetIndex = visibleNavItems.indexOfFirst { it.id == currentScreen }
                     if (targetIndex >= 0 && targetIndex != pagerState.currentPage && !pagerState.isScrollInProgress) {
-                        pagerState.animateScrollToPage(targetIndex)
+                        switchPageWithFade(targetIndex)
                     }
                 }
 
@@ -276,20 +292,6 @@ class MainActivity : BaseActivity() {
                             currentScreen = currentPageItem,
                             visibleItems = visibleNavItems,
                             onScreenChange = { screen ->
-                                val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
-                                if (targetIndex >= 0) {
-                                    coroutineScope.launch {
-                                        val currentPage = pagerState.currentPage
-                                        val distance = kotlin.math.abs(targetIndex - currentPage)
-                                        if (distance == 1) {
-                                            // 相邻页面，使用动画滑动
-                                            pagerState.animateScrollToPage(targetIndex)
-                                        } else {
-                                            // 跨页跳转，直接跳转
-                                            pagerState.scrollToPage(targetIndex)
-                                        }
-                                    }
-                                }
                                 currentScreen = screen
                             },
                             isVisible = true
@@ -303,7 +305,9 @@ class MainActivity : BaseActivity() {
                         if (visibleNavItems.isNotEmpty()) {
                             HorizontalPager(
                                 state = pagerState,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(pagerAlpha),
                                 userScrollEnabled = false
                             ) { page ->
                                     val navItem = visibleNavItems[page]
@@ -767,7 +771,9 @@ class MainActivity : BaseActivity() {
                             if (visibleNavItems.isNotEmpty()) {
                                 HorizontalPager(
                                     state = pagerState,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .alpha(pagerAlpha),
                                     userScrollEnabled = false
                                 ) { page ->
                                         val navItem = visibleNavItems[page]
@@ -855,20 +861,6 @@ class MainActivity : BaseActivity() {
                             currentScreen = currentPageItem,
                             visibleItems = visibleNavItems,
                             onScreenChange = { screen ->
-                                val targetIndex = visibleNavItems.indexOfFirst { it.id == screen }
-                                if (targetIndex >= 0) {
-                                    coroutineScope.launch {
-                                        val currentPage = pagerState.currentPage
-                                        val distance = kotlin.math.abs(targetIndex - currentPage)
-                                        if (distance == 1) {
-                                            // 相邻页面，使用动画滑动
-                                            pagerState.animateScrollToPage(targetIndex)
-                                        } else {
-                                            // 跨页跳转，直接跳转
-                                            pagerState.scrollToPage(targetIndex)
-                                        }
-                                    }
-                                }
                                 currentScreen = screen
                             },
                             isVisible = navigationState.isVisible,

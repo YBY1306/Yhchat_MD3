@@ -63,6 +63,10 @@ private fun AnnotatedString.Builder.buildTableMarkdownAnnotatedString(
     node: ASTNode,
     settings: TableAnnotatorSettings,
 ) {
+    if (node.children.isEmpty()) {
+        append(node.getUnescapedTextInNode(content).normalizeTableCellText())
+        return
+    }
     buildTableMarkdownAnnotatedString(
         content = content,
         children = node.children,
@@ -86,6 +90,14 @@ private fun AnnotatedString.Builder.buildTableMarkdownAnnotatedString(
         when (child.type) {
             MarkdownElementTypes.PARAGRAPH -> {
                 buildTableMarkdownAnnotatedString(content, child, settings)
+            }
+
+            GFMTokenTypes.CELL -> {
+                if (child.children.isEmpty()) {
+                    append(child.getUnescapedTextInNode(content).normalizeTableCellText())
+                } else {
+                    buildTableMarkdownAnnotatedString(content, child, settings)
+                }
             }
 
             MarkdownElementTypes.EMPH -> {
@@ -257,6 +269,13 @@ private fun ASTNode.getUnescapedTextInNode(allFileText: CharSequence): String {
         processEntities = false,
         processEscapes = true
     )
+}
+
+private fun String.normalizeTableCellText(): String {
+    return trim()
+        .removePrefix("|")
+        .removeSuffix("|")
+        .trim()
 }
 
 private fun replaceEntities(

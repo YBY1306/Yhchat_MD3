@@ -168,7 +168,6 @@ fun MarkdownText(
                 is MarkdownSegment.Table -> {
                     MarkdownTableWithImages(
                         tableMarkdown = segment.content,
-                        richTextStyle = richTextStyle,
                         imageReferer = imageReferer,
                         onImageClick = { url ->
                             onImageClick?.invoke(url) ?: run {
@@ -347,22 +346,15 @@ private fun CodeBlockComponent(
 private fun parseSimpleMarkdown(text: String, baseColor: Color): androidx.compose.ui.text.AnnotatedString {
     return buildAnnotatedString {
         var currentIndex = 0
-        val patterns = listOf(
-            Regex("\\*\\*\\*(.+?)\\*\\*\\*") to SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic),
-            Regex("\\*\\*(.+?)\\*\\*") to SpanStyle(fontWeight = FontWeight.Bold),
-            Regex("\\*(.+?)\\*") to SpanStyle(fontStyle = FontStyle.Italic),
-            Regex("~~(.+?)~~") to SpanStyle(textDecoration = TextDecoration.LineThrough),
-            Regex("`(.+?)`") to SpanStyle(fontFamily = FontFamily.Monospace, background = Color.Gray.copy(alpha = 0.2f))
-        )
-        
+
         while (currentIndex < text.length) {
             var matched = false
             
-            for ((pattern, style) in patterns) {
+            for ((pattern, styleFactory) in simpleMarkdownPatterns) {
                 val match = pattern.find(text, currentIndex)
                 if (match != null && match.range.first == currentIndex) {
                     // 添加匹配的文本并应用样式
-                    withStyle(style.copy(color = baseColor)) {
+                    withStyle(styleFactory(baseColor)) {
                         append(match.groupValues[1])
                     }
                     currentIndex = match.range.last + 1
@@ -385,19 +377,17 @@ private fun parseSimpleMarkdown(text: String, baseColor: Color): androidx.compos
 @Composable
 private fun MarkdownTableWithImages(
     tableMarkdown: String,
-    richTextStyle: RichTextStyle,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
     onLinkClicked: (String) -> Unit
 ) {
     val tableNode = remember(tableMarkdown) { parseMarkdownTableNode(tableMarkdown) } ?: return
     val referenceLinks = remember(tableMarkdown, tableNode) { buildReferenceLinkMap(tableNode, tableMarkdown) }
+    val parsedTable = remember(tableMarkdown) { parseMarkdownTableContent(tableMarkdown) } ?: return
     val tableCellWidth = 160.dp
     val tableCellPadding = 16.dp
     val tableCornerSize = 8.dp
-    val columnCount = remember(tableNode) {
-        tableNode.children.firstOrNull { it.type == HEADER }?.children?.count { it.type == CELL } ?: 0
-    }
+    val columnCount = parsedTable.columnCount
     if (columnCount <= 0) return
 
     val tableWidth = columnCount * tableCellWidth
@@ -420,35 +410,30 @@ private fun MarkdownTableWithImages(
                 .fillMaxWidth()
                 .widthIn(min = tableWidth)
         ) {
-            tableNode.children.forEach { child ->
-                when (child.type) {
-                    HEADER -> MarkdownAstTableRow(
-                        tableMarkdown = tableMarkdown,
-                        rowNode = child,
-                        tableWidth = tableWidth,
-                        isHeader = true,
-                        tableCellPadding = tableCellPadding,
-                        referenceLinks = referenceLinks,
-                        richTextStyle = richTextStyle,
-                        imageReferer = imageReferer,
-                        onImageClick = onImageClick,
-                        onLinkClicked = onLinkClicked
-                    )
-
-                    ROW -> MarkdownAstTableRow(
-                        tableMarkdown = tableMarkdown,
-                        rowNode = child,
-                        tableWidth = tableWidth,
-                        isHeader = false,
-                        tableCellPadding = tableCellPadding,
-                        referenceLinks = referenceLinks,
-                        richTextStyle = richTextStyle,
-                        imageReferer = imageReferer,
-                        onImageClick = onImageClick,
-                        onLinkClicked = onLinkClicked
-                    )
-
-                    TABLE_SEPARATOR -> MarkdownTableDivider()
+            MarkdownParsedTableRow(
+                rowCells = parsedTable.headerCells,
+                columnCount = columnCount,
+                isHeader = true,
+                tableCellPadding = tableCellPadding,
+                referenceLinks = referenceLinks,
+                imageReferer = imageReferer,
+                onImageClick = onImageClick,
+                onLinkClicked = onLinkClicked
+            )
+            MarkdownTableDivider()
+            parsedTable.bodyRows.forEachIndexed { index, rowCells ->
+                MarkdownParsedTableRow(
+                    rowCells = rowCells,
+                    columnCount = columnCount,
+                    isHeader = false,
+                    tableCellPadding = tableCellPadding,
+                    referenceLinks = referenceLinks,
+                    imageReferer = imageReferer,
+                    onImageClick = onImageClick,
+                    onLinkClicked = onLinkClicked
+                )
+                if (index != parsedTable.bodyRows.lastIndex) {
+                    MarkdownTableDivider()
                 }
             }
         }
@@ -456,14 +441,12 @@ private fun MarkdownTableWithImages(
 }
 
 @Composable
-private fun MarkdownAstTableRow(
-    tableMarkdown: String,
-    rowNode: ASTNode,
-    tableWidth: Dp,
+private fun MarkdownParsedTableRow(
+    rowCells: List<String>,
+    columnCount: Int,
     isHeader: Boolean,
     tableCellPadding: Dp,
     referenceLinks: Map<String, String?>,
-    richTextStyle: RichTextStyle,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
     onLinkClicked: (String) -> Unit
@@ -477,45 +460,42 @@ private fun MarkdownAstTableRow(
                 else Color.Transparent
             )
     ) {
-        rowNode.children
-            .filter { it.type == CELL }
-            .forEach { cell ->
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(tableCellPadding),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    RenderMarkdownTableCell(
-                        tableMarkdown = tableMarkdown,
-                        cellNode = cell,
-                        referenceLinks = referenceLinks,
-                        richTextStyle = richTextStyle,
-                        imageReferer = imageReferer,
-                        onImageClick = onImageClick,
-                        onLinkClicked = onLinkClicked,
-                        isHeader = isHeader
-                    )
-                }
+        repeat(columnCount) { index ->
+            val cellContent = rowCells.getOrElse(index) { "" }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(tableCellPadding),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                RenderMarkdownTableCell(
+                    cellContent = cellContent,
+                    referenceLinks = referenceLinks,
+                    imageReferer = imageReferer,
+                    onImageClick = onImageClick,
+                    onLinkClicked = onLinkClicked,
+                    isHeader = isHeader
+                )
             }
+        }
     }
 }
 
 @Composable
 private fun RenderMarkdownTableCell(
-    tableMarkdown: String,
-    cellNode: ASTNode,
+    cellContent: String,
     referenceLinks: Map<String, String?>,
-    richTextStyle: RichTextStyle,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
     onLinkClicked: (String) -> Unit,
     isHeader: Boolean
 ) {
-    val cellContent = remember(tableMarkdown, cellNode) {
-        tableMarkdown.substring(cellNode.startOffset, cellNode.endOffset).trim()
-    }
     if (cellContent.isBlank()) return
+    val rawCellText = remember(cellContent) {
+        cellContent
+            .trim()
+            .trim()
+    }
 
     val cellSegments = remember(cellContent) {
         buildList {
@@ -547,9 +527,8 @@ private fun RenderMarkdownTableCell(
         fontFamily = FontFamily.Monospace,
         background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     )
-    val annotatedText = remember(tableMarkdown, cellNode, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
-        tableMarkdown.buildTableMarkdownAnnotatedString(
-            textNode = cellNode,
+    val annotatedText = remember(cellContent, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
+        cellContent.buildTableMarkdownAnnotatedString(
             style = baseStyle,
             settings = TableAnnotatorSettings(
                 linkTextSpanStyle = linkTextStyle,
@@ -571,6 +550,12 @@ private fun RenderMarkdownTableCell(
             style = baseStyle,
             modifier = Modifier.fillMaxWidth()
         )
+    } else if (rawCellText.isNotBlank() && hasImage.not()) {
+        BasicText(
+            text = parseSimpleMarkdown(rawCellText, MaterialTheme.colorScheme.onSurface),
+            style = baseStyle,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 
     cellSegments.forEach { segment ->
@@ -585,7 +570,7 @@ private fun RenderMarkdownTableCell(
             }
 
             is MarkdownSegment.Text -> {
-                if (hasImage.not() && annotatedText.text.isBlank() && segment.content.isNotBlank()) {
+                if (hasImage.not() && annotatedText.text.isBlank() && rawCellText.isBlank() && segment.content.isNotBlank()) {
                     BasicText(
                         text = parseSimpleMarkdown(segment.content, MaterialTheme.colorScheme.onSurface),
                         style = baseStyle,
@@ -792,7 +777,95 @@ private fun parseMarkdownTableNode(tableMarkdown: String): ASTNode? {
     return rootNode.children.firstOrNull { it.type == TABLE }
 }
 
+private data class ParsedMarkdownTable(
+    val headerCells: List<String>,
+    val bodyRows: List<List<String>>
+) {
+    val columnCount: Int
+        get() = maxOf(
+            headerCells.size,
+            bodyRows.maxOfOrNull { it.size } ?: 0
+        )
+}
+
+private fun parseMarkdownTableContent(tableMarkdown: String): ParsedMarkdownTable? {
+    val lines = tableMarkdown
+        .lines()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+    if (lines.size < 2) return null
+
+    val headerCells = splitMarkdownTableRow(lines.first())
+    if (headerCells.isEmpty()) return null
+
+    val bodyRows = lines
+        .drop(2)
+        .map { splitMarkdownTableRow(it) }
+        .filter { it.isNotEmpty() }
+
+    return ParsedMarkdownTable(
+        headerCells = headerCells,
+        bodyRows = bodyRows
+    )
+}
+
+private fun splitMarkdownTableRow(row: String): List<String> {
+    val normalized = row.trim().removePrefix("|").removeSuffix("|")
+    if (normalized.isBlank()) return emptyList()
+
+    val cells = mutableListOf<String>()
+    val current = StringBuilder()
+    var escaped = false
+    var inCodeSpan = false
+
+    normalized.forEach { ch ->
+        when {
+            escaped -> {
+                current.append(ch)
+                escaped = false
+            }
+
+            ch == '\\' -> {
+                escaped = true
+            }
+
+            ch == '`' -> {
+                inCodeSpan = !inCodeSpan
+                current.append(ch)
+            }
+
+            ch == '|' && !inCodeSpan -> {
+                cells += current.toString().trim()
+                current.clear()
+            }
+
+            else -> current.append(ch)
+        }
+    }
+
+    cells += current.toString().trim()
+    return cells
+}
+
 private val markdownTableParser = MarkdownParser(GFMFlavourDescriptor())
+
+private val simpleMarkdownPatterns = listOf<Pair<Regex, (Color) -> SpanStyle>>(
+    Regex("\\*\\*\\*(.+?)\\*\\*\\*") to { color ->
+        SpanStyle(color = color, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)
+    },
+    Regex("\\*\\*(.+?)\\*\\*") to { color ->
+        SpanStyle(color = color, fontWeight = FontWeight.Bold)
+    },
+    Regex("\\*(.+?)\\*") to { color ->
+        SpanStyle(color = color, fontStyle = FontStyle.Italic)
+    },
+    Regex("~~(.+?)~~") to { color ->
+        SpanStyle(color = color, textDecoration = TextDecoration.LineThrough)
+    },
+    Regex("`(.+?)`") to { _ ->
+        SpanStyle(fontFamily = FontFamily.Monospace, background = Color.Gray.copy(alpha = 0.2f))
+    }
+)
 
 private val htmlTableStartRegex = Regex("<table\\b[^>]*>", setOf(RegexOption.IGNORE_CASE))
 private val htmlTableEndRegex = Regex("</table>", setOf(RegexOption.IGNORE_CASE))

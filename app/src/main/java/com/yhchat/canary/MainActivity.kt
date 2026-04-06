@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.key
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -150,26 +151,26 @@ class MainActivity : BaseActivity() {
         // 本地状态
         var token by remember { mutableStateOf(savedToken ?: "") }
         var userId by remember { mutableStateOf(savedUserId ?: "") }
-        var currentScreen by remember { mutableStateOf("conversation") }
-        var currentChatId by remember { mutableStateOf("") }
-        var currentChatType by remember { mutableStateOf(0) }
-        var currentChatName by remember { mutableStateOf("") }
-        var pendingLoginToken by remember { mutableStateOf<String?>(null) }
+        var currentScreen by rememberSaveable { mutableStateOf("conversation") }
+        var currentChatId by rememberSaveable { mutableStateOf("") }
+        var currentChatType by rememberSaveable { mutableStateOf(0) }
+        var currentChatName by rememberSaveable { mutableStateOf("") }
+        var pendingLoginToken by rememberSaveable { mutableStateOf<String?>(null) }
         
         // 大屏分屏模式：当前选中的聊天（右侧面板）
-        var splitChatId by remember { mutableStateOf("") }
-        var splitChatType by remember { mutableStateOf(0) }
-        var splitChatName by remember { mutableStateOf("") }
+        var splitChatId by rememberSaveable { mutableStateOf("") }
+        var splitChatType by rememberSaveable { mutableStateOf(0) }
+        var splitChatName by rememberSaveable { mutableStateOf("") }
         
         // 大屏社区分屏状态
-        var communityPanelType by remember { mutableStateOf("") } // "", "board", "post", "myposts", "recommend", "collect", "blocked"
-        var communityBoardId by remember { mutableStateOf(0) }
-        var communityBoardName by remember { mutableStateOf("") }
-        var communityPostId by remember { mutableStateOf(0) }
-        var communityPostTitle by remember { mutableStateOf("") }
-        var communityPrevType by remember { mutableStateOf("") }
-        var communityPrevBoardId by remember { mutableStateOf(0) }
-        var communityPrevBoardName by remember { mutableStateOf("") }
+        var communityPanelType by rememberSaveable { mutableStateOf("") } // "", "board", "post", "myposts", "recommend", "collect", "blocked"
+        var communityBoardId by rememberSaveable { mutableStateOf(0) }
+        var communityBoardName by rememberSaveable { mutableStateOf("") }
+        var communityPostId by rememberSaveable { mutableStateOf(0) }
+        var communityPostTitle by rememberSaveable { mutableStateOf("") }
+        var communityPrevType by rememberSaveable { mutableStateOf("") }
+        var communityPrevBoardId by rememberSaveable { mutableStateOf(0) }
+        var communityPrevBoardName by rememberSaveable { mutableStateOf("") }
         
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()

@@ -10,7 +10,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +34,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +44,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -108,13 +108,13 @@ fun ImageViewer(
     val zoomedPages = remember { mutableStateMapOf<Int, Boolean>() }
     val gestureLockedPages = remember { mutableStateMapOf<Int, Boolean>() }
     var controlsVisible by remember { mutableStateOf(true) }
-    val currentImageUrl by remember {
+    val currentImageUrl by remember(sanitizedUrls, pagerState) {
         derivedStateOf { sanitizedUrls[pagerState.currentPage.coerceIn(0, sanitizedUrls.lastIndex)] }
     }
-    val isCurrentPageZoomed by remember {
+    val isCurrentPageZoomed by remember(pagerState, zoomedPages) {
         derivedStateOf { zoomedPages[pagerState.currentPage] == true }
     }
-    val isCurrentPageGestureLocked by remember {
+    val isCurrentPageGestureLocked by remember(pagerState, gestureLockedPages) {
         derivedStateOf { gestureLockedPages[pagerState.currentPage] == true }
     }
 
@@ -168,17 +168,12 @@ fun ImageViewer(
                         )
                     }
 
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                        shape = RoundedCornerShape(999.dp)
-                    ) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${sanitizedUrls.size}",
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
+                    Text(
+                        text = "${pagerState.currentPage + 1} / ${sanitizedUrls.size}",
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelLarge
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledIconButton(
@@ -200,26 +195,6 @@ fun ImageViewer(
                             )
                         }
                     }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = controlsVisible,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-            ) {
-                Surface(
-                    modifier = Modifier.padding(bottom = 16.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    shape = RoundedCornerShape(999.dp)
-                ) {
-                    Text(
-                        text = if (sanitizedUrls.size > 1) "双指缩放，左右滑动切换图片" else "双指或双击缩放，单击切换工具栏",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.labelMedium
-                    )
                 }
             }
         }
@@ -254,10 +229,11 @@ fun AdvancedImageViewer(
 
 @Composable
 private fun viewerButtonColors() = IconButtonDefaults.filledIconButtonColors(
-    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-    contentColor = MaterialTheme.colorScheme.onSurface
+    containerColor = Color.Transparent,
+    contentColor = Color.White
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ZoomableImagePage(
     imageUrl: String,
@@ -273,14 +249,46 @@ private fun ZoomableImagePage(
     var scale by remember(imageUrl) { mutableFloatStateOf(1f) }
     var offsetX by remember(imageUrl) { mutableFloatStateOf(0f) }
     var offsetY by remember(imageUrl) { mutableFloatStateOf(0f) }
-    val painter = rememberAsyncImagePainter(
-        model = createViewerImageRequest(
+    var containerSize by remember(imageUrl) { mutableStateOf(Size.Zero) }
+    val imageRequest = remember(context, imageUrl, requestWidth, requestHeight) {
+        createViewerImageRequest(
             context = context,
             imageUrl = imageUrl,
             width = requestWidth,
             height = requestHeight
         )
+    }
+    val painter = rememberAsyncImagePainter(
+        model = imageRequest
     )
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+        val previousScale = scale
+        val newScale = (scale * zoomChange).coerceIn(1f, 5f)
+        if (newScale <= 1f) {
+            scale = 1f
+            offsetX = 0f
+            offsetY = 0f
+            return@rememberTransformableState
+        }
+
+        val boundedOffset = boundImageOffset(
+            containerSize = containerSize,
+            scale = newScale,
+            desiredOffset = Offset(
+                x = offsetX + panChange.x,
+                y = offsetY + panChange.y
+            )
+        )
+
+        scale = newScale
+        if (previousScale <= 1f && newScale > 1f) {
+            offsetX = boundedOffset.x
+            offsetY = boundedOffset.y
+        } else {
+            offsetX = boundedOffset.x
+            offsetY = boundedOffset.y
+        }
+    }
 
     LaunchedEffect(scale) {
         onZoomStateChange(scale > 1.02f)
@@ -316,21 +324,23 @@ private fun ZoomableImagePage(
 
             else -> {
                 AsyncImage(
-                    model = createViewerImageRequest(
-                        context = context,
-                        imageUrl = imageUrl,
-                        width = requestWidth,
-                        height = requestHeight
-                    ),
+                    model = imageRequest,
                     contentDescription = "预览图片",
                     modifier = Modifier
                         .fillMaxSize()
+                        .onSizeChanged {
+                            containerSize = Size(it.width.toFloat(), it.height.toFloat())
+                        }
                         .clip(RoundedCornerShape(0.dp))
                         .graphicsLayer(
                             scaleX = scale,
                             scaleY = scale,
                             translationX = offsetX,
                             translationY = offsetY
+                        )
+                        .transformable(
+                            state = transformableState,
+                            canPan = { scale > 1.02f }
                         )
                         .pointerInput(imageUrl) {
                             awaitEachGesture {
@@ -352,54 +362,30 @@ private fun ZoomableImagePage(
                             }
                         }
                         .pointerInput(imageUrl) {
-                            detectTransformGestures { centroid, pan, zoom, _ ->
-                                val previousScale = scale
-                                val newScale = (scale * zoom).coerceIn(1f, 5f)
-                                onGestureLockChange(true)
-
-                                if (newScale == 1f) {
-                                    scale = 1f
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                    onGestureLockChange(false)
-                                    return@detectTransformGestures
-                                }
-
-                                val containerSize = Size(size.width.toFloat(), size.height.toFloat())
-                                val centroidRelativeToCenter = Offset(
-                                    x = centroid.x - containerSize.width / 2f,
-                                    y = centroid.y - containerSize.height / 2f
-                                )
-
-                                val zoomOffset = (centroidRelativeToCenter + Offset(offsetX, offsetY)) *
-                                    (newScale / previousScale) - centroidRelativeToCenter
-
-                                val boundedOffset = boundImageOffset(
-                                    containerSize = containerSize,
-                                    scale = newScale,
-                                    desiredOffset = Offset(
-                                        x = zoomOffset.x + pan.x,
-                                        y = zoomOffset.y + pan.y
-                                    )
-                                )
-
-                                scale = newScale
-                                offsetX = boundedOffset.x
-                                offsetY = boundedOffset.y
-                            }
-                        }
-                        .pointerInput(imageUrl) {
                             detectTapGestures(
-                                onDoubleTap = {
+                                onDoubleTap = { tapOffset ->
                                     if (scale > 1f) {
                                         scale = 1f
                                         offsetX = 0f
                                         offsetY = 0f
                                         onGestureLockChange(false)
                                     } else {
-                                        scale = 2.2f
-                                        offsetX = 0f
-                                        offsetY = 0f
+                                        val targetScale = 2.5f
+                                        val centeredTap = Offset(
+                                            x = tapOffset.x - containerSize.width / 2f,
+                                            y = tapOffset.y - containerSize.height / 2f
+                                        )
+                                        val targetOffset = boundImageOffset(
+                                            containerSize = containerSize,
+                                            scale = targetScale,
+                                            desiredOffset = Offset(
+                                                x = -centeredTap.x * (targetScale - 1f),
+                                                y = -centeredTap.y * (targetScale - 1f)
+                                            )
+                                        )
+                                        scale = targetScale
+                                        offsetX = targetOffset.x
+                                        offsetY = targetOffset.y
                                         onGestureLockChange(true)
                                     }
                                 },

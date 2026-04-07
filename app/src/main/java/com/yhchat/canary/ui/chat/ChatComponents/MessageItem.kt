@@ -66,6 +66,7 @@ import coil.compose.AsyncImage
 
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -486,11 +487,9 @@ fun SenderNameAndTags(
     groupOwnerId: String? = null,
     groupAdminIds: List<String> = emptyList()
 ) {
-    val context = LocalContext.current
-    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
-    val showOwnerBadge = remember { layoutPrefs.getBoolean("chat_show_owner_badge", true) }
-    val showAdminBadge = remember { layoutPrefs.getBoolean("chat_show_admin_badge", true) }
-    val showMemberTags = remember { layoutPrefs.getBoolean("chat_show_member_tags", true) }
+    val showOwnerBadge by rememberBooleanPreference("layout_settings", "chat_show_owner_badge", true)
+    val showAdminBadge by rememberBooleanPreference("layout_settings", "chat_show_admin_badge", true)
+    val showMemberTags by rememberBooleanPreference("layout_settings", "chat_show_member_tags", true)
 
     val tags = message.sender.tag ?: emptyList()
     val hasMultipleTags = tags.size > 1

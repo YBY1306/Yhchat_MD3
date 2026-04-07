@@ -15,7 +15,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -35,76 +37,106 @@ object ImageUploadUtil {
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
+
+    private data class PreparedImageUpload(
+        val tempFile: File,
+        val mimeType: String,
+        val width: Int,
+        val height: Int,
+        val md5: String
+    )
     
     /**
-     * 压缩图片为WebP格式
-     * @param context 上下文
-     * @param imageUri 原始图片URI
-     * @param quality 压缩质量 (0-100)
-     * @return 压缩后的字节数组
+     * 压缩图片为WebP格式并落到临时文件，避免大字节数组常驻内存
      */
-    private suspend fun compressToWebP(
+    private suspend fun prepareCompressedWebP(
         context: Context,
         imageUri: Uri,
         quality: Int = 95
-    ): ByteArray = withContext(Dispatchers.IO) {
+    ): PreparedImageUpload = withContext(Dispatchers.IO) {
         Log.d(TAG, "🗜️ 开始压缩图片为WebP格式，质量: $quality%")
-        
-        // 读取原始图片
+
         val inputStream = context.contentResolver.openInputStream(imageUri)
             ?: throw Exception("无法读取图片")
-        
-        val originalBitmap = BitmapFactory.decodeStream(inputStream)
-        inputStream.close()
-        
+        val originalBitmap = inputStream.use { BitmapFactory.decodeStream(it) }
+
         if (originalBitmap == null) {
             throw Exception("无法解码图片")
         }
-        
+
         Log.d(TAG, "✅ 原始图片尺寸: ${originalBitmap.width}x${originalBitmap.height}")
-        
-        // 压缩为WebP格式
-        val outputStream = java.io.ByteArrayOutputStream()
-        val success = originalBitmap.compress(Bitmap.CompressFormat.WEBP, quality, outputStream)
-        
-        if (!success) {
+
+        val tempFile = File(
+            context.cacheDir,
+            "image_upload_${System.currentTimeMillis()}_${imageUri.hashCode()}.webp"
+        )
+        try {
+            val success = FileOutputStream(tempFile).use { outputStream ->
+                originalBitmap.compress(Bitmap.CompressFormat.WEBP, quality, outputStream)
+            }
+            if (!success) {
+                throw Exception("WebP压缩失败")
+            }
+
+            val md5 = calculateMD5(tempFile)
+            Log.d(TAG, "✅ WebP压缩完成，压缩后大小: ${tempFile.length()} bytes")
+
+            PreparedImageUpload(
+                tempFile = tempFile,
+                mimeType = "image/webp",
+                width = originalBitmap.width,
+                height = originalBitmap.height,
+                md5 = md5
+            )
+        } catch (e: Exception) {
+            tempFile.delete()
+            throw e
+        } finally {
             originalBitmap.recycle()
-            throw Exception("WebP压缩失败")
         }
-        
-        val compressedBytes = outputStream.toByteArray()
-        originalBitmap.recycle()
-        outputStream.close()
-        
-        Log.d(TAG, "✅ WebP压缩完成，压缩后大小: ${compressedBytes.size} bytes")
-        
-        compressedBytes
     }
 
     /**
-     * 读取原图字节数据
-     * @param context 上下文
-     * @param imageUri 原始图片URI
-     * @return 原图字节数组和MIME类型
+     * 以流式方式准备原图上传文件，避免整图 readBytes
      */
-    private suspend fun readOriginalImage(
+    private suspend fun prepareOriginalImage(
         context: Context,
         imageUri: Uri
-    ): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
+    ): PreparedImageUpload = withContext(Dispatchers.IO) {
         Log.d(TAG, "📖 开始读取原图")
-        
+
+        val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+        val extension = when (mimeType) {
+            "image/png" -> "png"
+            "image/gif" -> "gif"
+            "image/bmp" -> "bmp"
+            "image/webp" -> "webp"
+            else -> "jpg"
+        }
+        val tempFile = File(
+            context.cacheDir,
+            "image_upload_${System.currentTimeMillis()}_${imageUri.hashCode()}.$extension"
+        )
+
         val inputStream = context.contentResolver.openInputStream(imageUri)
             ?: throw Exception("无法读取图片")
-        
-        val imageBytes = inputStream.readBytes()
-        inputStream.close()
-        
-        // 获取原始MIME类型
-        val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
-        
-        Log.d(TAG, "✅ 原图读取完成，大小: ${imageBytes.size} bytes, MIME: $mimeType")
-        
-        Pair(imageBytes, mimeType)
+        try {
+            val (md5, totalBytes) = copyToTempFileAndCalculateMD5(inputStream, tempFile)
+            val (width, height) = decodeImageBounds(tempFile)
+
+            Log.d(TAG, "✅ 原图读取完成，大小: $totalBytes bytes, MIME: $mimeType")
+
+            PreparedImageUpload(
+                tempFile = tempFile,
+                mimeType = mimeType,
+                width = width,
+                height = height,
+                md5 = md5
+            )
+        } catch (e: Exception) {
+            tempFile.delete()
+            throw e
+        }
     }
 
     /**
@@ -120,6 +152,7 @@ object ImageUploadUtil {
         imageUri: Uri,
         uploadToken: String
     ): Result<QiniuUploadResponse> = withContext(Dispatchers.IO) {
+        var preparedImage: PreparedImageUpload? = null
         try {
             Log.d(TAG, "📤 ========== 开始上传图片 ==========")
             Log.d(TAG, "📤 图片URI: $imageUri")
@@ -132,23 +165,24 @@ object ImageUploadUtil {
             Log.d(TAG, "⚙️ 上传设置 - 原图上传: $uploadOriginal, WebP质量: $webpQuality")
             
             // 2. 根据设置决定是否压缩
-            val (imageBytes, mimeType) = if (uploadOriginal) {
+            preparedImage = if (uploadOriginal) {
                 // 上传原图
-                readOriginalImage(context, imageUri)
+                prepareOriginalImage(context, imageUri)
             } else {
                 // 压缩为WebP格式
-                val compressedBytes = compressToWebP(context, imageUri, webpQuality)
-                Pair(compressedBytes, "image/webp")
+                prepareCompressedWebP(context, imageUri, webpQuality)
             }
-            
-            Log.d(TAG, "✅ 图片处理完成，大小: ${imageBytes.size} bytes, MIME: $mimeType")
-            
-            // 3. 计算MD5 - 参考Python: md5.hexdigest()
-            val md5 = calculateMD5(imageBytes)
-            Log.d(TAG, "✅ MD5计算完成: $md5")
+            val prepared = preparedImage
+                ?: return@withContext Result.failure(Exception("图片预处理失败"))
+
+            Log.d(
+                TAG,
+                "✅ 图片处理完成，大小: ${prepared.tempFile.length()} bytes, MIME: ${prepared.mimeType}"
+            )
+            Log.d(TAG, "✅ MD5计算完成: ${prepared.md5}")
             
             // 4. 根据MIME类型确定文件扩展名
-            val extension = when (mimeType) {
+            val extension = when (prepared.mimeType) {
                 "image/webp" -> "webp"
                 "image/png" -> "png"
                 "image/gif" -> "gif"
@@ -158,18 +192,10 @@ object ImageUploadUtil {
             }
             
             // 文件key = MD5.扩展名
-            val fileKey = "$md5.$extension"
+            val fileKey = "${prepared.md5}.$extension"
             Log.d(TAG, "✅ 文件key: $fileKey")
-            Log.d(TAG, "✅ MIME类型: $mimeType")
-            
-            // 5. 获取图片尺寸
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
-            val width = options.outWidth
-            val height = options.outHeight
-            Log.d(TAG, "✅ 图片尺寸: ${width}x${height}")
+            Log.d(TAG, "✅ MIME类型: ${prepared.mimeType}")
+            Log.d(TAG, "✅ 图片尺寸: ${prepared.width}x${prepared.height}")
             
             // 6. 获取上传host - 参考Python实现
             // uhost = httpx.get(f"https://api.qiniu.com/v4/query?ak={utoken.split(':')[0]}&bucket={bucket}").json()["hosts"][0]["up"]["domains"][0]
@@ -181,29 +207,23 @@ object ImageUploadUtil {
                 .url(queryUrl)
                 .get()
                 .build()
-            
-            val queryResponse = client.newCall(queryRequest).execute()
-            val uploadHost = if (queryResponse.isSuccessful) {
-                val queryJson = JSONObject(queryResponse.body?.string() ?: "{}")
-                val hosts = queryJson.getJSONArray("hosts")
-                val host = hosts.getJSONObject(0)
-                val up = host.getJSONObject("up")
-                val domains = up.getJSONArray("domains")
-                domains.getString(0)
-            } else {
-                Log.w(TAG, "⚠️ 查询host失败，使用默认: upload-z2.qiniup.com")
-                "upload-z2.qiniup.com"
+
+            val uploadHost = client.newCall(queryRequest).execute().use { queryResponse ->
+                if (queryResponse.isSuccessful) {
+                    val queryJson = JSONObject(queryResponse.body?.string() ?: "{}")
+                    val hosts = queryJson.getJSONArray("hosts")
+                    val host = hosts.getJSONObject(0)
+                    val up = host.getJSONObject("up")
+                    val domains = up.getJSONArray("domains")
+                    domains.getString(0)
+                } else {
+                    Log.w(TAG, "⚠️ 查询host失败，使用默认: upload-z2.qiniup.com")
+                    "upload-z2.qiniup.com"
+                }
             }
             
             Log.d(TAG, "✅ 上传host: $uploadHost")
-            
-            // 7. 保存图片到临时文件
-            val cacheDir = context.cacheDir
-            val tempFile = File(cacheDir, fileKey)
-            FileOutputStream(tempFile).use { outputStream ->
-                outputStream.write(imageBytes)
-            }
-            Log.d(TAG, "✅ 临时文件: ${tempFile.absolutePath}")
+            Log.d(TAG, "✅ 临时文件: ${prepared.tempFile.absolutePath}")
             
             // 8. 构建multipart/form-data请求 - 参考Python实现
             // params = {
@@ -218,7 +238,7 @@ object ImageUploadUtil {
                 .addFormDataPart(
                     "file",
                     fileKey,
-                    tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                    prepared.tempFile.asRequestBody(prepared.mimeType.toMediaTypeOrNull())
                 )
                 .build()
             
@@ -233,69 +253,69 @@ object ImageUploadUtil {
                 .build()
             
             // 9. 执行上传
-            val response = client.newCall(request).execute()
-            
-            Log.d(TAG, "📥 七牛云响应码: ${response.code}")
-            
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string()
-                Log.d(TAG, "✅ 上传成功！响应: $responseBody")
-                
-                if (responseBody != null) {
-                    val json = JSONObject(responseBody)
-                    
-                    // 解析响应
-                    val uploadResponse = QiniuUploadResponse(
-                        key = json.getString("key"),
-                        hash = json.getString("hash"),
-                        fsize = json.getLong("fsize"),
-                        avinfo = if (json.has("avinfo")) {
-                            val avinfo = json.getJSONObject("avinfo")
-                            val videoInfo = if (avinfo.has("video")) {
-                                val video = avinfo.getJSONObject("video")
-                                com.yhchat.canary.data.api.QiniuVideoInfo(
-                                    width = video.optInt("width", width),
-                                    height = video.optInt("height", height)
+            client.newCall(request).execute().use { response ->
+                Log.d(TAG, "📥 七牛云响应码: ${response.code}")
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    Log.d(TAG, "✅ 上传成功！响应: $responseBody")
+
+                    if (responseBody != null) {
+                        val json = JSONObject(responseBody)
+
+                        // 解析响应
+                        val uploadResponse = QiniuUploadResponse(
+                            key = json.getString("key"),
+                            hash = json.getString("hash"),
+                            fsize = json.getLong("fsize"),
+                            avinfo = if (json.has("avinfo")) {
+                                val avinfo = json.getJSONObject("avinfo")
+                                val videoInfo = if (avinfo.has("video")) {
+                                    val video = avinfo.getJSONObject("video")
+                                    com.yhchat.canary.data.api.QiniuVideoInfo(
+                                        width = video.optInt("width", prepared.width),
+                                        height = video.optInt("height", prepared.height)
+                                    )
+                                } else null
+                                com.yhchat.canary.data.api.QiniuAvInfo(video = videoInfo)
+                            } else {
+                                com.yhchat.canary.data.api.QiniuAvInfo(
+                                    video = com.yhchat.canary.data.api.QiniuVideoInfo(
+                                        width = prepared.width,
+                                        height = prepared.height
+                                    )
                                 )
-                            } else null
-                            com.yhchat.canary.data.api.QiniuAvInfo(video = videoInfo)
-                        } else {
-                            // 如果没有avinfo，使用BitmapFactory获取的尺寸
-                            com.yhchat.canary.data.api.QiniuAvInfo(
-                                video = com.yhchat.canary.data.api.QiniuVideoInfo(
-                                    width = width,
-                                    height = height
-                                )
-                            )
-                        }
-                    )
-                    
-                    Log.d(TAG, "✅ ========== 上传完成 ==========")
-                    Log.d(TAG, "✅ key: ${uploadResponse.key}")
-                    Log.d(TAG, "✅ hash: ${uploadResponse.hash}")
-                    Log.d(TAG, "✅ size: ${uploadResponse.fsize}")
-                    
-                    // 清理临时文件
-                    tempFile.delete()
-                    
-                    Result.success(uploadResponse)
+                            }
+                        )
+
+                        Log.d(TAG, "✅ ========== 上传完成 ==========")
+                        Log.d(TAG, "✅ key: ${uploadResponse.key}")
+                        Log.d(TAG, "✅ hash: ${uploadResponse.hash}")
+                        Log.d(TAG, "✅ size: ${uploadResponse.fsize}")
+
+                        Result.success(uploadResponse)
+                    } else {
+                        Log.e(TAG, "❌ 响应体为空")
+                        Result.failure(Exception("上传失败：响应为空"))
+                    }
                 } else {
-                    Log.e(TAG, "❌ 响应体为空")
-                    tempFile.delete()
-                    Result.failure(Exception("上传失败：响应为空"))
+                    val errorBody = response.body?.string()
+                    Log.e(TAG, "❌ 上传失败: ${response.code}")
+                    Log.e(TAG, "❌ 错误详情: $errorBody")
+                    Result.failure(Exception("上传失败: ${response.code}"))
                 }
-            } else {
-                val errorBody = response.body?.string()
-                Log.e(TAG, "❌ 上传失败: ${response.code}")
-                Log.e(TAG, "❌ 错误详情: $errorBody")
-                tempFile.delete()
-                Result.failure(Exception("上传失败: ${response.code}"))
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 上传异常", e)
             e.printStackTrace()
             Result.failure(e)
+        } finally {
+            preparedImage?.tempFile?.let { file ->
+                if (file.exists() && !file.delete()) {
+                    Log.w(TAG, "⚠️ 临时图片删除失败: ${file.absolutePath}")
+                }
+            }
         }
     }
     
@@ -316,29 +336,30 @@ object ImageUploadUtil {
             
             Log.d(TAG, "🔑 发送请求到: ${request.url}")
             
-            val response = client.newCall(request).execute()
-            val responseCode = response.code
-            val responseBody = response.body?.string()
-            
-            Log.d(TAG, "🔑 响应码: $responseCode")
-            Log.d(TAG, "🔑 响应体: $responseBody")
-            
-            if (response.isSuccessful && responseBody != null) {
-                val jsonObject = JSONObject(responseBody)
-                val code = jsonObject.optInt("code", 0)
-                if (code == 1) {
-                    val dataObject = jsonObject.optJSONObject("data")
-                    val uploadToken = dataObject?.optString("token", null)
-                    Log.d(TAG, "🔑 获取到上传token: ${uploadToken?.take(20)}...")
-                    uploadToken ?: ""
+            client.newCall(request).execute().use { response ->
+                val responseCode = response.code
+                val responseBody = response.body?.string()
+
+                Log.d(TAG, "🔑 响应码: $responseCode")
+                Log.d(TAG, "🔑 响应体: $responseBody")
+
+                if (response.isSuccessful && responseBody != null) {
+                    val jsonObject = JSONObject(responseBody)
+                    val code = jsonObject.optInt("code", 0)
+                    if (code == 1) {
+                        val dataObject = jsonObject.optJSONObject("data")
+                        val uploadToken = dataObject?.optString("token", null)
+                        Log.d(TAG, "🔑 获取到上传token: ${uploadToken?.take(20)}...")
+                        uploadToken ?: ""
+                    } else {
+                        val msg = jsonObject.optString("msg", "未知错误")
+                        Log.e(TAG, "🔑 API返回错误: code=$code, msg=$msg")
+                        ""
+                    }
                 } else {
-                    val msg = jsonObject.optString("msg", "未知错误")
-                    Log.e(TAG, "🔑 API返回错误: code=$code, msg=$msg")
+                    Log.e(TAG, "🔑 获取token失败: $responseCode - $responseBody")
                     ""
                 }
-            } else {
-                Log.e(TAG, "🔑 获取token失败: $responseCode - $responseBody")
-                ""
             }
         } catch (e: Exception) {
             Log.e(TAG, "🔑 获取token异常: ${e.message}", e)
@@ -347,12 +368,48 @@ object ImageUploadUtil {
     }
     
     /**
-     * 计算字节数组的MD5值
+     * 以流式方式复制文件并计算MD5
      */
-    private fun calculateMD5(bytes: ByteArray): String {
+    private fun copyToTempFileAndCalculateMD5(inputStream: InputStream, tempFile: File): Pair<String, Long> {
         val md5Digest = MessageDigest.getInstance("MD5")
-        val md5Bytes = md5Digest.digest(bytes)
-        return md5Bytes.joinToString("") { "%02x".format(it) }
+        var totalBytes = 0L
+        inputStream.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    md5Digest.update(buffer, 0, read)
+                    output.write(buffer, 0, read)
+                    totalBytes += read
+                }
+                output.flush()
+            }
+        }
+        val md5 = md5Digest.digest().joinToString("") { "%02x".format(it) }
+        return md5 to totalBytes
+    }
+
+    private fun decodeImageBounds(file: File): Pair<Int, Int> {
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        FileInputStream(file).use { input ->
+            BitmapFactory.decodeStream(input, null, options)
+        }
+        return options.outWidth to options.outHeight
+    }
+
+    private fun calculateMD5(file: File): String {
+        val md5Digest = MessageDigest.getInstance("MD5")
+        FileInputStream(file).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                md5Digest.update(buffer, 0, read)
+            }
+        }
+        return md5Digest.digest().joinToString("") { "%02x".format(it) }
     }
 }
-

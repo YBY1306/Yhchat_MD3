@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
-import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.chat.ChatUiState
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 聊天界面顶部应用栏
@@ -43,22 +43,11 @@ fun ChatTopAppBar(
     val isLargeScreen = screenWidthDp >= 600
     val safeChatName = chatName.ifBlank { "聊天" }
     
-    // 读取大屏下隐藏返回键的设置
-    val layoutPrefs = remember { 
-        context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) 
-    }
-    var hideBackButtonInLargeScreen by remember { 
-        mutableStateOf(layoutPrefs.getBoolean("chat_hide_back_button_large_screen", true)) 
-    }
-    DisposableEffect(layoutPrefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "chat_hide_back_button_large_screen") {
-                hideBackButtonInLargeScreen = layoutPrefs.getBoolean("chat_hide_back_button_large_screen", true)
-            }
-        }
-        layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
+    val hideBackButtonInLargeScreen by rememberBooleanPreference(
+        preferencesName = "layout_settings",
+        key = "chat_hide_back_button_large_screen",
+        defaultValue = true
+    )
     
     // 判断是否应该显示返回按钮
     val shouldShowBackButton = if (isLargeScreen) {

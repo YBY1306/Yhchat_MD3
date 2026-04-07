@@ -56,11 +56,15 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -76,6 +80,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -115,6 +120,8 @@ import com.yhchat.canary.ui.components.ExpressionText
 import com.yhchat.canary.ui.components.LinkDetector
 import com.yhchat.canary.ui.components.LinkText
 import com.yhchat.canary.ui.components.MessageSelectionContainer
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.components.rememberIntPreference
 import com.yhchat.canary.ui.chat.ChatComponents.*
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -132,6 +139,9 @@ import com.yhchat.canary.utils.PermissionUtils
 import java.text.SimpleDateFormat
 import java.util.*
 import java.io.IOException
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import org.json.JSONArray
 import org.json.JSONObject
 import okhttp3.OkHttpClient
@@ -180,7 +190,7 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
 
-    val voiceMessageViewModel = remember {
+    val voiceMessageViewModel = remember(context) {
         VoiceMessageViewModel(
             apiService = ApiClient.apiService,
             tokenRepository = RepositoryFactory.getTokenRepository(context)
@@ -203,25 +213,16 @@ fun ChatScreen(
             0
         }
     }
-    var inputText by remember { mutableStateOf("") }
-    val chatPrefs = remember { context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE) }
-    var defaultSendMessageType by remember {
-        mutableStateOf(
-            chatPrefs.getInt("default_send_message_type", 1)
-                .let { if (it == 3 || it == 8 || it == 1) it else 1 }
-        )
-    }
-    DisposableEffect(chatPrefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "default_send_message_type") {
-                defaultSendMessageType = chatPrefs.getInt("default_send_message_type", 1)
-                    .let { if (it == 3 || it == 8 || it == 1) it else 1 }
-            }
+    var inputText by rememberSaveable(chatId) { mutableStateOf("") }
+    val defaultSendMessageTypePref by rememberIntPreference("chat_settings", "default_send_message_type", 1)
+    val defaultSendMessageType = remember(defaultSendMessageTypePref) {
+        if (defaultSendMessageTypePref == 1 || defaultSendMessageTypePref == 3 || defaultSendMessageTypePref == 8) {
+            defaultSendMessageTypePref
+        } else {
+            1
         }
-        chatPrefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { chatPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    var selectedMessageType by remember { mutableStateOf(defaultSendMessageType) } // 1-文本, 3-Markdown, 8-HTML
+    var selectedMessageType by rememberSaveable(chatId) { mutableStateOf(defaultSendMessageType) } // 1-文本, 3-Markdown, 8-HTML
     var selectedInstruction by remember { mutableStateOf<com.yhchat.canary.data.model.Instruction?>(null) } // 选中的指令
     val listState = rememberLazyListState()
     
@@ -229,11 +230,11 @@ fun ChatScreen(
     var mentionedUsers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     
     // 图片预览状态
-    var showImageViewer by remember { mutableStateOf(false) }
-    var currentImageUrl by remember { mutableStateOf<String?>(null) }
-    var currentImageGallery by remember { mutableStateOf<List<String>>(emptyList()) }
-    var currentImageIndex by remember { mutableIntStateOf(0) }
-    val chatImageGallery by remember {
+    var showImageViewer by rememberSaveable { mutableStateOf(false) }
+    var currentImageUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var currentImageGallery by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    var currentImageIndex by rememberSaveable { mutableStateOf(0) }
+    val chatImageGallery by remember(messages) {
         derivedStateOf { buildChatImageGallery(messages) }
     }
     
@@ -244,6 +245,82 @@ fun ChatScreen(
     // WS 新消息到来后的待执行自动滚动标记（等列表插入完成后再滚动）
     var pendingAutoScrollToBottom by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val maxListOverscrollPx = with(LocalDensity.current) { 72.dp.toPx() }
+    val listOverscrollOffset = remember { Animatable(0f) }
+    val listOverscrollConnection = remember(maxListOverscrollPx, coroutineScope) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+
+                val currentOffset = listOverscrollOffset.value
+                if (currentOffset == 0f) return Offset.Zero
+
+                val deltaY = available.y
+                val isReturningToRest =
+                    (currentOffset > 0f && deltaY < 0f) || (currentOffset < 0f && deltaY > 0f)
+                if (!isReturningToRest) return Offset.Zero
+
+                val newOffset = if (currentOffset > 0f) {
+                    max(0f, currentOffset + deltaY)
+                } else {
+                    min(0f, currentOffset + deltaY)
+                }
+
+                coroutineScope.launch {
+                    listOverscrollOffset.stop()
+                    listOverscrollOffset.snapTo(newOffset)
+                }
+                return Offset(0f, newOffset - currentOffset)
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (available.y == 0f) return Offset.Zero
+
+                val currentOffset = listOverscrollOffset.value
+                val resistance = (1f - abs(currentOffset) / maxListOverscrollPx)
+                    .coerceIn(0.25f, 1f)
+                val newOffset = (currentOffset + available.y * 0.35f * resistance)
+                    .coerceIn(-maxListOverscrollPx, maxListOverscrollPx)
+
+                coroutineScope.launch {
+                    listOverscrollOffset.stop()
+                    listOverscrollOffset.snapTo(newOffset)
+                }
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (listOverscrollOffset.value != 0f) {
+                    listOverscrollOffset.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (listOverscrollOffset.value != 0f) {
+                    listOverscrollOffset.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     
     // 引用消息状态
     var quotedMessageId by remember { mutableStateOf<String?>(null) }
@@ -291,21 +368,9 @@ fun ChatScreen(
     var isGeneratingImage by remember { mutableStateOf(false) }
     
     // 读取布局设置：TTS按钮和TopAppBar显隐
-    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    var showTtsButton by remember { mutableStateOf(layoutPrefs.getBoolean("chat_show_tts_button", true)) }
-    var showRefreshButton by remember { mutableStateOf(layoutPrefs.getBoolean("chat_show_refresh_button", true)) }
-    var hideTopAppBar by remember { mutableStateOf(layoutPrefs.getBoolean("chat_hide_top_app_bar", false)) }
-    DisposableEffect(layoutPrefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            when (key) {
-                "chat_show_tts_button" -> showTtsButton = layoutPrefs.getBoolean("chat_show_tts_button", true)
-                "chat_show_refresh_button" -> showRefreshButton = layoutPrefs.getBoolean("chat_show_refresh_button", true)
-                "chat_hide_top_app_bar" -> hideTopAppBar = layoutPrefs.getBoolean("chat_hide_top_app_bar", false)
-            }
-        }
-        layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
+    val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
+    val showRefreshButton by rememberBooleanPreference("layout_settings", "chat_show_refresh_button", true)
+    val hideTopAppBar by rememberBooleanPreference("layout_settings", "chat_hide_top_app_bar", false)
     
     // 初始化聊天
     LaunchedEffect(chatId, chatType) {
@@ -665,7 +730,12 @@ fun ChatScreen(
                 val groupAdminIds = uiState.groupInfo?.adminIds ?: emptyList()
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(listOverscrollConnection)
+                        .graphicsLayer {
+                            translationY = listOverscrollOffset.value
+                        },
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     reverseLayout = true // 最新消息在底部
@@ -1150,10 +1220,7 @@ fun ChatScreen(
         }
 
         // 菜单按钮栏（仅群聊显示，且设置允许）
-        val showMenuButtons = remember { 
-            context.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
-                .getBoolean("show_menu_buttons", true) 
-        }
+        val showMenuButtons by rememberBooleanPreference("chat_settings", "show_menu_buttons", true)
         if (chatType == 2 && uiState.menuButtons.isNotEmpty() && showMenuButtons) {
             com.yhchat.canary.ui.components.MenuButtonBar(
                 menuButtons = uiState.menuButtons,

@@ -95,11 +95,10 @@ fun ChatInputBar(
     val keyboardController = LocalSoftwareKeyboardController.current
     
     // 读取布局设置
-    val layoutPrefs = remember { ctx.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    val showAddButton = remember { layoutPrefs.getBoolean("input_show_add_button", true) }
-    val showMicButton = remember { layoutPrefs.getBoolean("input_show_mic_button", true) }
-    val showInstructionButton = remember { layoutPrefs.getBoolean("input_show_instruction_button", true) }
-    val showExpressionButton = remember { layoutPrefs.getBoolean("input_show_expression_button", true) }
+    val showAddButton by rememberBooleanPreference("layout_settings", "input_show_add_button", true)
+    val showMicButton by rememberBooleanPreference("layout_settings", "input_show_mic_button", true)
+    val showInstructionButton by rememberBooleanPreference("layout_settings", "input_show_instruction_button", true)
+    val showExpressionButton by rememberBooleanPreference("layout_settings", "input_show_expression_button", true)
 
     var showAttachMenu by remember { mutableStateOf(false) }
     var showExpressionPicker by remember { mutableStateOf(false) }

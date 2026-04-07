@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
-import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,13 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import yh_bot.Bot
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.chat.BotBoardContent
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.chat.GroupBotBoardsSection as GroupBotBoardsSectionOriginal
 
 /**
@@ -32,11 +31,7 @@ fun SingleBotBoardSection(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val botBoardEnabled = remember { 
-        context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
-            .getBoolean("show_bot_board", true) 
-    }
+    val botBoardEnabled by rememberBooleanPreference("chat_settings", "show_bot_board", true)
     
     var showBotBoard by remember { mutableStateOf(false) }
     
@@ -118,11 +113,7 @@ fun GroupBotBoardsSection(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val botBoardEnabled = remember { 
-        context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
-            .getBoolean("show_bot_board", true) 
-    }
+    val botBoardEnabled by rememberBooleanPreference("chat_settings", "show_bot_board", true)
     
     if (chatType == 2 && groupBots.isNotEmpty() && botBoardEnabled) {
         GroupBotBoardsSectionOriginal(

@@ -12,10 +12,10 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -48,29 +48,29 @@ object FileUploadUtil {
         fileUri: Uri,
         uploadToken: String
     ): Result<QiniuUploadResponse> = withContext(Dispatchers.IO) {
+        var tempFile: File? = null
         try {
             Log.d(TAG, "📤 ========== 开始上传文件 ==========")
             Log.d(TAG, "📤 文件URI: $fileUri")
             Log.d(TAG, "📤 上传Token: ${uploadToken.take(30)}...")
-            
-            // 1. 读取文件数据
-            val inputStream = context.contentResolver.openInputStream(fileUri)
-                ?: return@withContext Result.failure(Exception("无法读取文件"))
-            
-            val fileBytes = inputStream.readBytes()
-            inputStream.close()
-            
-            val fileSizeBytes = fileBytes.size.toLong()
-            Log.d(TAG, "✅ 文件读取成功，大小: $fileSizeBytes bytes (${fileSizeBytes / 1024}KB)")
-            
-            // 2. 计算MD5
-            val md5 = calculateMD5(fileBytes)
-            Log.d(TAG, "✅ MD5计算完成: $md5")
-            
-            // 3. 获取文件名和后缀
+
+            // 1. 获取文件名和后缀
             val originalFileName = getFileName(context, fileUri) ?: "unnamed_file"
             val extension = getFileExtension(originalFileName)
-            
+
+            // 2. 以流式方式复制到临时文件并计算MD5，避免大文件整块读入内存
+            tempFile = File(
+                context.cacheDir,
+                "upload_${System.currentTimeMillis()}_${fileUri.hashCode()}.$extension"
+            )
+            val inputStream = context.contentResolver.openInputStream(fileUri)
+                ?: return@withContext Result.failure(Exception("无法读取文件"))
+
+            val (md5, fileSizeBytes) = copyToTempFileAndCalculateMD5(inputStream, tempFile)
+            val preparedTempFile = tempFile
+            Log.d(TAG, "✅ 文件读取成功，大小: $fileSizeBytes bytes (${fileSizeBytes / 1024}KB)")
+            Log.d(TAG, "✅ MD5计算完成: $md5")
+
             // 文件key = disk/MD5.扩展名（注意这里要加disk/前缀）
             val fileKey = "disk/$md5.$extension"
             Log.d(TAG, "✅ 原始文件名: $originalFileName")
@@ -82,14 +82,7 @@ object FileUploadUtil {
                 ?: getMimeTypeFromExtension(extension)
                 ?: "application/octet-stream"
             Log.d(TAG, "✅ MIME类型: $mimeType")
-            
-            // 5. 保存文件到临时目录
-            val cacheDir = context.cacheDir
-            val tempFile = File(cacheDir, "$md5.$extension")
-            FileOutputStream(tempFile).use { outputStream ->
-                outputStream.write(fileBytes)
-            }
-            Log.d(TAG, "✅ 临时文件: ${tempFile.absolutePath}")
+            Log.d(TAG, "✅ 临时文件: ${preparedTempFile.absolutePath}")
             
             // 6. 查询正确的上传host（参考Python SDK实现）
             Log.d(TAG, "📤 查询上传区域...")
@@ -101,21 +94,22 @@ object FileUploadUtil {
                 .url(queryUrl)
                 .get()
                 .build()
-            
-            val queryResponse = client.newCall(queryRequest).execute()
-            val uploadHost = if (queryResponse.isSuccessful) {
-                val queryJson = JSONObject(queryResponse.body?.string() ?: "{}")
-                Log.d(TAG, "📥 区域查询响应: $queryJson")
-                val hosts = queryJson.getJSONArray("hosts")
-                val host = hosts.getJSONObject(0)
-                val up = host.getJSONObject("up")
-                val domains = up.getJSONArray("domains")
-                val resultHost = domains.getString(0)
-                Log.d(TAG, "✅ 上传host: $resultHost")
-                resultHost
-            } else {
-                Log.w(TAG, "⚠️ 查询host失败，使用默认: upload-z2.qiniup.com")
-                "upload-z2.qiniup.com"
+
+            val uploadHost = client.newCall(queryRequest).execute().use { queryResponse ->
+                if (queryResponse.isSuccessful) {
+                    val queryJson = JSONObject(queryResponse.body?.string() ?: "{}")
+                    Log.d(TAG, "📥 区域查询响应: $queryJson")
+                    val hosts = queryJson.getJSONArray("hosts")
+                    val host = hosts.getJSONObject(0)
+                    val up = host.getJSONObject("up")
+                    val domains = up.getJSONArray("domains")
+                    val resultHost = domains.getString(0)
+                    Log.d(TAG, "✅ 上传host: $resultHost")
+                    resultHost
+                } else {
+                    Log.w(TAG, "⚠️ 查询host失败，使用默认: upload-z2.qiniup.com")
+                    "upload-z2.qiniup.com"
+                }
             }
             
             // 7. 使用OkHttp的MultipartBody构建请求（自动处理正确的格式）
@@ -128,7 +122,7 @@ object FileUploadUtil {
                 .addFormDataPart(
                     "file",
                     originalFileName,
-                    tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                    preparedTempFile.asRequestBody(mimeType.toMediaTypeOrNull())
                 )
                 .build()
             
@@ -151,61 +145,78 @@ object FileUploadUtil {
             }
             
             // 9. 执行上传
-            val response = client.newCall(request).execute()
-            
-            Log.d(TAG, "📥 七牛云响应码: ${response.code}")
-            
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string()
-                Log.d(TAG, "✅ 上传成功！响应: $responseBody")
-                
-                if (responseBody != null) {
-                    val json = JSONObject(responseBody)
-                    
-                    // 解析响应 - 包含key, hash, fsize
-                    val uploadResponse = QiniuUploadResponse(
-                        key = json.getString("key"),
-                        hash = json.getString("hash"),  // 这个hash就是fileEtag
-                        fsize = json.getLong("fsize"),
-                        avinfo = null  // 文件没有avinfo
-                    )
-                    
-                    Log.d(TAG, "✅ ========== 上传完成 ==========")
-                    Log.d(TAG, "✅ key: ${uploadResponse.key}")
-                    Log.d(TAG, "✅ hash (etag): ${uploadResponse.hash}")
-                    Log.d(TAG, "✅ size: ${uploadResponse.fsize}")
-                    
-                    // 清理临时文件
-                    tempFile.delete()
-                    
-                    Result.success(uploadResponse)
+            client.newCall(request).execute().use { response ->
+                Log.d(TAG, "📥 七牛云响应码: ${response.code}")
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    Log.d(TAG, "✅ 上传成功！响应: $responseBody")
+
+                    if (responseBody != null) {
+                        val json = JSONObject(responseBody)
+
+                        // 解析响应 - 包含key, hash, fsize
+                        val uploadResponse = QiniuUploadResponse(
+                            key = json.getString("key"),
+                            hash = json.getString("hash"),  // 这个hash就是fileEtag
+                            fsize = json.getLong("fsize"),
+                            avinfo = null  // 文件没有avinfo
+                        )
+
+                        Log.d(TAG, "✅ ========== 上传完成 ==========")
+                        Log.d(TAG, "✅ key: ${uploadResponse.key}")
+                        Log.d(TAG, "✅ hash (etag): ${uploadResponse.hash}")
+                        Log.d(TAG, "✅ size: ${uploadResponse.fsize}")
+
+                        Result.success(uploadResponse)
+                    } else {
+                        Log.e(TAG, "❌ 响应体为空")
+                        Result.failure(Exception("上传失败：响应为空"))
+                    }
                 } else {
-                    Log.e(TAG, "❌ 响应体为空")
-                    tempFile.delete()
-                    Result.failure(Exception("上传失败：响应为空"))
+                    val errorBody = response.body?.string()
+                    Log.e(TAG, "❌ 上传失败: ${response.code}")
+                    Log.e(TAG, "❌ 错误详情: $errorBody")
+                    Result.failure(Exception("上传失败: ${response.code} - $errorBody"))
                 }
-            } else {
-                val errorBody = response.body?.string()
-                Log.e(TAG, "❌ 上传失败: ${response.code}")
-                Log.e(TAG, "❌ 错误详情: $errorBody")
-                tempFile.delete()
-                Result.failure(Exception("上传失败: ${response.code} - $errorBody"))
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 上传异常", e)
             e.printStackTrace()
             Result.failure(e)
+        } finally {
+            tempFile?.let { file ->
+                if (file.exists() && !file.delete()) {
+                    Log.w(TAG, "⚠️ 临时文件删除失败: ${file.absolutePath}")
+                }
+            }
         }
     }
     
     /**
-     * 计算字节数组的MD5值
+     * 复制到临时文件并计算MD5，避免整文件进内存
      */
-    private fun calculateMD5(bytes: ByteArray): String {
+    private fun copyToTempFileAndCalculateMD5(inputStream: InputStream, tempFile: File): Pair<String, Long> {
         val md5Digest = MessageDigest.getInstance("MD5")
-        val md5Bytes = md5Digest.digest(bytes)
-        return md5Bytes.joinToString("") { "%02x".format(it) }
+        var totalBytes = 0L
+
+        inputStream.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    md5Digest.update(buffer, 0, read)
+                    output.write(buffer, 0, read)
+                    totalBytes += read
+                }
+                output.flush()
+            }
+        }
+
+        val md5 = md5Digest.digest().joinToString("") { "%02x".format(it) }
+        return md5 to totalBytes
     }
     
     /**
@@ -270,4 +281,3 @@ object FileUploadUtil {
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase())
     }
 }
-

@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.components
 
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
@@ -52,12 +51,11 @@ fun ExpressionPicker(
 ) {
     val context = LocalContext.current
     val viewModel = remember { ExpressionPickerViewModel() }
-    val prefs = remember {
-        context.getSharedPreferences("display_settings", Context.MODE_PRIVATE)
-    }
-    val autoDismissAfterPick: Boolean = remember {
-        prefs.getBoolean("auto_dismiss_expression_picker", true)
-    }
+    val autoDismissAfterPick by rememberBooleanPreference(
+        "display_settings",
+        "auto_dismiss_expression_picker",
+        true
+    )
     
     LaunchedEffect(Unit) {
         viewModel.init(context)

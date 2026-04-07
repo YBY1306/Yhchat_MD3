@@ -16,14 +16,15 @@ import com.yhchat.canary.ui.community.PostDetailActivity
 object UnifiedLinkHandler {
     
     private const val TAG = "UnifiedLinkHandler"
+    private val yhfxHosts = setOf("yhfx.jwznb.com", "jwznb.com", "myapp.jwznb.com")
+    private val articleHosts = setOf("www.yhchat.com", "yhchat.com")
     
     /**
      * 检查是否为可处理的链接
      */
     fun isHandleableLink(url: String): Boolean {
-        return url.startsWith("yunhu://") || 
-               url.startsWith("https://yhfx.jwznb.com/share") ||
-               url.contains("https://www.yhchat.com/c/p/")
+        val normalizedUrl = normalizeYunhuLink(url)
+        return isCanonicalHandleableLink(normalizedUrl)
     }
     
     /**
@@ -31,40 +32,44 @@ object UnifiedLinkHandler {
      */
     fun handleLink(context: Context, url: String) {
         try {
-            Log.d(TAG, "Processing link: $url")
+            val normalizedUrl = normalizeYunhuLink(url)
+            if (normalizedUrl != url) {
+                Log.d(TAG, "Normalized link: $url -> $normalizedUrl")
+            }
+            Log.d(TAG, "Processing link: $normalizedUrl")
             
             when {
-                url.startsWith("yunhu://chat-add") -> {
-                    handleChatAddLink(context, url)
+                normalizedUrl.startsWith("yunhu://chat-add") -> {
+                    handleChatAddLink(context, normalizedUrl)
                 }
-                url.startsWith("yunhu://post-detail") -> {
-                    handlePostDetailLink(context, url)
+                normalizedUrl.startsWith("yunhu://post-detail") -> {
+                    handlePostDetailLink(context, normalizedUrl)
                 }
-                url.startsWith("yunhu://alley-detail") -> {
-                    com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, url)
+                normalizedUrl.startsWith("yunhu://alley-detail") -> {
+                    com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, normalizedUrl)
                 }
-                url.startsWith("https://yhfx.jwznb.com/share") -> {
-                    handleYhfxShareLink(context, url)
+                normalizedUrl.startsWith("https://yhfx.jwznb.com/share") -> {
+                    handleYhfxShareLink(context, normalizedUrl)
                 }
-                url.startsWith("yunhu://jwznb.com") -> {
-                    val uri = Uri.parse(url)
+                normalizedUrl.startsWith("yunhu://jwznb.com") -> {
+                    val uri = Uri.parse(normalizedUrl)
                     val key = uri.getQueryParameter("key")
                     val ts = uri.getQueryParameter("ts")
                     
                     if (!key.isNullOrEmpty() && !ts.isNullOrEmpty()) {
-                        handleYhfxShareLink(context, url)
-                    } else if (ChatAddLinkHandler.isChatAddLink(url)) {
-                        ChatAddLinkHandler.handleLink(context, url)
+                        handleYhfxShareLink(context, normalizedUrl)
+                    } else if (ChatAddLinkHandler.isChatAddLink(normalizedUrl)) {
+                        ChatAddLinkHandler.handleLink(context, normalizedUrl)
                     } else {
-                        handleYhfxShareLink(context, url)
+                        handleYhfxShareLink(context, normalizedUrl)
                     }
                 }
-                url.contains("https://www.yhchat.com/c/p/") -> {
-                    handleWebArticleLink(context, url)
+                normalizedUrl.contains("https://www.yhchat.com/c/p/") -> {
+                    handleWebArticleLink(context, normalizedUrl)
                 }
                 else -> {
                     // 对于非云湖内链，尝试在外部浏览器中打开
-                    handleExternalLink(context, url)
+                    handleExternalLink(context, normalizedUrl)
                 }
             }
         } catch (e: Exception) {
@@ -186,5 +191,134 @@ object UnifiedLinkHandler {
             android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
-}
 
+    private fun normalizeYunhuLink(url: String, depth: Int = 0): String {
+        val trimmedUrl = url.trim()
+        if (trimmedUrl.isEmpty() || depth > 2) return trimmedUrl
+        if (trimmedUrl.startsWith("yunhu://")) return trimmedUrl
+
+        val uri = runCatching { Uri.parse(trimmedUrl) }.getOrNull() ?: return trimmedUrl
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") return trimmedUrl
+
+        extractEmbeddedLink(uri)?.let { embeddedLink ->
+            val normalizedEmbeddedLink = normalizeYunhuLink(embeddedLink, depth + 1)
+            if (isCanonicalHandleableLink(normalizedEmbeddedLink)) {
+                return normalizedEmbeddedLink
+            }
+        }
+
+        extractShareLink(uri)?.let { return it }
+        extractChatAddLink(uri)?.let { return it }
+        extractArticleLink(uri)?.let { return it }
+
+        return trimmedUrl
+    }
+
+    private fun extractEmbeddedLink(uri: Uri): String? {
+        val embeddedParamNames = listOf(
+            "url",
+            "link",
+            "target",
+            "targetUrl",
+            "redirect",
+            "redirect_url",
+            "redirectUrl"
+        )
+
+        return embeddedParamNames.firstNotNullOfOrNull { name ->
+            uri.getQueryParameter(name)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let(Uri::decode)
+                ?.takeIf {
+                    it.startsWith("http://") ||
+                        it.startsWith("https://") ||
+                        it.startsWith("yunhu://")
+                }
+        }
+    }
+
+    private fun extractShareLink(uri: Uri): String? {
+        val host = uri.host?.lowercase() ?: return null
+        if (host !in yhfxHosts && host !in articleHosts) return null
+
+        val pathSegments = uri.pathSegments
+        val key = firstNonBlank(
+            uri.getQueryParameter("key"),
+            uri.getQueryParameter("k"),
+            pathSegments.getOrNull(1)?.takeIf {
+                pathSegments.firstOrNull().equals("share", ignoreCase = true)
+            },
+            pathSegments.singleOrNull()?.takeIf { uri.getQueryParameter("ts") != null }
+        )
+        val ts = firstNonBlank(
+            uri.getQueryParameter("ts"),
+            uri.getQueryParameter("t"),
+            pathSegments.getOrNull(2)?.takeIf {
+                pathSegments.firstOrNull().equals("share", ignoreCase = true)
+            }
+        )
+
+        return if (!key.isNullOrEmpty() && !ts.isNullOrEmpty()) {
+            "yunhu://jwznb.com?key=${Uri.encode(key)}&ts=${Uri.encode(ts)}"
+        } else {
+            null
+        }
+    }
+
+    private fun extractChatAddLink(uri: Uri): String? {
+        val host = uri.host?.lowercase() ?: return null
+        val isYunhuHost = host in yhfxHosts || host in articleHosts
+        val isChatAddPath = uri.pathSegments.firstOrNull().equals("chat-add", ignoreCase = true)
+        if (!isYunhuHost && !isChatAddPath) return null
+
+        val id = firstNonBlank(uri.getQueryParameter("id")) ?: return null
+        val chatType = normalizeChatType(
+            firstNonBlank(
+                uri.getQueryParameter("ct"),
+                uri.getQueryParameter("type"),
+                uri.getQueryParameter("chatType")
+            )
+        ) ?: return null
+
+        return "yunhu://jwznb.com?ct=${Uri.encode(chatType)}&id=${Uri.encode(id)}"
+    }
+
+    private fun extractArticleLink(uri: Uri): String? {
+        val host = uri.host?.lowercase() ?: return null
+        if (host !in articleHosts) return null
+
+        val pathSegments = uri.pathSegments
+        if (pathSegments.size < 3) return null
+        if (!pathSegments[0].equals("c", ignoreCase = true) || !pathSegments[1].equals("p", ignoreCase = true)) {
+            return null
+        }
+
+        val postId = pathSegments[2].trim()
+        return if (postId.isNotEmpty()) {
+            "https://www.yhchat.com/c/p/$postId"
+        } else {
+            null
+        }
+    }
+
+    private fun normalizeChatType(rawType: String?): String? {
+        return when (rawType?.trim()?.lowercase()) {
+            "1", "user" -> "1"
+            "2", "group" -> "2"
+            "3", "bot" -> "3"
+            else -> null
+        }
+    }
+
+    private fun firstNonBlank(vararg values: String?): String? {
+        return values.firstOrNull { !it.isNullOrBlank() }?.trim()
+    }
+
+    private fun isCanonicalHandleableLink(url: String): Boolean {
+        return url.startsWith("yunhu://") ||
+            url.startsWith("https://yhfx.jwznb.com/share") ||
+            url.contains("https://www.yhchat.com/c/p/")
+    }
+}

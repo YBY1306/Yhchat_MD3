@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +85,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import com.yhchat.canary.utils.QRCodeUtil
 import android.net.Uri
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.components.rememberSharedPreferences
 
 /**
  * 会话列表界面
@@ -108,22 +111,8 @@ fun ConversationScreen(
     
     // 读取显示置顶会话的设置
     val context = LocalContext.current
-    val prefs: SharedPreferences = context.getSharedPreferences("display_settings", Context.MODE_PRIVATE)
-    val showStickyValue = prefs.getBoolean("show_sticky_conversations", true)
-    var showStickyConversations by remember { mutableStateOf(showStickyValue) }
-    
-    // 监听设置变化
-    DisposableEffect(Unit) {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "show_sticky_conversations") {
-                showStickyConversations = prefs.getBoolean("show_sticky_conversations", true)
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose {
-            prefs.unregisterOnSharedPreferenceChangeListener(listener)
-        }
-    }
+    val prefs = rememberSharedPreferences("display_settings")
+    val showStickyConversations by rememberBooleanPreference("display_settings", "show_sticky_conversations", true)
 
     // 列表状态
     val listState = rememberLazyListState()
@@ -134,7 +123,7 @@ fun ConversationScreen(
     }
 
     // 刷新状态 - 使用key保持状态
-    var refreshing by remember(key1 = "refreshing") { mutableStateOf(false) }
+    var refreshing by rememberSaveable { mutableStateOf(false) }
 
     // 下拉刷新状态
     val swipeRefreshState =
@@ -145,59 +134,29 @@ fun ConversationScreen(
     val focusManager = LocalFocusManager.current
     
     // 长按菜单状态
-    var showConversationMenu by remember { mutableStateOf(false) }
+    var showConversationMenu by rememberSaveable { mutableStateOf(false) }
     var selectedConversation by remember { mutableStateOf<Conversation?>(null) }
     var isSelectedConversationSticky by remember { mutableStateOf(false) }
     
     // 添加菜单 BottomSheet 状态
-    var showAddMenuBottomSheet by remember { mutableStateOf(false) }
+    var showAddMenuBottomSheet by rememberSaveable { mutableStateOf(false) }
     
     // 布局设置
-    val layoutPrefs: SharedPreferences = context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE)
-    val titleVal = layoutPrefs.getBoolean("conversation_show_title", true)
-    val searchVal = layoutPrefs.getBoolean("conversation_show_search", true)
-    val addBtnVal = layoutPrefs.getBoolean("conversation_show_add", true)
-    val unreadVal = layoutPrefs.getBoolean("conversation_show_unread_badge", true)
-    val listVal = layoutPrefs.getBoolean("conversation_show_list", true)
-    val addUserVal = layoutPrefs.getBoolean("add_menu_show_user", true)
-    val addGroupVal = layoutPrefs.getBoolean("add_menu_show_group", true)
-    val scanVal = layoutPrefs.getBoolean("add_menu_show_scan", true)
-    
-    var layoutShowTitle by remember { mutableStateOf(titleVal) }
-    var layoutShowSearch by remember { mutableStateOf(searchVal) }
-    var layoutShowAddButton by remember { mutableStateOf(addBtnVal) }
-    var layoutShowUnreadBadge by remember { mutableStateOf(unreadVal) }
-    var layoutShowConversationList by remember { mutableStateOf(listVal) }
-    var layoutShowAddUser by remember { mutableStateOf(addUserVal) }
-    var layoutShowAddGroup by remember { mutableStateOf(addGroupVal) }
-    var layoutShowScan by remember { mutableStateOf(scanVal) }
-
-    // 监听布局设置变化
-    DisposableEffect(layoutPrefs) {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-            when (key) {
-                "conversation_show_title" -> layoutShowTitle = p.getBoolean(key, true)
-                "conversation_show_search" -> layoutShowSearch = p.getBoolean(key, true)
-                "conversation_show_add" -> layoutShowAddButton = p.getBoolean(key, true)
-                "conversation_show_unread_badge" -> layoutShowUnreadBadge = p.getBoolean(key, true)
-                "conversation_show_list" -> layoutShowConversationList = p.getBoolean(key, true)
-                "add_menu_show_user" -> layoutShowAddUser = p.getBoolean(key, true)
-                "add_menu_show_group" -> layoutShowAddGroup = p.getBoolean(key, true)
-                "add_menu_show_scan" -> layoutShowScan = p.getBoolean(key, true)
-            }
-        }
-        layoutPrefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose {
-            layoutPrefs.unregisterOnSharedPreferenceChangeListener(listener)
-        }
-    }
+    val layoutShowTitle by rememberBooleanPreference("layout_settings", "conversation_show_title", true)
+    val layoutShowSearch by rememberBooleanPreference("layout_settings", "conversation_show_search", true)
+    val layoutShowAddButton by rememberBooleanPreference("layout_settings", "conversation_show_add", true)
+    val layoutShowUnreadBadge by rememberBooleanPreference("layout_settings", "conversation_show_unread_badge", true)
+    val layoutShowConversationList by rememberBooleanPreference("layout_settings", "conversation_show_list", true)
+    val layoutShowAddUser by rememberBooleanPreference("layout_settings", "add_menu_show_user", true)
+    val layoutShowAddGroup by rememberBooleanPreference("layout_settings", "add_menu_show_group", true)
+    val layoutShowScan by rememberBooleanPreference("layout_settings", "add_menu_show_scan", true)
 
     // 顶部搜索栏状态
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearchActive by remember { mutableStateOf(false) }
-    var isManuallyActivated by remember { mutableStateOf(false) } // 标记是否手动激活
-    var isTextFieldEnabled by remember { mutableStateOf(false) } // 控制输入框是否启用
-    var isFocusClearing by remember { mutableStateOf(false) } // 防止焦点清除死循环
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    var isManuallyActivated by rememberSaveable { mutableStateOf(false) } // 标记是否手动激活
+    var isTextFieldEnabled by rememberSaveable { mutableStateOf(false) } // 控制输入框是否启用
+    var isFocusClearing by rememberSaveable { mutableStateOf(false) } // 防止焦点清除死循环
     val searchFocusRequester = remember { FocusRequester() }
     
     // 检测安卓版本

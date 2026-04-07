@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import com.yhchat.canary.ui.components.LinkDetector
 import com.yhchat.canary.ui.components.LinkText
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.MessageSelectionContainer
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONObject
@@ -85,16 +87,9 @@ fun MessageContentView(
     }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // 获取消息显示设置
-    val messagePrefs = remember {
-        context.getSharedPreferences("message_settings", Context.MODE_PRIVATE)
-    }
-    val showHtmlRawText = remember {
-        messagePrefs.getBoolean("show_html_raw_text", false)
-    }
-    val showMarkdownRawText = remember {
-        messagePrefs.getBoolean("show_markdown_raw_text", false)
-    }
+    val showHtmlRawText by rememberBooleanPreference("message_settings", "show_html_raw_text", false)
+    val showMarkdownRawText by rememberBooleanPreference("message_settings", "show_markdown_raw_text", false)
+    val showInlineExpressions by rememberBooleanPreference("display_settings", "show_inline_expressions", true)
 
     Column(modifier = modifier) {
         when (contentType) {
@@ -400,9 +395,6 @@ fun MessageContentView(
             else -> {
                 // 其他类型消息，显示文本内容
                 content.text?.let { text ->
-                    val prefs = remember { context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) }
-                    val showInlineExpressions = remember { prefs.getBoolean("show_inline_expressions", true) }
-
                     // 使用自定义SelectionContainer，在文本选择菜单中添加消息操作
                     MessageSelectionContainer(
                         onQuote = if (message.contentType in listOf(1, 3, 8)) {

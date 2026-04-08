@@ -106,7 +106,7 @@ class AudioCacheManager(private val context: Context) {
             val savedHash = hashFile.readText()
             
             // 计算当前文件的哈希值
-            val currentHash = calculateSHA256(cacheFile.readBytes())
+            val currentHash = calculateSHA256(cacheFile)
             
             val isValid = savedHash == currentHash
             if (!isValid) {
@@ -135,7 +135,7 @@ class AudioCacheManager(private val context: Context) {
             file.name.endsWith(".m4a")
         }?.forEach { cacheFile ->
             try {
-                val cachedDataHash = calculateSHA256(cacheFile.readBytes())
+                val cachedDataHash = calculateSHA256(cacheFile)
                 if (cachedDataHash == dataHash) {
                     Log.d(TAG, "找到内容相同的缓存文件: ${cacheFile.name}")
                     // 更新最后修改时间
@@ -207,6 +207,22 @@ class AudioCacheManager(private val context: Context) {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(input)
         return hashBytes.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * 计算文件的SHA256哈希值，避免整文件读入内存
+     */
+    private fun calculateSHA256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(file).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
     
     /**

@@ -52,6 +52,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.utils.ImageUploadUtil
 import com.yhchat.canary.ui.community.FollowersListActivity
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 社区标签页界面
@@ -72,11 +73,10 @@ fun CommunityTabScreen(
     val context = LocalContext.current
     
     // 获取布局设置
-    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    val showHotTab = remember { layoutPrefs.getBoolean("community_show_hot", true) }
-    val showAllTab = remember { layoutPrefs.getBoolean("community_show_all", true) }
-    val showFollowingTab = remember { layoutPrefs.getBoolean("community_show_following", true) }
-    val showMoreTab = remember { layoutPrefs.getBoolean("community_show_more", true) }
+    val showHotTab by rememberBooleanPreference("layout_settings", "community_show_hot", true)
+    val showAllTab by rememberBooleanPreference("layout_settings", "community_show_all", true)
+    val showFollowingTab by rememberBooleanPreference("layout_settings", "community_show_following", true)
+    val showMoreTab by rememberBooleanPreference("layout_settings", "community_show_more", true)
     
     // 获取状态
     val boardListState by viewModel.boardListState.collectAsState()

@@ -333,26 +333,6 @@ suspend fun saveVoiceToSavedAudios(context: Context, audioUrl: String): Boolean 
         val cachedFile = cacheManager.getCachedAudioFile(audioUrl)
             ?.takeIf { it.exists() && cacheManager.verifyCachedFile(audioUrl) }
 
-        val data: ByteArray = if (cachedFile != null) {
-            cachedFile.readBytes()
-        } else {
-            val client = OkHttpClient.Builder()
-                .addInterceptor { chain ->
-                    val request = chain.request().newBuilder()
-                        .addHeader("Referer", "https://myapp.jwznb.com")
-                        .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-                        .build()
-                    chain.proceed(request)
-                }
-                .build()
-
-            val req = Request.Builder().url(audioUrl).build()
-            client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext false
-                resp.body?.bytes() ?: return@withContext false
-            }
-        }
-
         val displayName = run {
             val last = audioUrl.substringAfterLast('/').substringBefore('?').ifBlank { "voice_${System.currentTimeMillis()}" }
             if (last.contains('.')) last else "$last.m4a"
@@ -382,7 +362,30 @@ suspend fun saveVoiceToSavedAudios(context: Context, audioUrl: String): Boolean 
         } ?: return@withContext false
         try {
             resolver.openOutputStream(uri)?.use { out ->
-                out.write(data)
+                if (cachedFile != null) {
+                    cachedFile.inputStream().use { input ->
+                        input.copyTo(out)
+                    }
+                } else {
+                    val client = OkHttpClient.Builder()
+                        .addInterceptor { chain ->
+                            val request = chain.request().newBuilder()
+                                .addHeader("Referer", "https://myapp.jwznb.com")
+                                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                                .build()
+                            chain.proceed(request)
+                        }
+                        .build()
+
+                    val req = Request.Builder().url(audioUrl).build()
+                    client.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@withContext false
+                        val body = resp.body ?: return@withContext false
+                        body.byteStream().use { input ->
+                            input.copyTo(out)
+                        }
+                    }
+                }
                 out.flush()
             } ?: return@withContext false
 

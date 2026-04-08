@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -179,6 +182,9 @@ fun GroupBotManagementScreen(
                                 onRemoveClick = {
                                     viewModel.removeBot(bot.botId, groupId)
                                 },
+                                onManageClick = {
+                                    viewModel.openPermissionDialog(groupId, bot)
+                                },
                                 onBotClick = {
                                     // 跳转到机器人详情页
                                   BotDetailActivity.start(context, bot.botId, bot.name)
@@ -207,6 +213,13 @@ fun GroupBotManagementScreen(
             viewModel.resetOperationState()
         }
     }
+
+    LaunchedEffect(uiState.permissionError) {
+        uiState.permissionError?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            viewModel.clearPermissionMessage()
+        }
+    }
     
     // 邀请机器人对话框
     if (showInviteBotDialog) {
@@ -219,12 +232,31 @@ fun GroupBotManagementScreen(
             }
         )
     }
+
+    uiState.selectedPermissionBot?.let { bot ->
+        BotPermissionDialog(
+            bot = bot,
+            permissionState = uiState.botPermissionStates[bot.botId] ?: BotGroupPermissionState(),
+            isUpdating = uiState.updatingPermissionBotIds.contains(bot.botId) ||
+                uiState.loadingPermissionBotIds.contains(bot.botId),
+            onDismiss = { viewModel.closePermissionDialog() },
+            onPermissionChange = { field, enabled ->
+                viewModel.updateBotPermission(
+                    groupId = groupId,
+                    botId = bot.botId,
+                    field = field,
+                    enabled = enabled
+                )
+            }
+        )
+    }
 }
 
 @Composable
 fun BotCard(
     bot: Bot_data,
     onRemoveClick: () -> Unit,
+    onManageClick: () -> Unit,
     onBotClick: () -> Unit,
     canRemove: Boolean = true  // 是否可以删除机器人
 ) {
@@ -286,14 +318,31 @@ fun BotCard(
                 )
             }
             
-            // 删除按钮（只有有权限的用户才显示）
-            if (canRemove) {
-                IconButton(onClick = { showDeleteDialog = true }) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = onManageClick,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "移除机器人",
-                        tint = MaterialTheme.colorScheme.error
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "管理权限",
+                        modifier = Modifier.size(16.dp)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("管理")
+                }
+
+                if (canRemove) {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "移除机器人",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }
@@ -320,6 +369,92 @@ fun BotCard(
                     Text("取消")
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun BotPermissionDialog(
+    bot: Bot_data,
+    permissionState: BotGroupPermissionState,
+    isUpdating: Boolean,
+    onDismiss: () -> Unit,
+    onPermissionChange: (BotPermissionField, Boolean) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("机器人管理权限") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = bot.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                PermissionCheckboxRow(
+                    text = "允许编辑群聊信息",
+                    checked = permissionState.allowEditGroupInfo,
+                    enabled = !isUpdating,
+                    onCheckedChange = { onPermissionChange(BotPermissionField.EditGroupInfo, it) }
+                )
+                PermissionCheckboxRow(
+                    text = "允许禁言成员",
+                    checked = permissionState.allowGagMember,
+                    enabled = !isUpdating,
+                    onCheckedChange = { onPermissionChange(BotPermissionField.GagMember, it) }
+                )
+                PermissionCheckboxRow(
+                    text = "允许移除成员",
+                    checked = permissionState.allowRemoveMember,
+                    enabled = !isUpdating,
+                    onCheckedChange = { onPermissionChange(BotPermissionField.RemoveMember, it) }
+                )
+                PermissionCheckboxRow(
+                    text = "允许管理群标签",
+                    checked = permissionState.allowGroupTagManage,
+                    enabled = !isUpdating,
+                    onCheckedChange = { onPermissionChange(BotPermissionField.GroupTagManage, it) }
+                )
+                if (isUpdating) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
+}
+
+@Composable
+private fun PermissionCheckboxRow(
+    text: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
@@ -561,6 +696,89 @@ class GroupBotManagementViewModel : ViewModel() {
             )
         }
     }
+
+    fun openPermissionDialog(groupId: String, bot: Bot_data) {
+        val permissionStates = _uiState.value.botPermissionStates.toMutableMap()
+        permissionStates.putIfAbsent(bot.botId, BotGroupPermissionState())
+        _uiState.value = _uiState.value.copy(
+            selectedPermissionBot = bot,
+            botPermissionStates = permissionStates,
+            loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds + bot.botId,
+            permissionError = null
+        )
+
+        viewModelScope.launch {
+            groupRepository.getBotGroupPermission(groupId = groupId, botId = bot.botId).fold(
+                onSuccess = { permissionData ->
+                    _uiState.value = _uiState.value.copy(
+                        botPermissionStates = _uiState.value.botPermissionStates + (
+                            bot.botId to permissionData.toUiState()
+                        ),
+                        loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds - bot.botId
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds - bot.botId,
+                        permissionError = error.message ?: "获取机器人权限失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun closePermissionDialog() {
+        _uiState.value = _uiState.value.copy(selectedPermissionBot = null)
+    }
+
+    fun clearPermissionMessage() {
+        _uiState.value = _uiState.value.copy(permissionError = null)
+    }
+
+    fun updateBotPermission(
+        groupId: String,
+        botId: String,
+        field: BotPermissionField,
+        enabled: Boolean
+    ) {
+        viewModelScope.launch {
+            val currentState = _uiState.value.botPermissionStates[botId] ?: BotGroupPermissionState()
+            val nextState = when (field) {
+                BotPermissionField.EditGroupInfo -> currentState.copy(allowEditGroupInfo = enabled)
+                BotPermissionField.GagMember -> currentState.copy(allowGagMember = enabled)
+                BotPermissionField.RemoveMember -> currentState.copy(allowRemoveMember = enabled)
+                BotPermissionField.GroupTagManage -> currentState.copy(allowGroupTagManage = enabled)
+            }
+
+            _uiState.value = _uiState.value.copy(
+                botPermissionStates = _uiState.value.botPermissionStates + (botId to nextState),
+                updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds + botId,
+                permissionError = null
+            )
+
+            groupRepository.editBotGroupPermission(
+                groupId = groupId,
+                botId = botId,
+                allowEditGroupInfo = nextState.allowEditGroupInfo.toApiValue(),
+                allowGagMember = nextState.allowGagMember.toApiValue(),
+                allowRemoveMember = nextState.allowRemoveMember.toApiValue(),
+                allowGroupTagManage = nextState.allowGroupTagManage.toApiValue()
+            ).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds - botId
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        botPermissionStates = _uiState.value.botPermissionStates + (botId to currentState),
+                        updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds - botId,
+                        permissionError = error.message ?: "更新机器人权限失败"
+                    )
+                }
+            )
+        }
+    }
 }
 
 data class GroupBotManagementUiState(
@@ -569,5 +787,35 @@ data class GroupBotManagementUiState(
     val myBots: List<Contact> = emptyList(),
     val error: String? = null,
     val operationSuccess: Boolean = false,
-    val operationError: String? = null
+    val operationError: String? = null,
+    val selectedPermissionBot: Bot_data? = null,
+    val botPermissionStates: Map<String, BotGroupPermissionState> = emptyMap(),
+    val updatingPermissionBotIds: Set<String> = emptySet(),
+    val loadingPermissionBotIds: Set<String> = emptySet(),
+    val permissionError: String? = null
 )
+
+data class BotGroupPermissionState(
+    val allowEditGroupInfo: Boolean = false,
+    val allowGagMember: Boolean = false,
+    val allowRemoveMember: Boolean = false,
+    val allowGroupTagManage: Boolean = false
+)
+
+enum class BotPermissionField {
+    EditGroupInfo,
+    GagMember,
+    RemoveMember,
+    GroupTagManage
+}
+
+private fun Boolean.toApiValue(): Int = if (this) 1 else 0
+
+private fun com.yhchat.canary.data.api.BotGroupPermissionData.toUiState(): BotGroupPermissionState {
+    return BotGroupPermissionState(
+        allowEditGroupInfo = allowEditGroupInfo == 1,
+        allowGagMember = allowGagMember == 1,
+        allowRemoveMember = allowRemoveMember == 1,
+        allowGroupTagManage = allowGroupTagManage == 1
+    )
+}

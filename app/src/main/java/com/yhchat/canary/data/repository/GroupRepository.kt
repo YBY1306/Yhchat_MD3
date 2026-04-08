@@ -836,6 +836,83 @@ class GroupRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun editBotGroupPermission(
+        groupId: String,
+        botId: String,
+        allowEditGroupInfo: Int,
+        allowGagMember: Int,
+        allowRemoveMember: Int,
+        allowGroupTagManage: Int
+    ): Result<Boolean> {
+        return try {
+            val token = tokenRepository?.getTokenSync()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("未登录"))
+            }
+
+            val response = apiService.editBotGroupPermission(
+                token = token,
+                request = com.yhchat.canary.data.api.BotGroupPermissionEditRequest(
+                    groupId = groupId,
+                    botId = botId,
+                    allowEditGroupInfo = allowEditGroupInfo,
+                    allowGagMember = allowGagMember,
+                    allowRemoveMember = allowRemoveMember,
+                    allowGroupTagManage = allowGroupTagManage
+                )
+            )
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(body?.message ?: "更新机器人权限失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "编辑机器人群权限失败", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBotGroupPermission(
+        groupId: String,
+        botId: String
+    ): Result<com.yhchat.canary.data.api.BotGroupPermissionData> {
+        return try {
+            val token = tokenRepository?.getTokenSync()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("未登录"))
+            }
+
+            val response = apiService.getBotGroupPermission(
+                token = token,
+                request = com.yhchat.canary.data.api.BotGroupPermissionGetRequest(
+                    botId = botId,
+                    groupId = groupId
+                )
+            )
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                val data = body?.data
+                if (body != null && body.code == 1 && data != null) {
+                    Result.success(data)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取机器人权限失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "获取机器人群权限失败", e)
+            Result.failure(e)
+        }
+    }
     
     /**
      * 获取群指令列表（JSON API）
@@ -1109,7 +1186,5 @@ class GroupRepository @Inject constructor(
         }
     }
 }
-
-
 
 

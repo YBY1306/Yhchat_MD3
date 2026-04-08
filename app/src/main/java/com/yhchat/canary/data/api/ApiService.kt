@@ -334,6 +334,24 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: com.yhchat.canary.data.model.RemoveBotRequest
     ): Response<com.yhchat.canary.data.model.ApiStatus>
+
+    /**
+     * 编辑机器人在群聊中的管理权限
+     */
+    @POST("v1/bot/group-permission-edit")
+    suspend fun editBotGroupPermission(
+        @Header("token") token: String,
+        @Body request: BotGroupPermissionEditRequest
+    ): Response<ApiStatus>
+
+    /**
+     * 获取机器人在群聊中的管理权限
+     */
+    @POST("v1/bot/group-permission-get")
+    suspend fun getBotGroupPermission(
+        @Header("token") token: String,
+        @Body request: BotGroupPermissionGetRequest
+    ): Response<BotGroupPermissionGetResponse>
     
     /**
      * 批量撤回消息 - 使用protobuf
@@ -1982,7 +2000,51 @@ data class ReportPostRequest(
     @SerializedName("id")
     val id: Int, // 文章id
     @SerializedName("content")
-    val content: String, // 举报原因
+    val content: String, // 补充说明
+    @SerializedName("reason")
+    val reason: String = "", // 举报原因
     @SerializedName("url")
     val url: String? = null // 举报图片url，可选
+)
+
+data class BotGroupPermissionEditRequest(
+    @SerializedName("groupId")
+    val groupId: String,
+    @SerializedName("botId")
+    val botId: String,
+    @SerializedName("allowEditGroupInfo")
+    val allowEditGroupInfo: Int,
+    @SerializedName("allowGagMember")
+    val allowGagMember: Int,
+    @SerializedName("allowRemoveMember")
+    val allowRemoveMember: Int,
+    @SerializedName("allowGroupTagManage")
+    val allowGroupTagManage: Int
+)
+
+data class BotGroupPermissionGetRequest(
+    @SerializedName("botId")
+    val botId: String,
+    @SerializedName("groupId")
+    val groupId: String
+)
+
+data class BotGroupPermissionGetResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("data")
+    val data: BotGroupPermissionData?,
+    @SerializedName("msg")
+    val msg: String
+)
+
+data class BotGroupPermissionData(
+    @SerializedName("allowEditGroupInfo")
+    val allowEditGroupInfo: Int,
+    @SerializedName("allowGagMember")
+    val allowGagMember: Int,
+    @SerializedName("allowRemoveMember")
+    val allowRemoveMember: Int,
+    @SerializedName("allowGroupTagManage")
+    val allowGroupTagManage: Int
 )

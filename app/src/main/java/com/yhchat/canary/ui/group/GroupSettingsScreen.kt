@@ -3,6 +3,7 @@ package com.yhchat.canary.ui.group
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,14 +12,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +28,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.settings.SettingsCustomItem
+import com.yhchat.canary.ui.settings.SettingsGroup
+import com.yhchat.canary.ui.settings.SettingsItemCell
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,15 +42,25 @@ fun GroupSettingsScreenRoot(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
+
     LaunchedEffect(groupId) {
         viewModel.loadGroupInfo(groupId)
     }
-    
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text("群聊设置", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text("群聊设置", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = groupName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -95,9 +109,7 @@ fun GroupSettingsScreenRoot(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 uiState.error != null -> {
                     Column(
@@ -137,8 +149,13 @@ private fun GroupSettingsContent(
 ) {
     val context = LocalContext.current
     val groupInfo = uiState.groupInfo!!
-    val currentAvatarUrl = if (uiState.isEditing) uiState.editedAvatarUrl else groupInfo.avatarUrl
+    val currentAvatarUrl = if (uiState.isEditing) {
+        uiState.editedAvatarUrl.ifBlank { groupInfo.avatarUrl }
+    } else {
+        groupInfo.avatarUrl
+    }
     var showImageViewer by remember { mutableStateOf(false) }
+    var showKeywordDialog by remember { mutableStateOf(false) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -146,531 +163,370 @@ private fun GroupSettingsContent(
             viewModel.uploadGroupAvatar(context, selectedUri)
         }
     }
-    
+
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        // 群聊基本信息
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(contentAlignment = Alignment.BottomEnd) {
-                    AsyncImage(
-                        model = ImageUtils.createImageRequest(
-                            context = LocalContext.current,
-                            url = currentAvatarUrl
-                        ),
-                        contentDescription = "群头像",
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .clickable(enabled = currentAvatarUrl.isNotBlank()) {
-                                showImageViewer = true
-                            },
-                        contentScale = ContentScale.Crop
-                    )
-                    if (uiState.isEditing) {
-                        Surface(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clickable(enabled = !uiState.isUploadingAvatar) {
-                                    imagePickerLauncher.launch("image/*")
-                                },
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            tonalElevation = 4.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                if (uiState.isUploadingAvatar) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
+            SettingsGroup(
+                title = "基本信息",
+                items = listOf(
+                    {
+                        SettingsCustomItem {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateContentSize()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(contentAlignment = Alignment.BottomEnd) {
+                                    AsyncImage(
+                                        model = ImageUtils.createImageRequest(
+                                            context = LocalContext.current,
+                                            url = currentAvatarUrl
+                                        ),
+                                        contentDescription = "群头像",
+                                        modifier = Modifier
+                                            .size(100.dp)
+                                            .clip(CircleShape)
+                                            .clickable(enabled = currentAvatarUrl.isNotBlank()) {
+                                                showImageViewer = true
+                                            },
+                                        contentScale = ContentScale.Crop
                                     )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.PhotoCamera,
-                                        contentDescription = "edit_avatar",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    }
-                     
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    if (uiState.isEditing) {
-                        OutlinedTextField(
-                            value = uiState.editedName,
-                            onValueChange = viewModel::updateEditedName,
-                            label = { Text("群聊名称") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = true
-                        )
-                    } else {
-                        Text(
-                            text = groupInfo.name,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    if (uiState.isEditing) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = uiState.editedIntroduction,
-                            onValueChange = viewModel::updateEditedIntroduction,
-                            label = { Text("群聊简介") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = true,
-                            maxLines = 3
-                        )
-                    } else if (groupInfo.introduction.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = groupInfo.introduction,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-        
-        // 群聊设置选项
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "群聊设置",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    // 进群免审核
-                    SettingSwitchItem(
-                        title = "进群免审核",
-                        subtitle = "允许用户直接加入群聊，无需审核",
-                        checked = if (uiState.isEditing) uiState.editedDirectJoin else groupInfo.directJoin,
-                        onCheckedChange = viewModel::updateEditedDirectJoin,
-                        enabled = uiState.isEditing
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // 历史消息
-                    SettingSwitchItem(
-                        title = "查看历史消息",
-                        subtitle = "允许新成员查看群聊历史消息",
-                        checked = if (uiState.isEditing) uiState.editedHistoryMsg else groupInfo.historyMsgEnabled,
-                        onCheckedChange = viewModel::updateEditedHistoryMsg,
-                        enabled = uiState.isEditing
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // 私有群聊
-                    SettingSwitchItem(
-                        title = "私有群聊",
-                        subtitle = "设置为私有群聊",
-                        checked = if (uiState.isEditing) uiState.editedPrivate else groupInfo.isPrivate,
-                        onCheckedChange = viewModel::updateEditedPrivate,
-                        enabled = uiState.isEditing
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // 群聊分类
-                    if (uiState.isEditing) {
-                        OutlinedTextField(
-                            value = uiState.editedCategoryName,
-                            onValueChange = viewModel::updateEditedCategoryName,
-                            label = { Text("群聊分类") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = true
-                        )
-                    } else {
-                        SettingTextItem(
-                            title = "群聊分类",
-                            value = groupInfo.categoryName
-                        )
-                    }
-                    
-                    // 群口令
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    var showKeywordDialog by remember { mutableStateOf(false) }
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showKeywordDialog = true },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "群口令",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = groupInfo.groupCode?.takeIf { it.isNotEmpty() } ?: "未设置",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "编辑",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    if (showKeywordDialog) {
-                        var keywordInput by remember { mutableStateOf(groupInfo.groupCode ?: "") }
-                        var isLoading by remember { mutableStateOf(false) }
-                        
-                        AlertDialog(
-                            onDismissRequest = { if (!isLoading) showKeywordDialog = false },
-                            title = { Text("设置群口令") },
-                            text = {
-                                OutlinedTextField(
-                                    value = keywordInput,
-                                    onValueChange = { keywordInput = it },
-                                    label = { Text("群口令") },
-                                    enabled = !isLoading,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        isLoading = true
-                                        viewModel.editGroupKeyword(groupInfo.groupId, keywordInput) { success ->
-                                            isLoading = false
-                                            if (success) {
-                                                showKeywordDialog = false
-                                                viewModel.loadGroupInfo(groupInfo.groupId)
+                                    if (uiState.isEditing) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clickable(enabled = !uiState.isUploadingAvatar) {
+                                                    imagePickerLauncher.launch("image/*")
+                                                },
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            tonalElevation = 4.dp
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (uiState.isUploadingAvatar) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(16.dp),
+                                                        strokeWidth = 2.dp,
+                                                        color = MaterialTheme.colorScheme.onPrimary
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        imageVector = Icons.Default.PhotoCamera,
+                                                        contentDescription = "编辑头像",
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
                                             }
                                         }
-                                    },
-                                    enabled = !isLoading
-                                ) {
-                                    if (isLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    } else {
-                                        Text("确定")
                                     }
                                 }
-                            },
-                            dismissButton = {
-                                TextButton(
-                                    onClick = { showKeywordDialog = false },
-                                    enabled = !isLoading
-                                ) {
-                                    Text("取消")
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        
-        // 消息管理
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "消息管理",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                        fun autoDeleteMessageText(days: Long): String {
-                            return when (days.toInt()) {
-                                0 -> "永久不删"
-                                90 -> "2个月"
-                                365 -> "1年"
-                                730 -> "2年"
-                                else -> if (days <= 0) "永久不删" else "${days}天"
                             }
                         }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.showAutoDeleteMessageDialog() },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "消息自动销毁",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                    },
+                    {
+                        if (uiState.isEditing) {
+                            GroupSettingsTextFieldItem(
+                                icon = Icons.Default.Edit,
+                                title = "群聊名称",
+                                value = uiState.editedName,
+                                onValueChange = viewModel::updateEditedName
                             )
-                            Text(
-                                text = autoDeleteMessageText(groupInfo.autoDeleteMessage),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            GroupSettingsValueItem(
+                                icon = Icons.Default.Edit,
+                                title = "群聊名称",
+                                value = groupInfo.name
                             )
                         }
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "设置",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.showMessageTypeLimitDialog()
-                            },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "消息类型限制",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                    },
+                    {
+                        if (uiState.isEditing) {
+                            GroupSettingsTextFieldItem(
+                                icon = Icons.Default.Info,
+                                title = "群聊简介",
+                                value = uiState.editedIntroduction,
+                                onValueChange = viewModel::updateEditedIntroduction,
+                                maxLines = 3
                             )
-                            Text(
-                                text = if (groupInfo.limitedMsgType.isEmpty()) "未设置限制" else "已限制 ${groupInfo.limitedMsgType.split(",").size} 种消息类型",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            GroupSettingsValueItem(
+                                icon = Icons.Default.Info,
+                                title = "群聊简介",
+                                value = groupInfo.introduction.ifBlank { "未设置" }
                             )
                         }
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "设置",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    SettingSwitchItem(
-                        title = "隐藏群成员",
-                        subtitle = "开启后，群成员列表将对普通成员隐藏",
-                        checked = groupInfo.hideGroupMembers,
-                        onCheckedChange = { checked ->
-                            viewModel.setHideGroupMembers(checked)
-                        },
-                        enabled = !uiState.isSettingHideGroupMembers
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    SettingSwitchItem(
-                        title = "锁定群云盘",
-                        subtitle = "开启后，群成员无法上传文件到群云盘",
-                        checked = groupInfo.denyMembersUploadToGroupDisk,
-                        onCheckedChange = { checked ->
-                            viewModel.setDenyMembersUploadToGroupDisk(checked)
-                        },
-                        enabled = !uiState.isSettingDenyMembersUploadToGroupDisk
-                    )
-                }
-            }
+                )
+            )
         }
 
-        // 标签管理
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "标签管理",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                        
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
+            SettingsGroup(
+                title = "群聊设置",
+                items = listOf(
+                    {
+                        GroupSettingsSwitchItem(
+                            icon = Icons.Default.Check,
+                            title = "进群免审核",
+                            subtitle = "允许用户直接加入群聊，无需审核",
+                            checked = if (uiState.isEditing) uiState.editedDirectJoin else groupInfo.directJoin,
+                            onCheckedChange = viewModel::updateEditedDirectJoin,
+                            enabled = uiState.isEditing
+                        )
+                    },
+                    {
+                        GroupSettingsSwitchItem(
+                            icon = Icons.Default.Info,
+                            title = "查看历史消息",
+                            subtitle = "允许新成员查看群聊历史消息",
+                            checked = if (uiState.isEditing) uiState.editedHistoryMsg else groupInfo.historyMsgEnabled,
+                            onCheckedChange = viewModel::updateEditedHistoryMsg,
+                            enabled = uiState.isEditing
+                        )
+                    },
+                    {
+                        GroupSettingsSwitchItem(
+                            icon = Icons.Default.Lock,
+                            title = "私有群聊",
+                            subtitle = "设置为私有群聊",
+                            checked = if (uiState.isEditing) uiState.editedPrivate else groupInfo.isPrivate,
+                            onCheckedChange = viewModel::updateEditedPrivate,
+                            enabled = uiState.isEditing
+                        )
+                    },
+                    {
+                        if (uiState.isEditing) {
+                            GroupSettingsTextFieldItem(
+                                icon = Icons.Default.Edit,
+                                title = "群聊分类",
+                                value = uiState.editedCategoryName,
+                                onValueChange = viewModel::updateEditedCategoryName
+                            )
+                        } else {
+                            GroupSettingsValueItem(
+                                icon = Icons.Default.Edit,
+                                title = "群聊分类",
+                                value = groupInfo.categoryName.ifBlank { "未设置" }
+                            )
+                        }
+                    },
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Lock,
+                            title = "群口令",
+                            value = groupInfo.groupCode?.takeIf { it.isNotBlank() } ?: "未设置",
+                            onClick = { showKeywordDialog = true }
+                        )
+                    }
+                )
+            )
+        }
+
+        item {
+            SettingsGroup(
+                title = "消息管理",
+                items = listOf(
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Delete,
+                            title = "消息自动销毁",
+                            value = autoDeleteMessageText(groupInfo.autoDeleteMessage),
+                            onClick = { viewModel.showAutoDeleteMessageDialog() }
+                        )
+                    },
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Edit,
+                            title = "消息类型限制",
+                            value = if (groupInfo.limitedMsgType.isEmpty()) {
+                                "未设置限制"
+                            } else {
+                                "已限制 ${groupInfo.limitedMsgType.split(",").size} 种消息类型"
+                            },
+                            onClick = { viewModel.showMessageTypeLimitDialog() }
+                        )
+                    },
+                    {
+                        GroupSettingsSwitchItem(
+                            icon = Icons.Default.People,
+                            title = "隐藏群成员",
+                            subtitle = "开启后，群成员列表将对普通成员隐藏",
+                            checked = groupInfo.hideGroupMembers,
+                            onCheckedChange = viewModel::setHideGroupMembers,
+                            enabled = !uiState.isSettingHideGroupMembers,
+                            showLoading = uiState.isSettingHideGroupMembers
+                        )
+                    },
+                    {
+                        GroupSettingsSwitchItem(
+                            icon = Icons.Default.Folder,
+                            title = "锁定群云盘",
+                            subtitle = "开启后，群成员无法上传文件到群云盘",
+                            checked = groupInfo.denyMembersUploadToGroupDisk,
+                            onCheckedChange = viewModel::setDenyMembersUploadToGroupDisk,
+                            enabled = !uiState.isSettingDenyMembersUploadToGroupDisk,
+                            showLoading = uiState.isSettingDenyMembersUploadToGroupDisk
+                        )
+                    }
+                )
+            )
+        }
+
+        item {
+            SettingsGroup(
+                title = "管理",
+                items = listOf(
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Edit,
+                            title = "群组标签",
+                            subtitle = "管理群组成员标签",
+                            onClick = {
                                 GroupTagManagementActivity.start(
                                     context,
                                     groupInfo.groupId,
                                     groupInfo.name
                                 )
-                            },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "群组标签",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "管理群组成员标签",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "管理",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
-                    }
-                }
-            }
-        }
-
-        // 机器人管理
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "机器人管理",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                        
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
+                    },
+                    {
+                        SettingsItemCell(
+                            icon = Icons.Default.Settings,
+                            title = "群聊机器人",
+                            subtitle = "查看和管理群聊中的机器人",
+                            onClick = {
                                 GroupBotManagementActivity.start(
                                     context,
                                     groupInfo.groupId,
                                     groupInfo.name
                                 )
-                            },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "群聊机器人",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "查看和管理群聊中的机器人",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "查看",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
-                }
-            }
+                )
+            )
         }
-        
-        // 群聊详细信息（只读）
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "群聊信息",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    SettingTextItem("群ID", groupInfo.groupId)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    SettingTextItem("成员数量", "${groupInfo.memberCount} 人")
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    SettingTextItem("创建者", groupInfo.createBy)
-                    if (groupInfo.communityName.isNotEmpty()) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        SettingTextItem("所属社区", groupInfo.communityName)
+            SettingsGroup(
+                title = "群聊信息",
+                items = listOf(
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Info,
+                            title = "群ID",
+                            value = groupInfo.groupId
+                        )
+                    },
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.People,
+                            title = "成员数量",
+                            value = "${groupInfo.memberCount} 人"
+                        )
+                    },
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Person,
+                            title = "创建者",
+                            value = groupInfo.createBy
+                        )
+                    },
+                    {
+                        GroupSettingsValueItem(
+                            icon = Icons.Default.Info,
+                            title = "所属社区",
+                            value = groupInfo.communityName.ifBlank { "未关联社区" }
+                        )
                     }
-                }
-            }
+                )
+            )
         }
-        
-        // 错误提示
+
         uiState.saveError?.let { error ->
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+                StatusMessageCard(
+                    text = error,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         }
-        
-        // 成功提示
+
         if (uiState.isSaveSuccess) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Text(
-                        text = "保存成功",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+                StatusMessageCard(
+                    text = "保存成功",
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         }
     }
-    
-    // 消息类型限制对话框
+
     if (showImageViewer && currentAvatarUrl.isNotBlank()) {
         ImageViewer(
             imageUrl = currentAvatarUrl,
             onDismiss = { showImageViewer = false }
+        )
+    }
+
+    if (showKeywordDialog) {
+        var keywordInput by remember { mutableStateOf(groupInfo.groupCode ?: "") }
+        var isLoading by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { if (!isLoading) showKeywordDialog = false },
+            title = { Text("设置群口令") },
+            text = {
+                OutlinedTextField(
+                    value = keywordInput,
+                    onValueChange = { keywordInput = it },
+                    label = { Text("群口令") },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isLoading = true
+                        viewModel.editGroupKeyword(groupInfo.groupId, keywordInput) { success ->
+                            isLoading = false
+                            if (success) {
+                                showKeywordDialog = false
+                                viewModel.loadGroupInfo(groupInfo.groupId)
+                            }
+                        }
+                    },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("确定")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showKeywordDialog = false },
+                    enabled = !isLoading
+                ) {
+                    Text("取消")
+                }
+            }
         )
     }
 
@@ -746,64 +602,175 @@ private fun GroupSettingsContent(
 }
 
 @Composable
-private fun SettingSwitchItem(
+private fun GroupSettingsValueItem(
+    icon: ImageVector,
     title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean
+    value: String,
+    onClick: (() -> Unit)? = null
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    SettingsCustomItem(onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.6f)
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled
-        )
     }
 }
 
 @Composable
-private fun SettingTextItem(
+private fun GroupSettingsTextFieldItem(
+    icon: ImageVector,
     title: String,
-    value: String
+    value: String,
+    onValueChange: (String) -> Unit,
+    maxLines: Int = 1
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+    SettingsCustomItem {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = maxLines,
+                singleLine = maxLines == 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupSettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean,
+    showLoading: Boolean = false
+) {
+    SettingsCustomItem(onClick = if (enabled) ({ onCheckedChange(!checked) }) else null) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.6f)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            if (showLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = if (enabled) onCheckedChange else null,
+                    enabled = enabled
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusMessageCard(
+    text: String,
+    containerColor: Color,
+    contentColor: Color
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        color = containerColor,
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            text = text,
+            color = contentColor,
+            modifier = Modifier.padding(16.dp)
         )
     }
 }
 
-/**
- * 消息类型限制对话框
- */
+private fun autoDeleteMessageText(days: Long): String {
+    return when (days.toInt()) {
+        0 -> "永久不删"
+        90 -> "2个月"
+        365 -> "1年"
+        730 -> "2年"
+        else -> if (days <= 0) "永久不删" else "${days}天"
+    }
+}
+
 @Composable
 private fun MessageTypeLimitDialog(
     selectedTypes: Set<Int>,
@@ -824,7 +791,7 @@ private fun MessageTypeLimitDialog(
         11 to "语音消息",
         13 to "语音通话"
     )
-    
+
     AlertDialog(
         onDismissRequest = if (!isLoading) onDismiss else { {} },
         title = { Text("消息类型限制") },
@@ -837,7 +804,6 @@ private fun MessageTypeLimitDialog(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
-                
                 items(messageTypes, key = { it.first }) { (type, name) ->
                     Row(
                         modifier = Modifier

@@ -37,6 +37,7 @@ import com.yhchat.canary.ui.search.SearchActivity
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 通讯录界面
@@ -53,12 +54,11 @@ fun ContactsScreen(
     val listState = rememberLazyListState()
     
     // 布局设置
-    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    val showRequests = layoutPrefs.getBoolean("contacts_show_requests", true)
-    val showFriends = layoutPrefs.getBoolean("contacts_show_friends", true)
-    val showGroups = layoutPrefs.getBoolean("contacts_show_groups", true)
-    val showBots = layoutPrefs.getBoolean("contacts_show_bots", true)
-    val showMyBots = layoutPrefs.getBoolean("contacts_show_my_bots", true)
+    val showRequests by rememberBooleanPreference("layout_settings", "contacts_show_requests", true)
+    val showFriends by rememberBooleanPreference("layout_settings", "contacts_show_friends", true)
+    val showGroups by rememberBooleanPreference("layout_settings", "contacts_show_groups", true)
+    val showBots by rememberBooleanPreference("layout_settings", "contacts_show_bots", true)
+    val showMyBots by rememberBooleanPreference("layout_settings", "contacts_show_my_bots", true)
     
     // 监听滚动状态，自动隐藏/显示导航栏
     if (navigationState != null) {

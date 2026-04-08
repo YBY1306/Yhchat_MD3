@@ -72,3 +72,55 @@ fun rememberIntPreference(
     }
     return state
 }
+
+@Composable
+fun rememberFloatPreference(
+    preferencesName: String,
+    key: String,
+    defaultValue: Float,
+    mode: Int = Context.MODE_PRIVATE
+): State<Float> {
+    val preferences = rememberSharedPreferences(preferencesName, mode)
+    val state: MutableState<Float> = remember(preferences, key, defaultValue) {
+        mutableStateOf(preferences.getFloat(key, defaultValue))
+    }
+    DisposableEffect(preferences, key, defaultValue) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, changedKey ->
+            if (changedKey == key) {
+                state.value = prefs.getFloat(key, defaultValue)
+            }
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        state.value = preferences.getFloat(key, defaultValue)
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+    return state
+}
+
+@Composable
+fun rememberStringPreference(
+    preferencesName: String,
+    key: String,
+    defaultValue: String,
+    mode: Int = Context.MODE_PRIVATE
+): State<String> {
+    val preferences = rememberSharedPreferences(preferencesName, mode)
+    val state: MutableState<String> = remember(preferences, key, defaultValue) {
+        mutableStateOf(preferences.getString(key, defaultValue) ?: defaultValue)
+    }
+    DisposableEffect(preferences, key, defaultValue) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, changedKey ->
+            if (changedKey == key) {
+                state.value = prefs.getString(key, defaultValue) ?: defaultValue
+            }
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        state.value = preferences.getString(key, defaultValue) ?: defaultValue
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+    return state
+}

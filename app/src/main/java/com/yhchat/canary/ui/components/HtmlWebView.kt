@@ -213,31 +213,37 @@ fun HtmlWebView(
                         }
                     }, "ImageClickHandler")
                 }
+
+                setTag(android.R.id.content, "")
             }
         },
         update = { webView: WebView ->
-            webView.loadDataWithBaseURL(
-                null,
-                styledHtml,
-                "text/html",
-                "UTF-8",
-                null
-            )
-            // 自动高度适配：注入JS获取内容高度并设置WebView高度
-            webView.post {
-                webView.evaluateJavascript(
-                    """
-                    (function() {
-                        var body = document.body,
-                            html = document.documentElement;
-                        var height = Math.max(body.scrollHeight, body.offsetHeight,
-                            html.clientHeight, html.scrollHeight, html.offsetHeight);
-                        window.AndroidInterface && window.AndroidInterface.setHeight && window.AndroidInterface.setHeight(height);
-                        return height;
-                    })();
-                    """.trimIndent(),
+            val lastLoadedHtml = webView.getTag(android.R.id.content) as? String
+            if (lastLoadedHtml != styledHtml) {
+                webView.setTag(android.R.id.content, styledHtml)
+                webView.loadDataWithBaseURL(
+                    null,
+                    styledHtml,
+                    "text/html",
+                    "UTF-8",
                     null
                 )
+                // 自动高度适配：注入JS获取内容高度并设置WebView高度
+                webView.post {
+                    webView.evaluateJavascript(
+                        """
+                        (function() {
+                            var body = document.body,
+                                html = document.documentElement;
+                            var height = Math.max(body.scrollHeight, body.offsetHeight,
+                                html.clientHeight, html.scrollHeight, html.offsetHeight);
+                            window.AndroidInterface && window.AndroidInterface.setHeight && window.AndroidInterface.setHeight(height);
+                            return height;
+                        })();
+                        """.trimIndent(),
+                        null
+                    )
+                }
             }
         }
     )

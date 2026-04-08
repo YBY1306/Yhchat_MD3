@@ -383,11 +383,16 @@ private fun MarkdownTableWithImages(
 ) {
     val tableNode = remember(tableMarkdown) { parseMarkdownTableNode(tableMarkdown) } ?: return
     val referenceLinks = remember(tableMarkdown, tableNode) { buildReferenceLinkMap(tableNode, tableMarkdown) }
-    val parsedTable = remember(tableMarkdown) { parseMarkdownTableContent(tableMarkdown) } ?: return
     val tableCellWidth = 160.dp
     val tableCellPadding = 16.dp
     val tableCornerSize = 8.dp
-    val columnCount = parsedTable.columnCount
+    val columnCount = remember(tableNode) {
+        tableNode.children
+            .firstOrNull { it.type == HEADER }
+            ?.children
+            ?.count { it.type == CELL }
+            ?: 0
+    }
     if (columnCount <= 0) return
 
     val tableWidth = columnCount * tableCellWidth
@@ -410,30 +415,35 @@ private fun MarkdownTableWithImages(
                 .fillMaxWidth()
                 .widthIn(min = tableWidth)
         ) {
-            MarkdownParsedTableRow(
-                rowCells = parsedTable.headerCells,
-                columnCount = columnCount,
-                isHeader = true,
-                tableCellPadding = tableCellPadding,
-                referenceLinks = referenceLinks,
-                imageReferer = imageReferer,
-                onImageClick = onImageClick,
-                onLinkClicked = onLinkClicked
-            )
-            MarkdownTableDivider()
-            parsedTable.bodyRows.forEachIndexed { index, rowCells ->
-                MarkdownParsedTableRow(
-                    rowCells = rowCells,
-                    columnCount = columnCount,
-                    isHeader = false,
-                    tableCellPadding = tableCellPadding,
-                    referenceLinks = referenceLinks,
-                    imageReferer = imageReferer,
-                    onImageClick = onImageClick,
-                    onLinkClicked = onLinkClicked
-                )
-                if (index != parsedTable.bodyRows.lastIndex) {
-                    MarkdownTableDivider()
+            tableNode.children.forEach { rowNode ->
+                when (rowNode.type) {
+                    HEADER -> MarkdownAstTableRow(
+                        rowNode = rowNode,
+                        tableMarkdown = tableMarkdown,
+                        columnCount = columnCount,
+                        isHeader = true,
+                        tableCellPadding = tableCellPadding,
+                        referenceLinks = referenceLinks,
+                        imageReferer = imageReferer,
+                        onImageClick = onImageClick,
+                        onLinkClicked = onLinkClicked
+                    )
+
+                    ROW -> MarkdownAstTableRow(
+                        rowNode = rowNode,
+                        tableMarkdown = tableMarkdown,
+                        columnCount = columnCount,
+                        isHeader = false,
+                        tableCellPadding = tableCellPadding,
+                        referenceLinks = referenceLinks,
+                        imageReferer = imageReferer,
+                        onImageClick = onImageClick,
+                        onLinkClicked = onLinkClicked
+                    )
+
+                    TABLE_SEPARATOR -> {
+                        MarkdownTableDivider()
+                    }
                 }
             }
         }
@@ -441,8 +451,9 @@ private fun MarkdownTableWithImages(
 }
 
 @Composable
-private fun MarkdownParsedTableRow(
-    rowCells: List<String>,
+private fun MarkdownAstTableRow(
+    rowNode: ASTNode,
+    tableMarkdown: String,
     columnCount: Int,
     isHeader: Boolean,
     tableCellPadding: Dp,
@@ -460,22 +471,26 @@ private fun MarkdownParsedTableRow(
                 else Color.Transparent
             )
     ) {
+        val cells = remember(rowNode) { rowNode.children.filter { it.type == CELL } }
         repeat(columnCount) { index ->
-            val cellContent = rowCells.getOrElse(index) { "" }
+            val cellNode = cells.getOrNull(index)
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(tableCellPadding),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                RenderMarkdownTableCell(
-                    cellContent = cellContent,
-                    referenceLinks = referenceLinks,
-                    imageReferer = imageReferer,
-                    onImageClick = onImageClick,
-                    onLinkClicked = onLinkClicked,
-                    isHeader = isHeader
-                )
+                cellNode?.let {
+                    RenderMarkdownTableCell(
+                        tableMarkdown = tableMarkdown,
+                        cellNode = it,
+                        referenceLinks = referenceLinks,
+                        imageReferer = imageReferer,
+                        onImageClick = onImageClick,
+                        onLinkClicked = onLinkClicked,
+                        isHeader = isHeader
+                    )
+                }
             }
         }
     }
@@ -483,24 +498,23 @@ private fun MarkdownParsedTableRow(
 
 @Composable
 private fun RenderMarkdownTableCell(
-    cellContent: String,
+    tableMarkdown: String,
+    cellNode: ASTNode,
     referenceLinks: Map<String, String?>,
     imageReferer: String?,
     onImageClick: (String) -> Unit,
     onLinkClicked: (String) -> Unit,
     isHeader: Boolean
 ) {
-    if (cellContent.isBlank()) return
-    val rawCellText = remember(cellContent) {
-        cellContent
-            .trim()
-            .trim()
+    val rawCellText = remember(tableMarkdown, cellNode.startOffset, cellNode.endOffset) {
+        extractTableCellContent(tableMarkdown, cellNode)
     }
+    if (rawCellText.isBlank() && cellNode.children.isEmpty()) return
 
-    val cellSegments = remember(cellContent) {
+    val cellSegments = remember(rawCellText) {
         buildList {
             extractImagesFromContent(
-                content = cellContent,
+                content = rawCellText,
                 segments = this
             )
         }
@@ -527,8 +541,18 @@ private fun RenderMarkdownTableCell(
         fontFamily = FontFamily.Monospace,
         background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     )
-    val annotatedText = remember(cellContent, isHeader, referenceLinks, baseStyle, linkTextStyle, codeSpanStyle) {
-        cellContent.buildTableMarkdownAnnotatedString(
+    val annotatedText = remember(
+        tableMarkdown,
+        cellNode.startOffset,
+        cellNode.endOffset,
+        isHeader,
+        referenceLinks,
+        baseStyle,
+        linkTextStyle,
+        codeSpanStyle
+    ) {
+        tableMarkdown.buildTableMarkdownAnnotatedString(
+            textNode = cellNode,
             style = baseStyle,
             settings = TableAnnotatorSettings(
                 linkTextSpanStyle = linkTextStyle,
@@ -543,8 +567,11 @@ private fun RenderMarkdownTableCell(
             )
         )
     }
+    val hasVisibleTextSegment = remember(cellSegments) {
+        cellSegments.any { it is MarkdownSegment.Text && it.content.isNotBlank() }
+    }
 
-    if (annotatedText.text.isNotBlank()) {
+    if (annotatedText.text.isNotBlank() && (hasImage.not() || hasVisibleTextSegment)) {
         BasicText(
             text = annotatedText,
             style = baseStyle,
@@ -582,6 +609,18 @@ private fun RenderMarkdownTableCell(
             else -> Unit
         }
     }
+}
+
+private fun extractTableCellContent(
+    tableMarkdown: String,
+    cellNode: ASTNode
+): String {
+    return tableMarkdown
+        .substring(cellNode.startOffset, cellNode.endOffset)
+        .trim()
+        .removePrefix("|")
+        .removeSuffix("|")
+        .trim()
 }
 
 @Composable

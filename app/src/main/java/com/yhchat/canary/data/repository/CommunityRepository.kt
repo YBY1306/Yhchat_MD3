@@ -12,6 +12,58 @@ import javax.inject.Inject
 class CommunityRepository @Inject constructor(
     private val apiService: ApiService
 ) {
+
+    suspend fun getQiniuImageToken(token: String): Result<String> {
+        return try {
+            val response = apiService.getQiniuImageToken(token)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body.data.token)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取图片上传凭证失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun submitCommunityReport(
+        token: String,
+        typ: Int,
+        id: Int,
+        content: String,
+        reason: String,
+        url: String? = null
+    ): Result<ApiStatus> {
+        return try {
+            val response = apiService.reportPost(
+                token = token,
+                request = ReportPostRequest(
+                    typ = typ,
+                    id = id,
+                    content = content,
+                    reason = reason,
+                    url = url
+                )
+            )
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception(body?.message ?: "举报失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     
     /**
      * 获取分区列表

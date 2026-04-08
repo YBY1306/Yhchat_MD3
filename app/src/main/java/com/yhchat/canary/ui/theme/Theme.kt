@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,19 +8,17 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.components.rememberFloatPreference
+import com.yhchat.canary.ui.components.rememberIntPreference
+import com.yhchat.canary.ui.components.rememberStringPreference
 
 private val DarkColorScheme = darkColorScheme(
     primary = ChatPrimaryDark,
@@ -74,60 +71,18 @@ fun YhchatCanaryTheme(
 ) {
     val context = LocalContext.current
     val systemDarkTheme = isSystemInDarkTheme()
-    val displayPrefs = remember(context) {
-        context.getSharedPreferences("display_settings", android.content.Context.MODE_PRIVATE)
-    }
-    val themePrefs = remember(context) {
-        context.getSharedPreferences("theme_settings", android.content.Context.MODE_PRIVATE)
-    }
-
-    var globalScale by remember(displayPrefs) {
-        mutableFloatStateOf(displayPrefs.getFloat("global_scale", 1.0f))
-    }
-    var fontScalePreference by remember(displayPrefs) {
-        mutableFloatStateOf(displayPrefs.getFloat("font_scale", 100f) / 100f)
-    }
-    var themeMode by remember(displayPrefs) {
-        mutableStateOf(displayPrefs.getString("theme_mode", "system") ?: "system")
-    }
-    var customColorInt by remember(themePrefs) {
-        mutableIntStateOf(themePrefs.getInt("custom_primary_color", -1))
-    }
-
-    DisposableEffect(displayPrefs, themePrefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-            when (key) {
-                "global_scale" -> {
-                    globalScale = sharedPreferences.getFloat("global_scale", 1.0f)
-                }
-                "font_scale" -> {
-                    fontScalePreference = sharedPreferences.getFloat("font_scale", 100f) / 100f
-                }
-                "theme_mode" -> {
-                    themeMode = sharedPreferences.getString("theme_mode", "system") ?: "system"
-                }
-                "custom_primary_color" -> {
-                    customColorInt = sharedPreferences.getInt("custom_primary_color", -1)
-                }
-            }
-        }
-
-        displayPrefs.registerOnSharedPreferenceChangeListener(listener)
-        themePrefs.registerOnSharedPreferenceChangeListener(listener)
-
-        onDispose {
-            displayPrefs.unregisterOnSharedPreferenceChangeListener(listener)
-            themePrefs.unregisterOnSharedPreferenceChangeListener(listener)
-        }
-    }
+    val globalScale by rememberFloatPreference("display_settings", "global_scale", 1.0f)
+    val fontScalePercent by rememberFloatPreference("display_settings", "font_scale", 100f)
+    val themeMode by rememberStringPreference("display_settings", "theme_mode", "system")
+    val customColorInt by rememberIntPreference("theme_settings", "custom_primary_color", -1)
+    val monetEnabled by rememberBooleanPreference("display_settings", "enable_monet_colors", true)
+    val fontScalePreference = fontScalePercent / 100f
     
     // 读取自定义主题颜色设置
     val useCustomColor = customColorInt != -1 && customColorInt != 0xFF6200EE.toInt()
     val customPrimaryColor = if (useCustomColor) Color(customColorInt) else null
     
     // 读取是否启用莫奈取色（Material You动态颜色）
-    val monaetEnabled = displayPrefs.getBoolean("enable_monet_colors", true)
-
     val effectiveDarkTheme = when (themeMode) {
         "light" -> false
         "dark" -> true
@@ -137,7 +92,7 @@ fun YhchatCanaryTheme(
     // 选择配色方案（莫奈取色优先级最高）
     val baseColorScheme = when {
         // 优先1：启用了莫奈取色且系统支持（Android 12+）
-        monaetEnabled && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        monetEnabled && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (effectiveDarkTheme) {
                 dynamicDarkColorScheme(context)
             } else {

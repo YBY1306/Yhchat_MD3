@@ -1,11 +1,14 @@
 package com.yhchat.canary.ui.community
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.data.repository.CommunityRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.utils.ImageUploadUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +35,9 @@ class PostDetailViewModel @Inject constructor(
     
     private val _commentListState = MutableStateFlow(CommentListState())
     val commentListState: StateFlow<CommentListState> = _commentListState.asStateFlow()
+
+    private val _communityReportState = MutableStateFlow(CommunityReportState())
+    val communityReportState: StateFlow<CommunityReportState> = _communityReportState.asStateFlow()
     
     // Share sheet persistent state
     var shareSheetSelectedTab by androidx.compose.runtime.mutableStateOf(0)
@@ -400,6 +406,60 @@ class PostDetailViewModel @Inject constructor(
         _postDetailState.value = _postDetailState.value.copy(error = null)
         _commentListState.value = _commentListState.value.copy(error = null)
     }
+
+    fun clearCommunityReportState() {
+        _communityReportState.value = CommunityReportState()
+    }
+
+    fun submitCommunityReport(
+        context: Context,
+        typ: Int,
+        id: Int,
+        content: String,
+        reason: String,
+        imageUri: Uri?
+    ) {
+        viewModelScope.launch {
+            _communityReportState.value = CommunityReportState(isSubmitting = true)
+            try {
+                val token = tokenRepository.getTokenSync()
+                    ?: throw IllegalStateException("未登录")
+
+                var imageUrl: String? = null
+                if (imageUri != null) {
+                    val uploadToken = communityRepository.getQiniuImageToken(token).getOrElse { throw it }
+                    val uploadResult = ImageUploadUtil.uploadImage(
+                        context = context,
+                        imageUri = imageUri,
+                        uploadToken = uploadToken
+                    ).getOrElse { throw it }
+                    imageUrl = "https://chat-img.jwznb.com/${uploadResult.key}"
+                }
+
+                communityRepository.submitCommunityReport(
+                    token = token,
+                    typ = typ,
+                    id = id,
+                    content = content,
+                    reason = reason,
+                    url = imageUrl
+                ).fold(
+                    onSuccess = {
+                        _communityReportState.value = CommunityReportState(success = true)
+                    },
+                    onFailure = { error ->
+                        _communityReportState.value = CommunityReportState(
+                            error = error.message ?: "举报失败"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _communityReportState.value = CommunityReportState(
+                    error = e.message ?: "举报失败"
+                )
+            }
+        }
+    }
     
     /**
      * 异步获取当前token
@@ -478,5 +538,11 @@ data class CommentListState(
     val currentPage: Int = 1,
     val hasMore: Boolean = false,
     val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+data class CommunityReportState(
+    val isSubmitting: Boolean = false,
+    val success: Boolean = false,
     val error: String? = null
 )

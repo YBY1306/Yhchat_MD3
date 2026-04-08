@@ -1,6 +1,9 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import androidx.compose.animation.*
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,18 +35,24 @@ fun SingleBotBoardSection(
     modifier: Modifier = Modifier
 ) {
     val botBoardEnabled by rememberBooleanPreference("chat_settings", "show_bot_board", true)
-    
+
     var showBotBoard by remember { mutableStateOf(false) }
-    
+
     if (chatType == 3 && botBoardEnabled) {
         val botBoard = uiState.botBoard
         if (botBoard != null && botBoard.boardCount > 0) {
-            val boardData = botBoard.getBoardList().firstOrNull()
+            val boardData = remember(botBoard) { botBoard.getBoardList().firstOrNull() }
             if (boardData != null && boardData.content.isNotBlank()) {
                 Column(
                     modifier = modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .animateContentSize(
+                            animationSpec = tween(
+                                durationMillis = 180,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
                 ) {
                     // 展开/收起按钮
                     Row(
@@ -81,19 +90,14 @@ fun SingleBotBoardSection(
                     // 看板内容（展开时显示）
                     AnimatedVisibility(
                         visible = showBotBoard,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
+                        enter = fadeIn(animationSpec = tween(140)),
+                        exit = fadeOut(animationSpec = tween(90))
                     ) {
-                        uiState.botBoard?.let { board ->
-                            if (board.boardCount > 0) {
-                                val boardData = board.getBoardList().firstOrNull()
-                                boardData?.let { data ->
-                                    BotBoardContent(
-                                        boardData = data,
-                                        onImageClick = onImageClick
-                                    )
-                                }
-                            }
+                        boardData?.let { data ->
+                            BotBoardContent(
+                                boardData = data,
+                                onImageClick = onImageClick
+                            )
                         }
                     }
                 }

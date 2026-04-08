@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 发现界面
@@ -60,9 +61,8 @@ fun DiscoverScreen(
     val listState = rememberLazyListState()
     
     // 布局设置
-    val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    val showBotList = layoutPrefs.getBoolean("discover_show_bot_list", true)
-    val showGroupList = layoutPrefs.getBoolean("discover_show_group_list", true)
+    val showBotList by rememberBooleanPreference("layout_settings", "discover_show_bot_list", true)
+    val showGroupList by rememberBooleanPreference("layout_settings", "discover_show_group_list", true)
     
     // 监听滚动状态，自动隐藏/显示导航栏
     if (navigationState != null) {

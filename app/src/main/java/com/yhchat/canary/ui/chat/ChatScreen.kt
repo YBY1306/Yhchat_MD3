@@ -1522,7 +1522,6 @@ fun ChatScreen(
                 selectedInstruction = selectedInstruction,  // 传递选中的指令
                 onClearInstruction = {
                     selectedInstruction = null
-                    inputText = ""
                 },
                 focusRequester = inputFocusRequester,  // 传递焦点请求器
                 shouldShowKeyboard = shouldShowKeyboard,  // 传递键盘显示状态

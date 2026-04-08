@@ -1,8 +1,8 @@
 package com.yhchat.canary.ui.chat
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -27,9 +27,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.proto.group.Bot_data
-import com.yhchat.canary.ui.components.HtmlWebView
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
+import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import yh_bot.Bot
 
 /**
@@ -41,7 +41,7 @@ fun BotBoardContent(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val safeBoardContent = boardData.content.ifBlank { "[空内容]" }
+    val safeBoardContent = remember(boardData.content) { boardData.content.ifBlank { "[空内容]" } }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -73,13 +73,16 @@ fun BotBoardContent(
                         onImageClick = onImageClick
                     )
                 }
-                3 -> { // HTML - HtmlWebView内部支持选择
-                    HtmlWebView(
-                        htmlContent = safeBoardContent,
+                3 -> { // HTML - 使用本地 Compose 渲染器，避免 WebView 重建卡顿
+                    HtmlTextMessage(
+                        html = safeBoardContent,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 300.dp),
-                        onImageClick = onImageClick
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
+                        onImageClick = onImageClick,
+                        useAdvancedRenderer = true
                     )
                 }
                 else -> { // 默认按文本处理 - 支持选择复制
@@ -106,9 +109,12 @@ fun GroupBotBoardsSection(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     // 过滤出有看板内容的机器人
-    val botsWithBoards = groupBots.filter { bot ->
-        groupBotBoards[bot.botId]?.content?.isNotBlank() == true
+    val botsWithBoards = remember(groupBots, groupBotBoards) {
+        groupBots.filter { bot ->
+            groupBotBoards[bot.botId]?.content?.isNotBlank() == true
+        }
     }
 
     if (botsWithBoards.isEmpty()) {
@@ -116,11 +122,20 @@ fun GroupBotBoardsSection(
     }
 
     var selectedBotId by remember { mutableStateOf<String?>(null) }
+    val selectedBoardData = remember(selectedBotId, groupBotBoards) {
+        selectedBotId?.let { groupBotBoards[it] }
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .animateContentSize(
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = FastOutSlowInEasing
+                )
+            )
     ) {
         // 机器人选择按钮列表
         LazyRow(
@@ -129,7 +144,10 @@ fun GroupBotBoardsSection(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(botsWithBoards) { bot ->
+            items(
+                items = botsWithBoards,
+                key = { it.botId }
+            ) { bot ->
                 val isSelected = selectedBotId == bot.botId
 
                 FilterChip(
@@ -145,7 +163,7 @@ fun GroupBotBoardsSection(
                             // 机器人头像
                             AsyncImage(
                                 model = ImageUtils.createBotImageRequest(
-                                    context = LocalContext.current,
+                                    context = context,
                                     url = bot.avatarUrl
                                 ),
                                 contentDescription = bot.name,
@@ -178,60 +196,49 @@ fun GroupBotBoardsSection(
 
         // 显示选中机器人的看板内容
         AnimatedVisibility(
-            visible = selectedBotId != null,
-            enter = expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            ) + fadeIn(
-                animationSpec = tween(300)
-            ),
-            exit = shrinkVertically() + fadeOut(
-                animationSpec = tween(200)
-            )
+            visible = selectedBoardData != null,
+            enter = fadeIn(animationSpec = tween(140)),
+            exit = fadeOut(animationSpec = tween(90))
         ) {
-            selectedBotId?.let { botId ->
-                groupBotBoards[botId]?.let { boardData ->
-                    Column(
+            selectedBoardData?.let { boardData ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 500.dp)  // 限制最大高度
+                ) {
+                    // 看板标题
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 500.dp)  // 限制最大高度
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // 看板标题
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "${boardData.botName.ifBlank { "机器人" }}的看板",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            // 关闭按钮
-                            IconButton(
-                                onClick = { selectedBotId = null },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowUp,
-                                    contentDescription = "收起",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        // 看板内容 - 添加滚动支持
-                        BotBoardContentScrollable(
-                            boardData = boardData,
-                            onImageClick = onImageClick
+                        Text(
+                            text = "${boardData.botName.ifBlank { "机器人" }}的看板",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        // 关闭按钮
+                        IconButton(
+                            onClick = { selectedBotId = null },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "收起",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+
+                    // 看板内容 - 添加滚动支持
+                    BotBoardContentScrollable(
+                        boardData = boardData,
+                        onImageClick = onImageClick
+                    )
                 }
             }
         }

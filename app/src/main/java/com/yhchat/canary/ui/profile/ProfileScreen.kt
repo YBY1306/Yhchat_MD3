@@ -325,16 +325,15 @@ private fun UserProfileContent(
     val context = LocalContext.current
     
     // 读取布局设置
-    val prefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
-    val showUserId = remember { prefs.getBoolean("profile_show_user_id", true) }
-    val showVipBadge = remember { prefs.getBoolean("profile_show_vip_badge", true) }
-    val showBetaBadge = remember { prefs.getBoolean("profile_show_beta_badge", true) }
-    val showPersonalInfo = remember { prefs.getBoolean("profile_show_personal_info", true) }
-    val showPhone = remember { prefs.getBoolean("profile_show_phone", true) }
-    val showEmail = remember { prefs.getBoolean("profile_show_email", true) }
-    val showCoin = remember { prefs.getBoolean("profile_show_coin", true) }
-    val showVipExpire = remember { prefs.getBoolean("profile_show_vip_expire", true) }
-    val showInviteCode = remember { prefs.getBoolean("profile_show_invite_code", true) }
+    val showUserId by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_user_id", true)
+    val showVipBadge by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_vip_badge", true)
+    val showBetaBadge by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_beta_badge", true)
+    val showPersonalInfo by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_personal_info", true)
+    val showPhone by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_phone", true)
+    val showEmail by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_email", true)
+    val showCoin by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_coin", true)
+    val showVipExpire by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_vip_expire", true)
+    val showInviteCode by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_invite_code", true)
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,

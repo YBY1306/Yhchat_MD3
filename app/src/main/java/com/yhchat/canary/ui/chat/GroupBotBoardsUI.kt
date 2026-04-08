@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -144,10 +145,12 @@ fun GroupBotBoardsSection(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(
+            itemsIndexed(
                 items = botsWithBoards,
-                key = { it.botId }
-            ) { bot ->
+                key = { index, bot ->
+                    "group_bot_board_${bot.botId}_${bot.name}_${bot.avatarUrl}_${index}"
+                }
+            ) { _, bot ->
                 val isSelected = selectedBotId == bot.botId
 
                 FilterChip(

@@ -3,6 +3,7 @@ package com.yhchat.canary.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +32,12 @@ fun MenuButtonBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 8.dp)
     ) {
-        items(menuButtons, key = { it.hashCode() }) { button ->
+        itemsIndexed(
+            items = menuButtons,
+            key = { index, button ->
+                "menu_${button.id}_${button.botId}_${button.menuType}_${button.menuAction}_${button.createTime}_${button.name}_$index"
+            }
+        ) { _, button ->
             MenuButtonItem(
                 button = button,
                 onClick = { onButtonClick(button) }

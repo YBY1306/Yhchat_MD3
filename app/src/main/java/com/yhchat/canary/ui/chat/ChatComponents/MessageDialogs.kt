@@ -102,7 +102,12 @@ fun EditHistoryDialog(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(editRecords) { record ->
+                            items(
+                                items = editRecords,
+                                key = { record ->
+                                    "edit_${record.id}_${record.msgId}_${record.msgTime}_${record.createTime}_${record.contentOld.hashCode()}"
+                                }
+                            ) { record ->
                                 EditRecordItem(record)
                             }
                         }

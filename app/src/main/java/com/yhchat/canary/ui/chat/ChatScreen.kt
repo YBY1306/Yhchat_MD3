@@ -712,7 +712,7 @@ fun ChatScreen(
                 // 为 LazyColumn 预生成稳定且唯一的 key，避免重复 key 崩溃
                 val messageItemKeys = run {
                     val keyUsageCount = mutableMapOf<String, Int>()
-                    reversedMessages.map { message ->
+                    reversedMessages.mapIndexed { index, message ->
                         val baseKey = when {
                             message.msgId.isNotBlank() -> "msg_${message.msgId}"
                             (message.msgSeq ?: 0L) > 0L -> "seq_${message.msgSeq}"
@@ -723,7 +723,8 @@ fun ChatScreen(
 
                         val used = keyUsageCount.getOrDefault(baseKey, 0)
                         keyUsageCount[baseKey] = used + 1
-                        if (used == 0) baseKey else "${baseKey}#dup$used"
+                        val deduplicatedKey = if (used == 0) baseKey else "${baseKey}#dup$used"
+                        "${deduplicatedKey}#idx$index"
                     }
                 }
                 val groupOwnerId = uiState.groupInfo?.ownerId
@@ -1467,7 +1468,7 @@ fun ChatScreen(
                             android.util.Log.d("ChatScreen", "📝 普通指令，应用默认文本: ${instruction.defaultText}")
                             // 普通指令：应用默认文本（如果有）
                             selectedInstruction = instruction
-                            if (instruction.defaultText.isNotEmpty()) {
+                            if (instruction.defaultText.isNotEmpty() && inputText.isBlank()) {
                                 inputText = instruction.defaultText
                             }
                         }

@@ -374,26 +374,25 @@ class ChatViewModel @Inject constructor(
      * 处理新消息
      */
     private fun handleNewMessage(message: ChatMessage) {
-        // 判断消息是否属于当前聊天
-        val isPrivateChat = message.chatId == message.recvId
-        val targetChatId = if (isPrivateChat) message.sender.chatId else message.chatId
+        val normalizedMessage = normalizeMessageOwnership(message)
+        val targetChatId = resolveMessageChatId(normalizedMessage)
         
         if (targetChatId == currentChatId) {
             // 检查消息是否已存在，避免重复添加
-            val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
+            val existingIndex = _messages.indexOfFirst { it.msgId == normalizedMessage.msgId }
             if (existingIndex == -1) {
                 // 按时间排序插入新消息
-                val insertIndex = _messages.indexOfLast { it.sendTime <= message.sendTime } + 1
-                _messages.add(insertIndex, message)
-                Log.d(tag, "Inserted new real-time message at index $insertIndex: ${message.msgId}")
+                val insertIndex = _messages.indexOfLast { it.sendTime <= normalizedMessage.sendTime } + 1
+                _messages.add(insertIndex, normalizedMessage)
+                Log.d(tag, "Inserted new real-time message at index $insertIndex: ${normalizedMessage.msgId}")
                 
                 // 标记收到新消息，触发UI更新
                 _uiState.value = _uiState.value.copy(newMessageReceived = true)
                 
                 // 初始化流式消息缓存（如果是机器人消息，准备接收stream_message）
-                if (message.sender.chatType == 3) {
-                    streamingMessages[message.msgId] = message.content.text ?: ""
-                    Log.d(tag, "Initialized streaming cache for bot message: ${message.msgId}")
+                if (normalizedMessage.sender.chatType == 3) {
+                    streamingMessages[normalizedMessage.msgId] = normalizedMessage.content.text ?: ""
+                    Log.d(tag, "Initialized streaming cache for bot message: ${normalizedMessage.msgId}")
                 }
             }
         }
@@ -928,18 +927,18 @@ class ChatViewModel @Inject constructor(
      * 处理编辑的消息
      */
     private fun handleEditedMessage(message: ChatMessage) {
-        val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
+        val normalizedMessage = normalizeMessageOwnership(message)
+        val existingIndex = _messages.indexOfFirst { it.msgId == normalizedMessage.msgId }
         if (existingIndex != -1) {
             val existingMessage = _messages[existingIndex]
-            _messages[existingIndex] = existingMessage.mergeEditedMessage(message)
-            Log.d(tag, "Updated edited message in current list: ${message.msgId}")
+            _messages[existingIndex] = existingMessage.mergeEditedMessage(normalizedMessage)
+            Log.d(tag, "Updated edited message in current list: ${normalizedMessage.msgId}")
             return
         }
 
-        val isPrivateChat = message.chatId == message.recvId
-        val targetChatId = if (isPrivateChat) message.sender.chatId else message.chatId
+        val targetChatId = resolveMessageChatId(normalizedMessage)
         if (targetChatId == currentChatId) {
-            Log.d(tag, "Edited message belongs to current chat but is not loaded yet: ${message.msgId}")
+            Log.d(tag, "Edited message belongs to current chat but is not loaded yet: ${normalizedMessage.msgId}")
         }
     }
     
@@ -2170,7 +2169,12 @@ class ChatViewModel @Inject constructor(
      * 使用direction字段判断：right=自己发送，left=对方发送
      */
     fun isMyMessage(message: ChatMessage): Boolean {
-        return message.direction == "right"
+        return when {
+            currentUserId.isNotBlank() && message.sender.chatId.isNotBlank() -> {
+                message.sender.chatId == currentUserId
+            }
+            else -> message.direction == "right"
+        }
     }
     
     /**
@@ -2256,12 +2260,42 @@ class ChatViewModel @Inject constructor(
     /**
      * ViewModel被清理时保存读取位置
      */
-    override fun onCleared() {
+override fun onCleared() {
         super.onCleared()
         // 保存当前读取位置，防止用户从后台直接结束应用
         saveCurrentReadPosition()
         Log.d(tag, "ChatViewModel cleared, read position saved")
     }
+}
+
+private fun ChatViewModel.normalizeMessageOwnership(message: ChatMessage): ChatMessage {
+    if (currentUserId.isBlank() || message.sender.chatId.isBlank()) {
+        return message
+    }
+    val normalizedDirection = if (message.sender.chatId == currentUserId) "right" else "left"
+    return if (message.direction == normalizedDirection) {
+        message
+    } else {
+        message.copy(direction = normalizedDirection)
+    }
+}
+
+private fun ChatViewModel.resolveMessageChatId(message: ChatMessage): String? {
+    val chatId = message.chatId?.takeIf { it.isNotBlank() }
+    if (message.chatType != 1) {
+        return chatId
+    }
+
+    if (currentUserId.isNotBlank()) {
+        if (message.sender.chatId == currentUserId) {
+            return message.recvId?.takeIf { it.isNotBlank() } ?: chatId
+        }
+        if (message.sender.chatId.isNotBlank()) {
+            return message.sender.chatId
+        }
+    }
+
+    return chatId ?: message.recvId?.takeIf { it.isNotBlank() }
 }
 
 private fun ChatMessage.mergeEditedMessage(edited: ChatMessage): ChatMessage {

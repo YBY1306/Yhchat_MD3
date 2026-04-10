@@ -199,6 +199,15 @@ fun ChatScreen(
     }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val messages = viewModel.messages
+    val reversedMessages by remember {
+        derivedStateOf { messages.asReversed().toList() }
+    }
+    val messageItemKeys by remember {
+        derivedStateOf { buildMessageItemKeys(reversedMessages) }
+    }
+    val messageListIdentity by remember {
+        derivedStateOf { buildMessageListIdentity(messageItemKeys) }
+    }
     
     // 获取当前用户的权限等级
     val currentUserPermission = if (chatType == 2) {
@@ -568,11 +577,15 @@ fun ChatScreen(
                 pendingPreserveVisibleAnchor = null
             } else {
                 pendingAutoScrollToBottom = false
-                pendingPreserveVisibleAnchor = ListAnchorSnapshot(
-                    index = listState.firstVisibleItemIndex,
-                    scrollOffset = listState.firstVisibleItemScrollOffset,
-                    messageCount = messages.size
-                )
+                val anchorIndex = listState.firstVisibleItemIndex
+                val anchorKey = messageItemKeys.getOrNull(anchorIndex)
+                pendingPreserveVisibleAnchor = anchorKey?.let {
+                    ListAnchorSnapshot(
+                        messageKey = it,
+                        scrollOffset = listState.firstVisibleItemScrollOffset,
+                        listIdentity = messageListIdentity
+                    )
+                }
             }
             
             // 重置新消息标记
@@ -581,7 +594,7 @@ fun ChatScreen(
     }
 
     // 消息数量变化后再执行自动滚动，避免时序问题导致“未滚到最新”
-    LaunchedEffect(messages.size, pendingAutoScrollToBottom, pendingPreserveVisibleAnchor) {
+    LaunchedEffect(messageListIdentity, pendingAutoScrollToBottom, pendingPreserveVisibleAnchor) {
         if (pendingAutoScrollToBottom) {
             listState.animateScrollToItem(0)
             pendingAutoScrollToBottom = false
@@ -589,12 +602,14 @@ fun ChatScreen(
         }
 
         val anchorSnapshot = pendingPreserveVisibleAnchor
-        if (anchorSnapshot != null && messages.size > anchorSnapshot.messageCount) {
-            val insertedCount = messages.size - anchorSnapshot.messageCount
-            listState.scrollToItem(
-                index = anchorSnapshot.index + insertedCount,
-                scrollOffset = anchorSnapshot.scrollOffset
-            )
+        if (anchorSnapshot != null && messageListIdentity != anchorSnapshot.listIdentity) {
+            val restoredIndex = messageItemKeys.indexOf(anchorSnapshot.messageKey)
+            if (restoredIndex >= 0) {
+                listState.scrollToItem(
+                    index = restoredIndex,
+                    scrollOffset = anchorSnapshot.scrollOffset
+                )
+            }
             pendingPreserveVisibleAnchor = null
         }
     }
@@ -736,26 +751,6 @@ fun ChatScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                // 取当前帧的不可变快照，避免 count/key/item 在列表变化时不同步
-                val reversedMessages = messages.asReversed().toList()
-                // 为 LazyColumn 预生成稳定且唯一的 key，避免重复 key 崩溃
-                val messageItemKeys = run {
-                    val keyUsageCount = mutableMapOf<String, Int>()
-                    reversedMessages.mapIndexed { index, message ->
-                        val baseKey = when {
-                            message.msgId.isNotBlank() -> "msg_${message.msgId}"
-                            (message.msgSeq ?: 0L) > 0L -> "seq_${message.msgSeq}"
-                            else -> {
-                                "local_${message.sendTime}_${message.sender.chatId}_${message.chatId ?: ""}_${message.chatType ?: -1}_${message.direction}_${message.recvId ?: ""}_${message.contentType}"
-                            }
-                        }
-
-                        val used = keyUsageCount.getOrDefault(baseKey, 0)
-                        keyUsageCount[baseKey] = used + 1
-                        val deduplicatedKey = if (used == 0) baseKey else "${baseKey}#dup$used"
-                        "${deduplicatedKey}#idx$index"
-                    }
-                }
                 val groupOwnerId = uiState.groupInfo?.ownerId
                 val groupAdminIds = uiState.groupInfo?.adminIds ?: emptyList()
                 LazyColumn(
@@ -1710,9 +1705,9 @@ fun ChatScreen(
 }
 
 private data class ListAnchorSnapshot(
-    val index: Int,
+    val messageKey: String,
     val scrollOffset: Int,
-    val messageCount: Int
+    val listIdentity: String
 )
 
 private fun buildChatImageGallery(messages: List<ChatMessage>): List<String> {
@@ -1729,4 +1724,76 @@ private fun buildChatImageGallery(messages: List<ChatMessage>): List<String> {
         }
         .distinct()
         .toList()
+}
+
+private fun buildMessageItemKeys(messages: List<ChatMessage>): List<String> {
+    val keyUsageCount = mutableMapOf<String, Int>()
+    return messages.map { message ->
+        val baseKey = buildStableMessageIdentity(message)
+        val usedCount = keyUsageCount.getOrDefault(baseKey, 0)
+        keyUsageCount[baseKey] = usedCount + 1
+        if (usedCount == 0) baseKey else "$baseKey#dup$usedCount"
+    }
+}
+
+private fun buildMessageListIdentity(keys: List<String>): String {
+    return keys.joinToString(separator = "\u001F")
+}
+
+private fun buildStableMessageIdentity(message: ChatMessage): String {
+    if (message.msgId.isNotBlank()) {
+        return "msg:${message.msgId}"
+    }
+
+    val msgSeq = message.msgSeq
+    if (msgSeq != null && msgSeq > 0L) {
+        return "seq:${message.chatId.orEmpty()}:${message.chatType ?: -1}:$msgSeq"
+    }
+
+    return buildString {
+        append("fallback:")
+        append(message.sender.chatId)
+        append('|')
+        append(message.sender.chatType)
+        append('|')
+        append(message.chatId.orEmpty())
+        append('|')
+        append(message.chatType ?: -1)
+        append('|')
+        append(message.recvId.orEmpty())
+        append('|')
+        append(message.direction)
+        append('|')
+        append(message.contentType)
+        append('|')
+        append(message.sendTime)
+        append('|')
+        append(message.editTime ?: -1L)
+        append('|')
+        append(message.msgDeleteTime ?: -1L)
+        append('|')
+        append(message.quoteMsgId.orEmpty())
+        append('|')
+        append(message.content.text.orEmpty())
+        append('|')
+        append(message.content.imageUrl.orEmpty())
+        append('|')
+        append(message.content.fileUrl.orEmpty())
+        append('|')
+        append(message.content.fileName.orEmpty())
+        append('|')
+        append(message.content.videoUrl.orEmpty())
+        append('|')
+        append(message.content.audioUrl.orEmpty())
+        append('|')
+        append(message.content.stickerUrl.orEmpty())
+        append('|')
+        append(message.content.postId.orEmpty())
+        append('|')
+        append(message.content.expressionId.orEmpty())
+        append('|')
+        append(message.content.buttons.orEmpty())
+        append('|')
+        append(message.content.form.orEmpty())
+    }
 }

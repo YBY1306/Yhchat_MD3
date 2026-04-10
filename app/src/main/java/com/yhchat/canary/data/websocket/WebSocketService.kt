@@ -614,11 +614,12 @@ class WebSocketService @Inject constructor(
             )
         } else null
 
-        // 判断消息方向：当sender.chatId == recvId时，说明是自己发的消息（多设备同步）
-        val direction = if (protoMsg.sender.chatId == protoMsg.recvId) {
-            "right" // 自己发送的消息
-        } else {
-            "left" // 对方发送的消息
+        val direction = when {
+            !currentUserId.isNullOrBlank() && protoMsg.sender.chatId.isNotBlank() -> {
+                if (protoMsg.sender.chatId == currentUserId) "right" else "left"
+            }
+            protoMsg.sender.chatId == protoMsg.recvId -> "right"
+            else -> "left"
         }
         
         return ChatMessage(

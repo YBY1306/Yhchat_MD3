@@ -2201,6 +2201,36 @@ class ChatViewModel @Inject constructor(
         streamingMessages.remove(msgId)
         Log.d(tag, "Cleared streaming message: $msgId")
     }
+
+    private fun normalizeMessageOwnership(message: ChatMessage): ChatMessage {
+        if (currentUserId.isBlank() || message.sender.chatId.isBlank()) {
+            return message
+        }
+        val normalizedDirection = if (message.sender.chatId == currentUserId) "right" else "left"
+        return if (message.direction == normalizedDirection) {
+            message
+        } else {
+            message.copy(direction = normalizedDirection)
+        }
+    }
+
+    private fun resolveMessageChatId(message: ChatMessage): String? {
+        val chatId = message.chatId?.takeIf { it.isNotBlank() }
+        if (message.chatType != 1) {
+            return chatId
+        }
+
+        if (currentUserId.isNotBlank()) {
+            if (message.sender.chatId == currentUserId) {
+                return message.recvId?.takeIf { it.isNotBlank() } ?: chatId
+            }
+            if (message.sender.chatId.isNotBlank()) {
+                return message.sender.chatId
+            }
+        }
+
+        return chatId ?: message.recvId?.takeIf { it.isNotBlank() }
+    }
     
     /**
      * 上报按钮点击事件
@@ -2260,42 +2290,12 @@ class ChatViewModel @Inject constructor(
     /**
      * ViewModel被清理时保存读取位置
      */
-override fun onCleared() {
+    override fun onCleared() {
         super.onCleared()
         // 保存当前读取位置，防止用户从后台直接结束应用
         saveCurrentReadPosition()
         Log.d(tag, "ChatViewModel cleared, read position saved")
     }
-}
-
-private fun ChatViewModel.normalizeMessageOwnership(message: ChatMessage): ChatMessage {
-    if (currentUserId.isBlank() || message.sender.chatId.isBlank()) {
-        return message
-    }
-    val normalizedDirection = if (message.sender.chatId == currentUserId) "right" else "left"
-    return if (message.direction == normalizedDirection) {
-        message
-    } else {
-        message.copy(direction = normalizedDirection)
-    }
-}
-
-private fun ChatViewModel.resolveMessageChatId(message: ChatMessage): String? {
-    val chatId = message.chatId?.takeIf { it.isNotBlank() }
-    if (message.chatType != 1) {
-        return chatId
-    }
-
-    if (currentUserId.isNotBlank()) {
-        if (message.sender.chatId == currentUserId) {
-            return message.recvId?.takeIf { it.isNotBlank() } ?: chatId
-        }
-        if (message.sender.chatId.isNotBlank()) {
-            return message.sender.chatId
-        }
-    }
-
-    return chatId ?: message.recvId?.takeIf { it.isNotBlank() }
 }
 
 private fun ChatMessage.mergeEditedMessage(edited: ChatMessage): ChatMessage {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -898,7 +897,14 @@ private fun getValueAtPath(root: Any?, path: String): Any? {
     keys.forEach { key ->
         current = when (current) {
             is Map<*, *> -> current[key]
-            is List<*> -> key.toIntOrNull()?.let { index -> current.getOrNull(index) }
+            is List<*> -> {
+                val index = key.toIntOrNull()
+                if (index != null && index >= 0 && index < current.size) {
+                    current[index]
+                } else {
+                    null
+                }
+            }
             else -> null
         }
     }

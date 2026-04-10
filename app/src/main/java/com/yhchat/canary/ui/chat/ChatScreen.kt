@@ -66,6 +66,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -244,6 +245,8 @@ fun ChatScreen(
     var shouldStickToBottom by remember { mutableStateOf(true) }
     // WS 新消息到来后的待执行自动滚动标记（等列表插入完成后再滚动）
     var pendingAutoScrollToBottom by remember { mutableStateOf(false) }
+    // WS 新消息到来且用户不在底部时，保持当前可视锚点，避免列表自己跳动
+    var pendingPreserveVisibleAnchor by remember { mutableStateOf<ListAnchorSnapshot?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val maxListOverscrollPx = with(LocalDensity.current) { 72.dp.toPx() }
     val listOverscrollOffset = remember { Animatable(0f) }
@@ -512,7 +515,7 @@ fun ChatScreen(
             // 如果用户最近500ms内有输入操作，则忽略远程草稿（避免覆盖用户正在输入的内容）
             if (draft != lastAppliedDraft && 
                 draft != inputText && 
-                (currentTime - lastInputTime > 500)) {
+                (currentTime - lastInputTime > 100)) {
                 
                 android.util.Log.d("ChatScreen", "🔄 应用远程草稿同步: '${draft.take(50)}${if (draft.length > 50) "..." else ""}'")
                 inputText = draft
@@ -559,8 +562,18 @@ fun ChatScreen(
     // WebSocket 新消息处理：仅在底部时自动滚动
     LaunchedEffect(uiState.newMessageReceived) {
         if (uiState.newMessageReceived) {
-            // 记录是否需要在“消息真正插入后”执行自动滚动
-            pendingAutoScrollToBottom = shouldStickToBottom
+            // 记录是否需要在“消息真正插入后”执行自动滚动/保持当前可视位置
+            if (shouldStickToBottom) {
+                pendingAutoScrollToBottom = true
+                pendingPreserveVisibleAnchor = null
+            } else {
+                pendingAutoScrollToBottom = false
+                pendingPreserveVisibleAnchor = ListAnchorSnapshot(
+                    index = listState.firstVisibleItemIndex,
+                    scrollOffset = listState.firstVisibleItemScrollOffset,
+                    messageCount = messages.size
+                )
+            }
             
             // 重置新消息标记
             viewModel.resetNewMessageFlag()
@@ -568,10 +581,21 @@ fun ChatScreen(
     }
 
     // 消息数量变化后再执行自动滚动，避免时序问题导致“未滚到最新”
-    LaunchedEffect(messages.size, pendingAutoScrollToBottom) {
+    LaunchedEffect(messages.size, pendingAutoScrollToBottom, pendingPreserveVisibleAnchor) {
         if (pendingAutoScrollToBottom) {
             listState.animateScrollToItem(0)
             pendingAutoScrollToBottom = false
+            return@LaunchedEffect
+        }
+
+        val anchorSnapshot = pendingPreserveVisibleAnchor
+        if (anchorSnapshot != null && messages.size > anchorSnapshot.messageCount) {
+            val insertedCount = messages.size - anchorSnapshot.messageCount
+            listState.scrollToItem(
+                index = anchorSnapshot.index + insertedCount,
+                scrollOffset = anchorSnapshot.scrollOffset
+            )
+            pendingPreserveVisibleAnchor = null
         }
     }
 
@@ -630,7 +654,8 @@ fun ChatScreen(
                 showRefreshButton = showRefreshButton,
                 onBackClick = onBackClick,
                 onRefreshClick = { viewModel.refreshLatestMessages() },
-                onTtsClick = { showFloatingTtsWindow = true }
+                onTtsClick = { showFloatingTtsWindow = true },
+                modifier = Modifier.zIndex(3f)
             )
         }
         
@@ -639,6 +664,7 @@ fun ChatScreen(
         SingleBotBoardSection(
             chatType = chatType,
             uiState = uiState,
+            modifier = Modifier.zIndex(2f),
             onImageClick = { url ->
                 currentImageUrl = url
                 currentImageGallery = listOf(url)
@@ -652,6 +678,7 @@ fun ChatScreen(
             chatType = chatType,
             groupBots = uiState.groupBots,
             groupBotBoards = uiState.groupBotBoards,
+            modifier = Modifier.zIndex(2f),
             onImageClick = { url ->
                 currentImageUrl = url
                 currentImageGallery = listOf(url)
@@ -664,6 +691,7 @@ fun ChatScreen(
         uiState.error?.let { error ->
             Card(
                 modifier = Modifier
+                    .zIndex(2f)
                     .fillMaxWidth()
                     .padding(8.dp),
                 colors = CardDefaults.cardColors(
@@ -696,6 +724,7 @@ fun ChatScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .clipToBounds()
                 .pullRefresh(pullRefreshState)
         ) {
             if (uiState.isLoading && messages.isEmpty()) {
@@ -1679,6 +1708,12 @@ fun ChatScreen(
     
     
 }
+
+private data class ListAnchorSnapshot(
+    val index: Int,
+    val scrollOffset: Int,
+    val messageCount: Int
+)
 
 private fun buildChatImageGallery(messages: List<ChatMessage>): List<String> {
     return messages.asSequence()

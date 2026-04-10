@@ -928,15 +928,18 @@ class ChatViewModel @Inject constructor(
      * 处理编辑的消息
      */
     private fun handleEditedMessage(message: ChatMessage) {
+        val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
+        if (existingIndex != -1) {
+            val existingMessage = _messages[existingIndex]
+            _messages[existingIndex] = existingMessage.mergeEditedMessage(message)
+            Log.d(tag, "Updated edited message in current list: ${message.msgId}")
+            return
+        }
+
         val isPrivateChat = message.chatId == message.recvId
         val targetChatId = if (isPrivateChat) message.sender.chatId else message.chatId
-        
         if (targetChatId == currentChatId) {
-            val existingIndex = _messages.indexOfFirst { it.msgId == message.msgId }
-            if (existingIndex != -1) {
-                _messages[existingIndex] = message
-                Log.d(tag, "Updated edited message: ${message.msgId}")
-            }
+            Log.d(tag, "Edited message belongs to current chat but is not loaded yet: ${message.msgId}")
         }
     }
     
@@ -2259,4 +2262,56 @@ class ChatViewModel @Inject constructor(
         saveCurrentReadPosition()
         Log.d(tag, "ChatViewModel cleared, read position saved")
     }
+}
+
+private fun ChatMessage.mergeEditedMessage(edited: ChatMessage): ChatMessage {
+    return copy(
+        sender = edited.sender.takeIf { it.chatId.isNotBlank() } ?: sender,
+        direction = edited.direction.ifBlank { direction },
+        contentType = edited.contentType.takeIf { it != 0 } ?: contentType,
+        content = content.mergeEditedContent(edited.content),
+        sendTime = edited.sendTime.takeIf { it > 0 } ?: sendTime,
+        cmd = edited.cmd ?: cmd,
+        msgDeleteTime = edited.msgDeleteTime ?: msgDeleteTime,
+        quoteMsgId = edited.quoteMsgId ?: quoteMsgId,
+        msgSeq = edited.msgSeq?.takeIf { it > 0 } ?: msgSeq,
+        editTime = edited.editTime ?: editTime,
+        chatId = edited.chatId ?: chatId,
+        chatType = edited.chatType ?: chatType,
+        recvId = edited.recvId ?: recvId
+    )
+}
+
+private fun com.yhchat.canary.data.model.MessageContent.mergeEditedContent(
+    edited: com.yhchat.canary.data.model.MessageContent
+): com.yhchat.canary.data.model.MessageContent {
+    return copy(
+        text = edited.text ?: text,
+        buttons = edited.buttons ?: buttons,
+        imageUrl = edited.imageUrl ?: imageUrl,
+        fileName = edited.fileName ?: fileName,
+        fileUrl = edited.fileUrl ?: fileUrl,
+        form = edited.form ?: form,
+        quoteMsgText = edited.quoteMsgText ?: quoteMsgText,
+        quoteImageUrl = edited.quoteImageUrl ?: quoteImageUrl,
+        quoteImageName = edited.quoteImageName ?: quoteImageName,
+        quoteVideoUrl = edited.quoteVideoUrl ?: quoteVideoUrl,
+        quoteVideoTime = edited.quoteVideoTime ?: quoteVideoTime,
+        stickerUrl = edited.stickerUrl ?: stickerUrl,
+        postId = edited.postId ?: postId,
+        postTitle = edited.postTitle ?: postTitle,
+        postContent = edited.postContent ?: postContent,
+        postContentType = edited.postContentType ?: postContentType,
+        expressionId = edited.expressionId ?: expressionId,
+        fileSize = edited.fileSize ?: fileSize,
+        videoUrl = edited.videoUrl ?: videoUrl,
+        audioUrl = edited.audioUrl ?: audioUrl,
+        audioTime = edited.audioTime ?: audioTime,
+        stickerItemId = edited.stickerItemId ?: stickerItemId,
+        stickerPackId = edited.stickerPackId ?: stickerPackId,
+        callText = edited.callText ?: callText,
+        callStatusText = edited.callStatusText ?: callStatusText,
+        width = edited.width ?: width,
+        height = edited.height ?: height
+    )
 }

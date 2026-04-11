@@ -12,6 +12,11 @@ plugins {
 android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
+    val baseVersionName = "21.6"
+    val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+    val resolvedVersionName = ciVersionNameSuffix?.let { "$baseVersionName-$it" } ?: baseVersionName
 
     val signingProps = Properties()
     val signingPropsFile = rootProject.file("keystore.properties")
@@ -34,7 +39,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 1
-        versionName = "21.6"
+        versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

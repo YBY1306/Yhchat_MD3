@@ -75,8 +75,14 @@ jobs:
           echo "CANARY_KEY_ALIAS=${{ secrets.CANARY_KEY_ALIAS }}" >> $GITHUB_ENV
           echo "CANARY_KEY_PASSWORD=${{ secrets.CANARY_KEY_PASSWORD }}" >> $GITHUB_ENV
 
+      - name: Get commit hash
+        id: commit
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+
       - name: Build ${{ matrix.flavor }} release APK
-        run: ./gradlew ${{ matrix.gradle_task }}
+        run: ./gradlew ${{ matrix.gradle_task }} -PciVersionNameSuffix=${{ steps.commit.outputs.hash }}
 
       - name: Collect ${{ matrix.flavor }} APK
         run: |

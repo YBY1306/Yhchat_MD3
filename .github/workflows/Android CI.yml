@@ -35,6 +35,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Enable 8G swap
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          echo "=== Active swap ==="
+          swapon --show
+          echo "=== Memory ==="
+          free -h
+
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 

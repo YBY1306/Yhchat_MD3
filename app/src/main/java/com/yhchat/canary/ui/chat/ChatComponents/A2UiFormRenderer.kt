@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -18,32 +19,52 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
+import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
+import java.util.Currency
 import java.util.Locale
 import coil.compose.AsyncImage
+
+private val A2UI_EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex(RegexOption.IGNORE_CASE)
+private val A2UI_URL_REGEX = "^(https?://)?([\\w.-]+)(\\.[\\w.-]+)+[/#?]?.*$".toRegex(RegexOption.IGNORE_CASE)
+private val A2UI_PHONE_REGEX = "^[+]?[0-9]{10,15}$".toRegex()
+private val A2UI_PHONE_CLEAN_REGEX = "[\\s-()]+".toRegex()
+private val A2UI_FORMAT_STRING_REGEX = """\$\{([^}]+)\}""".toRegex()
+private val A2UI_SAFE_URL_SCHEMES = setOf("https://", "http://", "mailto:", "tel:", "sms:", "yunhu://")
 
 internal data class A2UiSpec(
     val version: String,
@@ -58,15 +79,25 @@ internal data class A2UiComponent(
     val component: String,
     val text: A2UiValue? = null,
     val label: A2UiValue? = null,
+    val description: A2UiValue? = null,
+    val placeholder: A2UiValue? = null,
     val value: A2UiValue? = null,
     val url: A2UiValue? = null,
     val children: A2UiChildren? = null,
     val child: String? = null,
+    val action: A2UiAction? = null,
     val variant: String? = null,
+    val primary: Boolean? = null,
+    val usageHint: String? = null,
+    val textFieldType: String? = null,
     val weight: Int? = null,
     val align: String? = null,
     val justify: String? = null,
     val options: List<A2UiOption> = emptyList(),
+    val checks: List<A2UiCheck> = emptyList(),
+    val required: Boolean? = null,
+    val pattern: String? = null,
+    val validationRegexp: String? = null,
     val displayStyle: String? = null,
     val multiple: Boolean? = null,
     val enableDate: Boolean? = null,
@@ -92,6 +123,22 @@ internal sealed interface A2UiValue {
         val returnType: String? = null
     ) : A2UiValue
 }
+
+internal data class A2UiAction(
+    val event: A2UiEvent? = null,
+    val functionCall: A2UiValue.Function? = null
+)
+
+internal data class A2UiEvent(
+    val name: String,
+    val context: Map<String, Any?> = emptyMap()
+)
+
+internal data class A2UiCheck(
+    val call: String,
+    val args: Map<String, A2UiValue>,
+    val message: String? = null
+)
 
 internal fun parseA2UiSpec(rawText: String): A2UiSpec? {
     if (rawText.isBlank()) return null
@@ -173,19 +220,89 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         component = componentType,
         text = parseA2UiValue(componentObject.opt("text")),
         label = parseA2UiValue(componentObject.opt("label")),
+        description = parseA2UiValue(componentObject.opt("description")),
+        placeholder = parseA2UiValue(componentObject.opt("placeholder")),
         value = parseA2UiValue(componentObject.opt("value")),
         url = parseA2UiValue(componentObject.opt("url")),
         children = parseA2UiChildren(componentObject.opt("children")),
         child = componentObject.optString("child").takeIf { it.isNotBlank() },
+        action = parseA2UiAction(componentObject.optJSONObject("action")),
         variant = componentObject.optString("variant").takeIf { it.isNotBlank() },
+        primary = componentObject.optBoolean("primary").takeIf { componentObject.has("primary") },
+        usageHint = componentObject.optString("usageHint").takeIf { it.isNotBlank() },
+        textFieldType = componentObject.optString("textFieldType").takeIf { it.isNotBlank() },
         weight = componentObject.optInt("weight").takeIf { componentObject.has("weight") },
         align = componentObject.optString("align").takeIf { it.isNotBlank() },
         justify = componentObject.optString("justify").takeIf { it.isNotBlank() },
         options = parseA2UiOptions(componentObject.optJSONArray("options")),
+        checks = parseA2UiChecks(componentObject.optJSONArray("checks")),
+        required = componentObject.optBoolean("required").takeIf { componentObject.has("required") },
+        pattern = componentObject.optString("pattern").takeIf { it.isNotBlank() },
+        validationRegexp = componentObject.optString("validationRegexp").takeIf { it.isNotBlank() },
         displayStyle = componentObject.optString("displayStyle").takeIf { it.isNotBlank() },
         multiple = componentObject.optBoolean("multiple").takeIf { componentObject.has("multiple") },
         enableDate = componentObject.optBoolean("enableDate").takeIf { componentObject.has("enableDate") },
         enableTime = componentObject.optBoolean("enableTime").takeIf { componentObject.has("enableTime") }
+    )
+}
+
+private fun parseA2UiAction(actionObject: JSONObject?): A2UiAction? {
+    if (actionObject == null) return null
+
+    val event = actionObject.optJSONObject("event")?.let { eventObject ->
+        val name = eventObject.optString("name").trim()
+        if (name.isBlank()) {
+            null
+        } else {
+            A2UiEvent(
+                name = name,
+                context = (jsonToKotlin(eventObject.optJSONObject("context")) as? Map<String, Any?>).orEmpty()
+            )
+        }
+    }
+
+    val functionCall = actionObject.optJSONObject("functionCall")?.let(::parseA2UiFunction)
+    return if (event == null && functionCall == null) null else A2UiAction(event, functionCall)
+}
+
+private fun parseA2UiChecks(checksArray: JSONArray?): List<A2UiCheck> {
+    if (checksArray == null) return emptyList()
+    return buildList {
+        repeat(checksArray.length()) { index ->
+            val checkObject = checksArray.optJSONObject(index) ?: return@repeat
+            val call = checkObject.optString("call").trim()
+            if (call.isBlank()) return@repeat
+
+            val argsObject = checkObject.optJSONObject("args")
+            val args = linkedMapOf<String, A2UiValue>()
+            argsObject?.keys()?.forEach { key ->
+                parseA2UiValue(argsObject.opt(key))?.let { args[key] = it }
+            }
+
+            add(
+                A2UiCheck(
+                    call = call,
+                    args = args,
+                    message = checkObject.optString("message").takeIf { it.isNotBlank() }
+                )
+            )
+        }
+    }
+}
+
+private fun parseA2UiFunction(functionObject: JSONObject): A2UiValue.Function? {
+    val call = functionObject.optString("call").trim()
+    if (call.isBlank()) return null
+
+    val args = linkedMapOf<String, A2UiValue>()
+    functionObject.optJSONObject("args")?.keys()?.forEach { key ->
+        parseA2UiValue(functionObject.optJSONObject("args")?.opt(key))?.let { args[key] = it }
+    }
+
+    return A2UiValue.Function(
+        call = call,
+        args = args,
+        returnType = functionObject.optString("returnType").takeIf { it.isNotBlank() }
     )
 }
 
@@ -251,24 +368,7 @@ private fun parseA2UiValue(rawValue: Any?): A2UiValue? {
             when {
                 rawValue.has("path") -> A2UiValue.Path(rawValue.optString("path"))
                 rawValue.has("call") || rawValue.has("functionCall") -> {
-                    val functionObject = rawValue.optJSONObject("functionCall") ?: rawValue
-                    val call = functionObject.optString("call")
-                    if (call.isBlank()) {
-                        null
-                    } else {
-                        val argsObject = functionObject.optJSONObject("args")
-                        val args = linkedMapOf<String, A2UiValue>()
-                        if (argsObject != null) {
-                            argsObject.keys().forEach { key ->
-                                parseA2UiValue(argsObject.opt(key))?.let { args[key] = it }
-                            }
-                        }
-                        A2UiValue.Function(
-                            call = call,
-                            args = args,
-                            returnType = functionObject.optString("returnType").takeIf { it.isNotBlank() }
-                        )
-                    }
+                    parseA2UiFunction(rawValue.optJSONObject("functionCall") ?: rawValue)
                 }
 
                 else -> A2UiValue.Literal(jsonToKotlin(rawValue))
@@ -465,6 +565,7 @@ private fun RenderA2UiComponent(
     onDataModelChange: (String, Any?) -> Unit
 ) {
     val component = spec.components[componentId] ?: return
+    val context = LocalContext.current
 
     when (component.component.lowercase(Locale.ROOT)) {
         "column" -> {
@@ -533,10 +634,15 @@ private fun RenderA2UiComponent(
 
         "text" -> {
             Text(
-                text = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)?.toString().orEmpty(),
+                text = resolveA2UiValue(
+                    spec,
+                    dataModel,
+                    component.text ?: component.label ?: component.description,
+                    scopePath
+                )?.toString().orEmpty(),
                 modifier = modifier.fillMaxWidth(),
-                style = textStyleFor(component.variant),
-                color = textColorFor(component.variant)
+                style = textStyleFor(component.variant ?: component.usageHint),
+                color = textColorFor(component.variant ?: component.usageHint)
             )
         }
 
@@ -558,13 +664,102 @@ private fun RenderA2UiComponent(
             }
         }
 
+        "button" -> {
+            val enabled = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: true
+            val buttonContent: @Composable RowScope.() -> Unit = {
+                component.child?.let { childId ->
+                    RenderA2UiComponent(
+                        componentId = childId,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath,
+                        parentAxis = "row",
+                        onDataModelChange = onDataModelChange
+                    )
+                } ?: Text(
+                    text = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
+                        ?.toString()
+                        .orEmpty()
+                )
+            }
+
+            when {
+                component.variant.equals("borderless", ignoreCase = true) ||
+                    component.variant.equals("text", ignoreCase = true) -> {
+                    TextButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
+                        },
+                        enabled = enabled,
+                        modifier = modifier.fillMaxWidth(),
+                        content = buttonContent
+                    )
+                }
+
+                component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
+                    Button(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
+                        },
+                        enabled = enabled,
+                        modifier = modifier.fillMaxWidth(),
+                        content = buttonContent
+                    )
+                }
+
+                else -> {
+                    OutlinedButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
+                        },
+                        enabled = enabled,
+                        modifier = modifier.fillMaxWidth(),
+                        content = buttonContent
+                    )
+                }
+            }
+        }
+
         "textfield", "datetimeinput" -> {
             val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString().orEmpty()
             val valuePath = resolveBoundPath(component.value, scopePath)
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)?.toString().orEmpty()
+            val placeholder = resolveA2UiValue(spec, dataModel, component.placeholder, scopePath)?.toString().orEmpty()
+            val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
+            val fieldVariant = component.variant ?: component.textFieldType
+            val keyboardType = when (fieldVariant?.lowercase(Locale.ROOT)) {
+                "number" -> KeyboardType.Number
+                "password", "obscured" -> KeyboardType.Password
+                else -> KeyboardType.Text
+            }
+            val visualTransformation = if (
+                fieldVariant.equals("password", ignoreCase = true) ||
+                fieldVariant.equals("obscured", ignoreCase = true)
+            ) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            }
+            var textFieldValue by rememberSaveable(component.id, scopePath) { mutableStateOf(currentValue) }
+            var errorMessage by rememberSaveable(component.id, scopePath) { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(currentValue) {
+                if (textFieldValue != currentValue) {
+                    textFieldValue = currentValue
+                }
+            }
+
             OutlinedTextField(
-                value = currentValue,
+                value = textFieldValue,
                 onValueChange = { newValue ->
+                    textFieldValue = newValue
+                    errorMessage = validateA2UiInput(
+                        component = component,
+                        input = newValue,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath
+                    )
                     if (valuePath != null) {
                         onDataModelChange(valuePath, newValue)
                     }
@@ -572,21 +767,38 @@ private fun RenderA2UiComponent(
                 modifier = modifier.fillMaxWidth(),
                 label = {
                     if (label.isNotBlank()) {
-                        Text(label)
+                        Text(if (component.required == true) "$label *" else label)
+                    }
+                },
+                placeholder = {
+                    if (placeholder.isNotBlank()) {
+                        Text(placeholder)
                     }
                 },
                 supportingText = {
-                    if (component.component.equals("DateTimeInput", ignoreCase = true)) {
-                        val parts = buildList {
-                            if (component.enableDate == true) add("日期")
-                            if (component.enableTime == true) add("时间")
+                    when {
+                        errorMessage != null -> Text(
+                            text = errorMessage.orEmpty(),
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        component.component.equals("DateTimeInput", ignoreCase = true) -> {
+                            val parts = buildList {
+                                if (component.enableDate == true) add("date")
+                                if (component.enableTime == true) add("time")
+                            }
+                            if (parts.isNotEmpty()) {
+                                Text("Supports ${parts.joinToString(" + ")}")
+                            }
                         }
-                        if (parts.isNotEmpty()) {
-                            Text("支持${parts.joinToString(" + ")}")
-                        }
+
+                        description.isNotBlank() -> Text(description)
                     }
                 },
-                singleLine = true
+                singleLine = !fieldVariant.equals("longText", ignoreCase = true),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                visualTransformation = visualTransformation,
+                isError = errorMessage != null
             )
         }
 
@@ -833,17 +1045,119 @@ private fun evaluateA2UiFunction(
     val resolvedArgs = function.args.mapValues { (_, value) ->
         resolveA2UiValue(spec, dataModel, value, scopePath)
     }
-    return when (function.call) {
+    return when (function.call.lowercase(Locale.ROOT)) {
         "formatDate" -> {
             val rawValue = resolvedArgs["value"]?.toString() ?: return null
             val format = resolvedArgs["format"]?.toString() ?: "yyyy-MM-dd HH:mm"
             formatA2UiDate(rawValue, format)
         }
 
-        "formatString" -> {
+        "formatstring" -> {
             val template = resolvedArgs["value"]?.toString() ?: return null
             formatA2UiString(template, dataModel, scopePath)
         }
+
+        "required" -> {
+            val value = resolvedArgs["value"]
+            value != null && value != "" && value != false
+        }
+
+        "email" -> isValidA2UiEmail(resolvedArgs["value"]?.toString().orEmpty())
+
+        "regex" -> {
+            val value = resolvedArgs["value"]?.toString().orEmpty()
+            val pattern = resolvedArgs["pattern"]?.toString().orEmpty()
+            safeA2UiRegexMatches(pattern, value)
+        }
+
+        "numeric" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return false
+            val min = (resolvedArgs["min"] as? Number)?.toDouble()
+                ?: resolvedArgs["min"]?.toString()?.toDoubleOrNull()
+            val max = (resolvedArgs["max"] as? Number)?.toDouble()
+                ?: resolvedArgs["max"]?.toString()?.toDoubleOrNull()
+            (min == null || value >= min) && (max == null || value <= max)
+        }
+
+        "length" -> {
+            val value = resolvedArgs["value"]?.toString().orEmpty()
+            val min = (resolvedArgs["min"] as? Number)?.toInt()
+                ?: resolvedArgs["min"]?.toString()?.toIntOrNull()
+            val max = (resolvedArgs["max"] as? Number)?.toInt()
+                ?: resolvedArgs["max"]?.toString()?.toIntOrNull()
+            (min == null || value.length >= min) && (max == null || value.length <= max)
+        }
+
+        "and" -> (resolvedArgs["values"] as? List<*>)?.all { it == true } ?: true
+
+        "or" -> (resolvedArgs["values"] as? List<*>)?.any { it == true } ?: false
+
+        "not" -> resolvedArgs["value"] != true
+
+        "min" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return false
+            val min = (resolvedArgs["min"] as? Number)?.toDouble()
+                ?: resolvedArgs["min"]?.toString()?.toDoubleOrNull()
+                ?: return false
+            value >= min
+        }
+
+        "max" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return false
+            val max = (resolvedArgs["max"] as? Number)?.toDouble()
+                ?: resolvedArgs["max"]?.toString()?.toDoubleOrNull()
+                ?: return false
+            value <= max
+        }
+
+        "url" -> isValidA2UiUrl(resolvedArgs["value"]?.toString().orEmpty())
+
+        "phone" -> isValidA2UiPhone(resolvedArgs["value"]?.toString().orEmpty())
+
+        "formatnumber" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return null
+            val decimals = (resolvedArgs["decimals"] as? Number)?.toInt()
+                ?: resolvedArgs["decimals"]?.toString()?.toIntOrNull()
+            val grouping = resolvedArgs["grouping"] as? Boolean ?: true
+            formatA2UiNumber(value, decimals, grouping)
+        }
+
+        "formatcurrency" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return null
+            val currencyCode = resolvedArgs["currency"]?.toString() ?: "USD"
+            val decimals = (resolvedArgs["decimals"] as? Number)?.toInt()
+                ?: resolvedArgs["decimals"]?.toString()?.toIntOrNull()
+                ?: 2
+            val grouping = resolvedArgs["grouping"] as? Boolean ?: true
+            formatA2UiCurrency(value, currencyCode, decimals, grouping)
+        }
+
+        "pluralize" -> {
+            val value = (resolvedArgs["value"] as? Number)?.toDouble()
+                ?: resolvedArgs["value"]?.toString()?.toDoubleOrNull()
+                ?: return null
+            pluralizeA2UiValue(
+                value = value,
+                zero = resolvedArgs["zero"]?.toString(),
+                one = resolvedArgs["one"]?.toString(),
+                two = resolvedArgs["two"]?.toString(),
+                few = resolvedArgs["few"]?.toString(),
+                many = resolvedArgs["many"]?.toString(),
+                other = resolvedArgs["other"]?.toString().orEmpty()
+            )
+        }
+
+        "openurl" -> resolvedArgs["url"]?.toString()
 
         else -> resolvedArgs["value"]
     }
@@ -854,10 +1168,12 @@ private fun formatA2UiString(
     dataModel: Map<String, Any?>,
     scopePath: String?
 ): String {
-    val regex = """\$\{([^}]+)\}""".toRegex()
-    return regex.replace(template) { match ->
+    return A2UI_FORMAT_STRING_REGEX.replace(template) { match ->
         val expression = match.groupValues[1]
-        val resolved = getValueAtPath(dataModel, combineScopePath(scopePath, expression))
+        val resolved = getValueAtPath(
+            dataModel,
+            if (expression.startsWith("/")) expression else combineScopePath(scopePath, expression)
+        )
         resolved?.toString().orEmpty()
     }
 }
@@ -936,6 +1252,152 @@ private fun buildChoicePickerValue(
 
         currentValue is List<*> -> listOf(optionValue)
         else -> optionValue
+    }
+}
+
+private fun validateA2UiInput(
+    component: A2UiComponent,
+    input: String,
+    spec: A2UiSpec,
+    dataModel: Map<String, Any?>,
+    scopePath: String?
+): String? {
+    if (component.required == true && input.isBlank()) {
+        return "This field is required"
+    }
+
+    val pattern = component.validationRegexp ?: component.pattern
+    if (!pattern.isNullOrBlank() && input.isNotEmpty() && !safeA2UiRegexMatches(pattern, input)) {
+        return "Invalid format"
+    }
+
+    component.checks.forEach { check ->
+        val args = check.args.mapValues { (_, value) ->
+            resolveA2UiValue(spec, dataModel, value, scopePath)
+        }.toMutableMap()
+        args["value"] = input
+
+        val valid = when (check.call.lowercase(Locale.ROOT)) {
+            "required" -> input.isNotBlank()
+            "email" -> input.isEmpty() || isValidA2UiEmail(input)
+            "url" -> input.isEmpty() || isValidA2UiUrl(input)
+            "phone" -> input.isEmpty() || isValidA2UiPhone(input)
+            "regex" -> {
+                val regexPattern = args["pattern"]?.toString().orEmpty()
+                input.isEmpty() || safeA2UiRegexMatches(regexPattern, input)
+            }
+            else -> {
+                val functionArgs = LinkedHashMap(check.args).apply {
+                    put("value", A2UiValue.Literal(input))
+                }
+                val function = A2UiValue.Function(
+                    call = check.call,
+                    args = functionArgs,
+                    returnType = null
+                )
+                evaluateA2UiFunction(spec, dataModel, function, scopePath) as? Boolean ?: true
+            }
+        }
+
+        if (!valid) {
+            return check.message ?: "Invalid value"
+        }
+    }
+
+    return null
+}
+
+private fun executeA2UiAction(
+    context: android.content.Context,
+    spec: A2UiSpec,
+    dataModel: Map<String, Any?>,
+    scopePath: String?,
+    action: A2UiAction?
+) {
+    if (action == null) return
+
+    action.functionCall?.let { function ->
+        val resolvedArgs = function.args.mapValues { (_, value) ->
+            resolveA2UiValue(spec, dataModel, value, scopePath)
+        }
+        when (function.call.lowercase(Locale.ROOT)) {
+            "openurl" -> {
+                val url = resolvedArgs["url"]?.toString().orEmpty()
+                if (url.isNotBlank() && A2UI_SAFE_URL_SCHEMES.any { url.startsWith(it, ignoreCase = true) }) {
+                    UnifiedLinkHandler.handleLink(context, url)
+                }
+            }
+
+            "showtoast" -> {
+                val message = resolvedArgs["message"]?.toString().orEmpty()
+                if (message.isNotBlank()) {
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+}
+
+private fun safeA2UiRegexMatches(pattern: String, input: String): Boolean {
+    if (pattern.isBlank()) return false
+    return runCatching { pattern.toRegex().matches(input) }.getOrDefault(false)
+}
+
+private fun isValidA2UiEmail(email: String): Boolean {
+    if (email.isBlank()) return false
+    return A2UI_EMAIL_REGEX.matches(email)
+}
+
+private fun isValidA2UiUrl(url: String): Boolean {
+    if (url.isBlank()) return false
+    return A2UI_URL_REGEX.matches(url)
+}
+
+private fun isValidA2UiPhone(phone: String): Boolean {
+    if (phone.isBlank()) return false
+    return A2UI_PHONE_REGEX.matches(phone.replace(A2UI_PHONE_CLEAN_REGEX, ""))
+}
+
+private fun formatA2UiNumber(value: Double, decimals: Int?, grouping: Boolean): String {
+    return NumberFormat.getNumberInstance().apply {
+        isGroupingUsed = grouping
+        if (decimals != null) {
+            minimumFractionDigits = decimals
+            maximumFractionDigits = decimals
+        }
+    }.format(value)
+}
+
+private fun formatA2UiCurrency(value: Double, currencyCode: String, decimals: Int, grouping: Boolean): String {
+    return runCatching {
+        NumberFormat.getCurrencyInstance().apply {
+            currency = Currency.getInstance(currencyCode)
+            minimumFractionDigits = decimals
+            maximumFractionDigits = decimals
+            isGroupingUsed = grouping
+        }.format(value)
+    }.getOrElse {
+        "$currencyCode ${formatA2UiNumber(value, decimals, grouping)}"
+    }
+}
+
+private fun pluralizeA2UiValue(
+    value: Double,
+    zero: String?,
+    one: String?,
+    two: String?,
+    few: String?,
+    many: String?,
+    other: String
+): String {
+    val intValue = value.toInt()
+    return when {
+        value == 0.0 && zero != null -> zero
+        value == 1.0 && one != null -> one
+        value == 2.0 && two != null -> two
+        intValue in 3..10 && few != null -> few
+        intValue > 10 && many != null -> many
+        else -> other
     }
 }
 

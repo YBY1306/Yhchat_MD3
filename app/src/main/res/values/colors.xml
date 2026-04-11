@@ -9,6 +9,6 @@
     <color name="white">#FFFFFFFF</color>
     
     <!-- Launcher icon colors (fallback for Android < 12) -->
-    <color name="ic_launcher_foreground">#FF424242</color>
-    <color name="ic_launcher_background">#FFE3F2FD</color>
+    <color name="ic_launcher_foreground">#FF6E59A5</color>
+    <color name="ic_launcher_background">#FFE8DEF8</color>
 </resources>

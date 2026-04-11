@@ -931,14 +931,32 @@ class ChatViewModel @Inject constructor(
         val existingIndex = _messages.indexOfFirst { it.msgId == normalizedMessage.msgId }
         if (existingIndex != -1) {
             val existingMessage = _messages[existingIndex]
-            _messages[existingIndex] = existingMessage.mergeEditedMessage(normalizedMessage)
-            Log.d(tag, "Updated edited message in current list: ${normalizedMessage.msgId}")
+            val mergedMessage = existingMessage.mergeEditedMessage(normalizedMessage)
+            _messages[existingIndex] = mergedMessage
+            streamingMessages.remove(normalizedMessage.msgId)
+            Log.d(
+                tag,
+                "Updated edited message in current list: msgId=${normalizedMessage.msgId}, " +
+                    "oldText=${existingMessage.content.text?.take(50)}, " +
+                    "newText=${mergedMessage.content.text?.take(50)}, " +
+                    "oldContentType=${existingMessage.contentType}, " +
+                    "newContentType=${mergedMessage.contentType}, " +
+                    "editTime=${mergedMessage.editTime}"
+            )
+            refreshEditedMessageFromApi(
+                patchMessage = normalizedMessage,
+                fallbackMessage = mergedMessage
+            )
             return
         }
 
         val targetChatId = resolveMessageChatId(normalizedMessage)
         if (targetChatId == currentChatId) {
             Log.d(tag, "Edited message belongs to current chat but is not loaded yet: ${normalizedMessage.msgId}")
+            refreshEditedMessageFromApi(
+                patchMessage = normalizedMessage,
+                fallbackMessage = normalizedMessage
+            )
         }
     }
     
@@ -2231,6 +2249,64 @@ class ChatViewModel @Inject constructor(
 
         return chatId ?: message.recvId?.takeIf { it.isNotBlank() }
     }
+
+    private fun refreshEditedMessageFromApi(
+        patchMessage: ChatMessage,
+        fallbackMessage: ChatMessage
+    ) {
+        val resolvedChatId = fallbackMessage.chatId
+            ?.takeIf { it.isNotBlank() }
+            ?: patchMessage.chatId?.takeIf { it.isNotBlank() }
+            ?: resolveMessageChatId(fallbackMessage)
+            ?: resolveMessageChatId(patchMessage)
+        val resolvedChatType = fallbackMessage.chatType
+            ?.takeIf { it > 0 }
+            ?: patchMessage.chatType?.takeIf { it > 0 }
+            ?: currentChatType.takeIf { resolvedChatId == currentChatId }
+
+        if (resolvedChatId.isNullOrBlank() || resolvedChatType == null || resolvedChatType <= 0) {
+            Log.w(
+                tag,
+                "Skip refreshing edited message from API: msgId=${patchMessage.msgId}, " +
+                    "chatId=$resolvedChatId, chatType=$resolvedChatType"
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            val latestMessage = messageRepository.getMessageByIdFromApi(
+                messageId = patchMessage.msgId,
+                chatId = resolvedChatId,
+                chatType = resolvedChatType
+            )
+
+            if (latestMessage == null) {
+                Log.w(
+                    tag,
+                    "Edited message refresh from API returned null: msgId=${patchMessage.msgId}, " +
+                        "chatId=$resolvedChatId, chatType=$resolvedChatType"
+                )
+                return@launch
+            }
+
+            val normalizedLatestMessage = normalizeMessageOwnership(latestMessage)
+            val latestIndex = _messages.indexOfFirst { it.msgId == normalizedLatestMessage.msgId }
+            if (latestIndex == -1) {
+                Log.d(tag, "Edited message refreshed from API but not present in UI list: ${normalizedLatestMessage.msgId}")
+                return@launch
+            }
+
+            _messages[latestIndex] = normalizedLatestMessage
+            streamingMessages.remove(normalizedLatestMessage.msgId)
+            Log.d(
+                tag,
+                "Replaced edited message with API payload: msgId=${normalizedLatestMessage.msgId}, " +
+                    "text=${normalizedLatestMessage.content.text?.take(80)}, " +
+                    "contentType=${normalizedLatestMessage.contentType}, " +
+                    "editTime=${normalizedLatestMessage.editTime}"
+            )
+        }
+    }
     
     /**
      * 上报按钮点击事件
@@ -2300,19 +2376,19 @@ class ChatViewModel @Inject constructor(
 
 private fun ChatMessage.mergeEditedMessage(edited: ChatMessage): ChatMessage {
     return copy(
-        sender = edited.sender.takeIf { it.chatId.isNotBlank() } ?: sender,
-        direction = edited.direction.ifBlank { direction },
+        sender = sender.mergeEditedSender(edited.sender),
+        direction = edited.direction.takeIf { it.isNotBlank() && edited.sender.chatId.isNotBlank() } ?: direction,
         contentType = edited.contentType.takeIf { it != 0 } ?: contentType,
         content = content.mergeEditedContent(edited.content),
         sendTime = edited.sendTime.takeIf { it > 0 } ?: sendTime,
         cmd = edited.cmd ?: cmd,
         msgDeleteTime = edited.msgDeleteTime ?: msgDeleteTime,
-        quoteMsgId = edited.quoteMsgId ?: quoteMsgId,
-        msgSeq = edited.msgSeq?.takeIf { it > 0 } ?: msgSeq,
-        editTime = edited.editTime ?: editTime,
-        chatId = edited.chatId ?: chatId,
-        chatType = edited.chatType ?: chatType,
-        recvId = edited.recvId ?: recvId
+        quoteMsgId = edited.quoteMsgId.orExistingIfBlank(quoteMsgId),
+        msgSeq = edited.msgSeq.orExistingIfNonPositive(msgSeq),
+        editTime = edited.editTime.orExistingIfNonPositive(editTime),
+        chatId = edited.chatId.orExistingIfBlank(chatId),
+        chatType = edited.chatType.orExistingIfNonPositive(chatType),
+        recvId = edited.recvId.orExistingIfBlank(recvId)
     )
 }
 
@@ -2320,32 +2396,61 @@ private fun com.yhchat.canary.data.model.MessageContent.mergeEditedContent(
     edited: com.yhchat.canary.data.model.MessageContent
 ): com.yhchat.canary.data.model.MessageContent {
     return copy(
-        text = edited.text ?: text,
-        buttons = edited.buttons ?: buttons,
-        imageUrl = edited.imageUrl ?: imageUrl,
-        fileName = edited.fileName ?: fileName,
-        fileUrl = edited.fileUrl ?: fileUrl,
-        form = edited.form ?: form,
-        quoteMsgText = edited.quoteMsgText ?: quoteMsgText,
-        quoteImageUrl = edited.quoteImageUrl ?: quoteImageUrl,
-        quoteImageName = edited.quoteImageName ?: quoteImageName,
-        quoteVideoUrl = edited.quoteVideoUrl ?: quoteVideoUrl,
-        quoteVideoTime = edited.quoteVideoTime ?: quoteVideoTime,
-        stickerUrl = edited.stickerUrl ?: stickerUrl,
-        postId = edited.postId ?: postId,
-        postTitle = edited.postTitle ?: postTitle,
-        postContent = edited.postContent ?: postContent,
-        postContentType = edited.postContentType ?: postContentType,
-        expressionId = edited.expressionId ?: expressionId,
-        fileSize = edited.fileSize ?: fileSize,
-        videoUrl = edited.videoUrl ?: videoUrl,
-        audioUrl = edited.audioUrl ?: audioUrl,
-        audioTime = edited.audioTime ?: audioTime,
-        stickerItemId = edited.stickerItemId ?: stickerItemId,
-        stickerPackId = edited.stickerPackId ?: stickerPackId,
-        callText = edited.callText ?: callText,
-        callStatusText = edited.callStatusText ?: callStatusText,
-        width = edited.width ?: width,
-        height = edited.height ?: height
+        text = edited.text.orExistingIfBlank(text),
+        buttons = edited.buttons.orExistingIfBlank(buttons),
+        imageUrl = edited.imageUrl.orExistingIfBlank(imageUrl),
+        fileName = edited.fileName.orExistingIfBlank(fileName),
+        fileUrl = edited.fileUrl.orExistingIfBlank(fileUrl),
+        form = edited.form.orExistingIfBlank(form),
+        quoteMsgText = edited.quoteMsgText.orExistingIfBlank(quoteMsgText),
+        quoteImageUrl = edited.quoteImageUrl.orExistingIfBlank(quoteImageUrl),
+        quoteImageName = edited.quoteImageName.orExistingIfBlank(quoteImageName),
+        quoteVideoUrl = edited.quoteVideoUrl.orExistingIfBlank(quoteVideoUrl),
+        quoteVideoTime = edited.quoteVideoTime.orExistingIfNonPositive(quoteVideoTime),
+        stickerUrl = edited.stickerUrl.orExistingIfBlank(stickerUrl),
+        postId = edited.postId.orExistingIfBlank(postId),
+        postTitle = edited.postTitle.orExistingIfBlank(postTitle),
+        postContent = edited.postContent.orExistingIfBlank(postContent),
+        postContentType = edited.postContentType.orExistingIfBlank(postContentType),
+        expressionId = edited.expressionId.orExistingIfBlank(expressionId),
+        fileSize = edited.fileSize.orExistingIfNonPositive(fileSize),
+        videoUrl = edited.videoUrl.orExistingIfBlank(videoUrl),
+        audioUrl = edited.audioUrl.orExistingIfBlank(audioUrl),
+        audioTime = edited.audioTime.orExistingIfNonPositive(audioTime),
+        stickerItemId = edited.stickerItemId.orExistingIfNonPositive(stickerItemId),
+        stickerPackId = edited.stickerPackId.orExistingIfNonPositive(stickerPackId),
+        callText = edited.callText.orExistingIfBlank(callText),
+        callStatusText = edited.callStatusText.orExistingIfBlank(callStatusText),
+        width = edited.width.orExistingIfNonPositive(width),
+        height = edited.height.orExistingIfNonPositive(height)
     )
+}
+
+private fun com.yhchat.canary.data.model.MessageSender.mergeEditedSender(
+    edited: com.yhchat.canary.data.model.MessageSender
+): com.yhchat.canary.data.model.MessageSender {
+    if (edited.chatId.isBlank()) {
+        return this
+    }
+
+    return copy(
+        chatId = edited.chatId,
+        chatType = edited.chatType.takeIf { it > 0 } ?: chatType,
+        name = edited.name.orExistingIfBlank(name) ?: name,
+        avatarUrl = edited.avatarUrl.orExistingIfBlank(avatarUrl) ?: avatarUrl,
+        tagOld = edited.tagOld.takeUnless { it.isNullOrEmpty() } ?: tagOld,
+        tag = edited.tag.takeUnless { it.isNullOrEmpty() } ?: tag
+    )
+}
+
+private fun String?.orExistingIfBlank(existing: String?): String? {
+    return this?.takeIf { it.isNotBlank() } ?: existing
+}
+
+private fun Int?.orExistingIfNonPositive(existing: Int?): Int? {
+    return this?.takeIf { it > 0 } ?: existing
+}
+
+private fun Long?.orExistingIfNonPositive(existing: Long?): Long? {
+    return this?.takeIf { it > 0 } ?: existing
 }

@@ -55,6 +55,7 @@ internal data class LiveRoomUiState(
     val isCameraEnabled: Boolean = false,
     val isPlaybackPaused: Boolean = false,
     val isLandscapeFullscreen: Boolean = false,
+    val fullscreenParticipantId: String? = null,
     val joinedAtMillis: Long? = null,
     val roomAvatarUrl: String = "",
     val hostNickname: String = "",
@@ -181,8 +182,26 @@ internal class LiveRoomViewModel(
     }
 
     fun toggleLandscapeFullscreen() {
+        val nextFullscreen = !_uiState.value.isLandscapeFullscreen
+        val fallbackParticipantId = _uiState.value.fullscreenParticipantId
+            ?: _uiState.value.participants.firstOrNull()?.participantId
         _uiState.value = _uiState.value.copy(
-            isLandscapeFullscreen = !_uiState.value.isLandscapeFullscreen
+            isLandscapeFullscreen = nextFullscreen,
+            fullscreenParticipantId = if (nextFullscreen) fallbackParticipantId else null
+        )
+    }
+
+    fun showParticipantFullscreen(participantId: String) {
+        _uiState.value = _uiState.value.copy(
+            isLandscapeFullscreen = true,
+            fullscreenParticipantId = participantId
+        )
+    }
+
+    fun exitParticipantFullscreen() {
+        _uiState.value = _uiState.value.copy(
+            isLandscapeFullscreen = false,
+            fullscreenParticipantId = null
         )
     }
 
@@ -278,6 +297,17 @@ internal class LiveRoomViewModel(
                 addAll(remoteTiles)
             }
         )
+
+        val selectedParticipantId = _uiState.value.fullscreenParticipantId
+        if (
+            selectedParticipantId != null &&
+            _uiState.value.participants.none { it.participantId == selectedParticipantId }
+        ) {
+            _uiState.value = _uiState.value.copy(
+                isLandscapeFullscreen = false,
+                fullscreenParticipantId = null
+            )
+        }
     }
 
     private fun Participant.toLiveTile(isLocal: Boolean): LiveParticipantTile {
@@ -325,7 +355,12 @@ internal class LiveRoomViewModel(
         _roomState.value?.disconnect()
         _roomState.value?.release()
         _roomState.value = null
-        _uiState.value = _uiState.value.copy(isConnected = false, isConnecting = false)
+        _uiState.value = _uiState.value.copy(
+            isConnected = false,
+            isConnecting = false,
+            isLandscapeFullscreen = false,
+            fullscreenParticipantId = null
+        )
     }
 
     class Factory(

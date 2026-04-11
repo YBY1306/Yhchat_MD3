@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloseFullscreen
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material3.Button
@@ -50,18 +52,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import io.livekit.android.compose.ui.ScaleType
 import io.livekit.android.compose.ui.VideoTrackView
 import io.livekit.android.room.Room
 import kotlinx.coroutines.delay
@@ -157,6 +162,8 @@ class LiveRoomActivity : ComponentActivity() {
                             onToggleCamera = viewModel::toggleCamera,
                             onTogglePlayback = viewModel::togglePlayback,
                             onToggleFullscreen = viewModel::toggleLandscapeFullscreen,
+                            onParticipantFullscreen = viewModel::showParticipantFullscreen,
+                            onExitParticipantFullscreen = viewModel::exitParticipantFullscreen,
                             onHangUp = { viewModel.leaveRoom { finish() } },
                             onDismissError = viewModel::clearError
                         )
@@ -227,10 +234,18 @@ private fun LiveRoomScreen(
     onToggleCamera: () -> Unit,
     onTogglePlayback: () -> Unit,
     onToggleFullscreen: () -> Unit,
+    onParticipantFullscreen: (String) -> Unit,
+    onExitParticipantFullscreen: () -> Unit,
     onHangUp: () -> Unit,
     onDismissError: () -> Unit
 ) {
     var elapsedSeconds by remember(state.joinedAtMillis) { mutableLongStateOf(0L) }
+    val fullscreenParticipant = remember(state.participants, state.fullscreenParticipantId) {
+        state.participants.firstOrNull { it.participantId == state.fullscreenParticipantId }
+    }
+    var fullscreenControlsVisible by remember(state.isLandscapeFullscreen, state.fullscreenParticipantId) {
+        mutableStateOf(!state.isLandscapeFullscreen)
+    }
 
     LaunchedEffect(state.joinedAtMillis) {
         val joinedAt = state.joinedAtMillis ?: return@LaunchedEffect
@@ -238,6 +253,68 @@ private fun LiveRoomScreen(
             elapsedSeconds = ((System.currentTimeMillis() - joinedAt) / 1000L).coerceAtLeast(0L)
             delay(1000)
         }
+    }
+
+    if (state.isLandscapeFullscreen && fullscreenParticipant != null) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ParticipantTileCard(
+                participant = fullscreenParticipant,
+                room = room,
+                isPlaybackPaused = state.isPlaybackPaused,
+                modifier = Modifier.fillMaxSize(),
+                onEnterFullscreen = { onParticipantFullscreen(fullscreenParticipant.participantId) },
+                onExitFullscreen = onExitParticipantFullscreen,
+                isFullscreen = true,
+                controlsVisible = fullscreenControlsVisible,
+                onToggleControlsVisibility = {
+                    fullscreenControlsVisible = !fullscreenControlsVisible
+                }
+            )
+
+            if (state.error != null && fullscreenControlsVisible) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xCC3A1E22)),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = state.error,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(onClick = onDismissError) {
+                            Text("关闭")
+                        }
+                    }
+                }
+            }
+
+            if (fullscreenControlsVisible) {
+                LiveRoomControlsBar(
+                    state = state,
+                    elapsedSeconds = elapsedSeconds,
+                    onToggleMic = onToggleMic,
+                    onToggleCamera = onToggleCamera,
+                    onTogglePlayback = onTogglePlayback,
+                    onToggleFullscreen = onToggleFullscreen,
+                    onHangUp = onHangUp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 18.dp)
+                )
+            }
+        }
+        return
     }
 
     Column(
@@ -323,87 +400,193 @@ private fun LiveRoomScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(state.participants, key = { participant -> participant.participantId }) { participant ->
-                    Card(
+                    ParticipantTileCard(
+                        participant = participant,
+                        room = room,
+                        isPlaybackPaused = state.isPlaybackPaused,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(if (state.isLandscapeFullscreen) 220.dp else 180.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF111827))
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            if (room != null && participant.videoTrack != null && !state.isPlaybackPaused) {
-                                VideoTrackView(
-                                    videoTrack = participant.videoTrack,
-                                    modifier = Modifier.fillMaxSize(),
-                                    passedRoom = room,
-                                    mirror = participant.isLocal
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color(0xFF162133)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = participant.displayName.take(1),
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            if (state.isPlaybackPaused) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.28f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "已暂停",
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.48f))
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = participant.displayName,
-                                        color = Color.White,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = when {
-                                            participant.isSpeaking -> "正在说话"
-                                            participant.isMuted -> "麦克风已静音"
-                                            else -> "在线"
-                                        },
-                                        color = Color.White.copy(alpha = 0.72f),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                        }
-                    }
+                            .height(180.dp),
+                        onEnterFullscreen = { onParticipantFullscreen(participant.participantId) },
+                        onExitFullscreen = onExitParticipantFullscreen,
+                        isFullscreen = false
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
+
+        LiveRoomControlsBar(
+            state = state,
+            elapsedSeconds = elapsedSeconds,
+            onToggleMic = onToggleMic,
+            onToggleCamera = onToggleCamera,
+            onTogglePlayback = onTogglePlayback,
+            onToggleFullscreen = onToggleFullscreen,
+            onHangUp = onHangUp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun ParticipantTileCard(
+    participant: LiveParticipantTile,
+    room: Room?,
+    isPlaybackPaused: Boolean,
+    modifier: Modifier = Modifier,
+    onEnterFullscreen: () -> Unit,
+    onExitFullscreen: () -> Unit,
+    isFullscreen: Boolean,
+    controlsVisible: Boolean = true,
+    onToggleControlsVisibility: (() -> Unit)? = null
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(if (isFullscreen) 0.dp else 24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF111827))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(isFullscreen, onToggleControlsVisibility, onEnterFullscreen, onExitFullscreen) {
+                    detectTapGestures(
+                        onTap = {
+                            if (isFullscreen) {
+                                onToggleControlsVisibility?.invoke()
+                            }
+                        },
+                        onDoubleTap = {
+                            if (isFullscreen) {
+                                onExitFullscreen()
+                            } else {
+                                onEnterFullscreen()
+                            }
+                        }
+                    )
+                }
+        ) {
+            if (room != null && participant.videoTrack != null && !isPlaybackPaused) {
+                VideoTrackView(
+                    videoTrack = participant.videoTrack,
+                    modifier = Modifier.fillMaxSize(),
+                    passedRoom = room,
+                    mirror = participant.isLocal,
+                    scaleType = ScaleType.Fill
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF162133)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = participant.displayName.take(1),
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (controlsVisible) {
+                FilledIconButton(
+                    onClick = if (isFullscreen) onExitFullscreen else onEnterFullscreen,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFullscreen) Icons.Outlined.Close else Icons.Outlined.OpenInFull,
+                        contentDescription = if (isFullscreen) "退出单画面全屏" else "单画面全屏"
+                    )
+                }
+            }
+
+            if (isPlaybackPaused) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.28f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "已暂停",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+
+            if (controlsVisible) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.48f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = participant.displayName,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = when {
+                                participant.isSpeaking -> "正在说话"
+                                participant.isMuted -> "麦克风已静音"
+                                else -> "在线"
+                            },
+                            color = Color.White.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveRoomControlsBar(
+    state: LiveRoomUiState,
+    elapsedSeconds: Long,
+    onToggleMic: () -> Unit,
+    onToggleCamera: () -> Unit,
+    onTogglePlayback: () -> Unit,
+    onToggleFullscreen: () -> Unit,
+    onHangUp: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (state.isLandscapeFullscreen) {
+            Text(
+                text = buildString {
+                    append(state.roomTitle)
+                    append(" · ")
+                    append(state.participants.size)
+                    append(" 人")
+                    if (state.joinedAtMillis != null) {
+                        append(" · 已加入 ")
+                        append(formatElapsedTime(elapsedSeconds))
+                    }
+                },
+                color = Color.White.copy(alpha = 0.82f),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

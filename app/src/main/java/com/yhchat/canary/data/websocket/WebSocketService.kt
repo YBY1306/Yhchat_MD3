@@ -481,6 +481,17 @@ class WebSocketService @Inject constructor(
                     if (editMessage.hasData() && editMessage.data.hasMsg()) {
                         val protoMsg = editMessage.data.msg
                         val chatMessage = convertWsMsgToMessage(protoMsg)
+
+                        Log.d(
+                            tag,
+                            "Edit message details: msgId=${chatMessage.msgId}, " +
+                                "chatId=${chatMessage.chatId}, recvId=${chatMessage.recvId}, " +
+                                "sender=${chatMessage.sender.chatId}, contentType=${chatMessage.contentType}, " +
+                                "text=${chatMessage.content.text?.take(50)}, " +
+                                "buttons=${chatMessage.content.buttons?.take(50)}, " +
+                                "quoteMsgText=${chatMessage.content.quoteMsgText?.take(50)}, " +
+                                "editTime=${chatMessage.editTime}"
+                        )
                         
                         scope.launch {
                             _messageEvents.emit(MessageEvent.MessageEdited(chatMessage))
@@ -615,6 +626,7 @@ class WebSocketService @Inject constructor(
         } else null
 
         val direction = when {
+            protoMsg.sender.chatId.isBlank() -> ""
             !currentUserId.isNullOrBlank() && protoMsg.sender.chatId.isNotBlank() -> {
                 if (protoMsg.sender.chatId == currentUserId) "right" else "left"
             }
@@ -632,12 +644,11 @@ class WebSocketService @Inject constructor(
             cmd = cmd,
             msgDeleteTime = if (protoMsg.deleteTime > 0) protoMsg.deleteTime else null,
             quoteMsgId = if (protoMsg.quoteMsgId.isNotEmpty()) protoMsg.quoteMsgId else null,
-            msgSeq = protoMsg.msgSeq,
+            msgSeq = if (protoMsg.msgSeq > 0) protoMsg.msgSeq else null,
             editTime = if (protoMsg.editTime > 0) protoMsg.editTime else null,
-            // 关键修复：使用protoMsg的chatId和chatType，而不是sender的
-            chatId = protoMsg.chatId,
-            chatType = protoMsg.chatType,
-            recvId = protoMsg.recvId
+            chatId = protoMsg.chatId.takeIf { it.isNotBlank() },
+            chatType = protoMsg.chatType.takeIf { it > 0 },
+            recvId = protoMsg.recvId.takeIf { it.isNotBlank() }
         )
     }
     

@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: write
 
@@ -45,9 +45,16 @@ jobs:
           echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
           echo "full_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Update version name with commit hash
+      - name: Read version name from Gradle
+        id: version
         run: |
-          sed -i 's/versionName = "21.6"/versionName = "21.6-${{ steps.commit.outputs.hash }}"/g' app/build.gradle.kts
+          VERSION_NAME=$(sed -n 's/^[[:space:]]*versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -n 1)
+          if [ -z "$VERSION_NAME" ]; then
+            echo "Failed to read versionName from app/build.gradle.kts" >&2
+            exit 1
+          fi
+          echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "release_name=${VERSION_NAME}-${{ steps.commit.outputs.hash }}" >> $GITHUB_OUTPUT
 
       - name: Decode Keystore
         env:
@@ -59,11 +66,8 @@ jobs:
           echo "CANARY_KEY_ALIAS=${{ secrets.CANARY_KEY_ALIAS }}" >> $GITHUB_ENV
           echo "CANARY_KEY_PASSWORD=${{ secrets.CANARY_KEY_PASSWORD }}" >> $GITHUB_ENV
 
-      - name: Build standard Release APK
-        run: ./gradlew assembleStandardRelease
-
-      - name: Build withPlayer Release APK
-        run: ./gradlew assembleWithPlayerRelease
+      - name: Build release APKs
+        run: ./gradlew assembleStandardRelease assembleWithPlayerRelease assembleWithLiveRelease
 
       - name: List APK files
         run: |
@@ -74,6 +78,56 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
+      - name: Prepare release metadata
+        id: release_meta
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          TAG_NAME="build-${{ steps.commit.outputs.hash }}"
+          STANDARD_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-standard-release.apk"
+          WITH_PLAYER_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withPlayer-release.apk"
+          WITH_LIVE_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withLive-release.apk"
+          BEFORE_SHA="${{ github.event.before }}"
+          EMPTY_BEFORE="0000000000000000000000000000000000000000"
+
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "$EMPTY_BEFORE" ]; then
+            CHANGELOG=$(git log --format='- %s' "${BEFORE_SHA}..HEAD")
+            COMMIT_LIST=$(git log --format='- `%h` %s (%an)' "${BEFORE_SHA}..HEAD")
+          else
+            CHANGELOG=$(git log -n 10 --format='- %s')
+            COMMIT_LIST=$(git log -n 10 --format='- `%h` %s (%an)')
+          fi
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- ${COMMIT_MESSAGE}"
+          fi
+
+          if [ -z "$COMMIT_LIST" ]; then
+            COMMIT_LIST="- \`${{ steps.commit.outputs.hash }}\` ${COMMIT_MESSAGE}"
+          fi
+
+          {
+            echo "tag_name=$TAG_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+          cat > release-body.md <<EOF
+          ## Build Information
+          - **Version**: ${{ steps.version.outputs.release_name }}
+          - **Commit Hash**: ${{ steps.commit.outputs.full_hash }}
+          - **Build Date**: ${{ steps.date.outputs.date }}
+          - **Branch**: ${{ github.ref_name }}
+
+          ## Build Variants
+          - **Standard**: [app-standard-release.apk](${STANDARD_APK_URL})
+          - **WithPlayer**: [app-withPlayer-release.apk](${WITH_PLAYER_APK_URL})
+          - **WithLive**: [app-withLive-release.apk](${WITH_LIVE_APK_URL})
+
+          ## Changelog
+          ${CHANGELOG}
+
+          ## Commit List
+          ${COMMIT_LIST}
+          EOF
+
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -81,32 +135,136 @@ jobs:
           files: |
             app/build/outputs/apk/standard/release/*.apk
             app/build/outputs/apk/withPlayer/release/*.apk
-          name: Canary 21.6-${{ steps.commit.outputs.hash }} (${{ steps.date.outputs.date }})
-          tag_name: build-${{ steps.commit.outputs.hash }}
-          body: |
-            ## 🔨 Build Information
-            - **Version**: 21.6-${{ steps.commit.outputs.hash }}
-            - **Commit Hash**: ${{ steps.commit.outputs.full_hash }}
-            - **Build Date**: ${{ steps.date.outputs.date }}
-            - **Branch**: ${{ github.ref_name }}
-            
-            ## 📦 Build Variants
-            - **Standard**: 基础版本（不含播放器）
-            - **WithPlayer**: 完整版本（包含播放器）
-            
-            ## 📝 Latest Commit
-            ${{ github.event.head_commit.message }}
+            app/build/outputs/apk/withLive/release/*.apk
+          name: Canary ${{ steps.version.outputs.release_name }} (${{ steps.date.outputs.date }})
+          tag_name: ${{ steps.release_meta.outputs.tag_name }}
+          body_path: release-body.md
           draft: false
           prerelease: true
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify bot about prerelease
+        continue-on-error: true
+        env:
+          BOT_SEND_TOKEN: ${{ vars.YHCHAT_BOT_SEND_TOKEN }}
+          BOT_RECV_ID: ${{ vars.YHCHAT_BOT_RECV_ID }}
+          BOT_RECV_TYPE: ${{ vars.YHCHAT_BOT_RECV_TYPE }}
+        run: |
+          if [ -z "$BOT_SEND_TOKEN" ] || [ -z "$BOT_RECV_ID" ] || [ -z "$BOT_RECV_TYPE" ]; then
+            echo "Skip bot notify: missing YHCHAT_BOT_SEND_TOKEN / YHCHAT_BOT_RECV_ID / YHCHAT_BOT_RECV_TYPE"
+            exit 0
+          fi
+
+          RELEASE_BODY="$(cat release-body.md)"
+
+          send_markdown() {
+            local text="$1"
+            local payload
+            payload=$(jq -n \
+              --arg recvId "$BOT_RECV_ID" \
+              --arg recvType "$BOT_RECV_TYPE" \
+              --arg text "$text" \
+              '{
+                recvId: $recvId,
+                recvType: $recvType,
+                contentType: "markdown",
+                content: {
+                  text: $text
+                }
+              }')
+
+            curl --fail-with-body \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/bot/send?token=${BOT_SEND_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
+
+          send_file() {
+            local file_path="$1"
+            local file_name
+            local upload_response
+            local file_key
+            local payload
+
+            file_name=$(basename "$file_path")
+            upload_response=$(curl --fail-with-body -sS \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/file/upload?token=${BOT_SEND_TOKEN}" \
+              -F "file=@${file_path};filename=${file_name}") || return 1
+
+            file_key=$(printf '%s' "$upload_response" | jq -r '.data.fileKey // empty')
+            if [ -z "$file_key" ]; then
+              echo "Upload did not return fileKey for ${file_name}"
+              return 1
+            fi
+
+            payload=$(jq -n \
+              --arg recvId "$BOT_RECV_ID" \
+              --arg recvType "$BOT_RECV_TYPE" \
+              --arg fileKey "$file_key" \
+              '{
+                recvId: $recvId,
+                recvType: $recvType,
+                contentType: "file",
+                content: {
+                  fileKey: $fileKey
+                }
+              }')
+
+            curl --fail-with-body \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/bot/send?token=${BOT_SEND_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
+
+          if ! send_markdown "$RELEASE_BODY"; then
+            echo "Markdown bot notification failed"
+            exit 0
+          fi
+
+          for apk in \
+            app/build/outputs/apk/standard/release/*.apk \
+            app/build/outputs/apk/withPlayer/release/*.apk \
+            app/build/outputs/apk/withLive/release/*.apk
+          do
+            [ -f "$apk" ] || continue
+
+            apk_size=$(stat -c%s "$apk")
+            if [ "$apk_size" -ge 20971520 ]; then
+              echo "Skip bot file send for $(basename "$apk"): size ${apk_size} bytes >= 20MB"
+              continue
+            fi
+
+            if ! send_file "$apk"; then
+              echo "Bot file send failed for $(basename "$apk"), continue"
+            fi
+          done
+
+          SUMMARY_PAYLOAD=$(jq -n \
+            --arg recvId "$BOT_RECV_ID" \
+            --arg recvType "$BOT_RECV_TYPE" \
+            --arg text "Prerelease assets upload notification finished. Small APKs were sent when upload succeeded; files >= 20MB were skipped." \
+            '{
+              recvId: $recvId,
+              recvType: $recvType,
+              contentType: "markdown",
+              content: {
+                text: $text
+              }
+            }')
+
+          curl --fail-with-body \
+            -X POST "https://chat-go.jwzhd.com/open-apis/v1/bot/send?token=${BOT_SEND_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$SUMMARY_PAYLOAD" || true
 
       - name: Upload APKs to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Canary-21.6-${{ steps.commit.outputs.hash }}
+          name: Canary-${{ steps.version.outputs.release_name }}
           path: |
             app/build/outputs/apk/standard/release/*.apk
             app/build/outputs/apk/withPlayer/release/*.apk
+            app/build/outputs/apk/withLive/release/*.apk
           retention-days: 30

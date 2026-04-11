@@ -44,5 +44,4 @@ dependencies {
     implementation("io.livekit:livekit-android:2.23.1")
     implementation("io.livekit:livekit-android-camerax:2.23.1")
     implementation("io.livekit:livekit-android-compose-components:2.2.1")
-    implementation("io.github.webrtc-sdk:android:137.7151.05")
 }

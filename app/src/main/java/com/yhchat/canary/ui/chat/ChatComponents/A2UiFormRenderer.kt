@@ -854,7 +854,7 @@ private fun formatA2UiString(
     dataModel: Map<String, Any?>,
     scopePath: String?
 ): String {
-    val regex = """\$\{([^}]+)}""".toRegex()
+    val regex = """\$\{([^}]+)\}""".toRegex()
     return regex.replace(template) { match ->
         val expression = match.groupValues[1]
         val resolved = getValueAtPath(dataModel, combineScopePath(scopePath, expression))

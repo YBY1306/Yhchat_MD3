@@ -1,3 +1,5 @@
+@file:kotlin.jvm.JvmName("VideoMessageViewFallbackKt")
+
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import androidx.compose.foundation.ExperimentalFoundationApi

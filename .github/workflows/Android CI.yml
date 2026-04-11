@@ -207,12 +207,22 @@ jobs:
       - name: Notify bot about prerelease
         continue-on-error: true
         env:
-          BOT_SEND_TOKEN: ${{ vars.YHCHAT_BOT_SEND_TOKEN }}
-          BOT_RECV_ID: ${{ vars.YHCHAT_BOT_RECV_ID }}
-          BOT_RECV_TYPE: ${{ vars.YHCHAT_BOT_RECV_TYPE }}
+          BOT_SEND_TOKEN_VAR: ${{ vars.YHCHAT_BOT_SEND_TOKEN }}
+          BOT_SEND_TOKEN_SECRET: ${{ secrets.YHCHAT_BOT_SEND_TOKEN }}
+          BOT_RECV_ID_VAR: ${{ vars.YHCHAT_BOT_RECV_ID }}
+          BOT_RECV_ID_SECRET: ${{ secrets.YHCHAT_BOT_RECV_ID }}
+          BOT_RECV_TYPE_VAR: ${{ vars.YHCHAT_BOT_RECV_TYPE }}
+          BOT_RECV_TYPE_SECRET: ${{ secrets.YHCHAT_BOT_RECV_TYPE }}
         run: |
+          BOT_SEND_TOKEN="${BOT_SEND_TOKEN_VAR:-$BOT_SEND_TOKEN_SECRET}"
+          BOT_RECV_ID="${BOT_RECV_ID_VAR:-$BOT_RECV_ID_SECRET}"
+          BOT_RECV_TYPE="${BOT_RECV_TYPE_VAR:-$BOT_RECV_TYPE_SECRET}"
+
           if [ -z "$BOT_SEND_TOKEN" ] || [ -z "$BOT_RECV_ID" ] || [ -z "$BOT_RECV_TYPE" ]; then
-            echo "Skip bot notify: missing YHCHAT_BOT_SEND_TOKEN / YHCHAT_BOT_RECV_ID / YHCHAT_BOT_RECV_TYPE"
+            echo "Skip bot notify"
+            echo "YHCHAT_BOT_SEND_TOKEN: $([ -n "$BOT_SEND_TOKEN" ] && echo present || echo missing)"
+            echo "YHCHAT_BOT_RECV_ID: $([ -n "$BOT_RECV_ID" ] && echo present || echo missing)"
+            echo "YHCHAT_BOT_RECV_TYPE: $([ -n "$BOT_RECV_TYPE" ] && echo present || echo missing)"
             exit 0
           fi
 

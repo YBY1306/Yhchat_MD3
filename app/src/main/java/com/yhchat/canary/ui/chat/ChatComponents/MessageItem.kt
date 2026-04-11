@@ -185,6 +185,7 @@ fun MessageItem(
             SenderNameAndTags(
                 message = message,
                 isMyMessage = isMyMessage,
+                conversationChatType = conversationChatType,
                 tagsExpanded = tagsExpanded,
                 onToggleExpand = { tagsExpanded = !tagsExpanded },
                 memberPermission = memberPermission,
@@ -481,6 +482,7 @@ fun TipMessageItem(
 fun SenderNameAndTags(
     message: ChatMessage,
     isMyMessage: Boolean,
+    conversationChatType: Int,
     tagsExpanded: Boolean,
     onToggleExpand: () -> Unit,
     memberPermission: Int? = null,
@@ -490,15 +492,20 @@ fun SenderNameAndTags(
     val showOwnerBadge by rememberBooleanPreference("layout_settings", "chat_show_owner_badge", true)
     val showAdminBadge by rememberBooleanPreference("layout_settings", "chat_show_admin_badge", true)
     val showMemberTags by rememberBooleanPreference("layout_settings", "chat_show_member_tags", true)
+    val shouldHideTagsForPrivateChat = conversationChatType == 1
 
     val tags = message.sender.tag ?: emptyList()
     val hasMultipleTags = tags.size > 1
-    val resolvedMemberPermission = resolveMemberPermission(
-        senderChatId = message.sender.chatId,
-        memberPermission = memberPermission,
-        groupOwnerId = groupOwnerId,
-        groupAdminIds = groupAdminIds
-    )
+    val resolvedMemberPermission = if (shouldHideTagsForPrivateChat) {
+        null
+    } else {
+        resolveMemberPermission(
+            senderChatId = message.sender.chatId,
+            memberPermission = memberPermission,
+            groupOwnerId = groupOwnerId,
+            groupAdminIds = groupAdminIds
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -564,7 +571,7 @@ fun SenderNameAndTags(
                 }
             }
 
-            if (showMemberTags) {
+            if (showMemberTags && !shouldHideTagsForPrivateChat) {
                 tags.take(1).forEach { tag ->
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -595,7 +602,7 @@ fun SenderNameAndTags(
             }
         }
 
-        if (showMemberTags && tagsExpanded && tags.size > 1) {
+        if (showMemberTags && !shouldHideTagsForPrivateChat && tagsExpanded && tags.size > 1) {
             Spacer(modifier = Modifier.height(4.dp))
             FlowRow(
                 modifier = Modifier.wrapContentWidth(),

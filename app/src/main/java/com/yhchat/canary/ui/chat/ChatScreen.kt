@@ -88,6 +88,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.*
@@ -153,7 +154,11 @@ import android.provider.MediaStore
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.ui.graphics.asImageBitmap
+import com.yhchat.canary.BuildConfig
 import com.yhchat.canary.ui.components.MultiSelectBottomBar
+import com.yhchat.canary.ui.live.LiveRoomLauncher
+import com.yhchat.canary.ui.live.LiveRoomsBottomSheet
+import com.yhchat.canary.ui.live.LiveRoomsViewModel
 
 /**
  * 聊天界面
@@ -190,6 +195,7 @@ fun ChatScreen(
     searchTargetMsgSeq: Long? = null  // 搜索目标消息序列号
 ) {
     val context = LocalContext.current
+    val liveRoomsViewModel: LiveRoomsViewModel = hiltViewModel()
 
     val voiceMessageViewModel = remember(context) {
         VoiceMessageViewModel(
@@ -198,6 +204,7 @@ fun ChatScreen(
         )
     }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val liveRoomsState by liveRoomsViewModel.uiState.collectAsStateWithLifecycle()
     val messages = viewModel.messages
     val reversedMessages by remember {
         derivedStateOf { messages.asReversed().toList() }
@@ -247,6 +254,8 @@ fun ChatScreen(
     val chatImageGallery by remember(messages) {
         derivedStateOf { buildChatImageGallery(messages) }
     }
+    val liveEnabled = BuildConfig.WITH_LIVE && chatType == 2
+    var showLiveRoomsSheet by rememberSaveable(chatId) { mutableStateOf(false) }
     
     // 滚动到底部按钮状态
     var showScrollToBottomButton by remember { mutableStateOf(false) }
@@ -410,6 +419,28 @@ fun ChatScreen(
     // 加载聊天背景
     LaunchedEffect(chatId) {
         viewModel.loadChatBackground(context, chatId)
+    }
+
+    LaunchedEffect(liveEnabled, chatId) {
+        if (!liveEnabled) return@LaunchedEffect
+
+        liveRoomsViewModel.refresh(groupId = chatId)
+        while (true) {
+            delay(15000)
+            liveRoomsViewModel.refresh(groupId = chatId, silent = true)
+        }
+    }
+
+    LaunchedEffect(liveEnabled) {
+        if (!liveEnabled) return@LaunchedEffect
+
+        liveRoomsViewModel.launchEvents.collectLatest { payload ->
+            showLiveRoomsSheet = false
+            val launched = LiveRoomLauncher.open(context, payload)
+            if (!launched) {
+                Toast.makeText(context, "withLive 页面未接入", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     
     // 处理图片发送
@@ -667,9 +698,14 @@ fun ChatScreen(
                 uiState = uiState,
                 showTtsButton = showTtsButton,
                 showRefreshButton = showRefreshButton,
+                showLiveButton = liveEnabled && liveRoomsState.rooms.isNotEmpty(),
                 onBackClick = onBackClick,
                 onRefreshClick = { viewModel.refreshLatestMessages() },
                 onTtsClick = { showFloatingTtsWindow = true },
+                onLiveClick = {
+                    showLiveRoomsSheet = true
+                    liveRoomsViewModel.refresh(groupId = chatId)
+                },
                 modifier = Modifier.zIndex(3f)
             )
         }
@@ -1676,7 +1712,24 @@ fun ChatScreen(
             }
         )
     }
-    
+
+    if (showLiveRoomsSheet && liveEnabled) {
+        LiveRoomsBottomSheet(
+            rooms = liveRoomsState.rooms,
+            isLoading = liveRoomsState.isLoading,
+            joiningRoomId = liveRoomsState.joiningRoomId,
+            error = liveRoomsState.error,
+            onDismiss = { showLiveRoomsSheet = false },
+            onRetry = {
+                liveRoomsViewModel.clearError()
+                liveRoomsViewModel.refresh(groupId = chatId)
+            },
+            onJoin = { room ->
+                liveRoomsViewModel.join(room)
+            }
+        )
+    }
+
     
     // 浮动TTS窗口
     TtsFloatingWindow(

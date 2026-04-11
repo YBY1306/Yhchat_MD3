@@ -1,9 +1,23 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import android.content.Intent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -11,7 +25,10 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -32,9 +49,11 @@ fun ChatTopAppBar(
     uiState: ChatUiState,
     showTtsButton: Boolean,
     showRefreshButton: Boolean,
+    showLiveButton: Boolean,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onTtsClick: () -> Unit,
+    onLiveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -58,34 +77,38 @@ fun ChatTopAppBar(
     
     TopAppBar(
         title = {
-            // 标题部分 - 强制单行显示，不被按钮挤压
-            Column {
-                Text(
-                    text = safeChatName,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                // 如果是群聊，显示群人数
-                if (chatType == 2 && uiState.groupMemberCount > 0) {
+            Row {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
-                        text = "${uiState.groupMemberCount} 人",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        text = safeChatName,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-                // 如果是机器人，显示使用人数
-                if (chatType == 3) {
-                    val botInfo = uiState.botInfo
-                    if (botInfo != null) {
+                    if (chatType == 2 && uiState.groupMemberCount > 0) {
                         Text(
-                            text = "${botInfo.data.headcount} 人使用",
+                            text = "${uiState.groupMemberCount} 人",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
                         )
                     }
+                    if (chatType == 3) {
+                        val botInfo = uiState.botInfo
+                        if (botInfo != null) {
+                            Text(
+                                text = "${botInfo.data.headcount} 人使用",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                if (showLiveButton) {
+                    Spacer(modifier = Modifier.width(10.dp))
+                    LiveWaveButton(onClick = onLiveClick)
                 }
             }
         },
@@ -173,4 +196,50 @@ fun ChatTopAppBar(
         ),
         modifier = modifier
     )
+}
+
+@Composable
+private fun LiveWaveButton(
+    onClick: () -> Unit
+) {
+    val transition = rememberInfiniteTransition(label = "live_wave")
+    val scales = listOf(0, 160, 320).mapIndexed { index, delayMillis ->
+        transition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 700, delayMillis = delayMillis, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "live_bar_$index"
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .clickable(onClick = onClick)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        scales.forEachIndexed { index, scale ->
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 18.dp)
+                    .graphicsLayer {
+                        scaleY = scale.value
+                    }
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        if (index == 1) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
+                        }
+                    )
+            )
+        }
+    }
 }

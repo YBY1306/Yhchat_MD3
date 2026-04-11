@@ -69,10 +69,17 @@ android {
         create("standard") {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "false")
+            buildConfigField("boolean", "WITH_LIVE", "false")
         }
         create("withPlayer") {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "true")
+            buildConfigField("boolean", "WITH_LIVE", "false")
+        }
+        create("withLive") {
+            dimension = "player"
+            buildConfigField("boolean", "WITH_PLAYER", "false")
+            buildConfigField("boolean", "WITH_LIVE", "true")
         }
     }
 
@@ -113,6 +120,7 @@ protobuf {
 
 dependencies {
     add("withPlayerImplementation", project(":player"))
+    add("withLiveImplementation", project(":live"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

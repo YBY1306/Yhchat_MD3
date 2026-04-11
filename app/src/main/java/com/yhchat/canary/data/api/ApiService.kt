@@ -205,6 +205,30 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody
     ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/group/live-room")
+    suspend fun getGroupLiveRooms(
+        @Header("token") token: String,
+        @Body request: GroupLiveRoomsRequest
+    ): Response<LiveRoomsResponse>
+
+    @POST("v1/live/add")
+    suspend fun joinLiveRoom(
+        @Header("token") token: String,
+        @Body request: LiveJoinRequest
+    ): Response<LiveJoinResponse>
+
+    @POST("v1/live/room-info")
+    suspend fun getLiveRoomInfo(
+        @Header("token") token: String,
+        @Body request: LiveRoomInfoRequest
+    ): Response<LiveRoomInfoResponse>
+
+    @POST("v1/live/hang_up")
+    suspend fun hangUpLiveRoom(
+        @Header("token") token: String,
+        @Body request: LiveHangUpRequest
+    ): Response<BaseResponse>
     
     // ========== 机器人相关API（使用protobuf） ==========
     

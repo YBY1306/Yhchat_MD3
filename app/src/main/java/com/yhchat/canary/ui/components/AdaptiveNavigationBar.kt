@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 自适应导航栏 - LibChecker风格
@@ -30,10 +31,15 @@ fun AdaptiveNavigationBar(
     isVisible: Boolean = true
 ) {
     val configuration = LocalConfiguration.current
-    val screenWidthDp = configuration.screenWidthDp
-    
-    // 判断是否为大屏设备（平板或折叠屏）
-    val isLargeScreen = screenWidthDp >= 600
+    val forceDisableLargeScreenMode by rememberBooleanPreference(
+        preferencesName = "layout_settings",
+        key = "force_disable_large_screen_mode",
+        defaultValue = false
+    )
+    val isLargeScreen = isLargeScreenLayout(
+        configuration = configuration,
+        forceDisableLargeScreenMode = forceDisableLargeScreenMode
+    )
     
     if (isLargeScreen) {
         // 侧边导航栏 - 平板模式

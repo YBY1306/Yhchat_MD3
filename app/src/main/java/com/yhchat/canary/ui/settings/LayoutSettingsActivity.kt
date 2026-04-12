@@ -691,6 +691,7 @@ private fun ChatLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
     val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
     
+    var forceDisableLargeScreenMode by remember { mutableStateOf(prefs.getBoolean("force_disable_large_screen_mode", false)) }
     var hideTopAppBar by remember { mutableStateOf(prefs.getBoolean("chat_hide_top_app_bar", false)) }
     var hideBackButtonInLargeScreen by remember { mutableStateOf(prefs.getBoolean("chat_hide_back_button_large_screen", true)) }
     var showTtsButton by remember { mutableStateOf(prefs.getBoolean("chat_show_tts_button", true)) }
@@ -708,6 +709,18 @@ private fun ChatLayoutSettingsGroup(context: Context) {
     SettingsGroup(
         title = "聊天界面 - TopAppBar",
         items = listOf(
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Tablet,
+                    title = "强制关闭大屏模式",
+                    subtitle = if (forceDisableLargeScreenMode) "始终使用手机布局" else "允许自动启用大屏布局",
+                    checked = forceDisableLargeScreenMode,
+                    onCheckedChange = {
+                        forceDisableLargeScreenMode = it
+                        prefs.edit().putBoolean("force_disable_large_screen_mode", it).apply()
+                    }
+                )
+            },
             {
                 SettingsSwitchItem(
                     icon = Icons.Default.VisibilityOff,

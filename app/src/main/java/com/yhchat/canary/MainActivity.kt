@@ -44,6 +44,8 @@ import com.yhchat.canary.ui.discover.DiscoverScreen
 import com.yhchat.canary.ui.profile.ProfileScreen
 import com.yhchat.canary.ui.search.SearchScreen
 import com.yhchat.canary.ui.components.AdaptiveNavigationBar
+import com.yhchat.canary.ui.components.isLargeScreenLayout
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import coil.ImageLoader
@@ -282,8 +284,15 @@ class MainActivity : BaseActivity() {
 
                 // 检测屏幕尺寸
                 val configuration = LocalConfiguration.current
-                val screenWidthDp = configuration.screenWidthDp
-                val isLargeScreen = screenWidthDp >= 600
+                val forceDisableLargeScreenMode by rememberBooleanPreference(
+                    preferencesName = "layout_settings",
+                    key = "force_disable_large_screen_mode",
+                    defaultValue = false
+                )
+                val isLargeScreen = isLargeScreenLayout(
+                    configuration = configuration,
+                    forceDisableLargeScreenMode = forceDisableLargeScreenMode
+                )
 
                 if (isLargeScreen) {
                     // 大屏设备：使用Row布局，侧边栏在左边

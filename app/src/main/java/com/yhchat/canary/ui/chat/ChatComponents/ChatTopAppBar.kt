@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.chat.ChatUiState
+import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
@@ -58,8 +59,15 @@ fun ChatTopAppBar(
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val screenWidthDp = configuration.screenWidthDp
-    val isLargeScreen = screenWidthDp >= 600
+    val forceDisableLargeScreenMode by rememberBooleanPreference(
+        preferencesName = "layout_settings",
+        key = "force_disable_large_screen_mode",
+        defaultValue = false
+    )
+    val isLargeScreen = isLargeScreenLayout(
+        configuration = configuration,
+        forceDisableLargeScreenMode = forceDisableLargeScreenMode
+    )
     val safeChatName = chatName.ifBlank { "聊天" }
     
     val hideBackButtonInLargeScreen by rememberBooleanPreference(

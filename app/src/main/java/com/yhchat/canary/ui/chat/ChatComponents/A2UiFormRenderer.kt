@@ -3,6 +3,7 @@ package com.yhchat.canary.ui.chat.ChatComponents
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,19 +18,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +61,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONArray
 import org.json.JSONObject
@@ -101,7 +114,14 @@ internal data class A2UiComponent(
     val displayStyle: String? = null,
     val multiple: Boolean? = null,
     val enableDate: Boolean? = null,
-    val enableTime: Boolean? = null
+    val enableTime: Boolean? = null,
+    val trigger: String? = null,
+    val content: String? = null,
+    val entryPointChild: String? = null,
+    val contentChild: String? = null,
+    val title: A2UiValue? = null,
+    val data: A2UiValue? = null,
+    val axis: String? = null
 )
 
 internal data class A2UiOption(
@@ -242,7 +262,14 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         displayStyle = componentObject.optString("displayStyle").takeIf { it.isNotBlank() },
         multiple = componentObject.optBoolean("multiple").takeIf { componentObject.has("multiple") },
         enableDate = componentObject.optBoolean("enableDate").takeIf { componentObject.has("enableDate") },
-        enableTime = componentObject.optBoolean("enableTime").takeIf { componentObject.has("enableTime") }
+        enableTime = componentObject.optBoolean("enableTime").takeIf { componentObject.has("enableTime") },
+        trigger = componentObject.optString("trigger").takeIf { it.isNotBlank() },
+        content = componentObject.optString("content").takeIf { it.isNotBlank() },
+        entryPointChild = componentObject.optString("entryPointChild").takeIf { it.isNotBlank() },
+        contentChild = componentObject.optString("contentChild").takeIf { it.isNotBlank() },
+        title = parseA2UiValue(componentObject.opt("title")),
+        data = parseA2UiValue(componentObject.opt("data")),
+        axis = componentObject.optString("axis").takeIf { it.isNotBlank() }
     )
 }
 
@@ -806,6 +833,10 @@ private fun RenderA2UiComponent(
             val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)
             val valuePath = resolveBoundPath(component.value, scopePath)
+            val displayStyle = component.displayStyle?.lowercase(Locale.ROOT)
+            val isMultiple = component.variant.equals("multipleSelection", ignoreCase = true) ||
+                component.multiple == true ||
+                displayStyle == "checkbox"
             Column(
                 modifier = modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -824,26 +855,83 @@ private fun RenderA2UiComponent(
                 ) {
                     component.options.forEach { option ->
                         val selected = isA2UiOptionSelected(currentValue, option.value)
-                        if (component.displayStyle.equals("chips", ignoreCase = true)) {
+                        if (displayStyle == "checkbox") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (valuePath != null) {
+                                            onDataModelChange(
+                                                valuePath,
+                                                buildChoicePickerValue(currentValue, option.value, true)
+                                            )
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = {
+                                        if (valuePath != null) {
+                                            onDataModelChange(
+                                                valuePath,
+                                                buildChoicePickerValue(currentValue, option.value, true)
+                                            )
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(option.label)
+                            }
+                        } else if (!isMultiple && (
+                                displayStyle == "radio" ||
+                                    component.variant.equals("mutuallyExclusive", ignoreCase = true)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (valuePath != null) {
+                                            onDataModelChange(valuePath, option.value)
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = {
+                                        if (valuePath != null) {
+                                            onDataModelChange(valuePath, option.value)
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(option.label)
+                            }
+                        } else if (displayStyle == "chips") {
                             FilterChip(
                                 selected = selected,
                                 onClick = {
                                     if (valuePath != null) {
                                         onDataModelChange(
                                             valuePath,
-                                            buildChoicePickerValue(currentValue, option.value, component.multiple == true)
+                                            buildChoicePickerValue(currentValue, option.value, isMultiple)
                                         )
                                     }
                                 },
                                 label = { Text(option.label) }
                             )
                         } else {
-                            AssistChip(
+                            FilterChip(
+                                selected = selected,
                                 onClick = {
                                     if (valuePath != null) {
                                         onDataModelChange(
                                             valuePath,
-                                            buildChoicePickerValue(currentValue, option.value, component.multiple == true)
+                                            buildChoicePickerValue(currentValue, option.value, isMultiple)
                                         )
                                     }
                                 },
@@ -853,6 +941,110 @@ private fun RenderA2UiComponent(
                     }
                 }
             }
+        }
+
+        "modal" -> {
+            val triggerId = component.trigger ?: component.entryPointChild ?: component.child
+            val contentId = component.content ?: component.contentChild ?: component.child
+            var visible by rememberSaveable(component.id, scopePath) { mutableStateOf(false) }
+
+            triggerId?.let { childId ->
+                Box(
+                    modifier = modifier.clickable { visible = true }
+                ) {
+                    RenderA2UiComponent(
+                        componentId = childId,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            }
+
+            if (visible && !contentId.isNullOrBlank()) {
+                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                ModalBottomSheet(
+                    onDismissRequest = { visible = false },
+                    sheetState = sheetState
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(onClick = { visible = false }) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                            }
+                        }
+                        RenderA2UiComponent(
+                            componentId = contentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+            }
+        }
+
+        "linechart" -> {
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
+            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
+                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
+            A2UiLineChart(
+                title = title,
+                points = parseA2UiChartPoints(chartData),
+                modifier = modifier.fillMaxWidth()
+            )
+        }
+
+        "barchart" -> {
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
+            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
+                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
+            A2UiBarChart(
+                title = title,
+                points = parseA2UiChartPoints(chartData),
+                modifier = modifier.fillMaxWidth()
+            )
+        }
+
+        "piechart" -> {
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
+            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
+                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
+            A2UiPieChart(
+                title = title,
+                slices = parseA2UiPieSlices(chartData),
+                modifier = modifier.fillMaxWidth()
+            )
+        }
+
+        "divider" -> {
+            val isVertical = component.axis.equals("vertical", ignoreCase = true)
+            Box(
+                modifier = if (isVertical) {
+                    modifier
+                        .height(24.dp)
+                        .width(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                } else {
+                    modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                }
+            )
         }
 
         else -> {
@@ -1447,4 +1639,259 @@ private fun verticalArrangementFor(justify: String?) = when (justify?.lowercase(
     "spacearound" -> Arrangement.SpaceAround
     "spaceevenly" -> Arrangement.SpaceEvenly
     else -> Arrangement.Top
+}
+
+private data class A2UiChartPoint(
+    val x: String,
+    val y: Float
+)
+
+private data class A2UiPieSlice(
+    val label: String,
+    val value: Float,
+    val color: Color
+)
+
+@Composable
+private fun A2UiLineChart(
+    title: String?,
+    points: List<A2UiChartPoint>,
+    modifier: Modifier = Modifier
+) {
+    val values = points.map { it.y }
+    val hasData = values.isNotEmpty()
+    val minY = if (hasData) values.minOrNull() ?: 0f else 0f
+    val maxY = if (hasData) values.maxOrNull() ?: 0f else 0f
+    val range = (maxY - minY).takeIf { it > 0f } ?: 1f
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        if (!hasData) {
+            Text("No chart data", style = MaterialTheme.typography.bodySmall)
+            return
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+        ) {
+            val leftPadding = 24.dp.toPx()
+            val rightPadding = 12.dp.toPx()
+            val topPadding = 12.dp.toPx()
+            val bottomPadding = 24.dp.toPx()
+            val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+            val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+
+            drawLine(
+                color = Color(0x33000000),
+                start = Offset(leftPadding, topPadding + plotHeight),
+                end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                color = Color(0x33000000),
+                start = Offset(leftPadding, topPadding),
+                end = Offset(leftPadding, topPadding + plotHeight),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            val path = Path()
+            points.forEachIndexed { index, point ->
+                val x = leftPadding + if (points.size == 1) 0f else (index * plotWidth / (points.lastIndex))
+                val yRatio = (point.y - minY) / range
+                val y = topPadding + (1f - yRatio) * plotHeight
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                drawCircle(
+                    color = Color(0xFF1E88E5),
+                    radius = 3.dp.toPx(),
+                    center = Offset(x, y)
+                )
+            }
+            drawPath(
+                path = path,
+                color = Color(0xFF1E88E5),
+                style = Stroke(width = 2.dp.toPx())
+            )
+        }
+    }
+}
+
+@Composable
+private fun A2UiBarChart(
+    title: String?,
+    points: List<A2UiChartPoint>,
+    modifier: Modifier = Modifier
+) {
+    val hasData = points.isNotEmpty()
+    val maxY = (points.maxOfOrNull { it.y } ?: 0f).takeIf { it > 0f } ?: 1f
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        if (!hasData) {
+            Text("No chart data", style = MaterialTheme.typography.bodySmall)
+            return
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+        ) {
+            val leftPadding = 24.dp.toPx()
+            val rightPadding = 12.dp.toPx()
+            val topPadding = 12.dp.toPx()
+            val bottomPadding = 24.dp.toPx()
+            val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+            val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+            val slotWidth = plotWidth / points.size.coerceAtLeast(1)
+            val barWidth = slotWidth * 0.6f
+
+            drawLine(
+                color = Color(0x33000000),
+                start = Offset(leftPadding, topPadding + plotHeight),
+                end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            points.forEachIndexed { index, point ->
+                val barHeight = (point.y / maxY) * plotHeight
+                val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
+                val y = topPadding + plotHeight - barHeight
+                drawRoundRect(
+                    color = Color(0xFF43A047),
+                    topLeft = Offset(x, y),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun A2UiPieChart(
+    title: String?,
+    slices: List<A2UiPieSlice>,
+    modifier: Modifier = Modifier
+) {
+    val total = slices.sumOf { it.value.toDouble() }.toFloat()
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        if (slices.isEmpty() || total <= 0f) {
+            Text("No chart data", style = MaterialTheme.typography.bodySmall)
+            return
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(240.dp)
+        ) {
+            val diameter = size.minDimension * 0.75f
+            val topLeft = Offset(
+                (size.width - diameter) / 2f,
+                (size.height - diameter) / 2f
+            )
+            var startAngle = -90f
+            slices.forEach { slice ->
+                val sweep = (slice.value / total) * 360f
+                drawArc(
+                    color = slice.color,
+                    startAngle = startAngle,
+                    sweepAngle = sweep,
+                    useCenter = true,
+                    topLeft = topLeft,
+                    size = Size(diameter, diameter)
+                )
+                startAngle += sweep
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            slices.forEach { slice ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(slice.color, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${slice.label}: ${slice.value}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun parseA2UiChartPoints(rawData: Any?): List<A2UiChartPoint> {
+    val items = rawData as? List<*> ?: return emptyList()
+    return items.mapNotNull { entry ->
+        val obj = entry as? Map<*, *> ?: return@mapNotNull null
+        val label = obj["x"]?.toString()
+            ?: obj["label"]?.toString()
+            ?: obj["name"]?.toString()
+            ?: ""
+        val y = when (val rawY = obj["y"] ?: obj["value"]) {
+            is Number -> rawY.toFloat()
+            else -> rawY?.toString()?.toFloatOrNull()
+        } ?: return@mapNotNull null
+        A2UiChartPoint(x = label, y = y)
+    }
+}
+
+private fun parseA2UiPieSlices(rawData: Any?): List<A2UiPieSlice> {
+    val defaultColors = listOf(
+        Color(0xFFEF5350),
+        Color(0xFF42A5F5),
+        Color(0xFF66BB6A),
+        Color(0xFFFFCA28),
+        Color(0xFFAB47BC),
+        Color(0xFF26C6DA)
+    )
+    val items = rawData as? List<*> ?: return emptyList()
+    return items.mapIndexedNotNull { index, entry ->
+        val obj = entry as? Map<*, *> ?: return@mapIndexedNotNull null
+        val label = obj["label"]?.toString()
+            ?: obj["x"]?.toString()
+            ?: "Slice ${index + 1}"
+        val value = when (val rawValue = obj["value"] ?: obj["y"]) {
+            is Number -> rawValue.toFloat()
+            else -> rawValue?.toString()?.toFloatOrNull()
+        } ?: return@mapIndexedNotNull null
+        val color = parseA2UiHexColor(obj["color"]?.toString()) ?: defaultColors[index % defaultColors.size]
+        A2UiPieSlice(label = label, value = value, color = color)
+    }
+}
+
+private fun parseA2UiHexColor(value: String?): Color? {
+    if (value.isNullOrBlank()) return null
+    return runCatching {
+        Color(android.graphics.Color.parseColor(value))
+    }.getOrNull()
 }

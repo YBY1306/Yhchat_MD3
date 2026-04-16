@@ -24,6 +24,8 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.intellij.markdown.html.entities.Entities
 import org.intellij.markdown.parser.MarkdownParser
+import java.util.Collections
+import java.util.LinkedHashMap
 
 internal data class TableAnnotatorSettings(
     val linkTextSpanStyle: TextLinkStyles,
@@ -50,12 +52,49 @@ internal fun String.buildTableMarkdownAnnotatedString(
     style: TextStyle,
     settings: TableAnnotatorSettings,
 ): AnnotatedString {
-    val parsedTree = MarkdownParser(GFMFlavourDescriptor()).buildMarkdownTreeFromString(this)
+    val parsedTree = TableMarkdownAstCache.get(this)
     return buildTableMarkdownAnnotatedString(
         textNode = parsedTree,
         style = style,
         settings = settings
     )
+}
+
+private object TableMarkdownAstCache {
+    private const val CACHE_SIZE = 512
+    private val parser = MarkdownParser(GFMFlavourDescriptor())
+    private val cache = createLruCache<String, ASTNode>(CACHE_SIZE)
+
+    fun get(markdown: String): ASTNode = cache.cached(markdown) {
+        parser.buildMarkdownTreeFromString(markdown)
+    }
+}
+
+private fun <K, V> createLruCache(maxSize: Int): MutableMap<K, V> =
+    Collections.synchronizedMap(
+        object : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
+                return size > maxSize
+            }
+        }
+    )
+
+private inline fun <K, V> MutableMap<K, V>.cached(key: K, valueProvider: () -> V): V {
+    synchronized(this) {
+        if (containsKey(key)) {
+            @Suppress("UNCHECKED_CAST")
+            return this[key] as V
+        }
+    }
+    val computed = valueProvider()
+    synchronized(this) {
+        if (containsKey(key)) {
+            @Suppress("UNCHECKED_CAST")
+            return this[key] as V
+        }
+        this[key] = computed
+    }
+    return computed
 }
 
 private fun AnnotatedString.Builder.buildTableMarkdownAnnotatedString(

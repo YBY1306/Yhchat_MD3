@@ -75,6 +75,8 @@ import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CELL
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes.TABLE_SEPARATOR
 import org.intellij.markdown.parser.MarkdownParser
+import java.util.Collections
+import java.util.LinkedHashMap
 
 
 /**
@@ -118,7 +120,10 @@ fun MarkdownText(
         tableStyle = null
     )
 
-    val segments = remember(markdown) { parseMarkdownSegments(processTaskLists(markdown)) }
+    val normalizedMarkdown = remember(markdown) { processTaskLists(markdown) }
+    val segments = remember(normalizedMarkdown) {
+        MarkdownRendererCache.getSegments(normalizedMarkdown)
+    }
 
     Column(
         modifier = modifier
@@ -385,10 +390,10 @@ private fun MarkdownTableWithImages(
     onImageClick: (String) -> Unit,
     onLinkClicked: (String) -> Unit
 ) {
-    val tableNode = remember(tableMarkdown) { parseMarkdownTableNode(tableMarkdown) }
-    val parsedTable = remember(tableMarkdown) { parseMarkdownTableContent(tableMarkdown) }
+    val tableNode = remember(tableMarkdown) { MarkdownRendererCache.getTableNode(tableMarkdown) }
+    val parsedTable = remember(tableMarkdown) { MarkdownRendererCache.getParsedTable(tableMarkdown) }
     val referenceLinks = remember(tableMarkdown, tableNode) {
-        tableNode?.let { buildReferenceLinkMap(it, tableMarkdown) }.orEmpty()
+        MarkdownRendererCache.getReferenceLinks(tableMarkdown, tableNode)
     }
     val tableCellWidth = 160.dp
     val tableCellPadding = 16.dp
@@ -680,12 +685,7 @@ private fun RenderMarkdownTableCell(
     if (normalizedCellContent.isBlank()) return
 
     val cellSegments = remember(normalizedCellContent) {
-        buildList {
-            extractImagesFromContent(
-                content = normalizedCellContent,
-                segments = this
-            )
-        }
+        MarkdownRendererCache.getInlineSegments(normalizedCellContent)
     }
     val baseStyle = if (isHeader) {
         MaterialTheme.typography.bodyMedium.copy(
@@ -775,6 +775,73 @@ private sealed interface MarkdownSegment {
     data class Table(val content: String) : MarkdownSegment
     data class HtmlTable(val content: String) : MarkdownSegment
     data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
+}
+
+private object MarkdownRendererCache {
+    private const val SEGMENT_CACHE_SIZE = 256
+    private const val TABLE_NODE_CACHE_SIZE = 192
+    private const val INLINE_SEGMENT_CACHE_SIZE = 512
+
+    private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
+    private val tableNodeCache = createLruCache<String, ASTNode?>(TABLE_NODE_CACHE_SIZE)
+    private val parsedTableCache = createLruCache<String, ParsedMarkdownTable?>(TABLE_NODE_CACHE_SIZE)
+    private val referenceLinksCache = createLruCache<String, Map<String, String?>>(TABLE_NODE_CACHE_SIZE)
+    private val inlineSegmentsCache = createLruCache<String, List<MarkdownSegment>>(INLINE_SEGMENT_CACHE_SIZE)
+
+    fun getSegments(markdown: String): List<MarkdownSegment> = segmentCache.cached(markdown) {
+        parseMarkdownSegments(markdown)
+    }
+
+    fun getTableNode(tableMarkdown: String): ASTNode? = tableNodeCache.cached(tableMarkdown) {
+        parseMarkdownTableNode(tableMarkdown)
+    }
+
+    fun getParsedTable(tableMarkdown: String): ParsedMarkdownTable? = parsedTableCache.cached(tableMarkdown) {
+        parseMarkdownTableContent(tableMarkdown)
+    }
+
+    fun getReferenceLinks(tableMarkdown: String, tableNode: ASTNode?): Map<String, String?> {
+        if (tableNode == null) return emptyMap()
+        return referenceLinksCache.cached(tableMarkdown) {
+            buildReferenceLinkMap(tableNode, tableMarkdown)
+        }
+    }
+
+    fun getInlineSegments(content: String): List<MarkdownSegment> = inlineSegmentsCache.cached(content) {
+        buildList {
+            extractImagesFromContent(
+                content = content,
+                segments = this
+            )
+        }
+    }
+}
+
+private fun <K, V> createLruCache(maxSize: Int): MutableMap<K, V> =
+    Collections.synchronizedMap(
+        object : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
+                return size > maxSize
+            }
+        }
+    )
+
+private inline fun <K, V> MutableMap<K, V>.cached(key: K, valueProvider: () -> V): V {
+    synchronized(this) {
+        if (containsKey(key)) {
+            @Suppress("UNCHECKED_CAST")
+            return this[key] as V
+        }
+    }
+    val computed = valueProvider()
+    synchronized(this) {
+        if (containsKey(key)) {
+            @Suppress("UNCHECKED_CAST")
+            return this[key] as V
+        }
+        this[key] = computed
+    }
+    return computed
 }
 
 private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
@@ -900,25 +967,6 @@ private data class HtmlTableBlock(
 )
 
 private fun extractMarkdownTableBlock(lines: List<String>, startIndex: Int): MarkdownTableBlock? {
-    if (startIndex >= lines.size) return null
-    val remainingContent = lines.drop(startIndex).joinToString("\n")
-    if (remainingContent.isBlank()) return null
-
-    val rootNode = markdownTableParser.buildMarkdownTreeFromString(remainingContent)
-    val firstBlock = rootNode.children.firstOrNull { it.type != MarkdownTokenTypes.EOL }
-        ?: return extractMarkdownTableBlockFallback(lines, startIndex)
-    if (firstBlock.type == TABLE && firstBlock.startOffset == 0) {
-        val tableContent = remainingContent
-            .substring(firstBlock.startOffset, firstBlock.endOffset)
-            .trimEnd()
-        if (tableContent.isBlank()) return null
-
-        return MarkdownTableBlock(
-            content = tableContent,
-            nextIndex = startIndex + tableContent.lines().size
-        )
-    }
-
     return extractMarkdownTableBlockFallback(lines, startIndex)
 }
 

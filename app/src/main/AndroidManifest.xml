@@ -56,7 +56,6 @@
             android:allowEmbedded="true"
             android:exported="false"
             android:label="聊天"
-            android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.YhchatCanary" />

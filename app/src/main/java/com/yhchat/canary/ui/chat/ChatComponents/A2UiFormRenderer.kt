@@ -99,6 +99,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -3166,7 +3167,7 @@ private fun A2UiVideoPlayer(
     // Auto-hide controller after 3 seconds
     fun scheduleHideController() {
         hideControllerJob?.cancel()
-        hideControllerJob = scope?.launch {
+        hideControllerJob = scope.launch {
             kotlinx.coroutines.delay(3000)
             if (isPlaying) {
                 showController = false

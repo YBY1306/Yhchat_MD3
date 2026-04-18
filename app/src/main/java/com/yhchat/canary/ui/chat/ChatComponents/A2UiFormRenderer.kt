@@ -2102,28 +2102,37 @@ private fun A2UiCustomPaint(
                         val x = (props["x"] as? Number)?.toFloat() ?: 0f
                         val y = (props["y"] as? Number)?.toFloat() ?: 0f
                         val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: 12f
-                        val color = (props["color"] as? String)?.let { parseA2UiHexColor(it) } ?: Color.Black
+                        val colorValue = (props["color"] as? String)?.let { parseA2UiHexColor(it) } ?: Color.Black
                         
                         // Parse fontWeight
                         val fontWeight = when (val fw = props["fontWeight"]?.toString()?.lowercase()) {
-                            "bold", "700", "800", "900" -> android.graphics.Paint.FontWeight.BOLD
-                            "medium", "500" -> 500
-                            "semi-bold", "semibold", "600" -> 600
-                            "light", "300" -> 300
-                            "thin", "100" -> 100
-                            "normal", "400" -> android.graphics.Paint.FontWeight.NORMAL
-                            else -> android.graphics.Paint.FontWeight.NORMAL
+                            "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
+                            "medium", "500" -> android.graphics.Typeface.DEFAULT
+                            "semi-bold", "semibold", "600" -> android.graphics.Typeface.DEFAULT
+                            "light", "300" -> android.graphics.Typeface.DEFAULT
+                            "thin", "100" -> android.graphics.Typeface.DEFAULT
+                            "normal", "400" -> android.graphics.Typeface.DEFAULT
+                            else -> android.graphics.Typeface.DEFAULT
+                        }
+                        val style = if (props["fontWeight"]?.toString()?.lowercase() in listOf("bold", "700", "800", "900")) {
+                            android.graphics.Typeface.BOLD
+                        } else {
+                            android.graphics.Typeface.NORMAL
                         }
                         
                         val paint = android.graphics.Paint().apply {
-                            this.color = color.toArgb()
+                            this.color = android.graphics.Color.argb(
+                                (colorValue.alpha * 255).toInt(),
+                                (colorValue.red * 255).toInt(),
+                                (colorValue.green * 255).toInt(),
+                                (colorValue.blue * 255).toInt()
+                            )
                             textSize = fontSize * density
                             isAntiAlias = true
                             textAlign = android.graphics.Paint.Align.CENTER
-                            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, fontWeight)
+                            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, style)
                         }
                         
-                        val textWidth = paint.measureText(text)
                         val textHeight = paint.descent() - paint.ascent()
                         
                         drawContext.canvas.nativeCanvas.drawText(

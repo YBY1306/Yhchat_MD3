@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -78,6 +81,32 @@ import java.text.SimpleDateFormat
 import java.util.Currency
 import java.util.Locale
 import coil.compose.AsyncImage
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val A2UI_EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex(RegexOption.IGNORE_CASE)
 private val A2UI_URL_REGEX = "^(https?://)?([\\w.-]+)(\\.[\\w.-]+)+[/#?]?.*$".toRegex(RegexOption.IGNORE_CASE)
@@ -106,6 +135,7 @@ internal data class A2UiComponent(
     val children: A2UiChildren? = null,
     val child: String? = null,
     val action: A2UiAction? = null,
+    val actionId: String? = null,
     val variant: String? = null,
     val primary: Boolean? = null,
     val usageHint: String? = null,
@@ -132,6 +162,8 @@ internal data class A2UiComponent(
     val width: Number? = null,
     val height: Number? = null,
     val backgroundColor: String? = null,
+    val color: String? = null,
+    val progressValue: Float? = null,
     val elements: List<Map<String, Any?>>? = null
 )
 
@@ -278,6 +310,7 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         children = parseA2UiChildren(componentObject.opt("children")),
         child = componentObject.optString("child").takeIf { it.isNotBlank() },
         action = parseA2UiAction(componentObject.optJSONObject("action")),
+        actionId = componentObject.optString("actionId").takeIf { it.isNotBlank() },
         variant = componentObject.optString("variant").takeIf { it.isNotBlank() },
         primary = componentObject.optBoolean("primary").takeIf { componentObject.has("primary") },
         usageHint = componentObject.optString("usageHint").takeIf { it.isNotBlank() },
@@ -300,7 +333,16 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         contentChild = componentObject.optString("contentChild").takeIf { it.isNotBlank() },
         title = parseA2UiValue(componentObject.opt("title")),
         data = parseA2UiValue(componentObject.opt("data")),
-        axis = componentObject.optString("axis").takeIf { it.isNotBlank() }
+        axis = componentObject.optString("axis").takeIf { it.isNotBlank() },
+        width = componentObject.optNumber("width"),
+        height = componentObject.optNumber("height"),
+        backgroundColor = componentObject.optString("backgroundColor").takeIf { it.isNotBlank() },
+        color = componentObject.optString("color").takeIf { it.isNotBlank() },
+        progressValue = componentObject.optDouble("value").toFloat().takeIf { !componentObject.isNull("value") }
+            ?: componentObject.optDouble("progress").toFloat().takeIf { !componentObject.isNull("progress") },
+        elements = componentObject.optJSONArray("elements")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
+        }
     )
 }
 
@@ -724,58 +766,80 @@ private fun RenderA2UiComponent(
 
         "button" -> {
             val enabled = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: true
-            val buttonContent: @Composable RowScope.() -> Unit = {
-                component.child?.let { childId ->
-                    RenderA2UiComponent(
-                        componentId = childId,
-                        spec = spec,
-                        dataModel = dataModel,
-                        scopePath = scopePath,
-                        parentAxis = "row",
-                        onDataModelChange = onDataModelChange
-                    )
-                } ?: Text(
-                    text = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
-                        ?.toString()
-                        .orEmpty()
-                )
-            }
+            val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
+                ?.toString().orEmpty()
+            
+            // 按钮宽度根据字数适配，内部使用 padding 增大可点击区域，但不影响按钮文字显示
+            Box(
+                modifier = modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                val buttonModifier = Modifier.wrapContentWidth(align = Alignment.CenterHorizontally)
+                
+                when {
+                    component.variant.equals("borderless", ignoreCase = true) ||
+                        component.variant.equals("text", ignoreCase = true) -> {
+                        TextButton(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = buttonModifier
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
+                    }
 
-            val buttonModifier = modifier.wrapContentWidth(align = Alignment.CenterHorizontally)
+                    component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
+                        Button(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = buttonModifier
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
+                    }
 
-            when {
-                component.variant.equals("borderless", ignoreCase = true) ||
-                    component.variant.equals("text", ignoreCase = true) -> {
-                    TextButton(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
-                        },
-                        enabled = enabled,
-                        modifier = buttonModifier,
-                        content = buttonContent
-                    )
-                }
-
-                component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
-                    Button(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
-                        },
-                        enabled = enabled,
-                        modifier = buttonModifier,
-                        content = buttonContent
-                    )
-                }
-
-                else -> {
-                    OutlinedButton(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action)
-                        },
-                        enabled = enabled,
-                        modifier = buttonModifier,
-                        content = buttonContent
-                    )
+                    else -> {
+                        OutlinedButton(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = buttonModifier
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
+                    }
                 }
             }
         }
@@ -1059,7 +1123,38 @@ private fun RenderA2UiComponent(
             A2UiPieChart(
                 title = title,
                 slices = parseA2UiPieSlices(chartData),
-                modifier = modifier.fillMaxWidth()
+                modifier = modifier.fillMaxWidth(),
+                showPercentageOnChart = true
+            )
+        }
+        
+        "linearprogressindicator", "progressindicator" -> {
+            val progress = component.progressValue 
+                ?: (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat()
+                ?: 0f
+            val color = component.color?.let { parseA2UiHexColor(it) } 
+                ?: MaterialTheme.colorScheme.primary
+            val trackColor = MaterialTheme.colorScheme.surfaceVariant
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = color,
+                trackColor = trackColor
+            )
+        }
+        
+        "verticaldivider" -> {
+            val dividerWidth = (component.width as? Number)?.toFloat() ?: 1f
+            val dividerColor = component.color?.let { parseA2UiHexColor(it) } 
+                ?: MaterialTheme.colorScheme.outlineVariant
+            Box(
+                modifier = modifier
+                    .width(dividerWidth.dp)
+                    .fillMaxHeight()
+                    .background(dividerColor)
             )
         }
 
@@ -1092,6 +1187,34 @@ private fun RenderA2UiComponent(
                 elements = elements,
                 modifier = modifier.fillMaxWidth()
             )
+        }
+
+        "audioplayer" -> {
+            val audioUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
+            val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
+            A2UiAudioPlayer(
+                playerId = component.id,
+                url = audioUrl,
+                description = description,
+                modifier = modifier.fillMaxWidth()
+            )
+        }
+
+        "function", "callexpression", "expression" -> {
+            // 函数表达式组件：直接渲染函数的返回值
+            val function = component.value as? A2UiValue.Function
+                ?: (component.text as? A2UiValue.Function)
+                ?: (component.label as? A2UiValue.Function)
+                ?: (component.description as? A2UiValue.Function)
+            if (function != null) {
+                val result = evaluateA2UiFunction(spec, dataModel, function, scopePath)
+                Text(
+                    text = result?.toString().orEmpty(),
+                    modifier = modifier.fillMaxWidth(),
+                    style = textStyleFor(component.variant ?: component.usageHint),
+                    color = textColorFor(component.variant ?: component.usageHint)
+                )
+            }
         }
 
         else -> {
@@ -1467,10 +1590,47 @@ private fun getValueAtPath(root: Any?, path: String): Any? {
 }
 
 private fun isA2UiOptionSelected(currentValue: Any?, optionValue: Any?): Boolean {
+    if (currentValue == null) return false
     return when (currentValue) {
-        is List<*> -> currentValue.any { it == optionValue }
-        else -> currentValue == optionValue
+        is List<*> -> {
+            // 对于列表，检查是否有任何元素与 optionValue 匹配
+            currentValue.any { item -> 
+                itemsEqual(item, optionValue)
+            }
+        }
+        else -> itemsEqual(currentValue, optionValue)
     }
+}
+
+// 比较两个元素是否相等，支持不同类型的值比较
+private fun itemsEqual(a: Any?, b: Any?): Boolean {
+    if (a == null && b == null) return true
+    if (a == null || b == null) return false
+    
+    // 直接比较
+    if (a == b) return true
+    
+    // 转换为字符串比较
+    val aStr = a.toString()
+    val bStr = b.toString()
+    if (aStr == bStr) return true
+    
+    // 如果是数字类型，比较数值
+    if (a is Number && b is Number) {
+        return a.toDouble() == b.toDouble()
+    }
+    
+    // 如果 optionValue 是字符串但 currentValue 是其他类型
+    if (b is String) {
+        return aStr.equals(bStr, ignoreCase = true)
+    }
+    
+    // 如果 currentValue 是字符串但 optionValue 是其他类型
+    if (a is String) {
+        return aStr.equals(bStr.toString(), ignoreCase = true)
+    }
+    
+    return false
 }
 
 private fun buildChoicePickerValue(
@@ -1481,14 +1641,19 @@ private fun buildChoicePickerValue(
     return when {
         multiple -> {
             val currentItems = (currentValue as? List<*>)?.toMutableList() ?: mutableListOf()
-            if (currentItems.any { it == optionValue }) {
-                currentItems.removeAll { it == optionValue }
+            // 使用 itemsEqual 进行比较，而不是直接 ==
+            val existingIndex = currentItems.indexOfFirst { itemsEqual(it, optionValue) }
+            if (existingIndex >= 0) {
+                // 如果已存在，移除该项
+                currentItems.removeAt(existingIndex)
             } else {
-                currentItems += optionValue
+                // 如果不存在，添加该项
+                currentItems.add(optionValue)
             }
             currentItems.toList()
         }
 
+        // 单选模式：直接设置选中项
         currentValue is List<*> -> listOf(optionValue)
         else -> optionValue
     }
@@ -1551,11 +1716,12 @@ private fun executeA2UiAction(
     spec: A2UiSpec,
     dataModel: Map<String, Any?>,
     scopePath: String?,
-    action: A2UiAction?
+    action: A2UiAction?,
+    actionId: String? = null
 ) {
-    if (action == null) return
+    if (action == null && actionId == null) return
 
-    action.functionCall?.let { function ->
+    action?.functionCall?.let { function ->
         val resolvedArgs = function.args.mapValues { (_, value) ->
             resolveA2UiValue(spec, dataModel, value, scopePath)
         }
@@ -1574,6 +1740,13 @@ private fun executeA2UiAction(
                 }
             }
         }
+    }
+    
+    // 如果有 actionId，也触发事件
+    if (!actionId.isNullOrBlank()) {
+        // actionId 可以用于回调或其他处理
+        // 目前显示一个 toast 表示收到了 actionId
+        Toast.makeText(context, "Action: $actionId", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -1835,7 +2008,8 @@ private fun A2UiBarChart(
 private fun A2UiPieChart(
     title: String?,
     slices: List<A2UiPieSlice>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showPercentageOnChart: Boolean = false
 ) {
     val total = slices.sumOf { it.value.toDouble() }.toFloat()
     Column(
@@ -1863,7 +2037,13 @@ private fun A2UiPieChart(
                 (size.width - diameter) / 2f,
                 (size.height - diameter) / 2f
             )
+            val centerX = topLeft.x + diameter / 2
+            val centerY = topLeft.y + diameter / 2
+            val radius = diameter / 2
+            
             var startAngle = -90f
+            
+            // 绘制饼图
             slices.forEach { slice ->
                 val sweep = (slice.value / total) * 360f
                 drawArc(
@@ -1874,6 +2054,31 @@ private fun A2UiPieChart(
                     topLeft = topLeft,
                     size = Size(diameter, diameter)
                 )
+                
+                // 在饼图上显示百分比标签
+                if (showPercentageOnChart && sweep > 15f) {
+                    val midAngle = Math.toRadians((startAngle + sweep / 2).toDouble())
+                    val labelRadius = radius * 0.65f
+                    val labelX = centerX + (labelRadius * kotlin.math.cos(midAngle)).toFloat()
+                    val labelY = centerY + (labelRadius * kotlin.math.sin(midAngle)).toFloat()
+                    val percentage = if (total > 0f) (slice.value / total * 100).toInt() else 0
+                    
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 28f
+                        isAntiAlias = true
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    }
+                    
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "$percentage%",
+                        labelX,
+                        labelY + paint.textSize / 3,
+                        paint
+                    )
+                }
+                
                 startAngle += sweep
             }
         }
@@ -2164,4 +2369,316 @@ private fun parseA2UiPaintElements(rawElements: List<Map<String, Any?>>?): List<
             style = element["style"]?.toString()
         )
     }
+}
+
+// A2UI AudioPlayer Component
+@Composable
+private fun A2UiAudioPlayer(
+    playerId: String,
+    url: String,
+    description: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    var isPlaying by remember(playerId) { mutableStateOf(false) }
+    var isLoading by remember(playerId) { mutableStateOf(false) }
+    var currentPosition by remember(playerId) { mutableFloatStateOf(0f) }
+    var duration by remember(playerId) { mutableFloatStateOf(0f) }
+    var currentTimeText by remember(playerId) { mutableStateOf("00:00") }
+    var totalTimeText by remember(playerId) { mutableStateOf("00:00") }
+    
+    var mediaPlayer by remember(playerId) { mutableStateOf<MediaPlayer?>(null) }
+    val handler = remember { Handler(Looper.getMainLooper()) }
+    
+    // Cache directory for audio files
+    val cacheDir = remember {
+        val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_DOWNLOADS
+        )
+        val yhchatCacheDir = java.io.File(downloadDir, "yhchat/cache")
+        if (!yhchatCacheDir.exists()) {
+            yhchatCacheDir.mkdirs()
+        }
+        yhchatCacheDir
+    }
+    
+    // Get cached file path for URL
+    fun getCachedFilePath(urlString: String): java.io.File? {
+        if (urlString.isBlank()) return null
+        return try {
+            val fileName = urlString.substringAfterLast("/").substringBefore("?")
+                .ifBlank { java.util.UUID.nameUUIDFromBytes(urlString.toByteArray()).toString() + ".audio" }
+            java.io.File(cacheDir, fileName)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    // Update progress runnable
+    val updateProgressRunnable = remember(playerId) {
+        object : Runnable {
+            override fun run() {
+                mediaPlayer?.let { player ->
+                    if (player.isPlaying) {
+                        currentPosition = player.currentPosition.toFloat()
+                        currentTimeText = formatTime(player.currentPosition)
+                        handler.postDelayed(this, 100)
+                    }
+                }
+            }
+        }
+    }
+    
+    // Cleanup on dispose
+    DisposableEffect(playerId) {
+        onDispose {
+            handler.removeCallbacks(updateProgressRunnable)
+            mediaPlayer?.let {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+                it.release()
+            }
+        }
+    }
+    
+    // Initialize media player when URL changes
+    LaunchedEffect(url, playerId) {
+        if (url.isNotBlank()) {
+            isLoading = true
+            try {
+                mediaPlayer?.let {
+                    if (it.isPlaying) {
+                        it.stop()
+                    }
+                    it.release()
+                }
+                
+                val cachedFile = getCachedFilePath(url)
+                val useCache = cachedFile != null && cachedFile.exists()
+                
+                mediaPlayer = MediaPlayer().apply {
+                    if (useCache) {
+                        // Use cached file
+                        setDataSource(cachedFile.absolutePath)
+                    } else {
+                        // Stream from URL
+                        setDataSource(url)
+                    }
+                    
+                    setOnPreparedListener { mp ->
+                        // Get duration from MediaPlayer (more accurate)
+                        val durationMs = mp.duration
+                        duration = durationMs.toFloat()
+                        totalTimeText = formatTime(durationMs)
+                        
+                        // Also try to get metadata using MediaMetadataRetriever for additional info
+                        if (useCache) {
+                            try {
+                                val retriever = android.media.MediaMetadataRetriever()
+                                retriever.setDataSource(cachedFile.absolutePath)
+                                val title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+                                val artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                                retriever.release()
+                            } catch (e: Exception) {
+                                // Ignore metadata extraction errors
+                            }
+                        }
+                        
+                        isLoading = false
+                    }
+                    
+                    setOnCompletionListener {
+                        isPlaying = false
+                        currentPosition = 0f
+                        currentTimeText = "00:00"
+                        handler.removeCallbacks(updateProgressRunnable)
+                    }
+                    
+                    setOnErrorListener { _, _, _ ->
+                        isLoading = false
+                        isPlaying = false
+                        Toast.makeText(context, "音频加载失败", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    
+                    prepareAsync()
+                }
+                
+                // Download to cache in background if not already cached
+                if (!useCache && cachedFile != null) {
+                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                            connection.connectTimeout = 15000
+                            connection.readTimeout = 15000
+                            connection.connect()
+                            
+                            connection.inputStream.use { input ->
+                                cachedFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            connection.disconnect()
+                        } catch (e: Exception) {
+                            // Cache download failed, continue streaming
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                isLoading = false
+                Toast.makeText(context, "音频加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Audio icon and description
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Audio wave icon using Canvas
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = "Audio",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = if (description.isNotBlank()) description else "音频播放器",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = totalTimeText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Progress bar
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            LinearProgressIndicator(
+                progress = { if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = currentTimeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = totalTimeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Control buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Play/Pause button
+            FilledIconButton(
+                onClick = {
+                    mediaPlayer?.let { player ->
+                        if (isPlaying) {
+                            player.pause()
+                            isPlaying = false
+                            handler.removeCallbacks(updateProgressRunnable)
+                        } else {
+                            player.start()
+                            isPlaying = true
+                            handler.post(updateProgressRunnable)
+                        }
+                    }
+                },
+                enabled = !isLoading && mediaPlayer != null
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isPlaying) "暂停" else "播放"
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Stop button
+            OutlinedIconButton(
+                onClick = {
+                    mediaPlayer?.let { player ->
+                        if (player.isPlaying) {
+                            player.stop()
+                        }
+                        player.prepare()
+                        player.seekTo(0)
+                        isPlaying = false
+                        currentPosition = 0f
+                        currentTimeText = "00:00"
+                        handler.removeCallbacks(updateProgressRunnable)
+                    }
+                },
+                enabled = !isLoading && mediaPlayer != null
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "停止"
+                )
+            }
+        }
+    }
+}
+
+// Helper function to format time
+private fun formatTime(milliseconds: Int): String {
+    val seconds = milliseconds / 1000
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, remainingSeconds)
 }

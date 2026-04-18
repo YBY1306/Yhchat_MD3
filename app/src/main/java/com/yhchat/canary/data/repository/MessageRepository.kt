@@ -31,6 +31,7 @@ class MessageRepository @Inject constructor(
         const val CONTENT_TYPE_EXPRESSION = 7
         const val CONTENT_TYPE_VIDEO = 10
         const val CONTENT_TYPE_AUDIO = 11
+        const val CONTENT_TYPE_A2UI = 14
     }
     
     /**
@@ -534,6 +535,10 @@ class MessageRepository @Inject constructor(
         contentType: Int,
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null,
         buttons: String? = null
     ): Result<Boolean> {
         return try {
@@ -558,8 +563,22 @@ class MessageRepository @Inject constructor(
             if (!buttons.isNullOrEmpty()) {
                 contentBuilder.setButtons(buttons)
             }
+            
+            // 添加引用消息的所有相关字段以保持原引用内容
             if (!quoteMsgText.isNullOrEmpty()) {
                 contentBuilder.setQuoteMsgText(quoteMsgText)
+            }
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
             }
             
             val requestBuilder = edit_message_send.newBuilder()
@@ -1318,6 +1337,99 @@ class MessageRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "❌ 发送表情包贴纸消息异常", e)
             e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 发送A2UI消息
+     * contentType = 14
+     */
+    suspend fun sendA2UiMessage(
+        chatId: String,
+        chatType: Int,
+        text: String,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null,
+        mentionedIds: List<String> = emptyList()
+    ): Result<Boolean> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("用户未登录"))
+            
+            val msgId = UUID.randomUUID().toString().replace("-", "")
+            
+            // 构建protobuf请求 - A2UI消息使用text字段存储A2UI JSON内容
+            val contentBuilder = send_message_send.Content.newBuilder()
+                .setText(text)
+            
+            // 添加引用消息文本
+            if (!quoteMsgText.isNullOrEmpty()) {
+                contentBuilder.setQuoteMsgText(quoteMsgText)
+            }
+            
+            // 添加引用图片信息
+            if (!quoteImageUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageUrl(quoteImageUrl)
+            }
+            if (!quoteImageName.isNullOrEmpty()) {
+                contentBuilder.setQuoteImageName(quoteImageName)
+            }
+            
+            // 添加引用视频信息
+            if (!quoteVideoUrl.isNullOrEmpty()) {
+                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
+            }
+            if (quoteVideoTime != null && quoteVideoTime > 0) {
+                contentBuilder.setQuoteVideoTime(quoteVideoTime)
+            }
+            
+            val requestBuilder = send_message_send.newBuilder()
+                .setMsgId(msgId)
+                .setChatId(chatId)
+                .setChatType(chatType.toLong())
+                .setContent(contentBuilder.build())
+                .setContentType(CONTENT_TYPE_A2UI.toLong())
+            
+            if (!quoteMsgId.isNullOrEmpty()) {
+                requestBuilder.setQuoteMsgId(quoteMsgId)
+            }
+            
+            // 添加@用户信息
+            if (mentionedIds.isNotEmpty()) {
+                requestBuilder.addAllMentionedIds(mentionedIds)
+                Log.d(tag, "📢 发送A2UI消息@了 ${mentionedIds.size} 个用户: $mentionedIds")
+            }
+            
+            val request = requestBuilder.build()
+            val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
+
+            Log.d(tag, "发送A2UI消息到聊天: $chatId, 类型: $chatType")
+            
+            val response = apiService.sendMessage(token, requestBody)
+            
+            if (response.isSuccessful) {
+                response.body()?.let { responseBody ->
+                    val bytes = responseBody.bytes()
+                    val sendResponse = send_message.parseFrom(bytes)
+                    
+                    if (sendResponse.status.code == 1) {
+                        Log.d(tag, "✅ A2UI消息发送成功")
+                        Result.success(true)
+                    } else {
+                        Log.e(tag, "❌ A2UI消息发送失败: ${sendResponse.status.msg}")
+                        Result.failure(Exception(sendResponse.status.msg))
+                    }
+                } ?: Result.failure(Exception("响应体为空"))
+            } else {
+                Log.e(tag, "❌ A2UI消息发送HTTP错误: ${response.code()}")
+                Result.failure(Exception("发送失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ A2UI消息发送异常", e)
             Result.failure(e)
         }
     }

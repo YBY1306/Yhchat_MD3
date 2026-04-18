@@ -181,7 +181,7 @@ fun ChatInputBar(
     var defaultSendMessageType by remember {
         mutableStateOf(
             chatPrefs.getInt("default_send_message_type", 1)
-                .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+                .let { if (it == 3 || it == 8 || it == 1 || it == 14) it else 1 }
         )
     }
 
@@ -204,7 +204,7 @@ fun ChatInputBar(
                 }
                 "default_send_message_type" -> {
                     defaultSendMessageType = chatPrefs.getInt("default_send_message_type", 1)
-                        .let { if (it == 3 || it == 8 || it == 1) it else 1 }
+                        .let { if (it == 3 || it == 8 || it == 1 || it == 14) it else 1 }
                 }
             }
         }
@@ -689,6 +689,12 @@ fun ChatInputBar(
                 onMarkdownClick = if (onMessageTypeChange != null) {
                     {
                         onMessageTypeChange.invoke(3)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onA2UiClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(14)
                         showAttachMenu = false
                     }
                 } else null,

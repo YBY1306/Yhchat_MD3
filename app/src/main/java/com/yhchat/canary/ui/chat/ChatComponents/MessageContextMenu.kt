@@ -123,8 +123,8 @@ fun MessageContextMenu(
                     }
                 }
                 
-                // 编辑消息（仅对文本、Markdown、HTML消息显示）
-                if (onEdit != null && message.contentType in listOf(1, 3, 8)) {
+                // 编辑消息（仅对文本、Markdown、HTML、A2UI消息显示）
+                if (onEdit != null && message.contentType in listOf(1, 3, 8, 14)) {
                     TextButton(
                         onClick = onEdit,
                         modifier = Modifier.fillMaxWidth()

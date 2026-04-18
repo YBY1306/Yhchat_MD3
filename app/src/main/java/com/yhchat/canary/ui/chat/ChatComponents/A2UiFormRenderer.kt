@@ -67,6 +67,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -746,12 +748,14 @@ private fun RenderA2UiComponent(
         }
 
         "row" -> {
-            Row(
-                modifier = modifier,  // 移除 fillMaxWidth，允许子组件控制布局
+            // 使用 FlowRow 支持自动换行
+            FlowRow(
+                modifier = modifier.fillMaxWidth(),
                 horizontalArrangement = horizontalArrangementFor(component.justify),
-                verticalAlignment = verticalAlignmentFor(component.align)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = Int.MAX_VALUE
             ) {
-                RenderA2UiRowChildren(
+                RenderA2UiFlowRowChildren(
                     component = component,
                     spec = spec,
                     dataModel = dataModel,
@@ -825,15 +829,35 @@ private fun RenderA2UiComponent(
                     else -> ContentScale.Fit
                 }
                 
-                // 根据 variant 决定图片尺寸
-                val imageHeight = when (component.variant) {
-                    "smallFeature" -> 80.dp
-                    "largeFeature", "header" -> 150.dp
-                    else -> 120.dp
+                // 根据 variant 和父布局决定图片尺寸
+                val imageSize = when {
+                    parentAxis == "row" -> {
+                        when (component.variant) {
+                            "smallFeature" -> 80.dp
+                            "largeFeature", "header" -> 120.dp
+                            else -> 100.dp
+                        }
+                    }
+                    else -> {
+                        when (component.variant) {
+                            "smallFeature" -> 80.dp
+                            "largeFeature", "header" -> 150.dp
+                            else -> 120.dp
+                        }
+                    }
                 }
                 
                 Box(
                     modifier = modifier
+                        .then(
+                            if (parentAxis == "row") {
+                                Modifier.size(imageSize)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(imageSize)
+                            }
+                        )
                         .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (loadError) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -845,7 +869,7 @@ private fun RenderA2UiComponent(
                         model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier
-                            .height(imageHeight)
+                            .fillMaxSize()
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { showImageViewer = true },
                         contentScale = contentScale,
@@ -862,13 +886,13 @@ private fun RenderA2UiComponent(
                                 imageVector = Icons.Filled.Warning,
                                 contentDescription = "图片加载失败",
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = "图片加载失败",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "加载失败",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
                     }
@@ -888,77 +912,91 @@ private fun RenderA2UiComponent(
             val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
                 ?.toString().orEmpty()
             
-            // 按钮宽度根据字数自适应，不使用 fillMaxWidth
-            when {
-                component.variant.equals("borderless", ignoreCase = true) ||
-                    component.variant.equals("text", ignoreCase = true) -> {
-                    TextButton(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                        },
-                        enabled = enabled
-                    ) {
-                        component.child?.let { childId ->
-                            RenderA2UiComponent(
-                                componentId = childId,
-                                spec = spec,
-                                dataModel = dataModel,
-                                scopePath = scopePath,
-                                parentAxis = "row",
-                                onDataModelChange = onDataModelChange
-                            )
-                        } ?: Text(text = buttonText)
+            // 按钮容器，支持居中和自适应宽度
+            Box(
+                modifier = if (parentAxis == "row") {
+                    modifier.wrapContentWidth()
+                } else {
+                    modifier.fillMaxWidth()
+                },
+                contentAlignment = if (parentAxis == "row") Alignment.Center else Alignment.Center
+            ) {
+                when {
+                    component.variant.equals("borderless", ignoreCase = true) ||
+                        component.variant.equals("text", ignoreCase = true) -> {
+                        TextButton(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = Modifier.wrapContentWidth()
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
                     }
-                }
 
-                component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
-                    Button(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                        },
-                        enabled = enabled
-                    ) {
-                        component.child?.let { childId ->
-                            RenderA2UiComponent(
-                                componentId = childId,
-                                spec = spec,
-                                dataModel = dataModel,
-                                scopePath = scopePath,
-                                parentAxis = "row",
-                                onDataModelChange = onDataModelChange
-                            )
-                        } ?: Text(text = buttonText)
+                    component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
+                        Button(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = Modifier.wrapContentWidth()
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
                     }
-                }
 
-                else -> {
-                    OutlinedButton(
-                        onClick = {
-                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                        },
-                        enabled = enabled
-                    ) {
-                        component.child?.let { childId ->
-                            RenderA2UiComponent(
-                                componentId = childId,
-                                spec = spec,
-                                dataModel = dataModel,
-                                scopePath = scopePath,
-                                parentAxis = "row",
-                                onDataModelChange = onDataModelChange
-                            )
-                        } ?: Text(text = buttonText)
+                    else -> {
+                        OutlinedButton(
+                            onClick = {
+                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                            },
+                            enabled = enabled,
+                            modifier = Modifier.wrapContentWidth()
+                        ) {
+                            component.child?.let { childId ->
+                                RenderA2UiComponent(
+                                    componentId = childId,
+                                    spec = spec,
+                                    dataModel = dataModel,
+                                    scopePath = scopePath,
+                                    parentAxis = "row",
+                                    onDataModelChange = onDataModelChange
+                                )
+                            } ?: Text(text = buttonText)
+                        }
                     }
                 }
             }
         }
 
         "textfield", "datetimeinput" -> {
-            // 修复: 对于直接是字符串的 label，不要调用 resolveA2UiValue，直接使用
-            val rawLabel = component.label
-            val label = when (rawLabel) {
+            // 修复: 正确解析 label 属性
+            val label = when (val rawLabel = component.label) {
                 is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
-                else -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                null -> ""
+                else -> rawLabel.toString()
             }
             val valuePath = resolveBoundPath(component.value, scopePath)
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)?.toString().orEmpty()
@@ -966,8 +1004,8 @@ private fun RenderA2UiComponent(
             val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
             val fieldVariant = component.variant ?: component.textFieldType
             val isDateTimeInput = component.component.equals("datetimeinput", ignoreCase = true)
-            val enableDate = component.enableDate == true || isDateTimeInput
-            val enableTime = component.enableTime == true || isDateTimeInput
+            val enableDate = component.enableDate == true || (isDateTimeInput && component.variant?.contains("date") != false)
+            val enableTime = component.enableTime == true || (isDateTimeInput && component.variant?.contains("time") != false)
             
             val keyboardType = when (fieldVariant?.lowercase(Locale.ROOT)) {
                 "number" -> KeyboardType.Number
@@ -1096,7 +1134,13 @@ private fun RenderA2UiComponent(
                     }
                 },
                 modifier = modifier
-                    .fillMaxWidth()
+                    .then(
+                        if (parentAxis == "row") {
+                            Modifier.width(200.dp) // 在行布局中使用固定宽度
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    )
                     .then(
                         if (isDateTimeInput) {
                             Modifier.clickable { 
@@ -1135,26 +1179,28 @@ private fun RenderA2UiComponent(
                         }
                     }
                 } else null,
-                supportingText = {
-                    when {
-                        errorMessage != null -> Text(
-                            text = errorMessage.orEmpty(),
-                            color = MaterialTheme.colorScheme.error
-                        )
+                supportingText = if (parentAxis != "row") {
+                    {
+                        when {
+                            errorMessage != null -> Text(
+                                text = errorMessage.orEmpty(),
+                                color = MaterialTheme.colorScheme.error
+                            )
 
-                        isDateTimeInput -> {
-                            val parts = buildList {
-                                if (enableDate) add("date")
-                                if (enableTime) add("time")
+                            isDateTimeInput -> {
+                                val parts = buildList {
+                                    if (enableDate) add("date")
+                                    if (enableTime) add("time")
+                                }
+                                if (parts.isNotEmpty()) {
+                                    Text("点击图标选择 ${parts.joinToString(" + ")}")
+                                }
                             }
-                            if (parts.isNotEmpty()) {
-                                Text("点击图标选择 ${parts.joinToString(" + ")}")
-                            }
+
+                            description.isNotBlank() -> Text(description)
                         }
-
-                        description.isNotBlank() -> Text(description)
                     }
-                },
+                } else null, // 在行布局中不显示支持文本以节省空间
                 singleLine = !fieldVariant.equals("longText", ignoreCase = true),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 visualTransformation = visualTransformation,
@@ -1606,13 +1652,21 @@ private fun RenderA2UiComponent(
         }
         
         "checkbox" -> {
-            val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString().orEmpty()
+            // 修复: 正确解析 label 属性
+            val label = when (val rawLabel = component.label) {
+                is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
+                is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                null -> ""
+                else -> rawLabel.toString()
+            }
             val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: false
             val valuePath = resolveBoundPath(component.value, scopePath)
             
+            // 修复: 确保复选框正确对齐和状态控制
             Row(
                 modifier = modifier
-                    .fillMaxWidth()
+                    .then(if (parentAxis == "row") Modifier.wrapContentWidth() else Modifier.fillMaxWidth())
                     .clickable {
                         val newValue = !value
                         if (valuePath != null) {
@@ -1630,11 +1684,13 @@ private fun RenderA2UiComponent(
                         }
                     }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                if (label.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
         
@@ -1693,13 +1749,26 @@ private fun RenderA2UiComponent(
             var sliderValue by rememberSaveable(component.id, scopePath) { mutableFloatStateOf(value) }
             
             Column(modifier = modifier.fillMaxWidth()) {
-                if (label.isNotBlank()) {
+                // 显示标签和当前值
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (label.isNotBlank()) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    // 显示当前进度值
                     Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        text = "${sliderValue.toInt()}/${max.toInt()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
                 Slider(
                     value = sliderValue,
                     onValueChange = { newValue ->
@@ -1876,6 +1945,45 @@ private fun RowScope.RenderA2UiRowChildren(
                     componentId = childId,
                     spec = spec,
                     dataModel = dataModel,
+                    scopePath = scopePath,
+                    parentAxis = "row",
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RenderA2UiFlowRowChildren(
+    component: A2UiComponent,
+    spec: A2UiSpec,
+    dataModel: Map<String, Any?>,
+    scopePath: String?,
+    onDataModelChange: (String, Any?) -> Unit
+) {
+    when (val children = component.children) {
+        is A2UiChildren.Static -> {
+            children.ids.forEach { childId ->
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = Modifier.wrapContentWidth(),
+                    scopePath = scopePath,
+                    parentAxis = "row",
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+
+        else -> {
+            component.child?.let { childId ->
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = Modifier.wrapContentWidth(),
                     scopePath = scopePath,
                     parentAxis = "row",
                     onDataModelChange = onDataModelChange
@@ -3023,6 +3131,15 @@ private fun A2UiAudioPlayer(
     var duration by remember(playerId) { mutableFloatStateOf(0f) }
     var currentTimeText by remember(playerId) { mutableStateOf("00:00") }
     var totalTimeText by remember(playerId) { mutableStateOf("00:00") }
+    var isDragging by remember(playerId) { mutableStateOf(false) }
+    var dragPosition by remember(playerId) { mutableFloatStateOf(0f) }
+    
+    // 平滑动画进度条
+    val animatedProgress by animateFloatAsState(
+        targetValue = if (isDragging) dragPosition else currentPosition,
+        animationSpec = tween(durationMillis = if (isDragging) 0 else 200),
+        label = "progress_animation"
+    )
     
     var mediaPlayer by remember(playerId) { mutableStateOf<MediaPlayer?>(null) }
     val handler = remember { Handler(Looper.getMainLooper()) }
@@ -3056,9 +3173,9 @@ private fun A2UiAudioPlayer(
         object : Runnable {
             override fun run() {
                 mediaPlayer?.let { player ->
-                    if (player.isPlaying) {
+                    if (player.isPlaying && !isDragging) {
                         currentPosition = player.currentPosition.toFloat()
-                        currentTimeText = formatTime(player.currentPosition)
+                        currentTimeText = formatTime(player.currentPosition.toLong())
                         handler.postDelayed(this, 100)
                     }
                 }
@@ -3214,18 +3331,30 @@ private fun A2UiAudioPlayer(
             }
         }
         
-        // Progress bar
+        // 可拖动的进度条
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            LinearProgressIndicator(
-                progress = { if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            Slider(
+                value = if (duration > 0) (animatedProgress / duration).coerceIn(0f, 1f) else 0f,
+                onValueChange = { progress ->
+                    if (duration > 0) {
+                        isDragging = true
+                        dragPosition = progress * duration
+                        // 实时更新显示时间
+                        currentTimeText = formatTime(dragPosition.toLong())
+                    }
+                },
+                onValueChangeFinished = {
+                    if (duration > 0 && mediaPlayer != null) {
+                        // 拖动结束，跳转到指定位置
+                        mediaPlayer?.seekTo(dragPosition.toInt())
+                        currentPosition = dragPosition
+                        isDragging = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = duration > 0 && mediaPlayer != null
             )
             
             Row(
@@ -3781,4 +3910,12 @@ private fun A2UiVideoPlayer(
             }
         }
     }
+}
+
+// Helper function to format time in mm:ss format
+private fun formatTime(timeMs: Long): String {
+    val totalSeconds = timeMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%02d:%02d", minutes, seconds)
 }

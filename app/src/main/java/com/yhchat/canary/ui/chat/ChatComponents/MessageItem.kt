@@ -330,7 +330,7 @@ fun MessageItem(
                 onRecall(message.msgId)
                 showContextMenu = false
             },
-            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+            onEdit = if (message.contentType in listOf(1, 3, 8, 14) && isMyMessage) {
                 {
                     onEdit(message)
                     showContextMenu = false

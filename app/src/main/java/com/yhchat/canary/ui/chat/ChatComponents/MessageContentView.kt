@@ -28,12 +28,20 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +64,8 @@ import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.MessageSelectionContainer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
+import com.yhchat.canary.ui.components.DownloadManager
+import com.yhchat.canary.ui.components.DownloadState
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONObject
 
@@ -161,60 +171,175 @@ fun MessageContentView(
             4 -> {
                 // 文件消息
                 content.fileName?.let { fileName ->
-                    Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .combinedClickable(
-                                onClick = {
-                                    content.fileUrl?.let { fileUrl ->
-                                        handleFileDownload(
-                                            context = context,
-                                            fileUrl = fileUrl,
-                                            fileName = fileName,
-                                            fileSize = content.fileSize ?: 0L
-                                        )
-                                    }
-                                },
-                                onLongClick = onLongClick
-                            ),
-                        color = textColor.copy(alpha = 0.1f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    content.fileUrl?.let { fileUrl ->
+                        val downloadState by remember(fileUrl) { 
+                            androidx.compose.runtime.derivedStateOf { 
+                                DownloadManager.getDownloadState(fileUrl) 
+                            } 
+                        }
+                        
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        when (downloadState) {
+                                            is DownloadState.Idle, is DownloadState.Error, is DownloadState.Cancelled -> {
+                                                DownloadManager.startDownload(
+                                                    context = context,
+                                                    fileUrl = fileUrl,
+                                                    fileName = fileName,
+                                                    fileSize = content.fileSize ?: 0L
+                                                )
+                                            }
+                                            is DownloadState.Completed -> {
+                                                // 文件已下载完成，可以打开文件
+                                                handleFileDownload(
+                                                    context = context,
+                                                    fileUrl = fileUrl,
+                                                    fileName = fileName,
+                                                    fileSize = content.fileSize ?: 0L
+                                                )
+                                            }
+                                            else -> {
+                                                // 正在下载中，不做任何操作
+                                            }
+                                        }
+                                    },
+                                    onLongClick = onLongClick
+                                ),
+                            color = textColor.copy(alpha = 0.1f)
                         ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send, // 用作文件图标的临时替代
-                                contentDescription = "文件",
-                                tint = textColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                SelectionContainer {
-                                    Text(
-                                        text = fileName,
-                                        color = textColor,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
+                            Column {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "文件",
+                                        tint = textColor,
+                                        modifier = Modifier.size(24.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        SelectionContainer {
+                                            Text(
+                                                text = fileName,
+                                                color = textColor,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            content.fileSize?.let { size ->
+                                                Text(
+                                                    text = formatFileSize(size),
+                                                    color = textColor.copy(alpha = 0.7f),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                            
+                                            // 显示下载状态文本
+                                            when (downloadState) {
+                                                is DownloadState.Downloading -> {
+                                                    if (downloadState.total > 0) {
+                                                        val percentage = (downloadState.progress * 100 / downloadState.total).coerceIn(0, 100)
+                                                        Text(
+                                                            text = " • $percentage%",
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
+                                                    }
+                                                }
+                                                is DownloadState.Completed -> {
+                                                    Text(
+                                                        text = " • 已下载",
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+                                                is DownloadState.Error -> {
+                                                    Text(
+                                                        text = " • 下载失败",
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+                                                is DownloadState.Cancelled -> {
+                                                    Text(
+                                                        text = " • 已取消",
+                                                        color = textColor.copy(alpha = 0.7f),
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+                                                else -> {}
+                                            }
+                                        }
+                                    }
+                                    
+                                    // 下载状态图标和取消按钮
+                                    when (downloadState) {
+                                        is DownloadState.Downloading -> {
+                                            IconButton(
+                                                onClick = {
+                                                    DownloadManager.cancelDownload(context, fileUrl)
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                androidx.compose.material3.Icon(
+                                                    imageVector = Icons.Default.Cancel,
+                                                    contentDescription = "取消下载",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        is DownloadState.Completed -> {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "下载完成",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        is DownloadState.Error -> {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = Icons.Default.Error,
+                                                contentDescription = "下载失败",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        else -> {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = "下载",
+                                                tint = textColor.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
                                 }
-                                content.fileSize?.let { size ->
-                                    Text(
-                                        text = formatFileSize(size),
-                                        color = textColor.copy(alpha = 0.7f),
-                                        style = MaterialTheme.typography.labelSmall
+                                
+                                // 下载进度条
+                                if (downloadState is DownloadState.Downloading && downloadState.total > 0) {
+                                    LinearProgressIndicator(
+                                        progress = { (downloadState.progress.toFloat() / downloadState.total.toFloat()).coerceIn(0f, 1f) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp)
+                                            .padding(bottom = 8.dp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                                     )
                                 }
                             }
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "下载",
-                                tint = textColor.copy(alpha = 0.7f),
-                                modifier = Modifier.size(16.dp)
-                            )
                         }
                     }
                 }
@@ -234,10 +359,44 @@ fun MessageContentView(
                 content.text?.let { text ->
                     val a2UiSpec = remember(text) { parseA2UiSpec(text) }
                     if (a2UiSpec != null) {
-                        A2UiFormMessage(
-                            spec = a2UiSpec,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // 提取A2UI JSON之外的文本内容
+                        val (beforeText, afterText) = remember(text) {
+                            extractTextAroundA2UiJson(text)
+                        }
+                        
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // 显示A2UI JSON之前的文本
+                            if (beforeText.isNotBlank()) {
+                                SelectionContainer {
+                                    Text(
+                                        text = beforeText,
+                                        color = textColor,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            
+                            // 显示A2UI表单
+                            A2UiFormMessage(
+                                spec = a2UiSpec,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            
+                            // 显示A2UI JSON之后的文本
+                            if (afterText.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SelectionContainer {
+                                    Text(
+                                        text = afterText,
+                                        color = textColor,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
                     } else if (text.isNotBlank()) {
                         SelectionContainer {
                             Text(
@@ -1022,5 +1181,74 @@ private fun FormItemView(
                 )
             }
         }
+    }
+}
+
+/**
+ * 提取A2UI JSON前后的文本内容
+ */
+private fun extractTextAroundA2UiJson(rawText: String): Pair<String, String> {
+    if (rawText.isBlank()) return Pair("", "")
+    
+    var firstJsonStart = -1
+    var lastJsonEnd = -1
+    var depth = 0
+    var inString = false
+    var escaped = false
+    
+    rawText.forEachIndexed { index, current ->
+        if (escaped) {
+            escaped = false
+            return@forEachIndexed
+        }
+        
+        if (inString && current == '\\') {
+            escaped = true
+            return@forEachIndexed
+        }
+        
+        if (current == '"') {
+            inString = !inString
+            return@forEachIndexed
+        }
+        
+        if (!inString) {
+            when (current) {
+                '{' -> {
+                    if (depth == 0 && firstJsonStart == -1) {
+                        firstJsonStart = index
+                    }
+                    depth += 1
+                }
+                '}' -> {
+                    depth -= 1
+                    if (depth == 0 && firstJsonStart != -1) {
+                        // 检查这是否是有效的A2UI JSON
+                        val candidate = rawText.substring(firstJsonStart, index + 1)
+                        val isA2UiJson = runCatching {
+                            val obj = org.json.JSONObject(candidate)
+                            obj.has("version") && (
+                                obj.has("createSurface") ||
+                                obj.has("updateComponents") ||
+                                obj.has("updateDataModel") ||
+                                obj.has("deleteSurface")
+                            )
+                        }.getOrDefault(false)
+                        
+                        if (isA2UiJson) {
+                            lastJsonEnd = index + 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return if (firstJsonStart != -1 && lastJsonEnd != -1) {
+        val beforeText = rawText.substring(0, firstJsonStart).trim()
+        val afterText = rawText.substring(lastJsonEnd).trim()
+        Pair(beforeText, afterText)
+    } else {
+        Pair(rawText.trim(), "")
     }
 }

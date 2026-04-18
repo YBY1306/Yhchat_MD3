@@ -269,7 +269,8 @@ fun MessageEditDialog(
     val contentTypeOptions = listOf(
         1 to "文本",
         3 to "Markdown", 
-        8 to "HTML"
+        8 to "HTML",
+        14 to "A2UI"
     )
     
     AlertDialog(

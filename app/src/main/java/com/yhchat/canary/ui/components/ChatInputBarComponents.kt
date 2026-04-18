@@ -98,6 +98,7 @@ fun AttachmentMenu(
     onTextClick: (() -> Unit)? = null,
     onHtmlClick: (() -> Unit)? = null,
     onMarkdownClick: (() -> Unit)? = null,
+    onA2UiClick: (() -> Unit)? = null,
     defaultMessageType: Int = 1,
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1
@@ -175,6 +176,19 @@ fun AttachmentMenu(
                     { Icon(Icons.Default.Check, contentDescription = null) }
                 } else null
             )
+            
+            if (onA2UiClick != null) {
+                DropdownMenuItem(
+                    text = { Text("A2UI") },
+                    onClick = { onA2UiClick.invoke() },
+                    leadingIcon = {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                    },
+                    trailingIcon = if (selectedMessageType == 14) {
+                        { Icon(Icons.Default.Check, contentDescription = null) }
+                    } else null
+                )
+            }
         }
 
         // 默认消息类型选项
@@ -210,6 +224,17 @@ fun AttachmentMenu(
                     Icon(Icons.Default.Code, contentDescription = null)
                 },
                 trailingIcon = if (defaultMessageType == 8) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认A2UI") },
+                onClick = { onDefaultMessageTypeChange.invoke(14) },
+                leadingIcon = {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 14) {
                     { Icon(Icons.Default.Check, contentDescription = null) }
                 } else null
             )

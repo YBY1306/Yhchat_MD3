@@ -1634,6 +1634,10 @@ fun ChatScreen(
                     contentType = contentType,
                     quoteMsgId = messageToEdit!!.quoteMsgId,
                     quoteMsgText = messageToEdit!!.content.quoteMsgText,
+                    quoteImageUrl = messageToEdit!!.content.quoteImageUrl,
+                    quoteImageName = messageToEdit!!.content.quoteImageName,
+                    quoteVideoUrl = messageToEdit!!.content.quoteVideoUrl,
+                    quoteVideoTime = messageToEdit!!.content.quoteVideoTime,
                     buttons = messageToEdit!!.content.buttons
                 )
                 showEditDialog = false

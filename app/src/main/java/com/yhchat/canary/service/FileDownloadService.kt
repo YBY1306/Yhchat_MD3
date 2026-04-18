@@ -41,10 +41,22 @@ class FileDownloadService : Service() {
         private const val NOTIFICATION_ID = 2001
         
         const val ACTION_DOWNLOAD = "action_download"
+        const val ACTION_CANCEL = "action_cancel"
         const val EXTRA_FILE_URL = "extra_file_url"
         const val EXTRA_FILE_NAME = "extra_file_name"
         const val EXTRA_FILE_SIZE = "extra_file_size"
         const val EXTRA_AUTO_OPEN = "extra_auto_open"
+        const val EXTRA_DOWNLOAD_ID = "extra_download_id"
+        
+        // 下载进度回调接口
+        interface DownloadProgressCallback {
+            fun onProgress(downloadId: String, progress: Int, total: Int)
+            fun onCompleted(downloadId: String, filePath: String)
+            fun onError(downloadId: String, error: String)
+            fun onCancelled(downloadId: String)
+        }
+        
+        private val progressCallbacks = mutableMapOf<String, DownloadProgressCallback>()
         
         /**
          * 启动文件下载
@@ -54,22 +66,43 @@ class FileDownloadService : Service() {
             fileUrl: String,
             fileName: String,
             fileSize: Long,
-            autoOpen: Boolean = false
-        ) {
+            autoOpen: Boolean = false,
+            downloadId: String = UUID.randomUUID().toString(),
+            progressCallback: DownloadProgressCallback? = null
+        ): String {
+            if (progressCallback != null) {
+                progressCallbacks[downloadId] = progressCallback
+            }
+            
             val intent = Intent(context, FileDownloadService::class.java).apply {
                 action = ACTION_DOWNLOAD
                 putExtra(EXTRA_FILE_URL, fileUrl)
                 putExtra(EXTRA_FILE_NAME, fileName)
                 putExtra(EXTRA_FILE_SIZE, fileSize)
                 putExtra(EXTRA_AUTO_OPEN, autoOpen)
+                putExtra(EXTRA_DOWNLOAD_ID, downloadId)
             }
             ContextCompat.startForegroundService(context, intent)
+            return downloadId
+        }
+        
+        /**
+         * 取消文件下载
+         */
+        fun cancelDownload(context: Context, downloadId: String) {
+            val intent = Intent(context, FileDownloadService::class.java).apply {
+                action = ACTION_CANCEL
+                putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+            }
+            context.startService(intent)
         }
     }
     
     private val binder = FileDownloadBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var notificationManager: NotificationManager? = null
+    private val activeDownloads = mutableMapOf<String, kotlinx.coroutines.Job>()
+    private val cancelledDownloads = mutableSetOf<String>()
     
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -101,12 +134,19 @@ class FileDownloadService : Service() {
                 val fileName = intent.getStringExtra(EXTRA_FILE_NAME)
                 val fileSize = intent.getLongExtra(EXTRA_FILE_SIZE, 0L)
                 val autoOpen = intent.getBooleanExtra(EXTRA_AUTO_OPEN, false)
+                val downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID) ?: UUID.randomUUID().toString()
                 
                 if (!fileUrl.isNullOrEmpty() && !fileName.isNullOrEmpty()) {
-                    startDownloadFile(fileUrl, fileName, fileSize, autoOpen)
+                    startDownloadFile(fileUrl, fileName, fileSize, autoOpen, downloadId)
                 } else {
                     Log.e(TAG, "Invalid download parameters")
                     stopSelf()
+                }
+            }
+            ACTION_CANCEL -> {
+                val downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID)
+                if (!downloadId.isNullOrEmpty()) {
+                    cancelDownload(downloadId)
                 }
             }
         }
@@ -128,7 +168,19 @@ class FileDownloadService : Service() {
         }
     }
     
-    private fun startDownloadFile(fileUrl: String, fileName: String, fileSize: Long, autoOpen: Boolean) {
+    private fun cancelDownload(downloadId: String) {
+        Log.d(TAG, "Cancelling download: $downloadId")
+        cancelledDownloads.add(downloadId)
+        activeDownloads[downloadId]?.cancel()
+        activeDownloads.remove(downloadId)
+        progressCallbacks[downloadId]?.onCancelled(downloadId)
+        progressCallbacks.remove(downloadId)
+        
+        updateNotification("下载已取消", "下载已取消", 0, 0, true)
+        stopSelf()
+    }
+    
+    private fun startDownloadFile(fileUrl: String, fileName: String, fileSize: Long, autoOpen: Boolean, downloadId: String) {
         Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen)")
         
         // 创建下载目录
@@ -148,11 +200,17 @@ class FileDownloadService : Service() {
         startForeground(NOTIFICATION_ID, createNotification(fileName, "准备下载...", 0, 0))
         
         // 在后台线程下载文件
-        serviceScope.launch(Dispatchers.IO) {
+        val downloadJob = serviceScope.launch(Dispatchers.IO) {
             try {
+                // 检查是否已取消
+                if (cancelledDownloads.contains(downloadId)) {
+                    Log.d(TAG, "Download cancelled before start: $downloadId")
+                    return@launch
+                }
+                
                 // 先下载到临时文件
                 val tempFile = File(downloadDir, "${fileName}")
-                downloadFileWithProgress(fileUrl, tempFile, fileName, fileSize)
+                downloadFileWithProgress(fileUrl, tempFile, fileName, fileSize, downloadId)
                 
                 // 计算下载文件的SHA256
                 val downloadedHash = calculateSHA256(tempFile)
@@ -209,6 +267,7 @@ class FileDownloadService : Service() {
                             100,
                             true
                         )
+                        progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
                     }
                     targetFile
                 }
@@ -229,19 +288,28 @@ class FileDownloadService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed", e)
                 launch(Dispatchers.Main) {
-                    updateNotification(fileName, "下载失败: ${e.message}", 0, 0, true)
-                    Toast.makeText(this@FileDownloadService, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
+                    if (!cancelledDownloads.contains(downloadId)) {
+                        updateNotification(fileName, "下载失败: ${e.message}", 0, 0, true)
+                        Toast.makeText(this@FileDownloadService, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
+                        progressCallbacks[downloadId]?.onError(downloadId, e.message ?: "Unknown error")
+                    }
                     stopSelf()
                 }
+            } finally {
+                activeDownloads.remove(downloadId)
+                progressCallbacks.remove(downloadId)
             }
         }
+        
+        activeDownloads[downloadId] = downloadJob
     }
     
     private suspend fun downloadFileWithProgress(
         fileUrl: String,
         targetFile: File,
         fileName: String,
-        expectedSize: Long
+        expectedSize: Long,
+        downloadId: String
     ) {
         val request = Request.Builder()
             .url(fileUrl)
@@ -268,6 +336,12 @@ class FileDownloadService : Service() {
                     }
                     
                     while (true) {
+                        // 检查是否已取消
+                        if (cancelledDownloads.contains(downloadId)) {
+                            Log.d(TAG, "Download cancelled during progress: $downloadId")
+                            throw Exception("Download cancelled")
+                        }
+                        
                         val bytesRead = inputStream.read(buffer)
                         if (bytesRead == -1) break
                         
@@ -289,6 +363,7 @@ class FileDownloadService : Service() {
                                     "下载中... ${formatFileSize(downloadedBytes)}"
                                 }
                                 updateNotification(fileName, progressText, progress, total)
+                                progressCallbacks[downloadId]?.onProgress(downloadId, progress, total)
                             }
                         }
                     }

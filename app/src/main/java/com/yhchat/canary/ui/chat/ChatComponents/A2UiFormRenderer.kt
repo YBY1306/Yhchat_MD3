@@ -1328,7 +1328,18 @@ private fun RenderA2UiComponent(
             val tabsList = component.elements?.mapNotNull { it as? Map<String, Any?> }
                 ?: emptyList()
             
-            var selectedIndex by rememberSaveable(component.id, scopePath) { mutableStateOf(currentTabIndex) }
+            // 即使tabsList为空，也要渲染组件，使用一个占位tab
+            val displayTabsList = if (tabsList.isEmpty()) {
+                listOf(mapOf("label" to "暂无数据" as Any))
+            } else {
+                tabsList
+            }
+            
+            // 确保selectedIndex在有效范围内
+            val validTabCount = displayTabsList.size
+            var selectedIndex by rememberSaveable(component.id, scopePath) { 
+                mutableStateOf(currentTabIndex.coerceIn(0, (validTabCount - 1).coerceAtLeast(0))) 
+            }
             
             Column(modifier = modifier.fillMaxWidth()) {
                 // Tab Row
@@ -1338,7 +1349,7 @@ private fun RenderA2UiComponent(
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 0.dp
                 ) {
-                    tabsList.forEachIndexed { index, tab ->
+                    displayTabsList.forEachIndexed { index, tab ->
                         val label = tab["label"]?.toString() ?: "Tab ${index + 1}"
                         Tab(
                             selected = selectedIndex == index,

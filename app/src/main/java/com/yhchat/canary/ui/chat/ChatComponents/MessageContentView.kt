@@ -245,10 +245,10 @@ fun MessageContentView(
                                             }
                                             
                                             // 显示下载状态文本
-                                            when (downloadState) {
+                                            when (val currentState = downloadState) {
                                                 is DownloadState.Downloading -> {
-                                                    if (downloadState.total > 0) {
-                                                        val percentage = (downloadState.progress * 100 / downloadState.total).coerceIn(0, 100)
+                                                    if (currentState.total > 0) {
+                                                        val percentage = (currentState.progress * 100 / currentState.total).coerceIn(0, 100)
                                                         Text(
                                                             text = " • $percentage%",
                                                             color = MaterialTheme.colorScheme.primary,
@@ -328,9 +328,10 @@ fun MessageContentView(
                                 }
                                 
                                 // 下载进度条
-                                if (downloadState is DownloadState.Downloading && downloadState.total > 0) {
+                                val currentState = downloadState
+                                if (currentState is DownloadState.Downloading && currentState.total > 0) {
                                     LinearProgressIndicator(
-                                        progress = { (downloadState.progress.toFloat() / downloadState.total.toFloat()).coerceIn(0f, 1f) },
+                                        progress = { (currentState.progress.toFloat() / currentState.total.toFloat()).coerceIn(0f, 1f) },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(horizontal = 12.dp)

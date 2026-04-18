@@ -1400,7 +1400,7 @@ class MessageRepository @Inject constructor(
             
             // 添加@用户信息
             if (mentionedIds.isNotEmpty()) {
-                requestBuilder.addAllMentionedIds(mentionedIds)
+                contentBuilder.addAllMentionedId(mentionedIds)
                 Log.d(tag, "📢 发送A2UI消息@了 ${mentionedIds.size} 个用户: $mentionedIds")
             }
             

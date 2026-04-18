@@ -1926,6 +1926,34 @@ class ChatViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = "批量撤回异常: ${e.message}")
             }
         }
+    }
+    
+    /**
+     * 编辑消息
+     */
+    fun editMessage(
+        chatId: String,
+        chatType: Int,
+        msgId: String,
+        content: String,
+        contentType: Int,
+        quoteMsgId: String? = null,
+        quoteMsgText: String? = null,
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null,
+        buttons: String? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                // 找到要编辑的消息
+                val message = _messages.find { it.msgId == msgId }
+                if (message == null) {
+                    Log.e(tag, "未找到要编辑的消息: $msgId")
+                    return@launch
+                }
+                
                 val result = messageRepository.editMessage(
                     chatId = chatId,
                     chatType = chatType,

@@ -267,6 +267,8 @@ class FileDownloadService : Service() {
                             100,
                             true
                         )
+                        // 显示下载完成提示
+                        Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
                         progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
                     }
                     targetFile
@@ -352,18 +354,23 @@ class FileDownloadService : Service() {
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastProgressUpdate > 200 || downloadedBytes == totalBytes) {
                             lastProgressUpdate = currentTime
-                            val progress = downloadedBytes.toInt()
-                            val total = totalBytes.toInt()
+                            
+                            // 使用百分比计算进度，避免大文件时的整数溢出
+                            val percentage = if (totalBytes > 0) {
+                                ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
+                            } else {
+                                0
+                            }
                             
                             serviceScope.launch(Dispatchers.Main) {
-                                val progressText = if (total > 0) {
-                                    val percentage = (downloadedBytes * 100 / totalBytes).toInt()
+                                val progressText = if (totalBytes > 0) {
                                     "下载中... $percentage% (${formatFileSize(downloadedBytes)}/${formatFileSize(totalBytes)})"
                                 } else {
                                     "下载中... ${formatFileSize(downloadedBytes)}"
                                 }
-                                updateNotification(fileName, progressText, progress, total)
-                                progressCallbacks[downloadId]?.onProgress(downloadId, progress, total)
+                                updateNotification(fileName, progressText, percentage, 100)
+                                // 传递百分比而不是原始字节数
+                                progressCallbacks[downloadId]?.onProgress(downloadId, percentage, 100)
                             }
                         }
                     }

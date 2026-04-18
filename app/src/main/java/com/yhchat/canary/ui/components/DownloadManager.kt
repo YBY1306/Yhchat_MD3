@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.yhchat.canary.service.FileDownloadService
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 下载状态
@@ -52,16 +55,34 @@ object DownloadManager {
                 override fun onCompleted(downloadId: String, filePath: String) {
                     _downloadStates[fileUrl] = DownloadState.Completed(filePath)
                     downloadIds.remove(fileUrl)
+                    
+                    // 3秒后自动清除下载状态，恢复到未点击状态
+                    GlobalScope.launch {
+                        delay(3000)
+                        _downloadStates.remove(fileUrl)
+                    }
                 }
                 
                 override fun onError(downloadId: String, error: String) {
                     _downloadStates[fileUrl] = DownloadState.Error(error)
                     downloadIds.remove(fileUrl)
+                    
+                    // 5秒后自动清除错误状态
+                    GlobalScope.launch {
+                        delay(5000)
+                        _downloadStates.remove(fileUrl)
+                    }
                 }
                 
                 override fun onCancelled(downloadId: String) {
                     _downloadStates[fileUrl] = DownloadState.Cancelled
                     downloadIds.remove(fileUrl)
+                    
+                    // 3秒后自动清除取消状态
+                    GlobalScope.launch {
+                        delay(3000)
+                        _downloadStates.remove(fileUrl)
+                    }
                 }
             }
         )

@@ -461,6 +461,15 @@
             android:label="黑名单设置"
             android:theme="@style/Theme.YhchatCanary" />
         
+        <!-- 全屏视频播放器 -->
+        <activity
+            android:name=".ui.video.FullscreenVideoActivity"
+            android:exported="false"
+            android:label="全屏视频"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        
         <!-- 语音播放服务 -->
         <service
             android:name=".service.AudioPlayerService"

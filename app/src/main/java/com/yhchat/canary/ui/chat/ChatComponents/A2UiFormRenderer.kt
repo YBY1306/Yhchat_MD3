@@ -684,19 +684,16 @@ private fun normalizeA2UiValue(value: Any?): Any? {
 }
 
 @Composable
-internal fun A2UiFormMessage(
+fun A2UiFormMessage(
     spec: A2UiSpec,
     modifier: Modifier = Modifier
 ) {
-    var dataModel by remember(spec.surfaceId, spec.version, spec.components, spec.dataModel) {
-        mutableStateOf(spec.dataModel)
-    }
-
-    val rootComponentId = remember(spec.components) { resolveRootComponentId(spec.components) } ?: return
-
+    var dataModel by remember(spec) { mutableStateOf(spec.dataModel ?: emptyMap()) }
+    val rootComponentId = spec.rootComponent ?: return
+    
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     ) {
         Column(
@@ -711,7 +708,8 @@ internal fun A2UiFormMessage(
                 dataModel = dataModel,
                 modifier = Modifier.fillMaxWidth(),
                 onDataModelChange = { path, value ->
-                    dataModel = updateA2UiDataModel(dataModel, path, value)
+                    val updatedModel = updateA2UiDataModel(dataModel, path, value)
+                    dataModel = updatedModel
                 }
             )
         }
@@ -3894,10 +3892,16 @@ private fun A2UiVideoPlayer(
                         }
                     }
                     
-                    // Fullscreen button (placeholder - actual fullscreen requires activity configuration)
+                    // Fullscreen button
                     IconButton(
                         onClick = {
-                            // Fullscreen functionality requires Activity configuration
+                            // 启动全屏视频播放器，保持当前播放状态
+                            com.yhchat.canary.ui.video.FullscreenVideoActivity.start(
+                                context = context,
+                                videoUrl = url,
+                                currentPosition = currentPosition.toLong(),
+                                isPlaying = isPlaying
+                            )
                         },
                         modifier = Modifier.size(44.dp)
                     ) {

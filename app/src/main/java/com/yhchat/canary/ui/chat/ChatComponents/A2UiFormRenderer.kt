@@ -5,7 +5,6 @@ import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,7 +55,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -967,84 +968,59 @@ private fun RenderA2UiComponent(
             
             // Date picker dialog
             if (showDatePicker) {
-                val datePickerDialog = androidx.appcompat.app.AlertDialog.Builder(context).apply {
-                    setTitle("选择日期")
-                    val datePicker = android.widget.DatePicker(context).apply {
-                        init(selectedYear, selectedMonth, selectedDay) { _, year, month, day ->
-                            selectedYear = year
-                            selectedMonth = month
-                            selectedDay = day
-                        }
-                    }
-                    setView(datePicker)
-                    setPositiveButton("确定") { _, _ ->
-                        val formatter = SimpleDateFormat(
-                            if (enableTime) "yyyy-MM-dd HH:mm" else "yyyy-MM-dd", 
-                            Locale.getDefault()
-                        )
-                        val cal = java.util.Calendar.getInstance().apply {
-                            set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
-                        }
-                        textFieldValue = formatter.format(cal.time)
-                        if (valuePath != null) {
-                            onDataModelChange(valuePath, textFieldValue)
-                        }
-                        showDatePicker = false
-                    }
-                    setNegativeButton("取消") { _, _ ->
-                        showDatePicker = false
-                    }
-                    if (enableTime) {
-                        setNeutralButton("选择时间") { _, _ ->
-                            showDatePicker = false
+                val dialog = android.app.DatePickerDialog(
+                    context,
+                    { _, year, month, day ->
+                        selectedYear = year
+                        selectedMonth = month
+                        selectedDay = day
+                        if (enableTime) {
                             showTimePicker = true
+                        } else {
+                            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val cal = java.util.Calendar.getInstance()
+                            cal.set(selectedYear, selectedMonth, selectedDay, 0, 0)
+                            textFieldValue = formatter.format(cal.time)
+                            if (valuePath != null) {
+                                onDataModelChange(valuePath, textFieldValue)
+                            }
                         }
-                    }
-                }.create()
-                datePickerDialog.setOnDismissListener { showDatePicker = false }
-                datePickerDialog.show()
+                        showDatePicker = false
+                    },
+                    selectedYear,
+                    selectedMonth,
+                    selectedDay
+                )
+                dialog.setOnDismissListener { showDatePicker = false }
+                dialog.show()
                 showDatePicker = false
             }
             
             // Time picker dialog
             if (showTimePicker) {
-                val timePickerDialog = androidx.appcompat.app.AlertDialog.Builder(context).apply {
-                    setTitle("选择时间")
-                    val timePicker = android.widget.TimePicker(context).apply {
-                        this.hour = selectedHour
-                        this.minute = selectedMinute
-                        setOnTimeChangedListener { _, hour, minute ->
-                            selectedHour = hour
-                            selectedMinute = minute
-                        }
-                    }
-                    setView(timePicker)
-                    setPositiveButton("确定") { _, _ ->
+                val dialog = android.app.TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        selectedHour = hour
+                        selectedMinute = minute
                         val formatter = SimpleDateFormat(
                             if (enableDate) "yyyy-MM-dd HH:mm" else "HH:mm", 
                             Locale.getDefault()
                         )
-                        val cal = java.util.Calendar.getInstance().apply {
-                            set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
-                        }
+                        val cal = java.util.Calendar.getInstance()
+                        cal.set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
                         textFieldValue = formatter.format(cal.time)
                         if (valuePath != null) {
                             onDataModelChange(valuePath, textFieldValue)
                         }
                         showTimePicker = false
-                    }
-                    setNegativeButton("取消") { _, _ ->
-                        showTimePicker = false
-                    }
-                    if (enableDate) {
-                        setNeutralButton("选择日期") { _, _ ->
-                            showTimePicker = false
-                            showDatePicker = true
-                        }
-                    }
-                }.create()
-                timePickerDialog.setOnDismissListener { showTimePicker = false }
-                timePickerDialog.show()
+                    },
+                    selectedHour,
+                    selectedMinute,
+                    true
+                )
+                dialog.setOnDismissListener { showTimePicker = false }
+                dialog.show()
                 showTimePicker = false
             }
 
@@ -3167,9 +3143,12 @@ private fun A2UiVideoPlayer(
     var duration by remember(playerId) { mutableFloatStateOf(0f) }
     var currentTimeText by remember(playerId) { mutableStateOf("00:00") }
     var totalTimeText by remember(playerId) { mutableStateOf("00:00") }
+    var isBuffering by remember(playerId) { mutableStateOf(false) }
+    var hideControllerJob by remember(playerId) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     
     var videoView by remember(playerId) { mutableStateOf<android.widget.VideoView?>(null) }
     val handler = remember { Handler(Looper.getMainLooper()) }
+    val scope = rememberCoroutineScope()
     
     // Content scale based on fit parameter
     val contentScale = when (fit.lowercase(Locale.ROOT)) {
@@ -3177,6 +3156,17 @@ private fun A2UiVideoPlayer(
         "fill", "stretch" -> ContentScale.FillBounds
         "none", "none" -> ContentScale.None
         else -> ContentScale.Fit
+    }
+    
+    // Auto-hide controller after 3 seconds
+    fun scheduleHideController() {
+        hideControllerJob?.cancel()
+        hideControllerJob = scope?.launch {
+            kotlinx.coroutines.delay(3000)
+            if (isPlaying) {
+                showController = false
+            }
+        }
     }
     
     // Update progress runnable
@@ -3197,6 +3187,7 @@ private fun A2UiVideoPlayer(
     // Cleanup on dispose
     DisposableEffect(playerId) {
         onDispose {
+            hideControllerJob?.cancel()
             handler.removeCallbacks(updateProgressRunnable)
             videoView?.let { view ->
                 if (view.isPlaying) {
@@ -3213,11 +3204,61 @@ private fun A2UiVideoPlayer(
         }
     }
     
+    // Video control functions
+    fun playVideo() {
+        videoView?.let { view ->
+            view.start()
+            isPlaying = true
+            handler.post(updateProgressRunnable)
+            scheduleHideController()
+        }
+    }
+    
+    fun pauseVideo() {
+        videoView?.let { view ->
+            view.pause()
+            isPlaying = false
+            handler.removeCallbacks(updateProgressRunnable)
+            showController = true
+        }
+    }
+    
+    fun stopVideo() {
+        videoView?.let { view ->
+            if (view.isPlaying) {
+                view.stopPlayback()
+            }
+            view.seekTo(0)
+            isPlaying = false
+            currentPosition = 0f
+            currentTimeText = "00:00"
+            handler.removeCallbacks(updateProgressRunnable)
+            showController = true
+        }
+    }
+    
+    fun seekForward(seconds: Int = 10) {
+        videoView?.let { view ->
+            val newPosition = (view.currentPosition + seconds * 1000).coerceAtMost(duration.toInt())
+            view.seekTo(newPosition)
+            currentPosition = newPosition.toFloat()
+            currentTimeText = formatTime(newPosition)
+        }
+    }
+    
+    fun seekBackward(seconds: Int = 10) {
+        videoView?.let { view ->
+            val newPosition = (view.currentPosition - seconds * 1000).coerceAtLeast(0)
+            view.seekTo(newPosition)
+            currentPosition = newPosition.toFloat()
+            currentTimeText = formatTime(newPosition)
+        }
+    }
+    
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black)
-            .clickable { showController = !showController },
+            .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         // VideoView
@@ -3229,10 +3270,10 @@ private fun A2UiVideoPlayer(
                     
                     setOnPreparedListener { mp ->
                         mp.isLooping = false
-                        val durationMs = duration
                         duration = this.duration.toFloat()
                         totalTimeText = formatTime(this.duration)
                         isLoading = false
+                        isBuffering = false
                     }
                     
                     setOnCompletionListener {
@@ -3240,13 +3281,27 @@ private fun A2UiVideoPlayer(
                         currentPosition = 0f
                         currentTimeText = "00:00"
                         handler.removeCallbacks(updateProgressRunnable)
+                        showController = true
                     }
                     
                     setOnErrorListener { _, _, _ ->
                         isLoading = false
+                        isBuffering = false
                         isPlaying = false
                         Toast.makeText(context, "视频加载失败", Toast.LENGTH_SHORT).show()
                         true
+                    }
+                    
+                    setOnInfoListener { _, what, _ ->
+                        when (what) {
+                            android.widget.MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
+                                isBuffering = true
+                            }
+                            android.widget.MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
+                                isBuffering = false
+                            }
+                        }
+                        false
                     }
                     
                     // Set video URI
@@ -3274,6 +3329,12 @@ private fun A2UiVideoPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
+                .clickable {
+                    showController = true
+                    if (isPlaying) {
+                        scheduleHideController()
+                    }
+                }
         )
         
         // Poster image (shown when not playing)
@@ -3288,129 +3349,239 @@ private fun A2UiVideoPlayer(
             )
         }
         
-        // Loading indicator
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = Color.White
-            )
+        // Loading/Buffering indicator
+        if (isLoading || isBuffering) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = Color.White
+                )
+            }
         }
         
-        // Play button overlay
+        // Large center play button (shown when paused and not loading)
         if (!isPlaying && !isLoading && url.isNotBlank()) {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(72.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable {
-                        videoView?.let { view ->
-                            view.start()
-                            isPlaying = true
-                            handler.post(updateProgressRunnable)
-                        }
-                    },
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .clickable { playVideo() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Filled.PlayArrow,
                     contentDescription = "播放",
                     tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
         
-        // Controller overlay
-        if (showController && isPlaying) {
+        // Click on video to show/hide controller when playing
+        if (isPlaying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height)
+                    .clickable {
+                        showController = !showController
+                        if (showController) {
+                            scheduleHideController()
+                        }
+                    }
+            )
+        }
+        
+        // Full controller overlay (always visible when showController is true)
+        if (showController) {
+            // Top gradient for better visibility
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.6f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            
             // Bottom control bar
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .padding(8.dp)
-            ) {
-                // Progress bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = currentTimeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.8f)
+                            )
+                        )
                     )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                // Progress bar with time
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Seek slider
                     Slider(
-                        value = if (duration > 0) currentPosition / duration else 0f,
+                        value = if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f,
                         onValueChange = { fraction ->
                             val newPosition = (fraction * duration).toInt()
                             videoView?.seekTo(newPosition)
                             currentPosition = newPosition.toFloat()
                         },
-                        modifier = Modifier.weight(1f),
+                        onValueChangeFinished = {
+                            // Video will continue playing after seek
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = androidx.compose.material3.SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                         )
                     )
-                    Text(
-                        text = totalTimeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
-                    )
-                }
-                
-                // Control buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Play/Pause button
-                    IconButton(
-                        onClick = {
-                            videoView?.let { view ->
-                                if (view.isPlaying) {
-                                    view.pause()
-                                    isPlaying = false
-                                    handler.removeCallbacks(updateProgressRunnable)
-                                } else {
-                                    view.start()
-                                    isPlaying = true
-                                    handler.post(updateProgressRunnable)
-                                }
-                            }
-                        }
+                    
+                    // Time display
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "暂停" else "播放",
-                            tint = Color.White
+                        Text(
+                            text = currentTimeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White
+                        )
+                        Text(
+                            text = totalTimeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Control buttons row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Rewind 10s button
+                    IconButton(
+                        onClick = { seekBackward(10) },
+                        enabled = !isLoading,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Replay,
+                                contentDescription = "后退10秒",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text(
+                                text = "10",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontSize = androidx.compose.ui.unit.TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp)
+                            )
+                        }
+                    }
                     
                     // Stop button
                     IconButton(
-                        onClick = {
-                            videoView?.let { view ->
-                                if (view.isPlaying) {
-                                    view.stopPlayback()
-                                }
-                                view.seekTo(0)
-                                isPlaying = false
-                                currentPosition = 0f
-                                currentTimeText = "00:00"
-                                handler.removeCallbacks(updateProgressRunnable)
-                            }
-                        }
+                        onClick = { stopVideo() },
+                        enabled = !isLoading,
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "停止",
-                            tint = Color.White
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    
+                    // Play/Pause button (large)
+                    FilledIconButton(
+                        onClick = {
+                            if (isPlaying) {
+                                pauseVideo()
+                            } else {
+                                playVideo()
+                            }
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        if (isBuffering) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "暂停" else "播放",
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    
+                    // Forward 10s button
+                    IconButton(
+                        onClick = { seekForward(10) },
+                        enabled = !isLoading,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Replay,
+                                contentDescription = "前进10秒",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text(
+                                text = "10",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontSize = androidx.compose.ui.unit.TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp)
+                            )
+                        }
+                    }
+                    
+                    // Fullscreen button (placeholder - actual fullscreen requires activity configuration)
+                    IconButton(
+                        onClick = {
+                            Toast.makeText(context, "全屏功能需要Activity配置", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.OpenInFull,
+                            contentDescription = "全屏",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }

@@ -756,7 +756,6 @@ private fun RenderA2UiComponent(
                     spec = spec,
                     dataModel = dataModel,
                     scopePath = scopePath,
-                    parentAxis = "row",
                     onDataModelChange = onDataModelChange
                 )
             }

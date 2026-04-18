@@ -28,9 +28,46 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +79,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -82,6 +121,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import kotlinx.coroutines.Dispatchers
@@ -142,15 +182,23 @@ internal data class A2UiComponent(
     val content: String? = null,
     val entryPointChild: String? = null,
     val contentChild: String? = null,
+    val activeTab: A2UiValue? = null,
     val title: A2UiValue? = null,
     val data: A2UiValue? = null,
     val axis: String? = null,
+    val direction: String? = null,
+    val size: Number? = null,
     val width: Number? = null,
     val height: Number? = null,
+    val min: Number? = null,
+    val max: Number? = null,
+    val name: String? = null,
     val backgroundColor: String? = null,
     val color: String? = null,
     val progressValue: Float? = null,
-    val elements: List<Map<String, Any?>>? = null
+    val elements: List<Map<String, Any?>>? = null,
+    val poster: A2UiValue? = null,
+    val fit: String? = null
 )
 
 // Extension property to get width as Dp
@@ -320,15 +368,22 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         title = parseA2UiValue(componentObject.opt("title")),
         data = parseA2UiValue(componentObject.opt("data")),
         axis = componentObject.optString("axis").takeIf { it.isNotBlank() },
+        direction = componentObject.optString("direction").takeIf { it.isNotBlank() },
+        size = safeOptNumber(componentObject, "size"),
         width = safeOptNumber(componentObject, "width"),
         height = safeOptNumber(componentObject, "height"),
+        min = safeOptNumber(componentObject, "min"),
+        max = safeOptNumber(componentObject, "max"),
+        name = componentObject.optString("name").takeIf { it.isNotBlank() },
         backgroundColor = componentObject.optString("backgroundColor").takeIf { it.isNotBlank() },
         color = componentObject.optString("color").takeIf { it.isNotBlank() },
         progressValue = componentObject.optDouble("value").toFloat().takeIf { !componentObject.isNull("value") }
             ?: componentObject.optDouble("progress").toFloat().takeIf { !componentObject.isNull("progress") },
         elements = componentObject.optJSONArray("elements")?.let { arr ->
             (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
-        }
+        },
+        poster = parseA2UiValue(componentObject.opt("poster")),
+        fit = componentObject.optString("fit").takeIf { it.isNotBlank() }
     )
 }
 
@@ -852,10 +907,14 @@ private fun RenderA2UiComponent(
             val placeholder = resolveA2UiValue(spec, dataModel, component.placeholder, scopePath)?.toString().orEmpty()
             val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
             val fieldVariant = component.variant ?: component.textFieldType
+            val isDateTimeInput = component.component.equals("datetimeinput", ignoreCase = true)
+            val enableDate = component.enableDate == true || isDateTimeInput
+            val enableTime = component.enableTime == true || isDateTimeInput
+            
             val keyboardType = when (fieldVariant?.lowercase(Locale.ROOT)) {
                 "number" -> KeyboardType.Number
                 "password", "obscured" -> KeyboardType.Password
-                else -> KeyboardType.Text
+                else -> if (isDateTimeInput) KeyboardType.Text else KeyboardType.Text
             }
             val visualTransformation = if (
                 fieldVariant.equals("password", ignoreCase = true) ||
@@ -867,11 +926,125 @@ private fun RenderA2UiComponent(
             }
             var textFieldValue by rememberSaveable(component.id, scopePath) { mutableStateOf(currentValue) }
             var errorMessage by rememberSaveable(component.id, scopePath) { mutableStateOf<String?>(null) }
+            var showDatePicker by remember { mutableStateOf(false) }
+            var showTimePicker by remember { mutableStateOf(false) }
+            
+            // Parse current date/time value
+            val calendar = remember {
+                try {
+                    if (currentValue.isNotBlank()) {
+                        val parser = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                        parser.isLenient = false
+                        parser.parse(currentValue)?.let { java.util.Calendar.getInstance().apply { time = it } }
+                    } else null
+                } catch (e: Exception) { null }
+            } ?: java.util.Calendar.getInstance()
+            
+            var selectedYear by rememberSaveable(component.id, scopePath) { mutableStateOf(calendar.get(java.util.Calendar.YEAR)) }
+            var selectedMonth by rememberSaveable(component.id, scopePath) { mutableStateOf(calendar.get(java.util.Calendar.MONTH)) }
+            var selectedDay by rememberSaveable(component.id, scopePath) { mutableStateOf(calendar.get(java.util.Calendar.DAY_OF_MONTH)) }
+            var selectedHour by rememberSaveable(component.id, scopePath) { mutableStateOf(calendar.get(java.util.Calendar.HOUR_OF_DAY)) }
+            var selectedMinute by rememberSaveable(component.id, scopePath) { mutableStateOf(calendar.get(java.util.Calendar.MINUTE)) }
 
             LaunchedEffect(currentValue) {
                 if (textFieldValue != currentValue) {
                     textFieldValue = currentValue
+                    try {
+                        val parser = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                        parser.isLenient = false
+                        parser.parse(currentValue)?.let { date ->
+                            val cal = java.util.Calendar.getInstance().apply { time = date }
+                            selectedYear = cal.get(java.util.Calendar.YEAR)
+                            selectedMonth = cal.get(java.util.Calendar.MONTH)
+                            selectedDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                            selectedHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                            selectedMinute = cal.get(java.util.Calendar.MINUTE)
+                        }
+                    } catch (e: Exception) { }
                 }
+            }
+            
+            // Date picker dialog
+            if (showDatePicker) {
+                val datePickerDialog = androidx.appcompat.app.AlertDialog.Builder(context).apply {
+                    setTitle("选择日期")
+                    val datePicker = android.widget.DatePicker(context).apply {
+                        init(selectedYear, selectedMonth, selectedDay) { _, year, month, day ->
+                            selectedYear = year
+                            selectedMonth = month
+                            selectedDay = day
+                        }
+                    }
+                    setView(datePicker)
+                    setPositiveButton("确定") { _, _ ->
+                        val formatter = SimpleDateFormat(
+                            if (enableTime) "yyyy-MM-dd HH:mm" else "yyyy-MM-dd", 
+                            Locale.getDefault()
+                        )
+                        val cal = java.util.Calendar.getInstance().apply {
+                            set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
+                        }
+                        textFieldValue = formatter.format(cal.time)
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, textFieldValue)
+                        }
+                        showDatePicker = false
+                    }
+                    setNegativeButton("取消") { _, _ ->
+                        showDatePicker = false
+                    }
+                    if (enableTime) {
+                        setNeutralButton("选择时间") { _, _ ->
+                            showDatePicker = false
+                            showTimePicker = true
+                        }
+                    }
+                }.create()
+                datePickerDialog.setOnDismissListener { showDatePicker = false }
+                datePickerDialog.show()
+                showDatePicker = false
+            }
+            
+            // Time picker dialog
+            if (showTimePicker) {
+                val timePickerDialog = androidx.appcompat.app.AlertDialog.Builder(context).apply {
+                    setTitle("选择时间")
+                    val timePicker = android.widget.TimePicker(context).apply {
+                        this.hour = selectedHour
+                        this.minute = selectedMinute
+                        setOnTimeChangedListener { _, hour, minute ->
+                            selectedHour = hour
+                            selectedMinute = minute
+                        }
+                    }
+                    setView(timePicker)
+                    setPositiveButton("确定") { _, _ ->
+                        val formatter = SimpleDateFormat(
+                            if (enableDate) "yyyy-MM-dd HH:mm" else "HH:mm", 
+                            Locale.getDefault()
+                        )
+                        val cal = java.util.Calendar.getInstance().apply {
+                            set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
+                        }
+                        textFieldValue = formatter.format(cal.time)
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, textFieldValue)
+                        }
+                        showTimePicker = false
+                    }
+                    setNegativeButton("取消") { _, _ ->
+                        showTimePicker = false
+                    }
+                    if (enableDate) {
+                        setNeutralButton("选择日期") { _, _ ->
+                            showTimePicker = false
+                            showDatePicker = true
+                        }
+                    }
+                }.create()
+                timePickerDialog.setOnDismissListener { showTimePicker = false }
+                timePickerDialog.show()
+                showTimePicker = false
             }
 
             OutlinedTextField(
@@ -889,7 +1062,19 @@ private fun RenderA2UiComponent(
                         onDataModelChange(valuePath, newValue)
                     }
                 },
-                modifier = modifier.fillMaxWidth(),
+                modifier = modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isDateTimeInput) {
+                            Modifier.clickable { 
+                                if (enableDate) {
+                                    showDatePicker = true
+                                } else if (enableTime) {
+                                    showTimePicker = true
+                                }
+                            }
+                        } else Modifier
+                    ),
                 label = {
                     if (label.isNotBlank()) {
                         Text(if (component.required == true) "$label *" else label)
@@ -900,6 +1085,23 @@ private fun RenderA2UiComponent(
                         Text(placeholder)
                     }
                 },
+                trailingIcon = if (isDateTimeInput) {
+                    {
+                        IconButton(onClick = { 
+                            if (enableDate) {
+                                showDatePicker = true
+                            } else if (enableTime) {
+                                showTimePicker = true
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.CalendarMonth,
+                                contentDescription = "选择日期时间",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else null,
                 supportingText = {
                     when {
                         errorMessage != null -> Text(
@@ -907,13 +1109,13 @@ private fun RenderA2UiComponent(
                             color = MaterialTheme.colorScheme.error
                         )
 
-                        component.component.equals("DateTimeInput", ignoreCase = true) -> {
+                        isDateTimeInput -> {
                             val parts = buildList {
-                                if (component.enableDate == true) add("date")
-                                if (component.enableTime == true) add("time")
+                                if (enableDate) add("date")
+                                if (enableTime) add("time")
                             }
                             if (parts.isNotEmpty()) {
-                                Text("Supports ${parts.joinToString(" + ")}")
+                                Text("点击图标选择 ${parts.joinToString(" + ")}")
                             }
                         }
 
@@ -1080,13 +1282,17 @@ private fun RenderA2UiComponent(
                                 Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
                             }
                         }
-                        RenderA2UiComponent(
-                            componentId = contentId,
-                            spec = spec,
-                            dataModel = dataModel,
-                            scopePath = scopePath,
-                            onDataModelChange = onDataModelChange
-                        )
+                        // 直接渲染 contentId 指向的组件，使用 ColumnChildren 渲染 children
+                        val contentComponent = spec.components[contentId]
+                        if (contentComponent != null) {
+                            RenderA2UiColumnChildren(
+                                component = contentComponent,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                onDataModelChange = onDataModelChange
+                            )
+                        }
                     }
                 }
             }
@@ -1129,6 +1335,68 @@ private fun RenderA2UiComponent(
             )
         }
         
+        "tabs" -> {
+            val activeTabPath = (component.value as? A2UiValue.Path)?.path
+                ?: (component.activeTab as? A2UiValue.Path)?.path
+            val currentTabIndex = resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Int
+                ?: resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Int
+                ?: 0
+            val tabsList = component.elements?.mapNotNull { it as? Map<String, Any?> }
+                ?: emptyList()
+            
+            var selectedIndex by rememberSaveable(component.id, scopePath) { mutableStateOf(currentTabIndex) }
+            
+            Column(modifier = modifier.fillMaxWidth()) {
+                // Tab Row
+                ScrollableTabRow(
+                    selectedTabIndex = selectedIndex,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    edgePadding = 0.dp
+                ) {
+                    tabsList.forEachIndexed { index, tab ->
+                        val label = tab["label"]?.toString() ?: "Tab ${index + 1}"
+                        Tab(
+                            selected = selectedIndex == index,
+                            onClick = { 
+                                selectedIndex = index
+                                if (activeTabPath != null) {
+                                    onDataModelChange(combineScopePath(scopePath, activeTabPath), index)
+                                }
+                            },
+                            text = { Text(label, fontWeight = if (selectedIndex == index) FontWeight.Bold else FontWeight.Normal) }
+                        )
+                    }
+                }
+                
+                // Tab Content
+                if (tabsList.isNotEmpty() && selectedIndex in tabsList.indices) {
+                    val selectedTab = tabsList[selectedIndex]
+                    val contentId = selectedTab["content"]?.toString()
+                    
+                    if (!contentId.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        RenderA2UiComponent(
+                            componentId = contentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    } else {
+                        // 如果没有 contentId，尝试渲染 inline 内容
+                        selectedTab["text"]?.toString()?.let { text ->
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = text,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         "linearprogressindicator", "progressindicator" -> {
             val progress = component.progressValue 
                 ?: (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat()
@@ -1199,6 +1467,200 @@ private fun RenderA2UiComponent(
                 description = description,
                 modifier = modifier.fillMaxWidth()
             )
+        }
+
+        "video" -> {
+            val videoUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
+            val posterUrl = resolveA2UiValue(spec, dataModel, component.poster, scopePath)?.toString().orEmpty()
+            val contentFit = component.fit ?: "contain"
+            val videoWidth = component.width?.toDp() ?: 300.dp
+            val videoHeight = component.height?.toDp() ?: 200.dp
+            A2UiVideoPlayer(
+                playerId = component.id,
+                url = videoUrl,
+                poster = posterUrl,
+                fit = contentFit,
+                modifier = modifier.fillMaxWidth(),
+                width = videoWidth,
+                height = videoHeight
+            )
+        }
+
+        "icon" -> {
+            val iconName = component.name?.lowercase(Locale.ROOT) ?: component.text?.toString()?.lowercase(Locale.ROOT)
+            val iconTint = component.color?.let { parseA2UiHexColor(it) } ?: MaterialTheme.colorScheme.onSurface
+            val iconSize = component.size?.let { (it as? Number)?.toFloat()?.dp } ?: 24.dp
+            val iconModifier = modifier.size(iconSize)
+            
+            val iconVector = when (iconName) {
+                // Playback controls
+                "shuffle" -> Icons.Filled.Shuffle
+                "skipprevious", "prev", "previous" -> Icons.Filled.SkipPrevious
+                "playarrow", "play" -> Icons.Filled.PlayArrow
+                "pause" -> Icons.Filled.Pause
+                "skipnext", "next" -> Icons.Filled.SkipNext
+                "repeat" -> Icons.Filled.Repeat
+                "close" -> Icons.Filled.Close
+                
+                // Common actions
+                "add", "plus" -> Icons.Filled.Add
+                "edit", "pencil" -> Icons.Filled.Edit
+                "delete", "trash", "remove" -> Icons.Filled.Delete
+                "search", "find", "magnify" -> Icons.Filled.Search
+                "settings", "gear" -> Icons.Filled.Settings
+                "menu", "hamburger" -> Icons.Filled.Menu
+                "more", "morevert", "more_vert", "dots" -> Icons.Filled.MoreVert
+                "share", "send" -> Icons.Filled.Share
+                "refresh", "reload", "sync" -> Icons.Filled.Refresh
+                
+                // Navigation
+                "arrowback", "arrow_back", "back" -> Icons.AutoMirrored.Filled.ArrowBack
+                "arrowforward", "arrow_forward", "forward" -> Icons.AutoMirrored.Filled.ArrowForward
+                "arrowdown", "dropdown", "expand" -> Icons.Filled.KeyboardArrowDown
+                "arrowup", "collapse" -> Icons.Filled.KeyboardArrowUp
+                "arrowleft", "chevron_left" -> Icons.Filled.KeyboardArrowLeft
+                "arrowright", "chevron_right" -> Icons.Filled.KeyboardArrowRight
+                "home" -> Icons.Filled.Home
+                
+                // Status & feedback
+                "check", "checkmark", "done", "tick" -> Icons.Filled.Check
+                "checkcircle", "checkmark_circle", "verified" -> Icons.Filled.CheckCircle
+                "checkcircleoutline", "verified_outline" -> Icons.Outlined.CheckCircle
+                "warning", "alert" -> Icons.Filled.Warning
+                "info", "information" -> Icons.Filled.Info
+                "star", "favorite" -> Icons.Filled.Star
+                "staroutline", "star_border" -> Icons.Outlined.StarOutline
+                "favoriteborder", "favorite_outline", "like" -> Icons.Outlined.FavoriteBorder
+                "favorite", "heart" -> Icons.Filled.Favorite
+                "notifications", "bell" -> Icons.Filled.Notifications
+                
+                // Communication
+                "email", "mail", "envelope" -> Icons.Filled.Email
+                "phone", "call", "telephone" -> Icons.Filled.Phone
+                
+                // Content
+                "person", "user", "account" -> Icons.Filled.Person
+                "list", "menu_list", "todo" -> Icons.Filled.List
+                "lock", "security", "password" -> Icons.Filled.Lock
+                "shoppingcart", "cart", "shopping" -> Icons.Filled.ShoppingCart
+                
+                // Date & Time
+                "calendar", "date", "cal" -> Icons.Filled.DateRange
+                "calendar_month", "month" -> Icons.Filled.CalendarMonth
+                
+                else -> Icons.Filled.PlayArrow
+            }
+            
+            Icon(
+                imageVector = iconVector,
+                contentDescription = iconName,
+                tint = iconTint,
+                modifier = iconModifier
+            )
+        }
+        
+        "checkbox" -> {
+            val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString().orEmpty()
+            val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: false
+            val valuePath = resolveBoundPath(component.value, scopePath)
+            
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val newValue = !value
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, newValue)
+                        }
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = value,
+                    onCheckedChange = { newValue ->
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, newValue)
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        
+        "list" -> {
+            val direction = component.direction?.lowercase(Locale.ROOT) ?: component.axis?.lowercase(Locale.ROOT) ?: "vertical"
+            val align = component.align?.lowercase(Locale.ROOT) ?: "start"
+            
+            when (direction) {
+                "horizontal", "row" -> {
+                    Row(
+                        modifier = modifier.fillMaxWidth(),
+                        horizontalArrangement = horizontalArrangementFor(component.justify),
+                        verticalAlignment = verticalAlignmentFor(align)
+                    ) {
+                        RenderA2UiRowChildren(
+                            component = component,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+                else -> {
+                    Column(
+                        modifier = modifier.fillMaxWidth(),
+                        verticalArrangement = verticalArrangementFor(component.justify),
+                        horizontalAlignment = horizontalAlignmentFor(align)
+                    ) {
+                        RenderA2UiColumnChildren(
+                            component = component,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+            }
+        }
+
+        "slider" -> {
+            val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat() ?: 0f
+            val min = (component.min as? Number)?.toFloat() ?: 0f
+            val max = (component.max as? Number)?.toFloat() ?: 1f
+            val label = component.label?.toString() ?: ""
+            val valuePath = resolveBoundPath(component.value, scopePath)
+            
+            var sliderValue by rememberSaveable(component.id, scopePath) { mutableFloatStateOf(value) }
+            
+            Column(modifier = modifier.fillMaxWidth()) {
+                if (label.isNotBlank()) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { newValue ->
+                        sliderValue = newValue
+                    },
+                    onValueChangeFinished = {
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, sliderValue.toDouble())
+                        }
+                    },
+                    valueRange = min..max,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         "function", "callexpression", "expression" -> {
@@ -2682,4 +3144,276 @@ private fun formatTime(milliseconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, remainingSeconds)
+}
+
+// A2UI VideoPlayer Component
+@Composable
+private fun A2UiVideoPlayer(
+    playerId: String,
+    url: String,
+    poster: String,
+    fit: String,
+    modifier: Modifier = Modifier,
+    width: androidx.compose.ui.unit.Dp = 300.dp,
+    height: androidx.compose.ui.unit.Dp = 200.dp
+) {
+    val context = LocalContext.current
+    
+    var isPlaying by remember(playerId) { mutableStateOf(false) }
+    var isLoading by remember(playerId) { mutableStateOf(false) }
+    var showController by remember(playerId) { mutableStateOf(true) }
+    var currentPosition by remember(playerId) { mutableFloatStateOf(0f) }
+    var duration by remember(playerId) { mutableFloatStateOf(0f) }
+    var currentTimeText by remember(playerId) { mutableStateOf("00:00") }
+    var totalTimeText by remember(playerId) { mutableStateOf("00:00") }
+    
+    var videoView by remember(playerId) { mutableStateOf<android.widget.VideoView?>(null) }
+    val handler = remember { Handler(Looper.getMainLooper()) }
+    
+    // Content scale based on fit parameter
+    val contentScale = when (fit.lowercase(Locale.ROOT)) {
+        "cover", "crop" -> ContentScale.Crop
+        "fill", "stretch" -> ContentScale.FillBounds
+        "none", "none" -> ContentScale.None
+        else -> ContentScale.Fit
+    }
+    
+    // Update progress runnable
+    val updateProgressRunnable = remember(playerId) {
+        object : Runnable {
+            override fun run() {
+                videoView?.let { view ->
+                    if (view.isPlaying) {
+                        currentPosition = view.currentPosition.toFloat()
+                        currentTimeText = formatTime(view.currentPosition)
+                        handler.postDelayed(this, 100)
+                    }
+                }
+            }
+        }
+    }
+    
+    // Cleanup on dispose
+    DisposableEffect(playerId) {
+        onDispose {
+            handler.removeCallbacks(updateProgressRunnable)
+            videoView?.let { view ->
+                if (view.isPlaying) {
+                    view.stopPlayback()
+                }
+            }
+        }
+    }
+    
+    // Initialize video when URL changes
+    LaunchedEffect(url, playerId) {
+        if (url.isNotBlank()) {
+            isLoading = true
+        }
+    }
+    
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+            .clickable { showController = !showController },
+        contentAlignment = Alignment.Center
+    ) {
+        // VideoView
+        AndroidView(
+            factory = { ctx ->
+                android.widget.VideoView(ctx).apply {
+                    tag = playerId
+                    videoView = this
+                    
+                    setOnPreparedListener { mp ->
+                        mp.isLooping = false
+                        val durationMs = duration
+                        duration = this.duration.toFloat()
+                        totalTimeText = formatTime(this.duration)
+                        isLoading = false
+                    }
+                    
+                    setOnCompletionListener {
+                        isPlaying = false
+                        currentPosition = 0f
+                        currentTimeText = "00:00"
+                        handler.removeCallbacks(updateProgressRunnable)
+                    }
+                    
+                    setOnErrorListener { _, _, _ ->
+                        isLoading = false
+                        isPlaying = false
+                        Toast.makeText(context, "视频加载失败", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    
+                    // Set video URI
+                    if (url.isNotBlank()) {
+                        try {
+                            val uri = android.net.Uri.parse(url)
+                            setVideoURI(uri)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "视频加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
+            update = { view ->
+                if (url.isNotBlank() && view.tag != playerId) {
+                    view.tag = playerId
+                    try {
+                        val uri = android.net.Uri.parse(url)
+                        view.setVideoURI(uri)
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+        )
+        
+        // Poster image (shown when not playing)
+        if (!isPlaying && poster.isNotBlank()) {
+            AsyncImage(
+                model = poster,
+                contentDescription = "Video poster",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height),
+                contentScale = contentScale
+            )
+        }
+        
+        // Loading indicator
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = Color.White
+            )
+        }
+        
+        // Play button overlay
+        if (!isPlaying && !isLoading && url.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable {
+                        videoView?.let { view ->
+                            view.start()
+                            isPlaying = true
+                            handler.post(updateProgressRunnable)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "播放",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+        
+        // Controller overlay
+        if (showController && isPlaying) {
+            // Bottom control bar
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(8.dp)
+            ) {
+                // Progress bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = currentTimeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                    Slider(
+                        value = if (duration > 0) currentPosition / duration else 0f,
+                        onValueChange = { fraction ->
+                            val newPosition = (fraction * duration).toInt()
+                            videoView?.seekTo(newPosition)
+                            currentPosition = newPosition.toFloat()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Text(
+                        text = totalTimeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+                
+                // Control buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Play/Pause button
+                    IconButton(
+                        onClick = {
+                            videoView?.let { view ->
+                                if (view.isPlaying) {
+                                    view.pause()
+                                    isPlaying = false
+                                    handler.removeCallbacks(updateProgressRunnable)
+                                } else {
+                                    view.start()
+                                    isPlaying = true
+                                    handler.post(updateProgressRunnable)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "暂停" else "播放",
+                            tint = Color.White
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    // Stop button
+                    IconButton(
+                        onClick = {
+                            videoView?.let { view ->
+                                if (view.isPlaying) {
+                                    view.stopPlayback()
+                                }
+                                view.seekTo(0)
+                                isPlaying = false
+                                currentPosition = 0f
+                                currentTimeText = "00:00"
+                                handler.removeCallbacks(updateProgressRunnable)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "停止",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

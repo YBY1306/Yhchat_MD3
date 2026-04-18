@@ -104,13 +104,39 @@ private fun HtmlGenericNode(
     }
     val merged = headingStyle.mergeText(node.style.mergeText(inheritedText))
     val forceBlockLayout = shouldRenderAsBlockNode(node)
+    
+    // 检查是否是链接标签（用于处理块级链接的可点击性）
+    val isLink = node.tag == "a"
+    val href = node.attrs["href"]
 
     if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
-        Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
+        // 对于链接标签，使用 clickable 修饰符确保整个块区域可点击
+        val clickableModifier = if (isLink && !href.isNullOrBlank()) {
+            Modifier.clickable { 
+                // 优先使用 href 属性（用于块级链接）
+                onLinkClick?.invoke(href) 
+            }
+        } else {
+            Modifier
+        }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(clickableModifier)
+                .htmlBoxModel(node.style)
+        ) {
             RenderInlineFlow(node.children, merged, onImageClick, onLinkClick)
         }
     } else {
-        val rendered = buildInlineAnnotated(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged)
+        // 对于行内链接，需要正确处理 <a> 标签的 href
+        val rendered = if (isLink && !href.isNullOrBlank()) {
+            // 当 <a> 标签包含文本但没有子元素时，使用 buildInlineAnnotated
+            // 然后通过 URL annotation 来处理点击
+            buildInlineAnnotatedWithLink(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged, href)
+        } else {
+            buildInlineAnnotated(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged)
+        }
         if (rendered.first.text.isNotEmpty()) {
             ClickableText(
                 text = rendered.first,
@@ -258,6 +284,88 @@ private fun buildInlineAnnotated(
         }
 
         nodes.forEach { appendNode(it, inheritedText) }
+    }
+
+    return annotated to baseStyle
+}
+
+/**
+ * 带链接的 AnnotatedString 构建函数
+ * 用于处理带有 href 属性的 <a> 标签
+ */
+@Composable
+private fun buildInlineAnnotatedWithLink(
+    nodes: List<HtmlNode>,
+    inheritedText: CssStyle,
+    href: String
+): Pair<AnnotatedString, TextStyle> {
+    val baseStyle = inheritedText.toComposeTextStyle()
+    val linkColor = MaterialTheme.colorScheme.primary
+
+    val annotated = buildAnnotatedString {
+        fun appendNode(node: HtmlNode, parentStyle: CssStyle) {
+            when (node) {
+                is HtmlNode.Text -> append(normalizeHtmlText(node.text, parentStyle.whiteSpace))
+                is HtmlNode.Element -> {
+                    val merged = node.style.mergeText(parentStyle)
+                    when (node.tag) {
+                        "strong", "b" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                            node.children.forEach { appendNode(it, merged.copy(fontWeight = FontWeight.Bold)) }
+                        }
+                        "em", "i" -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                            node.children.forEach { appendNode(it, merged.copy(fontStyle = FontStyle.Italic)) }
+                        }
+                        "u" -> withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
+                            node.children.forEach { appendNode(it, merged.copy(textDecoration = TextDecoration.Underline)) }
+                        }
+                        "s" -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
+                            node.children.forEach { appendNode(it, merged.copy(textDecoration = TextDecoration.LineThrough)) }
+                        }
+                        "small" -> withStyle(SpanStyle(fontSize = 12.sp)) {
+                            node.children.forEach { appendNode(it, merged.copy(fontSize = 12.sp)) }
+                        }
+                        "a" -> {
+                            // 嵌套的 <a> 标签，使用其自身的 href
+                            val nestedHref = node.attrs["href"].orEmpty()
+                            pushStringAnnotation(tag = "URL", annotation = nestedHref)
+                            withStyle(
+                                SpanStyle(
+                                    color = merged.color ?: linkColor,
+                                    textDecoration = merged.textDecoration ?: TextDecoration.Underline
+                                )
+                            ) {
+                                node.children.forEach { appendNode(it, merged.copy(color = merged.color ?: linkColor)) }
+                            }
+                            pop()
+                        }
+                        else -> {
+                            val spanStyle = SpanStyle(
+                                color = merged.color ?: Color.Unspecified,
+                                fontSize = merged.fontSize ?: TextUnit.Unspecified,
+                                fontWeight = merged.fontWeight,
+                                fontStyle = merged.fontStyle,
+                                textDecoration = merged.textDecoration
+                            )
+                            withStyle(spanStyle) {
+                                node.children.forEach { appendNode(it, merged) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 处理链接标签的外层
+        pushStringAnnotation(tag = "URL", annotation = href)
+        withStyle(
+            SpanStyle(
+                color = inheritedText.color ?: linkColor,
+                textDecoration = inheritedText.textDecoration ?: TextDecoration.Underline
+            )
+        ) {
+            nodes.forEach { appendNode(it, inheritedText.copy(color = inheritedText.color ?: linkColor)) }
+        }
+        pop()
     }
 
     return annotated to baseStyle

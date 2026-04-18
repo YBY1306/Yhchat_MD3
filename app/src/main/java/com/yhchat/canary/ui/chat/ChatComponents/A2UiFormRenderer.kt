@@ -1495,10 +1495,10 @@ private fun RenderA2UiComponent(
             val iconVector = when (iconName) {
                 // Playback controls
                 "shuffle" -> Icons.Filled.Shuffle
-                "skipprevious", "prev", "previous" -> Icons.Filled.SkipPrevious
+                "skipprevious", "prev", "previous" -> Icons.Filled.KeyboardArrowLeft
                 "playarrow", "play" -> Icons.Filled.PlayArrow
                 "pause" -> Icons.Filled.Pause
-                "skipnext", "next" -> Icons.Filled.SkipNext
+                "skipnext", "next" -> Icons.Filled.KeyboardArrowRight
                 "repeat" -> Icons.Filled.Repeat
                 "close" -> Icons.Filled.Close
                 

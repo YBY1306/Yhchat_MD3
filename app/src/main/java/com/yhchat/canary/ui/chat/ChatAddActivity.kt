@@ -385,7 +385,6 @@ private fun ChatDetailContent(
         ) {
             OutlinedButton(
                 onClick = {
-                    activity?.finishAffinity()
                     activity?.finish()
                 },
                 modifier = Modifier.weight(1f)

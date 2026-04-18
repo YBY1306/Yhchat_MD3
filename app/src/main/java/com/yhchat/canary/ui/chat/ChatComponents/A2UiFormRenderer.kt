@@ -3299,10 +3299,10 @@ private fun A2UiVideoPlayer(
                     
                     setOnInfoListener { _, what, _ ->
                         when (what) {
-                            android.widget.MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
+                            MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
                                 isBuffering = true
                             }
-                            android.widget.MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
+                            MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
                                 isBuffering = false
                             }
                         }

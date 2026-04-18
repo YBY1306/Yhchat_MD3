@@ -64,6 +64,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONArray
 import org.json.JSONObject
@@ -122,8 +130,32 @@ internal data class A2UiComponent(
     val contentChild: String? = null,
     val title: A2UiValue? = null,
     val data: A2UiValue? = null,
-    val axis: String? = null
+    val axis: String? = null,
+    val width: Number? = null,
+    val height: Number? = null,
+    val backgroundColor: String? = null,
+    val elements: List<Map<String, Any?>>? = null
 )
+
+// Extension property to get width as Dp
+private fun Number?.toDp(): androidx.compose.ui.unit.Dp {
+    return when (this) {
+        is Float -> androidx.compose.ui.unit.Dp(this)
+        is Double -> androidx.compose.ui.unit.Dp(this.toFloat())
+        is Int -> androidx.compose.ui.unit.Dp(this.toFloat())
+        else -> 300.dp
+    }
+}
+
+// Extension property to get height as Dp
+private fun Number?.toHeightDp(): androidx.compose.ui.unit.Dp {
+    return when (this) {
+        is Float -> androidx.compose.ui.unit.Dp(this)
+        is Double -> androidx.compose.ui.unit.Dp(this.toFloat())
+        is Int -> androidx.compose.ui.unit.Dp(this.toFloat())
+        else -> 300.dp
+    }
+}
 
 internal data class A2UiOption(
     val label: String,
@@ -711,6 +743,8 @@ private fun RenderA2UiComponent(
                 )
             }
 
+            val buttonModifier = modifier.wrapContentWidth(align = Alignment.CenterHorizontally)
+
             when {
                 component.variant.equals("borderless", ignoreCase = true) ||
                     component.variant.equals("text", ignoreCase = true) -> {
@@ -719,7 +753,7 @@ private fun RenderA2UiComponent(
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action)
                         },
                         enabled = enabled,
-                        modifier = modifier.fillMaxWidth(),
+                        modifier = buttonModifier,
                         content = buttonContent
                     )
                 }
@@ -730,7 +764,7 @@ private fun RenderA2UiComponent(
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action)
                         },
                         enabled = enabled,
-                        modifier = modifier.fillMaxWidth(),
+                        modifier = buttonModifier,
                         content = buttonContent
                     )
                 }
@@ -741,7 +775,7 @@ private fun RenderA2UiComponent(
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action)
                         },
                         enabled = enabled,
-                        modifier = modifier.fillMaxWidth(),
+                        modifier = buttonModifier,
                         content = buttonContent
                     )
                 }
@@ -1045,6 +1079,20 @@ private fun RenderA2UiComponent(
                         .height(1.dp)
                         .background(MaterialTheme.colorScheme.outlineVariant)
                 }
+            )
+        }
+
+        "custompaint" -> {
+            val width = component.width?.toDp() ?: 300.dp
+            val height = component.height?.toDp() ?: 300.dp
+            val backgroundColor = component.backgroundColor?.let { parseA2UiHexColor(it) }
+            val elements = parseA2UiPaintElements(component.elements)
+            A2UiCustomPaint(
+                width = width,
+                height = height,
+                backgroundColor = backgroundColor,
+                elements = elements,
+                modifier = modifier.fillMaxWidth()
             )
         }
 
@@ -1833,6 +1881,7 @@ private fun A2UiPieChart(
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             slices.forEach { slice ->
+                val percentage = if (total > 0f) (slice.value / total * 100).toInt() else 0
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -1841,7 +1890,7 @@ private fun A2UiPieChart(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "${slice.label}: ${slice.value}",
+                        text = "${slice.label}: ${slice.value} ($percentage%)",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -1895,4 +1944,218 @@ private fun parseA2UiHexColor(value: String?): Color? {
     return runCatching {
         Color(android.graphics.Color.parseColor(value))
     }.getOrNull()
+}
+
+// Data class for paint elements
+private data class A2UiPaintElement(
+    val type: String,
+    val properties: Map<String, Any?>,
+    val strokeColor: String? = null,
+    val strokeWidth: Float? = null,
+    val fillColor: String? = null,
+    val style: String? = null
+)
+
+@Composable
+private fun A2UiCustomPaint(
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    backgroundColor: Color?,
+    elements: List<A2UiPaintElement>,
+    modifier: Modifier = Modifier
+) {
+    val textMeasurer = rememberTextMeasurer()
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .width(width)
+                .height(height)
+        ) {
+            // Draw background
+            backgroundColor?.let {
+                drawRect(color = it, size = size)
+            }
+            
+            // Draw each element
+            elements.forEach { element ->
+                when (element.type.lowercase(Locale.ROOT)) {
+                    "rect" -> {
+                        val props = element.properties
+                        val x = (props["x"] as? Number)?.toFloat() ?: 0f
+                        val y = (props["y"] as? Number)?.toFloat() ?: 0f
+                        val w = (props["width"] as? Number)?.toFloat() ?: size.width
+                        val h = (props["height"] as? Number)?.toFloat() ?: size.height
+                        
+                        val strokeC = element.strokeColor?.let { parseA2UiHexColor(it) }
+                        val strokeW = element.strokeWidth ?: 1f
+                        
+                        if (element.style == "fill" || element.fillColor != null) {
+                            val fillC = element.fillColor?.let { parseA2UiHexColor(it) } ?: strokeC
+                            fillC?.let { drawRect(color = it, topLeft = Offset(x, y), size = Size(w, h)) }
+                        }
+                        
+                        strokeC?.let {
+                            drawRect(
+                                color = it,
+                                topLeft = Offset(x, y),
+                                size = Size(w, h),
+                                style = Stroke(width = strokeW)
+                            )
+                        }
+                    }
+                    
+                    "line" -> {
+                        val props = element.properties
+                        val x1 = (props["x1"] as? Number)?.toFloat() ?: 0f
+                        val y1 = (props["y1"] as? Number)?.toFloat() ?: 0f
+                        val x2 = (props["x2"] as? Number)?.toFloat() ?: size.width
+                        val y2 = (props["y2"] as? Number)?.toFloat() ?: size.height
+                        val strokeC = element.strokeColor?.let { parseA2UiHexColor(it) } ?: Color.Black
+                        val strokeW = element.strokeWidth ?: 1f
+                        
+                        drawLine(
+                            color = strokeC,
+                            start = Offset(x1, y1),
+                            end = Offset(x2, y2),
+                            strokeWidth = strokeW,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    
+                    "circle" -> {
+                        val props = element.properties
+                        val cx = (props["cx"] as? Number)?.toFloat() ?: 0f
+                        val cy = (props["cy"] as? Number)?.toFloat() ?: 0f
+                        val radius = (props["radius"] as? Number)?.toFloat() ?: 10f
+                        
+                        val strokeC = element.strokeColor?.let { parseA2UiHexColor(it) }
+                        val fillC = element.fillColor?.let { parseA2UiHexColor(it) }
+                        val strokeW = element.strokeWidth ?: 2f
+                        
+                        if (element.style == "fill" || fillC != null) {
+                            fillC?.let { drawCircle(color = it, radius = radius, center = Offset(cx, cy)) }
+                        } else {
+                            strokeC?.let {
+                                drawCircle(
+                                    color = it,
+                                    radius = radius,
+                                    center = Offset(cx, cy),
+                                    style = Stroke(width = strokeW)
+                                )
+                            }
+                        }
+                    }
+                    
+                    "path" -> {
+                        val props = element.properties
+                        val smooth = props["smooth"] as? Boolean ?: false
+                        val pointsData = props["points"] as? List<*>
+                        
+                        if (pointsData != null && pointsData.isNotEmpty()) {
+                            val points = pointsData.mapNotNull { point ->
+                                val pointMap = point as? Map<*, *>
+                                val px = (pointMap?.get("x") as? Number)?.toFloat()
+                                val py = (pointMap?.get("y") as? Number)?.toFloat()
+                                if (px != null && py != null) Offset(px, py) else null
+                            }
+                            
+                            if (points.size >= 2) {
+                                val path = Path()
+                                val strokeC = element.strokeColor?.let { parseA2UiHexColor(it) } ?: Color.Blue
+                                val strokeW = element.strokeWidth ?: 3f
+                                
+                                if (smooth && points.size >= 3) {
+                                    // Draw smooth curve using quadratic bezier
+                                    path.moveTo(points[0].x, points[0].y)
+                                    for (i in 1 until points.size - 1) {
+                                        val controlX = points[i].x
+                                        val controlY = points[i].y
+                                        val endX = (points[i].x + points[i + 1].x) / 2
+                                        val endY = (points[i].y + points[i + 1].y) / 2
+                                        path.quadraticBezierTo(controlX, controlY, endX, endY)
+                                    }
+                                    // Draw to last point
+                                    path.lineTo(points.last().x, points.last().y)
+                                } else {
+                                    // Draw straight lines
+                                    path.moveTo(points[0].x, points[0].y)
+                                    for (i in 1 until points.size) {
+                                        path.lineTo(points[i].x, points[i].y)
+                                    }
+                                }
+                                
+                                drawPath(
+                                    path = path,
+                                    color = strokeC,
+                                    style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                                )
+                            }
+                        }
+                    }
+                    
+                    "text" -> {
+                        val props = element.properties
+                        val text = props["text"]?.toString() ?: ""
+                        val x = (props["x"] as? Number)?.toFloat() ?: 0f
+                        val y = (props["y"] as? Number)?.toFloat() ?: 0f
+                        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: 12f
+                        val color = (props["color"] as? String)?.let { parseA2UiHexColor(it) } ?: Color.Black
+                        
+                        // Parse fontWeight
+                        val fontWeight = when (val fw = props["fontWeight"]?.toString()?.lowercase()) {
+                            "bold", "700", "800", "900" -> FontWeight.Bold
+                            "medium", "500" -> FontWeight.Medium
+                            "semi-bold", "semibold", "600" -> FontWeight.SemiBold
+                            "light", "300" -> FontWeight.Light
+                            "thin", "100" -> FontWeight.Thin
+                            "normal", "400" -> FontWeight.Normal
+                            else -> FontWeight.Normal
+                        }
+                        
+                        val textStyle = TextStyle(
+                            color = color,
+                            fontSize = fontSize.sp,
+                            fontFamily = FontFamily.Default,
+                            fontWeight = fontWeight
+                        )
+                        
+                        val textResult = textMeasurer.measure(
+                            text = text,
+                            style = textStyle
+                        )
+                        
+                        drawText(
+                            textMeasurer = textMeasurer,
+                            text = text,
+                            style = textStyle,
+                            topLeft = Offset(x - textResult.size.width / 2f, y - textResult.size.height / 2f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun parseA2UiPaintElements(rawElements: List<Map<String, Any?>>?): List<A2UiPaintElement> {
+    if (rawElements == null) return emptyList()
+    
+    return rawElements.mapNotNull { element ->
+        val type = element["type"]?.toString()?.lowercase(Locale.ROOT) ?: return@mapNotNull null
+        val properties = element["properties"] as? Map<String, Any?> ?: emptyMap()
+        
+        A2UiPaintElement(
+            type = type,
+            properties = properties,
+            strokeColor = element["strokeColor"]?.toString(),
+            strokeWidth = (element["strokeWidth"] as? Number)?.toFloat(),
+            fillColor = element["fillColor"]?.toString(),
+            style = element["style"]?.toString()
+        )
+    }
 }

@@ -94,6 +94,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -120,10 +122,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -203,7 +201,8 @@ internal data class A2UiComponent(
     val elements: List<Map<String, Any?>>? = null,
     val tabs: List<Map<String, Any?>>? = null,
     val poster: A2UiValue? = null,
-    val fit: String? = null
+    val fit: String? = null,
+    val data: List<A2UiPieSlice>? = null
 )
 
 // Extension property to get width as Dp
@@ -260,6 +259,29 @@ internal data class A2UiCheck(
     val call: String,
     val args: Map<String, A2UiValue>,
     val message: String? = null
+)
+
+internal data class A2UiPieSlice(
+    val label: String,
+    val value: Double,
+    val color: String
+)
+
+internal data class A2UiPaintElement(
+    val type: String,
+    val strokeColor: String? = null,
+    val strokeWidth: Int? = null,
+    val properties: A2UiPaintProperties? = null
+)
+
+internal data class A2UiPaintProperties(
+    val smooth: Boolean? = null,
+    val points: List<A2UiPoint> = emptyList()
+)
+
+internal data class A2UiPoint(
+    val x: Int,
+    val y: Int
 )
 
 internal fun parseA2UiSpec(rawText: String): A2UiSpec? {
@@ -391,7 +413,18 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
             (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
         },
         poster = parseA2UiValue(componentObject.opt("poster")),
-        fit = componentObject.optString("fit").takeIf { it.isNotBlank() }
+        fit = componentObject.optString("fit").takeIf { it.isNotBlank() },
+        data = componentObject.optJSONArray("data")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i -> 
+                arr.optJSONObject(i)?.let { obj ->
+                    A2UiPieSlice(
+                        label = obj.optString("label", ""),
+                        value = obj.optDouble("value", 0.0),
+                        color = obj.optString("color", "#000000")
+                    )
+                }
+            }
+        }
     )
 }
 
@@ -680,6 +713,62 @@ private fun normalizeA2UiValue(value: Any?): Any? {
         is List<*> -> value.map { normalizeA2UiValue(it) }
         is String -> value
         else -> value
+    }
+}
+
+private fun parseA2UiPieSlices(data: Any?): List<A2UiPieSlice> {
+    return when (data) {
+        is List<*> -> data.mapNotNull { item ->
+            when (item) {
+                is Map<*, *> -> {
+                    val label = item["label"]?.toString() ?: ""
+                    val value = (item["value"] as? Number)?.toDouble() ?: 0.0
+                    val color = item["color"]?.toString() ?: "#000000"
+                    A2UiPieSlice(label, value, color)
+                }
+                else -> null
+            }
+        }
+        else -> emptyList()
+    }
+}
+
+private fun parseA2UiPaintElements(elements: List<Map<String, Any?>>?): List<A2UiPaintElement> {
+    return elements?.mapNotNull { element ->
+        val type = element["type"]?.toString() ?: return@mapNotNull null
+        val strokeColor = element["strokeColor"]?.toString()
+        val strokeWidth = (element["strokeWidth"] as? Number)?.toInt()
+        val properties = element["properties"] as? Map<*, *>
+        
+        val paintProperties = properties?.let { props ->
+            val smooth = props["smooth"] as? Boolean
+            val pointsList = props["points"] as? List<*>
+            val points = pointsList?.mapNotNull { point ->
+                when (point) {
+                    is Map<*, *> -> {
+                        val x = (point["x"] as? Number)?.toInt() ?: 0
+                        val y = (point["y"] as? Number)?.toInt() ?: 0
+                        A2UiPoint(x, y)
+                    }
+                    else -> null
+                }
+            } ?: emptyList()
+            A2UiPaintProperties(smooth, points)
+        }
+        
+        A2UiPaintElement(type, strokeColor, strokeWidth, paintProperties)
+    } ?: emptyList()
+}
+
+private fun parseColor(colorString: String): Color {
+    return try {
+        if (colorString.startsWith("#")) {
+            Color(android.graphics.Color.parseColor(colorString))
+        } else {
+            Color.Black
+        }
+    } catch (e: Exception) {
+        Color.Black
     }
 }
 
@@ -1404,14 +1493,59 @@ private fun RenderA2UiComponent(
         "piechart" -> {
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
                 ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
-                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
-            A2UiPieChart(
-                title = title,
-                slices = parseA2UiPieSlices(chartData),
-                modifier = modifier.fillMaxWidth(),
-                showPercentageOnChart = true
+            val chartData = component.data ?: parseA2UiPieSlices(
+                resolveA2UiValue(spec, dataModel, component.data, scopePath)
+                    ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
             )
+            
+            val chartSize = minOf(
+                component.width?.toDp() ?: 150.dp, 
+                component.height?.toDp() ?: 150.dp
+            )
+            
+            Column(
+                modifier = modifier,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!title.isNullOrBlank()) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                
+                Canvas(
+                    modifier = Modifier.size(chartSize)
+                ) {
+                    if (chartData.isNotEmpty()) {
+                        val total = chartData.sumOf { it.value }
+                        var startAngle = 0f
+                        val centerX = size.width / 2f
+                        val centerY = size.height / 2f
+                        val radius = minOf(centerX, centerY) * 0.8f
+                        
+                        chartData.forEach { slice ->
+                            val sweepAngle = (slice.value / total * 360).toFloat()
+                            val color = parseColor(slice.color)
+                            
+                            drawArc(
+                                color = color,
+                                startAngle = startAngle,
+                                sweepAngle = sweepAngle,
+                                useCenter = true,
+                                topLeft = androidx.compose.ui.geometry.Offset(
+                                    centerX - radius,
+                                    centerY - radius
+                                ),
+                                size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
+                            )
+                            
+                            startAngle += sweepAngle
+                        }
+                    }
+                }
+            }
         }
         
         "tabs" -> {

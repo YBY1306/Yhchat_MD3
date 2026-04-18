@@ -360,9 +360,10 @@ fun MessageContentView(
                 content.text?.let { text ->
                     val a2UiSpec = remember(text) { parseA2UiSpec(text) }
                     if (a2UiSpec != null) {
-                        // 提取A2UI JSON之外的文本内容
+                        // 提取A2UI JSON之外的文本内容，过滤掉```json```代码块
                         val (beforeText, afterText) = remember(text) {
-                            extractTextAroundA2UiJson(text)
+                            val filtered = text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "")
+                            extractTextAroundA2UiJson(filtered)
                         }
                         
                         Column(modifier = Modifier.fillMaxWidth()) {

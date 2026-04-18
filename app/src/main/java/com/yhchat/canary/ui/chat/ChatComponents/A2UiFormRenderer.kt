@@ -198,6 +198,7 @@ internal data class A2UiComponent(
     val color: String? = null,
     val progressValue: Float? = null,
     val elements: List<Map<String, Any?>>? = null,
+    val tabs: List<Map<String, Any?>>? = null,
     val poster: A2UiValue? = null,
     val fit: String? = null
 )
@@ -381,6 +382,9 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         progressValue = componentObject.optDouble("value").toFloat().takeIf { !componentObject.isNull("value") }
             ?: componentObject.optDouble("progress").toFloat().takeIf { !componentObject.isNull("progress") },
         elements = componentObject.optJSONArray("elements")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
+        },
+        tabs = componentObject.optJSONArray("tabs")?.let { arr ->
             (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
         },
         poster = parseA2UiValue(componentObject.opt("poster")),
@@ -806,21 +810,76 @@ private fun RenderA2UiComponent(
         "image" -> {
             val imageUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
             var showImageViewer by remember { mutableStateOf(false) }
+            var loadError by remember { mutableStateOf(false) }
+            
             if (imageUrl.isNotBlank()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
+                // 根据 fit 属性或 variant 决定 ContentScale
+                val contentScale = when {
+                    component.fit != null -> when (component.fit.lowercase(Locale.ROOT)) {
+                        "cover", "crop" -> ContentScale.Crop
+                        "fill", "stretch" -> ContentScale.FillBounds
+                        "none", "inside" -> ContentScale.Inside
+                        else -> ContentScale.Fit
+                    }
+                    component.variant == "largeFeature" -> ContentScale.Crop
+                    else -> ContentScale.Fit
+                }
+                
+                // 只有加载失败时才显示固定高度
+                Box(
                     modifier = modifier
                         .fillMaxWidth()
+                        .then(
+                            if (loadError) {
+                                Modifier.height(100.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable { showImageViewer = true },
-                    contentScale = if (component.variant == "largeFeature") {
-                        ContentScale.Crop
-                    } else {
-                        ContentScale.Fit
+                        .background(
+                            if (loadError) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (loadError) Modifier.height(100.dp) else Modifier
+                            )
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showImageViewer = true },
+                        contentScale = contentScale,
+                        onError = { loadError = true }
+                    )
+                    
+                    // 加载失败时显示占位图标
+                    if (loadError) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Warning,
+                                contentDescription = "图片加载失败",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = "图片加载失败",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
                     }
-                )
-                if (showImageViewer) {
+                }
+                
+                if (showImageViewer && !loadError) {
                     ImageViewer(
                         imageUrl = imageUrl,
                         onDismiss = { showImageViewer = false }
@@ -834,13 +893,11 @@ private fun RenderA2UiComponent(
             val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
                 ?.toString().orEmpty()
             
-            // 按钮宽度根据字数适配，内部使用 padding 增大可点击区域，但不影响按钮文字显示
+            // 按钮宽度根据字数自适应，文字居中
             Box(
                 modifier = modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                val buttonModifier = Modifier.wrapContentWidth(align = Alignment.CenterHorizontally)
-                
                 when {
                     component.variant.equals("borderless", ignoreCase = true) ||
                         component.variant.equals("text", ignoreCase = true) -> {
@@ -848,8 +905,7 @@ private fun RenderA2UiComponent(
                             onClick = {
                                 executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                             },
-                            enabled = enabled,
-                            modifier = buttonModifier
+                            enabled = enabled
                         ) {
                             component.child?.let { childId ->
                                 RenderA2UiComponent(
@@ -869,8 +925,7 @@ private fun RenderA2UiComponent(
                             onClick = {
                                 executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                             },
-                            enabled = enabled,
-                            modifier = buttonModifier
+                            enabled = enabled
                         ) {
                             component.child?.let { childId ->
                                 RenderA2UiComponent(
@@ -890,8 +945,7 @@ private fun RenderA2UiComponent(
                             onClick = {
                                 executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                             },
-                            enabled = enabled,
-                            modifier = buttonModifier
+                            enabled = enabled
                         ) {
                             component.child?.let { childId ->
                                 RenderA2UiComponent(
@@ -910,7 +964,12 @@ private fun RenderA2UiComponent(
         }
 
         "textfield", "datetimeinput" -> {
-            val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString().orEmpty()
+            // 修复: 对于直接是字符串的 label，不要调用 resolveA2UiValue，直接使用
+            val rawLabel = component.label
+            val label = when (rawLabel) {
+                is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
+                else -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+            }
             val valuePath = resolveBoundPath(component.value, scopePath)
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)?.toString().orEmpty()
             val placeholder = resolveA2UiValue(spec, dataModel, component.placeholder, scopePath)?.toString().orEmpty()
@@ -1325,7 +1384,9 @@ private fun RenderA2UiComponent(
             val currentTabIndex = resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Int
                 ?: resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Int
                 ?: 0
-            val tabsList = component.elements?.mapNotNull { it as? Map<String, Any?> }
+            // 优先使用 tabs 属性，如果为空则使用 elements 属性
+            val tabsList = component.tabs?.mapNotNull { it as? Map<String, Any?> }
+                ?: component.elements?.mapNotNull { it as? Map<String, Any?> }
                 ?: emptyList()
             
             // 即使tabsList为空，也要渲染组件，使用一个占位tab
@@ -1629,7 +1690,14 @@ private fun RenderA2UiComponent(
             val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat() ?: 0f
             val min = (component.min as? Number)?.toFloat() ?: 0f
             val max = (component.max as? Number)?.toFloat() ?: 1f
-            val label = component.label?.toString() ?: ""
+            // 修复: 正确解析 label 属性
+            val label = when (val rawLabel = component.label) {
+                is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
+                is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
+                null -> ""
+                else -> rawLabel.toString()
+            }
             val valuePath = resolveBoundPath(component.value, scopePath)
             
             var sliderValue by rememberSaveable(component.id, scopePath) { mutableFloatStateOf(value) }
@@ -2358,48 +2426,104 @@ private fun A2UiLineChart(
             Text("No chart data", style = MaterialTheme.typography.bodySmall)
             return
         }
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
+        
+        // 图表区域布局：顶部标题，中间绘图区，底部X轴标签
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val leftPadding = 24.dp.toPx()
-            val rightPadding = 12.dp.toPx()
-            val topPadding = 12.dp.toPx()
-            val bottomPadding = 24.dp.toPx()
-            val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
-            val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val leftPadding = 32.dp.toPx()  // 增加左侧空间给Y轴标签
+                val rightPadding = 8.dp.toPx()
+                val topPadding = 8.dp.toPx()
+                val bottomPadding = 8.dp.toPx()
+                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
 
-            drawLine(
-                color = Color(0x33000000),
-                start = Offset(leftPadding, topPadding + plotHeight),
-                end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
-                strokeWidth = 1.dp.toPx()
-            )
-            drawLine(
-                color = Color(0x33000000),
-                start = Offset(leftPadding, topPadding),
-                end = Offset(leftPadding, topPadding + plotHeight),
-                strokeWidth = 1.dp.toPx()
-            )
+                // 绘制Y轴标签 (0, 中间值, 最大值)
+                val yLabels = listOf(minY, (minY + maxY) / 2, maxY)
+                yLabels.forEach { label ->
+                    val yRatio = (label - minY) / range
+                    val yPos = topPadding + (1f - yRatio) * plotHeight
+                    
+                    // 绘制Y轴刻度线
+                    drawLine(
+                        color = Color(0x11000000),
+                        start = Offset(leftPadding, yPos),
+                        end = Offset(leftPadding + plotWidth, yPos),
+                        strokeWidth = 0.5.dp.toPx()
+                    )
+                }
+                
+                // 绘制X轴和Y轴
+                drawLine(
+                    color = Color(0x33000000),
+                    start = Offset(leftPadding, topPadding + plotHeight),
+                    end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                    strokeWidth = 1.dp.toPx()
+                )
+                drawLine(
+                    color = Color(0x33000000),
+                    start = Offset(leftPadding, topPadding),
+                    end = Offset(leftPadding, topPadding + plotHeight),
+                    strokeWidth = 1.dp.toPx()
+                )
 
-            val path = Path()
-            points.forEachIndexed { index, point ->
-                val x = leftPadding + if (points.size == 1) 0f else (index * plotWidth / (points.lastIndex))
-                val yRatio = (point.y - minY) / range
-                val y = topPadding + (1f - yRatio) * plotHeight
-                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                drawCircle(
+                val path = Path()
+                points.forEachIndexed { index, point ->
+                    val x = leftPadding + if (points.size == 1) plotWidth / 2 else (index * plotWidth / (points.lastIndex.coerceAtLeast(1)))
+                    val yRatio = (point.y - minY) / range
+                    val y = topPadding + (1f - yRatio) * plotHeight
+                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    drawCircle(
+                        color = Color(0xFF1E88E5),
+                        radius = 4.dp.toPx(),
+                        center = Offset(x, y)
+                    )
+                }
+                drawPath(
+                    path = path,
                     color = Color(0xFF1E88E5),
-                    radius = 3.dp.toPx(),
-                    center = Offset(x, y)
+                    style = Stroke(width = 2.dp.toPx())
                 )
             }
-            drawPath(
-                path = path,
-                color = Color(0xFF1E88E5),
-                style = Stroke(width = 2.dp.toPx())
-            )
+            
+            // X轴标签行
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 32.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                points.forEachIndexed { index, point ->
+                    if (index == 0 || index == points.lastIndex || points.size <= 5 || index % (points.size / 4).coerceAtLeast(1) == 0) {
+                        Text(
+                            text = point.x,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Y轴标签列
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                listOf(maxY, (minY + maxY) / 2, minY).forEach { label ->
+                    Text(
+                        text = if (label == label.toLong().toFloat()) label.toLong().toString() else String.format("%.1f", label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -2427,37 +2551,99 @@ private fun A2UiBarChart(
             Text("No chart data", style = MaterialTheme.typography.bodySmall)
             return
         }
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
+        
+        // 图表区域布局：顶部标题，中间绘图区，底部X轴标签
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val leftPadding = 24.dp.toPx()
-            val rightPadding = 12.dp.toPx()
-            val topPadding = 12.dp.toPx()
-            val bottomPadding = 24.dp.toPx()
-            val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
-            val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
-            val slotWidth = plotWidth / points.size.coerceAtLeast(1)
-            val barWidth = slotWidth * 0.6f
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val leftPadding = 32.dp.toPx()  // 增加左侧空间给Y轴标签
+                val rightPadding = 8.dp.toPx()
+                val topPadding = 8.dp.toPx()
+                val bottomPadding = 8.dp.toPx()
+                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+                val slotWidth = plotWidth / points.size.coerceAtLeast(1)
+                val barWidth = slotWidth * 0.6f
 
-            drawLine(
-                color = Color(0x33000000),
-                start = Offset(leftPadding, topPadding + plotHeight),
-                end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
-                strokeWidth = 1.dp.toPx()
-            )
-
-            points.forEachIndexed { index, point ->
-                val barHeight = (point.y / maxY) * plotHeight
-                val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
-                val y = topPadding + plotHeight - barHeight
-                drawRoundRect(
-                    color = Color(0xFF43A047),
-                    topLeft = Offset(x, y),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                // 绘制Y轴标签 (0, 中间值, 最大值)
+                val yLabels = listOf(0f, maxY / 2, maxY)
+                yLabels.forEach { label ->
+                    val yRatio = label / maxY
+                    val yPos = topPadding + (1f - yRatio) * plotHeight
+                    
+                    // 绘制Y轴刻度线
+                    drawLine(
+                        color = Color(0x11000000),
+                        start = Offset(leftPadding, yPos),
+                        end = Offset(leftPadding + plotWidth, yPos),
+                        strokeWidth = 0.5.dp.toPx()
+                    )
+                }
+                
+                // 绘制X轴和Y轴
+                drawLine(
+                    color = Color(0x33000000),
+                    start = Offset(leftPadding, topPadding + plotHeight),
+                    end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                    strokeWidth = 1.dp.toPx()
                 )
+                drawLine(
+                    color = Color(0x33000000),
+                    start = Offset(leftPadding, topPadding),
+                    end = Offset(leftPadding, topPadding + plotHeight),
+                    strokeWidth = 1.dp.toPx()
+                )
+
+                points.forEachIndexed { index, point ->
+                    val barHeight = (point.y / maxY) * plotHeight
+                    val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
+                    val y = topPadding + plotHeight - barHeight
+                    drawRoundRect(
+                        color = Color(0xFF43A047),
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    )
+                }
+            }
+            
+            // X轴标签行
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 32.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                points.forEachIndexed { index, point ->
+                    if (index == 0 || index == points.lastIndex || points.size <= 5 || index % (points.size / 4).coerceAtLeast(1) == 0) {
+                        Text(
+                            text = point.x,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Y轴标签列
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                listOf(maxY, maxY / 2, 0f).forEach { label ->
+                    Text(
+                        text = if (label == label.toLong().toFloat()) label.toLong().toString() else String.format("%.1f", label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

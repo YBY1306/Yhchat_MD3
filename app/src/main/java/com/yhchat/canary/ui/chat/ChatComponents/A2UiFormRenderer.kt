@@ -1,6 +1,5 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
-import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
@@ -125,9 +124,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.utils.UnifiedLinkHandler
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -806,19 +804,27 @@ private fun RenderA2UiComponent(
 
         "image" -> {
             val imageUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
+            var showImageViewer by remember { mutableStateOf(false) }
             if (imageUrl.isNotBlank()) {
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = null,
                     modifier = modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showImageViewer = true },
                     contentScale = if (component.variant == "largeFeature") {
                         ContentScale.Crop
                     } else {
                         ContentScale.Fit
                     }
                 )
+                if (showImageViewer) {
+                    ImageViewer(
+                        imageUrl = imageUrl,
+                        onDismiss = { showImageViewer = false }
+                    )
+                }
             }
         }
 
@@ -2187,6 +2193,7 @@ private fun executeA2UiAction(
         // actionId 可以用于回调或其他处理
         // 目前显示一个 toast 表示收到了 actionId
         Toast.makeText(context, "Action: $actionId", Toast.LENGTH_SHORT).show()
+
     }
 }
 
@@ -2939,7 +2946,6 @@ private fun A2UiAudioPlayer(
                     setOnErrorListener { _, _, _ ->
                         isLoading = false
                         isPlaying = false
-                        Toast.makeText(context, "音频加载失败", Toast.LENGTH_SHORT).show()
                         true
                     }
                     
@@ -2968,7 +2974,6 @@ private fun A2UiAudioPlayer(
                 }
             } catch (e: Exception) {
                 isLoading = false
-                Toast.makeText(context, "音频加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -3288,7 +3293,6 @@ private fun A2UiVideoPlayer(
                         isLoading = false
                         isBuffering = false
                         isPlaying = false
-                        Toast.makeText(context, "视频加载失败", Toast.LENGTH_SHORT).show()
                         true
                     }
                     
@@ -3310,7 +3314,7 @@ private fun A2UiVideoPlayer(
                             val uri = android.net.Uri.parse(url)
                             setVideoURI(uri)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "视频加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            // Ignore URI parse errors
                         }
                     }
                 }
@@ -3573,7 +3577,7 @@ private fun A2UiVideoPlayer(
                     // Fullscreen button (placeholder - actual fullscreen requires activity configuration)
                     IconButton(
                         onClick = {
-                            Toast.makeText(context, "全屏功能需要Activity配置", Toast.LENGTH_SHORT).show()
+                            // Fullscreen functionality requires Activity configuration
                         },
                         modifier = Modifier.size(44.dp)
                     ) {

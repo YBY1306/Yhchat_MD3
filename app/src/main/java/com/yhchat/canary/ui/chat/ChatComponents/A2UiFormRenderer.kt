@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -706,6 +705,7 @@ internal fun A2UiFormMessage(
                 componentId = rootComponentId,
                 spec = spec,
                 dataModel = dataModel,
+                modifier = Modifier.fillMaxWidth(),
                 onDataModelChange = { path, value ->
                     dataModel = updateA2UiDataModel(dataModel, path, value)
                 }
@@ -731,7 +731,7 @@ private fun RenderA2UiComponent(
     when (component.component.lowercase(Locale.ROOT)) {
         "column" -> {
             Column(
-                modifier = modifier.fillMaxWidth(),
+                modifier = modifier,  // 移除 fillMaxWidth，允许子组件控制布局
                 verticalArrangement = verticalArrangementFor(component.justify),
                 horizontalAlignment = horizontalAlignmentFor(component.align)
             ) {
@@ -747,7 +747,7 @@ private fun RenderA2UiComponent(
 
         "row" -> {
             Row(
-                modifier = modifier.fillMaxWidth(),
+                modifier = modifier,  // 移除 fillMaxWidth，允许子组件控制布局
                 horizontalArrangement = horizontalArrangementFor(component.justify),
                 verticalAlignment = verticalAlignmentFor(component.align)
             ) {
@@ -756,6 +756,7 @@ private fun RenderA2UiComponent(
                     spec = spec,
                     dataModel = dataModel,
                     scopePath = scopePath,
+                    parentAxis = "row",
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -825,17 +826,15 @@ private fun RenderA2UiComponent(
                     else -> ContentScale.Fit
                 }
                 
-                // 只有加载失败时才显示固定高度
+                // 根据 variant 决定图片尺寸
+                val imageHeight = when (component.variant) {
+                    "smallFeature" -> 80.dp
+                    "largeFeature", "header" -> 150.dp
+                    else -> 120.dp
+                }
+                
                 Box(
                     modifier = modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (loadError) {
-                                Modifier.height(100.dp)
-                            } else {
-                                Modifier
-                            }
-                        )
                         .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (loadError) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -847,10 +846,7 @@ private fun RenderA2UiComponent(
                         model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (loadError) Modifier.height(100.dp) else Modifier
-                            )
+                            .height(imageHeight)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { showImageViewer = true },
                         contentScale = contentScale,
@@ -893,71 +889,66 @@ private fun RenderA2UiComponent(
             val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
                 ?.toString().orEmpty()
             
-            // 按钮宽度根据字数自适应，文字居中
-            Box(
-                modifier = modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    component.variant.equals("borderless", ignoreCase = true) ||
-                        component.variant.equals("text", ignoreCase = true) -> {
-                        TextButton(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+            // 按钮宽度根据字数自适应，不使用 fillMaxWidth
+            when {
+                component.variant.equals("borderless", ignoreCase = true) ||
+                    component.variant.equals("text", ignoreCase = true) -> {
+                    TextButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
+                }
 
-                    component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
-                        Button(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+                component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
+                    Button(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
+                }
 
-                    else -> {
-                        OutlinedButton(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+                else -> {
+                    OutlinedButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
                 }
             }
@@ -1863,9 +1854,10 @@ private fun RowScope.RenderA2UiRowChildren(
                 if (index > 0) {
                     Spacer(modifier = Modifier.width(8.dp))
                 }
+                // 修复: weight 组件使用 fill = false，避免填满剩余空间
                 val childModifier = spec.components[childId]
                     ?.weight
-                    ?.let { Modifier.weight(it.toFloat(), fill = true) }
+                    ?.let { Modifier.weight(it.toFloat(), fill = false) }
                     ?: Modifier
                 RenderA2UiComponent(
                     componentId = childId,

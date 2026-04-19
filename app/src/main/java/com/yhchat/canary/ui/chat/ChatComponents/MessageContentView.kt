@@ -91,7 +91,7 @@ fun MessageContentView(
     onRecall: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
     onForward: (ChatMessage) -> Unit = {},
-    onMultiSelect: () -> Unit = {}
+    onMultiSelect: (() -> Unit)? = null
 ) {
     val textColor = if (isMyMessage) {
         MaterialTheme.colorScheme.onPrimary

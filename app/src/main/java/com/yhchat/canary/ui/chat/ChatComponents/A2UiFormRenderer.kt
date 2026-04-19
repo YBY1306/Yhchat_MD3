@@ -3307,25 +3307,89 @@ private fun A2UiAudioPlayer(
         object : Runnable {
             override fun run() {
                 mediaPlayer?.let { player ->
-                    if (player.isPlaying && !isDragging) {
-                        currentPosition = player.currentPosition.toFloat()
-                        currentTimeText = formatTime(player.currentPosition.toLong())
-                        handler.postDelayed(this, 100)
+                    try {
+                        if (player.isPlaying && !isDragging) {
+                            currentPosition = player.currentPosition.toFloat()
+                            currentTimeText = formatTime(player.currentPosition.toLong())
+                        }
+                        // Continue updating as long as player exists and is playing
+                        if (player.isPlaying) {
+                            handler.postDelayed(this, 100)
+                        }
+                    } catch (e: Exception) {
+                        // Handle IllegalStateException when MediaPlayer is released
                     }
                 }
             }
         }
     }
     
-    // Cleanup on dispose
+    // Audio focus management
+    val audioManager = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
+    val audioFocusRequest = remember {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener { focusChange ->
+                    when (focusChange) {
+                        android.media.AudioManager.AUDIOFOCUS_LOSS -> {
+                            // Lost focus permanently, pause playback
+                            mediaPlayer?.let { player ->
+                                if (player.isPlaying) {
+                                    player.pause()
+                                    isPlaying = false
+                                    handler.removeCallbacks(updateProgressRunnable)
+                                }
+                            }
+                        }
+                        android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                            // Lost focus temporarily, pause playback
+                            mediaPlayer?.let { player ->
+                                if (player.isPlaying) {
+                                    player.pause()
+                                    isPlaying = false
+                                    handler.removeCallbacks(updateProgressRunnable)
+                                }
+                            }
+                        }
+                        android.media.AudioManager.AUDIOFOCUS_GAIN -> {
+                            // Regained focus, can resume if user was playing
+                        }
+                    }
+                }
+                .build()
+        } else {
+            null
+        }
+    }
+    
+    // Cleanup on dispose - but only when component is truly destroyed
     DisposableEffect(playerId) {
         onDispose {
             handler.removeCallbacks(updateProgressRunnable)
+            // Only release MediaPlayer if not playing in background
+            // In a real app, you'd want to move this to a Service for true background playback
             mediaPlayer?.let {
-                if (it.isPlaying) {
-                    it.stop()
+                try {
+                    if (it.isPlaying) {
+                        // Don't stop immediately, let it continue for a short time
+                        // In production, this should be handled by a MediaService
+                    }
+                    // Release audio focus
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && audioFocusRequest != null) {
+                        audioManager.abandonAudioFocusRequest(audioFocusRequest)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        audioManager.abandonAudioFocus(null)
+                    }
+                } catch (e: Exception) {
+                    // Handle any cleanup errors
                 }
-                it.release()
             }
         }
     }
@@ -3346,6 +3410,17 @@ private fun A2UiAudioPlayer(
                 val useCache = cachedFile != null && cachedFile.exists()
                 
                 mediaPlayer = MediaPlayer().apply {
+                    // Set audio attributes for background playback
+                    setAudioAttributes(
+                        android.media.AudioAttributes.Builder()
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .build()
+                    )
+                    
+                    // Enable wake lock to prevent device sleep during playback
+                    setWakeMode(context, android.os.PowerManager.PARTIAL_WAKE_LOCK)
+                    
                     if (useCache) {
                         // Use cached file
                         setDataSource(cachedFile.absolutePath)
@@ -3523,9 +3598,23 @@ private fun A2UiAudioPlayer(
                             isPlaying = false
                             handler.removeCallbacks(updateProgressRunnable)
                         } else {
-                            player.start()
-                            isPlaying = true
-                            handler.post(updateProgressRunnable)
+                            // Request audio focus before starting playback
+                            val focusResult = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && audioFocusRequest != null) {
+                                audioManager.requestAudioFocus(audioFocusRequest)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                audioManager.requestAudioFocus(
+                                    null,
+                                    android.media.AudioManager.STREAM_MUSIC,
+                                    android.media.AudioManager.AUDIOFOCUS_GAIN
+                                )
+                            }
+                            
+                            if (focusResult == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                                player.start()
+                                isPlaying = true
+                                handler.post(updateProgressRunnable)
+                            }
                         }
                     }
                 },

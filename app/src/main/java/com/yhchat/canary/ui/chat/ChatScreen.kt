@@ -57,20 +57,21 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
@@ -159,6 +160,8 @@ import com.yhchat.canary.ui.components.MultiSelectBottomBar
 import com.yhchat.canary.ui.live.LiveRoomLauncher
 import com.yhchat.canary.ui.live.LiveRoomsBottomSheet
 import com.yhchat.canary.ui.live.LiveRoomsViewModel
+import com.yhchat.canary.ui.community.SendToChatBottomSheet
+import com.yhchat.canary.data.model.MsgForwardReceive
 
 /**
  * 聊天界面
@@ -382,11 +385,47 @@ fun ChatScreen(
     // 多选模式状态
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedMessageIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    var showForwardSheet by remember { mutableStateOf(false) }
+    var forwardTargetMessage by remember { mutableStateOf<com.yhchat.canary.data.model.ChatMessage?>(null) }
     
     // 生成图片预览状态
     var showImagePreviewDialog by remember { mutableStateOf(false) }
     var generatedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isGeneratingImage by remember { mutableStateOf(false) }
+
+    if (showForwardSheet) {
+        val target = forwardTargetMessage
+        if (target != null) {
+            SendToChatBottomSheet(
+                onDismiss = {
+                    showForwardSheet = false
+                    forwardTargetMessage = null
+                },
+                title = "转发至",
+                sendButtonText = { count -> "发送($count)" },
+                onSend = { selected ->
+                    coroutineScope.launch {
+                        val receive = selected.map { contact ->
+                            MsgForwardReceive(chatId = contact.id, chatType = contact.type)
+                        }
+                        viewModel.forwardMessage(
+                            msgId = target.msgId,
+                            sourceChatType = chatType,
+                            receive = receive
+                        ).fold(
+                            onSuccess = {
+                                Toast.makeText(context, "转发成功", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = { err ->
+                                Toast.makeText(context, "转发失败: ${err.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            )
+        }
+    }
     
     // 读取布局设置：TTS按钮和TopAppBar显隐
     val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
@@ -860,6 +899,10 @@ fun ChatScreen(
                             onMultiSelect = {
                                 isMultiSelectMode = true
                                 selectedMessageIds = setOf(message.msgId)
+                            },
+                            onForward = { msg ->
+                                forwardTargetMessage = msg
+                                showForwardSheet = true
                             },
                             onImageClick = { imageUrl ->
                                 val gallery = if (chatImageGallery.isNotEmpty() && chatImageGallery.contains(imageUrl)) {

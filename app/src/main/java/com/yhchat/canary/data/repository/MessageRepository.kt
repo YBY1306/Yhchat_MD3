@@ -33,6 +33,40 @@ class MessageRepository @Inject constructor(
         const val CONTENT_TYPE_AUDIO = 11
         const val CONTENT_TYPE_A2UI = 14
     }
+
+    suspend fun forwardMessage(
+        msgId: String,
+        sourceChatType: Int,
+        receive: List<MsgForwardReceive>
+    ): Result<Boolean> {
+        return try {
+            val token = getToken()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("用户未登录"))
+            }
+
+            val request = MsgForwardRequest(
+                msgId = msgId,
+                chatType = sourceChatType,
+                receive = receive
+            )
+
+            val response = apiService.forwardMessage(token, request)
+            if (response.isSuccessful) {
+                val body = response.body() ?: return Result.failure(Exception("响应体为空"))
+                if (body.code == 1) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(body.message))
+                }
+            } else {
+                Result.failure(Exception("转发失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "❌ 转发消息异常", e)
+            Result.failure(e)
+        }
+    }
     
     /**
      * 获取Token的辅助方法

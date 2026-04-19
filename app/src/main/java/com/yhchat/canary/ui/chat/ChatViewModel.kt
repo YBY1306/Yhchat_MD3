@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import com.yhchat.canary.data.model.GroupDetail
+import com.yhchat.canary.data.model.MsgForwardReceive
 import yh_bot.Bot
 import java.io.File
 
@@ -73,6 +74,18 @@ class ChatViewModel @Inject constructor(
         const val DEFAULT_MSG_COUNT = 20
         const val DEFAULT_LOAD_MEMBERS_COUNT = 100
         const val MEMBERS_PER_PAGE = 50
+    }
+
+    suspend fun forwardMessage(
+        msgId: String,
+        sourceChatType: Int,
+        receive: List<MsgForwardReceive>
+    ): Result<Boolean> {
+        return messageRepository.forwardMessage(
+            msgId = msgId,
+            sourceChatType = sourceChatType,
+            receive = receive
+        )
     }
 
     private val _uiState = MutableStateFlow(ChatUiState())

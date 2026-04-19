@@ -23,13 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
-import yh_user.User
-import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import com.yhchat.canary.ui.contacts.ContactsViewModel
+import com.yhchat.canary.ui.contacts.Contact
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -38,46 +38,51 @@ fun ShareToFriendBottomSheet(
     viewModel: PostDetailViewModel,
     onDismiss: () -> Unit
 ) {
+    SendToChatBottomSheet(
+        onDismiss = onDismiss,
+        initialTabIndex = viewModel.shareSheetSelectedTab,
+        onTabChanged = { viewModel.shareSheetSelectedTab = it },
+        onSend = { selected ->
+            selected.forEach { contact ->
+                viewModel.sharePostToFriend(
+                    chatId = contact.id,
+                    chatType = contact.type,
+                    post = post,
+                    onSuccess = { },
+                    onError = { }
+                )
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun SendToChatBottomSheet(
+    onDismiss: () -> Unit,
+    title: String = "发送至",
+    sendButtonText: (Int) -> String = { count -> "发送($count)" },
+    initialTabIndex: Int = 0,
+    onTabChanged: (Int) -> Unit = {},
+    onSend: (Set<SelectedContact>) -> Unit
+) {
     val scope = rememberCoroutineScope()
-    // var selectedTab by remember { mutableStateOf(0) } // Moved below to use ViewModel
+    val contactsViewModel: ContactsViewModel = viewModel()
+    val uiState by contactsViewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    var contacts by remember { mutableStateOf<List<User.address_book_list.Data>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
     var selectedContacts by remember { mutableStateOf<Set<SelectedContact>>(emptySet()) }
     var isSending by remember { mutableStateOf(false) }
 
-    // Load contacts
-    LaunchedEffect(Unit) {
-        viewModel.getAddressBookList().fold(
-            onSuccess = { list ->
-                contacts = list.dataList
-                isLoading = false
-            },
-            onFailure = {
-                isLoading = false
-            }
-        )
-    }
+    val pagerState = rememberPagerState(initialPage = initialTabIndex, pageCount = { 3 })
+    var selectedTab by remember { mutableStateOf(initialTabIndex) }
 
-    // Filter contacts based on tab and search - Logic moved inside Pager content
-    
-    // Pager state
-    // Use ViewModel state as initial page
-    val pagerState = rememberPagerState(initialPage = viewModel.shareSheetSelectedTab, pageCount = { 3 })
-    val coroutineScope = rememberCoroutineScope()
-    
-    // Local state for tabs, synced with viewmodel
-    var selectedTab by remember { mutableStateOf(viewModel.shareSheetSelectedTab) }
-
-    // Sync tab selection with pager
     LaunchedEffect(selectedTab) {
         if (pagerState.currentPage != selectedTab) {
             pagerState.animateScrollToPage(selectedTab)
         }
-        viewModel.shareSheetSelectedTab = selectedTab
+        onTabChanged(selectedTab)
     }
-    
-    // Sync pager scroll with tab selection
+
     LaunchedEffect(pagerState.currentPage) {
         if (selectedTab != pagerState.currentPage) {
             selectedTab = pagerState.currentPage
@@ -96,33 +101,23 @@ fun ShareToFriendBottomSheet(
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "分享至",
+                    text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 TextButton(
                     onClick = {
                         if (selectedContacts.isNotEmpty() && !isSending) {
                             isSending = true
                             scope.launch {
-                                var successCount = 0
-                                selectedContacts.forEach { contact ->
-                                    viewModel.sharePostToFriend(
-                                        chatId = contact.id,
-                                        chatType = contact.type,
-                                        post = post,
-                                        onSuccess = { successCount++ },
-                                        onError = { /* handle error */ }
-                                    )
-                                }
+                                onSend(selectedContacts)
                                 onDismiss()
                             }
                         }
@@ -132,31 +127,30 @@ fun ShareToFriendBottomSheet(
                     if (isSending) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
                     } else {
-                        Text("发送(${selectedContacts.size})")
+                        Text(sendButtonText(selectedContacts.size))
                     }
                 }
             }
 
-            // Tabs
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 ScrollableTabRow(
                     selectedTabIndex = selectedTab,
-                    modifier = Modifier.wrapContentWidth(), // Center the tab row
+                    modifier = Modifier.wrapContentWidth(),
                     containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 0.dp,
                     divider = {}
                 ) {
-                    listOf("  好友  ", "  群聊  ", "  机器人  ").forEachIndexed { index, title ->
+                    listOf("  好友  ", "  群聊  ", "  机器人  ").forEachIndexed { index, tabTitle ->
                         Tab(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
                             text = {
                                 Text(
-                                    text = title,
+                                    text = tabTitle,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                                     maxLines = 1,
@@ -170,7 +164,6 @@ fun ShareToFriendBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Search Filter
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -180,7 +173,7 @@ fun ShareToFriendBottomSheet(
                     .height(50.dp),
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                shape = RoundedCornerShape(25.dp), // Flattened
+                shape = RoundedCornerShape(25.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                 )
@@ -188,8 +181,7 @@ fun ShareToFriendBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Content Pager
-            if (isLoading) {
+            if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -198,34 +190,27 @@ fun ShareToFriendBottomSheet(
                     state = pagerState,
                     modifier = Modifier.weight(1f)
                 ) { page ->
-                    // Filter list for current page
-                    val currentTabName = when (page) {
-                        0 -> "好友"
-                        1 -> "我加入的群聊"
-                        2 -> "机器人"
-                        else -> ""
+                    val sourceList: List<Contact> = when (page) {
+                        0 -> uiState.friends
+                        1 -> uiState.groups
+                        2 -> uiState.bots
+                        else -> emptyList()
                     }
-                    
-                    val pageList = remember(contacts, page, searchQuery) {
-                        val groupData = contacts.find { it.listName == currentTabName }
-                        groupData?.dataList?.filter { 
-                            searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) 
-                        } ?: emptyList()
+
+                    val pageList = remember(sourceList, searchQuery) {
+                        if (searchQuery.isBlank()) {
+                            sourceList
+                        } else {
+                            sourceList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+                        }
                     }
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(pageList) { item ->
-                            val chatType = when (page) {
-                                0 -> 1 // User
-                                1 -> 2 // Group
-                                2 -> 3 // Bot
-                                else -> 1
-                            }
-                            
-                            val contactKey = SelectedContact(item.chatId, chatType)
+                        items(pageList, key = { item -> "${item.chatType}_${item.chatId}" }) { item ->
+                            val contactKey = SelectedContact(item.chatId, item.chatType)
                             val isSelected = selectedContacts.contains(contactKey)
 
                             Row(
@@ -248,9 +233,9 @@ fun ShareToFriendBottomSheet(
                                     contentDescription = null,
                                     tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                
+
                                 Spacer(modifier = Modifier.width(16.dp))
-                                
+
                                 AsyncImage(
                                     model = item.avatarUrl,
                                     contentDescription = null,
@@ -259,9 +244,9 @@ fun ShareToFriendBottomSheet(
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
-                                
+
                                 Spacer(modifier = Modifier.width(12.dp))
-                                
+
                                 Text(
                                     text = item.name,
                                     style = MaterialTheme.typography.bodyLarge

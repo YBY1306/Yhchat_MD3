@@ -54,3 +54,19 @@ data class ShareData(
     }
 }
 
+data class MsgForwardRequest(
+    @SerializedName("msgId")
+    val msgId: String,
+    @SerializedName("chatType")
+    val chatType: Int,
+    @SerializedName("receive")
+    val receive: List<MsgForwardReceive>
+)
+
+data class MsgForwardReceive(
+    @SerializedName("chatId")
+    val chatId: String,
+    @SerializedName("chatType")
+    val chatType: Int
+)
+

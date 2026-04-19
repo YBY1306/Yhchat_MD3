@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Environment
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,12 +24,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * 生成消息图片 - 使用真正的Compose截图方式，完全复制ChatScreen的UI
@@ -37,95 +44,123 @@ suspend fun generateMessagesImage(
     messages: List<ChatMessage>,
     chatName: String
 ): Bitmap = withContext(Dispatchers.Main) {
-    val composeView = androidx.compose.ui.platform.ComposeView(context)
+    val activity = context as? android.app.Activity
+        ?: throw IllegalArgumentException("Context must be an Activity to generate screenshot")
+
     val density = context.resources.displayMetrics.density
-    val imageWidth = (400 * density).toInt()
+    val imageWidthPx = (400 * density).toInt()
+    val imageWidthDp = (imageWidthPx / density).dp
 
-    val completableDeferred = kotlinx.coroutines.CompletableDeferred<Bitmap>()
-    composeView.layoutParams = android.view.ViewGroup.LayoutParams(
-        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-        android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-    )
+    val rootView = activity.window?.decorView as? ViewGroup
+        ?: throw IllegalStateException("Cannot access activity decorView")
 
-    composeView.setContent {
-        YhchatCanaryTheme {
-            Surface(
-                modifier = Modifier
-                    .width((imageWidth / density).dp)
-                    .wrapContentHeight()
-                    .background(MaterialTheme.colorScheme.background),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    // 标题
-                    Text(
-                        text = chatName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
+    val container = FrameLayout(context).apply {
+        layoutParams = ViewGroup.LayoutParams(0, 0)
+        visibility = View.INVISIBLE
+    }
+
+    val composeView = androidx.compose.ui.platform.ComposeView(context).apply {
+        layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+    }
+
+    container.addView(composeView)
+    rootView.addView(container)
+
+    try {
+        composeView.setContent {
+            ScreenshotContent(
+                imageWidth = imageWidthDp,
+                chatName = chatName,
+                messages = messages
+            )
+        }
+
+        suspendCancellableCoroutine { cont ->
+            composeView.post {
+                try {
+                    composeView.measure(
+                        View.MeasureSpec.makeMeasureSpec(imageWidthPx, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
                     )
+                    composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
 
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    // 消息列表 - 使用真实的MessageItem组件
-                    messages.forEach { message ->
-                        RealMessageItemForScreenshot(
-                            message = message,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
+                    if (composeView.measuredWidth <= 0 || composeView.measuredHeight <= 0) {
+                        cont.resumeWithException(IllegalStateException("Screenshot content measured to an empty size"))
+                        return@post
                     }
 
-                    // 页脚
-                    Text(
-                        text = "共 ${messages.size} 条消息 · 生成于 ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        textAlign = TextAlign.Center
+                    val bitmap = Bitmap.createBitmap(
+                        composeView.measuredWidth,
+                        composeView.measuredHeight,
+                        Bitmap.Config.ARGB_8888
                     )
+                    val canvas = android.graphics.Canvas(bitmap)
+                    composeView.draw(canvas)
+                    cont.resume(bitmap)
+                } catch (e: Exception) {
+                    cont.resumeWithException(e)
                 }
             }
         }
+    } finally {
+        rootView.removeView(container)
     }
+}
 
-    // 强制使用软件渲染层，必须在 measure/layout 之前设置效果最佳
-    composeView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+@Composable
+private fun ScreenshotContent(
+    imageWidth: Dp,
+    chatName: String,
+    messages: List<ChatMessage>
+) {
+    YhchatCanaryTheme {
+        Surface(
+            modifier = Modifier
+                .width(imageWidth)
+                .wrapContentHeight()
+                .background(MaterialTheme.colorScheme.background),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = chatName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-    composeView.measure(
-        android.view.View.MeasureSpec.makeMeasureSpec(imageWidth, android.view.View.MeasureSpec.EXACTLY),
-        android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
-    )
-    composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-    composeView.post {
-        try {
-            if (composeView.measuredWidth <= 0 || composeView.measuredHeight <= 0) {
-                error("Screenshot content measured to an empty size")
+                messages.forEach { message ->
+                    RealMessageItemForScreenshot(
+                        message = message,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+
+                Text(
+                    text = "共 ${messages.size} 条消息 · 生成于 ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    textAlign = TextAlign.Center
+                )
             }
-            val bitmap = Bitmap.createBitmap(
-                composeView.measuredWidth,
-                composeView.measuredHeight,
-                Bitmap.Config.ARGB_8888
-            )
-            val canvas = android.graphics.Canvas(bitmap)
-            // 确保绘制时也不使用硬件加速
-            composeView.draw(canvas)
-            completableDeferred.complete(bitmap)
-        } catch (e: Exception) {
-            completableDeferred.completeExceptionally(e)
         }
     }
-
-    completableDeferred.await()
 }
 
 /**

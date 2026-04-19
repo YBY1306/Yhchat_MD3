@@ -206,6 +206,15 @@ interface ApiService {
         @Body request: okhttp3.RequestBody
     ): Response<okhttp3.ResponseBody>
 
+    /**
+     * 转发消息 - JSON
+     */
+    @POST("v1/msg/msg-forward")
+    suspend fun forwardMessage(
+        @Header("token") token: String,
+        @Body request: MsgForwardRequest
+    ): Response<BaseResponse>
+
     @POST("v1/group/live-room")
     suspend fun getGroupLiveRooms(
         @Header("token") token: String,

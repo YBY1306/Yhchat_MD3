@@ -35,6 +35,7 @@ fun MessageContextMenu(
     onCopyAll: () -> Unit,
     onFreeCopy: () -> Unit,
     onQuote: () -> Unit,
+    onForward: () -> Unit,
     onRecall: () -> Unit,
     onEdit: (() -> Unit)? = null,
     onAddExpression: (() -> Unit)? = null,
@@ -120,6 +121,25 @@ fun MessageContextMenu(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("引用")
+                    }
+                }
+
+                TextButton(
+                    onClick = onForward,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "转发",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("转发")
                     }
                 }
                 

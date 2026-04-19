@@ -93,6 +93,7 @@ fun MessageItem(
     onAvatarLongClick: (String, String) -> Unit = { _, _ -> },
     onAddExpression: (String) -> Unit = {},
     onQuote: (String, String) -> Unit = { _, _ -> },
+    onForward: (ChatMessage) -> Unit = {},
     onRecall: (String) -> Unit = {},
     onEdit: (ChatMessage) -> Unit = {},
     onBlockUser: (String, String, String?) -> Unit = { _, _, _ -> },
@@ -324,6 +325,10 @@ fun MessageItem(
                 val content = message.content.text ?: ""
                 val quotedText = "$senderName : $content"
                 onQuote(message.msgId, quotedText)
+                showContextMenu = false
+            },
+            onForward = {
+                onForward(message)
                 showContextMenu = false
             },
             onRecall = {
@@ -661,6 +666,7 @@ fun AnimatedMessageItem(
     onAvatarLongClick: (String, String) -> Unit = { _, _ -> },
     onAddExpression: (String) -> Unit = {},
     onQuote: (String, String) -> Unit = { _, _ -> },
+    onForward: (ChatMessage) -> Unit = {},
     onRecall: (String) -> Unit = {},
     onEdit: (ChatMessage) -> Unit = {},
     onBlockUser: (String, String, String?) -> Unit = { _, _, _ -> },
@@ -717,6 +723,7 @@ fun AnimatedMessageItem(
                     onAvatarLongClick = onAvatarLongClick,
                     onAddExpression = onAddExpression,
                     onQuote = onQuote,
+                    onForward = onForward,
                     onRecall = onRecall,
                     onEdit = onEdit,
                     onBlockUser = onBlockUser,
@@ -772,6 +779,7 @@ fun AnimatedMessageItem(
                     onAvatarLongClick = onAvatarLongClick,
                     onAddExpression = onAddExpression,
                     onQuote = onQuote,
+                    onForward = onForward,
                     onRecall = onRecall,
                     onEdit = onEdit,
                     onBlockUser = onBlockUser,

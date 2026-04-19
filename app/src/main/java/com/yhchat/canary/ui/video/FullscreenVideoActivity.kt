@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.yhchat.canary.ui.theme.YhchatMd3Theme
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class FullscreenVideoActivity : ComponentActivity() {
     
@@ -66,7 +68,7 @@ class FullscreenVideoActivity : ComponentActivity() {
         val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
         
         setContent {
-            YhchatMd3Theme {
+            YhchatCanaryTheme {
                 FullscreenVideoPlayer(
                     videoUrl = videoUrl,
                     initialPosition = currentPosition,
@@ -154,9 +156,9 @@ private fun FullscreenVideoPlayer(
                 ) {
                     Icon(
                         imageVector = if (videoView?.isPlaying == true) {
-                            androidx.compose.material.icons.Icons.Default.Pause
+                            Icons.Default.Pause
                         } else {
-                            androidx.compose.material.icons.Icons.Default.PlayArrow
+                            Icons.Default.PlayArrow
                         },
                         contentDescription = if (videoView?.isPlaying == true) "暂停" else "播放",
                         tint = Color.White,

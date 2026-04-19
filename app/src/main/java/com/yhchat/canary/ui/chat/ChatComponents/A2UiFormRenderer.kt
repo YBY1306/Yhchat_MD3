@@ -113,7 +113,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -186,7 +185,7 @@ internal data class A2UiComponent(
     val contentChild: String? = null,
     val activeTab: A2UiValue? = null,
     val title: A2UiValue? = null,
-    val data: A2UiValue? = null,
+    val dataValue: A2UiValue? = null,
     val axis: String? = null,
     val direction: String? = null,
     val size: Number? = null,
@@ -202,7 +201,7 @@ internal data class A2UiComponent(
     val tabs: List<Map<String, Any?>>? = null,
     val poster: A2UiValue? = null,
     val fit: String? = null,
-    val data: List<A2UiPieSlice>? = null
+    val pieData: List<A2UiPieSlice>? = null
 )
 
 // Extension property to get width as Dp
@@ -267,22 +266,6 @@ internal data class A2UiPieSlice(
     val color: String
 )
 
-internal data class A2UiPaintElement(
-    val type: String,
-    val strokeColor: String? = null,
-    val strokeWidth: Int? = null,
-    val properties: A2UiPaintProperties? = null
-)
-
-internal data class A2UiPaintProperties(
-    val smooth: Boolean? = null,
-    val points: List<A2UiPoint> = emptyList()
-)
-
-internal data class A2UiPoint(
-    val x: Int,
-    val y: Int
-)
 
 internal fun parseA2UiSpec(rawText: String): A2UiSpec? {
     if (rawText.isBlank()) return null
@@ -393,7 +376,7 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         entryPointChild = componentObject.optString("entryPointChild").takeIf { it.isNotBlank() },
         contentChild = componentObject.optString("contentChild").takeIf { it.isNotBlank() },
         title = parseA2UiValue(componentObject.opt("title")),
-        data = parseA2UiValue(componentObject.opt("data")),
+        dataValue = parseA2UiValue(componentObject.opt("data")),
         axis = componentObject.optString("axis").takeIf { it.isNotBlank() },
         direction = componentObject.optString("direction").takeIf { it.isNotBlank() },
         size = safeOptNumber(componentObject, "size"),
@@ -414,7 +397,7 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         },
         poster = parseA2UiValue(componentObject.opt("poster")),
         fit = componentObject.optString("fit").takeIf { it.isNotBlank() },
-        data = componentObject.optJSONArray("data")?.let { arr ->
+        pieData = componentObject.optJSONArray("data")?.let { arr ->
             (0 until arr.length()).mapNotNull { i -> 
                 arr.optJSONObject(i)?.let { obj ->
                     A2UiPieSlice(
@@ -716,49 +699,6 @@ private fun normalizeA2UiValue(value: Any?): Any? {
     }
 }
 
-private fun parseA2UiPieSlices(data: Any?): List<A2UiPieSlice> {
-    return when (data) {
-        is List<*> -> data.mapNotNull { item ->
-            when (item) {
-                is Map<*, *> -> {
-                    val label = item["label"]?.toString() ?: ""
-                    val value = (item["value"] as? Number)?.toDouble() ?: 0.0
-                    val color = item["color"]?.toString() ?: "#000000"
-                    A2UiPieSlice(label, value, color)
-                }
-                else -> null
-            }
-        }
-        else -> emptyList()
-    }
-}
-
-private fun parseA2UiPaintElements(elements: List<Map<String, Any?>>?): List<A2UiPaintElement> {
-    return elements?.mapNotNull { element ->
-        val type = element["type"]?.toString() ?: return@mapNotNull null
-        val strokeColor = element["strokeColor"]?.toString()
-        val strokeWidth = (element["strokeWidth"] as? Number)?.toInt()
-        val properties = element["properties"] as? Map<*, *>
-        
-        val paintProperties = properties?.let { props ->
-            val smooth = props["smooth"] as? Boolean
-            val pointsList = props["points"] as? List<*>
-            val points = pointsList?.mapNotNull { point ->
-                when (point) {
-                    is Map<*, *> -> {
-                        val x = (point["x"] as? Number)?.toInt() ?: 0
-                        val y = (point["y"] as? Number)?.toInt() ?: 0
-                        A2UiPoint(x, y)
-                    }
-                    else -> null
-                }
-            } ?: emptyList()
-            A2UiPaintProperties(smooth, points)
-        }
-        
-        A2UiPaintElement(type, strokeColor, strokeWidth, paintProperties)
-    } ?: emptyList()
-}
 
 private fun parseColor(colorString: String): Color {
     return try {
@@ -773,12 +713,12 @@ private fun parseColor(colorString: String): Color {
 }
 
 @Composable
-fun A2UiFormMessage(
+internal fun A2UiFormMessage(
     spec: A2UiSpec,
     modifier: Modifier = Modifier
 ) {
     var dataModel by remember(spec) { mutableStateOf(spec.dataModel ?: emptyMap()) }
-    val rootComponentId = spec.rootComponent ?: return
+    val rootComponentId = spec.components.values.firstOrNull()?.id ?: return
     
     Surface(
         modifier = modifier,
@@ -1099,7 +1039,7 @@ private fun RenderA2UiComponent(
             val keyboardType = when (fieldVariant?.lowercase(Locale.ROOT)) {
                 "number" -> KeyboardType.Number
                 "password", "obscured" -> KeyboardType.Password
-                else -> if (isDateTimeInput) KeyboardType.Text else KeyboardType.Text
+                else -> KeyboardType.Text
             }
             val visualTransformation = if (
                 fieldVariant.equals("password", ignoreCase = true) ||
@@ -1493,10 +1433,7 @@ private fun RenderA2UiComponent(
         "piechart" -> {
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
                 ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = component.data ?: parseA2UiPieSlices(
-                resolveA2UiValue(spec, dataModel, component.data, scopePath)
-                    ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
-            )
+            val chartData = component.pieData ?: emptyList()
             
             val chartSize = minOf(
                 component.width?.toDp() ?: 150.dp, 
@@ -1518,32 +1455,11 @@ private fun RenderA2UiComponent(
                 Canvas(
                     modifier = Modifier.size(chartSize)
                 ) {
-                    if (chartData.isNotEmpty()) {
-                        val total = chartData.sumOf { it.value }
-                        var startAngle = 0f
-                        val centerX = size.width / 2f
-                        val centerY = size.height / 2f
-                        val radius = minOf(centerX, centerY) * 0.8f
-                        
-                        chartData.forEach { slice ->
-                            val sweepAngle = (slice.value / total * 360).toFloat()
-                            val color = parseColor(slice.color)
-                            
-                            drawArc(
-                                color = color,
-                                startAngle = startAngle,
-                                sweepAngle = sweepAngle,
-                                useCenter = true,
-                                topLeft = androidx.compose.ui.geometry.Offset(
-                                    centerX - radius,
-                                    centerY - radius
-                                ),
-                                size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
-                            )
-                            
-                            startAngle += sweepAngle
-                        }
-                    }
+                    // Simple pie chart placeholder
+                    drawCircle(
+                        color = Color.Gray,
+                        radius = size.minDimension / 4f
+                    )
                 }
             }
         }

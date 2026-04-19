@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ fun MultiSelectBottomBar(
     selectedCount: Int,
     onGenerateImage: () -> Unit,
     onRecall: () -> Unit,
+    onForward: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -67,6 +69,25 @@ fun MultiSelectBottomBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 转发按钮
+                FilledTonalButton(
+                    onClick = onForward,
+                    enabled = selectedCount > 0,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "转发",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "转发",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+
                 // 生成图片按钮
                 FilledTonalButton(
                     onClick = onGenerateImage,

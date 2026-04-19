@@ -3601,6 +3601,43 @@ private fun A2UiVideoPlayer(
     val handler = remember { Handler(Looper.getMainLooper()) }
     val scope = rememberCoroutineScope()
     
+    // Activity result launcher for fullscreen video
+    val fullscreenLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.let { data ->
+                val returnedPosition = data.getLongExtra(
+                    com.yhchat.canary.ui.video.FullscreenVideoActivity.RESULT_CURRENT_POSITION, 
+                    currentPosition.toLong()
+                )
+                val returnedIsPlaying = data.getBooleanExtra(
+                    com.yhchat.canary.ui.video.FullscreenVideoActivity.RESULT_IS_PLAYING, 
+                    isPlaying
+                )
+                
+                // 同步全屏播放器返回的进度和状态
+                videoView?.let { view ->
+                    view.seekTo(returnedPosition.toInt())
+                    currentPosition = returnedPosition.toFloat()
+                    currentTimeText = formatTime(returnedPosition.toInt())
+                    
+                    if (returnedIsPlaying && !view.isPlaying) {
+                        view.start()
+                        isPlaying = true
+                        handler.post(updateProgressRunnable)
+                        scheduleHideController()
+                    } else if (!returnedIsPlaying && view.isPlaying) {
+                        view.pause()
+                        isPlaying = false
+                        handler.removeCallbacks(updateProgressRunnable)
+                        showController = true
+                    }
+                }
+            }
+        }
+    }
+    
     // Content scale based on fit parameter
     val contentScale = when (fit.lowercase(Locale.ROOT)) {
         "cover", "crop" -> ContentScale.Crop
@@ -4023,13 +4060,13 @@ private fun A2UiVideoPlayer(
                     // Fullscreen button
                     IconButton(
                         onClick = {
-                            // 启动全屏视频播放器，保持当前播放状态
-                            com.yhchat.canary.ui.video.FullscreenVideoActivity.start(
-                                context = context,
-                                videoUrl = url,
-                                currentPosition = currentPosition.toLong(),
-                                isPlaying = isPlaying
-                            )
+                            // 使用 ActivityResultLauncher 启动全屏播放器以获取返回结果
+                            val intent = Intent(context, com.yhchat.canary.ui.video.FullscreenVideoActivity::class.java).apply {
+                                putExtra(com.yhchat.canary.ui.video.FullscreenVideoActivity.EXTRA_VIDEO_URL, url)
+                                putExtra(com.yhchat.canary.ui.video.FullscreenVideoActivity.EXTRA_CURRENT_POSITION, currentPosition.toLong())
+                                putExtra(com.yhchat.canary.ui.video.FullscreenVideoActivity.EXTRA_IS_PLAYING, isPlaying)
+                            }
+                            fullscreenLauncher.launch(intent)
                         },
                         modifier = Modifier.size(44.dp)
                     ) {

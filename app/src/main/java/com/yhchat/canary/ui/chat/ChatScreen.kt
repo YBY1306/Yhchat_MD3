@@ -1371,6 +1371,14 @@ fun ChatScreen(
             ) {
                 MultiSelectBottomBar(
                     selectedCount = selectedMessageIds.size,
+                    onForward = {
+                        // 批量转发
+                        if (selectedMessageIds.isNotEmpty()) {
+                            val selectedMessages = messages.filter { selectedMessageIds.contains(it.msgId) }
+                            showSendToChatBottomSheet = true
+                            messagesToForward = selectedMessages
+                        }
+                    },
                     onGenerateImage = {
                         // 生成图片
                         if (selectedMessageIds.isNotEmpty()) {

@@ -25,12 +25,13 @@ fun MessageSelectionContainer(
     onDelete: (() -> Unit)? = null,
     onPlusOne: (() -> Unit)? = null,
     onForward: (() -> Unit)? = null,
+    onMultiSelect: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
     val defaultToolbar = LocalTextToolbar.current
     
-    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward) {
+    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect) {
         CustomTextToolbar(
             view = view,
             defaultToolbar = defaultToolbar,
@@ -38,7 +39,8 @@ fun MessageSelectionContainer(
             onEdit = onEdit,
             onDelete = onDelete,
             onPlusOne = onPlusOne,
-            onForward = onForward
+            onForward = onForward,
+            onMultiSelect = onMultiSelect
         )
     }
     
@@ -59,7 +61,8 @@ private class CustomTextToolbar(
     private val onEdit: (() -> Unit)?,
     private val onDelete: (() -> Unit)?,
     private val onPlusOne: (() -> Unit)?,
-    private val onForward: (() -> Unit)?
+    private val onForward: (() -> Unit)?,
+    private val onMultiSelect: (() -> Unit)?
 ) : TextToolbar {
     
     private var actionMode: ActionMode? = null
@@ -124,8 +127,13 @@ private class CustomTextToolbar(
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
                 
+                onMultiSelect?.let {
+                    menu.add(0, MENU_ITEM_MULTI_SELECT, 14, "多选")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
+                
                 onDelete?.let {
-                    menu.add(0, MENU_ITEM_DELETE, 14, "撤回")
+                    menu.add(0, MENU_ITEM_DELETE, 15, "撤回")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
@@ -162,6 +170,11 @@ private class CustomTextToolbar(
                     }
                     MENU_ITEM_FORWARD -> {
                         onForward?.invoke()
+                        mode.finish()
+                        true
+                    }
+                    MENU_ITEM_MULTI_SELECT -> {
+                        onMultiSelect?.invoke()
                         mode.finish()
                         true
                     }
@@ -202,6 +215,7 @@ private class CustomTextToolbar(
         private const val MENU_ITEM_PLUS_ONE = 1002
         private const val MENU_ITEM_EDIT = 1003
         private const val MENU_ITEM_FORWARD = 1004
-        private const val MENU_ITEM_DELETE = 1005
+        private const val MENU_ITEM_MULTI_SELECT = 1005
+        private const val MENU_ITEM_DELETE = 1006
     }
 }

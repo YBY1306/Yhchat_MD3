@@ -247,7 +247,8 @@ fun MessageItem(
                     onEdit = onEdit,
                     onRecall = onRecall,
                     onPlusOne = onPlusOne,
-                    onForward = onForward
+                    onForward = onForward,
+                    onMultiSelect = onMultiSelect
                 )
             }
 

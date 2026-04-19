@@ -90,7 +90,8 @@ fun MessageContentView(
     onEdit: (ChatMessage) -> Unit = {},
     onRecall: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
-    onForward: (ChatMessage) -> Unit = {}
+    onForward: (ChatMessage) -> Unit = {},
+    onMultiSelect: () -> Unit = {}
 ) {
     val textColor = if (isMyMessage) {
         MaterialTheme.colorScheme.onPrimary
@@ -109,8 +110,19 @@ fun MessageContentView(
                 // HTML消息
                 content.text?.let { htmlContent ->
                     if (showHtmlRawText) {
-                        // 显示HTML原文 - 支持文本选择
-                        SelectionContainer {
+                        // 显示HTML原文 - 使用MessageSelectionContainer
+                        MessageSelectionContainer(
+                            onQuote = { onQuote(message.msgId, htmlContent) },
+                            onForward = { onForward(message) },
+                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                { onEdit(message) }
+                            } else null,
+                            onDelete = if (isMyMessage) {
+                                { onRecall(message.msgId) }
+                            } else null,
+                            onPlusOne = { onPlusOne(message) },
+                            onMultiSelect = onMultiSelect
+                        ) {
                             Text(
                                 text = htmlContent,
                                 color = textColor,
@@ -119,17 +131,30 @@ fun MessageContentView(
                             )
                         }
                     } else {
-                        HtmlTextMessage(
-                            html = htmlContent,
-                            modifier = Modifier.fillMaxWidth(),
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            onImageClick = onImageClick,
-                            onUriClick = { url ->
-                                UnifiedLinkHandler.handleLink(context, url)
-                            },
-                            useAdvancedRenderer = true
-                        )
+                        MessageSelectionContainer(
+                            onQuote = { onQuote(message.msgId, htmlContent) },
+                            onForward = { onForward(message) },
+                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                { onEdit(message) }
+                            } else null,
+                            onDelete = if (isMyMessage) {
+                                { onRecall(message.msgId) }
+                            } else null,
+                            onPlusOne = { onPlusOne(message) },
+                            onMultiSelect = onMultiSelect
+                        ) {
+                            HtmlTextMessage(
+                                html = htmlContent,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                onImageClick = onImageClick,
+                                onUriClick = { url ->
+                                    UnifiedLinkHandler.handleLink(context, url)
+                                },
+                                useAdvancedRenderer = true
+                            )
+                        }
                     }
                 }
             }
@@ -411,7 +436,8 @@ fun MessageContentView(
                             onDelete = if (isMyMessage) {
                                 { onRecall(message.msgId) }
                             } else null,
-                            onPlusOne = { onPlusOne(message) }
+                            onPlusOne = { onPlusOne(message) },
+                            onMultiSelect = onMultiSelect
                         ) {
                             Text(
                                 text = text,
@@ -427,7 +453,7 @@ fun MessageContentView(
                 // Markdown消息
                 content.text?.let { markdownText ->
                     if (showMarkdownRawText) {
-                        // 显示Markdown原文 - 支持文本选择
+                        // 显示Markdown原文 - 使用MessageSelectionContainer
                         MessageSelectionContainer(
                             onQuote = { onQuote(message.msgId, markdownText) },
                             onForward = { onForward(message) },
@@ -437,7 +463,8 @@ fun MessageContentView(
                             onDelete = if (isMyMessage) {
                                 { onRecall(message.msgId) }
                             } else null,
-                            onPlusOne = { onPlusOne(message) }
+                            onPlusOne = { onPlusOne(message) },
+                            onMultiSelect = onMultiSelect
                         ) {
                             Text(
                                 text = markdownText,
@@ -447,18 +474,31 @@ fun MessageContentView(
                             )
                         }
                     } else {
-                        // 正常渲染Markdown - MarkdownText组件内部可能已支持选择
-                        MarkdownText(
-                            markdown = markdownText,
-                            textColor = if (isMyMessage) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
-                            onImageClick = onImageClick,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // 正常渲染Markdown - 使用MessageSelectionContainer包裹
+                        MessageSelectionContainer(
+                            onQuote = { onQuote(message.msgId, markdownText) },
+                            onForward = { onForward(message) },
+                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                { onEdit(message) }
+                            } else null,
+                            onDelete = if (isMyMessage) {
+                                { onRecall(message.msgId) }
+                            } else null,
+                            onPlusOne = { onPlusOne(message) },
+                            onMultiSelect = onMultiSelect
+                        ) {
+                            MarkdownText(
+                                markdown = markdownText,
+                                textColor = if (isMyMessage) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
+                                onImageClick = onImageClick,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }

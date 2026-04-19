@@ -33,9 +33,15 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -56,12 +62,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 
 import com.yhchat.canary.data.model.ChatMessage
@@ -107,7 +119,7 @@ fun MessageItem(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-    var showContextMenu by remember { mutableStateOf(false) }
+    var showContextMenuDialog by remember { mutableStateOf(false) }
     var showFreeCopyDialog by remember { mutableStateOf(false) }
     var freeCopyText by remember { mutableStateOf("") }
 
@@ -146,7 +158,7 @@ fun MessageItem(
                     }
                 } else null,
                 onLongClick = if (!isMultiSelectMode) {
-                    { showContextMenu = true }
+                    { showContextMenuDialog = true }
                 } else null
             ),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
@@ -206,6 +218,15 @@ fun MessageItem(
             Surface(
                 modifier = Modifier
                     .wrapContentWidth()
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInWindow()
+                        bubbleBounds = Rect(
+                            left = pos.x,
+                            top = pos.y,
+                            right = pos.x + coords.size.width,
+                            bottom = pos.y + coords.size.height
+                        )
+                    }
                     .clip(
                         RoundedCornerShape(
                             topStart = if (isMyMessage) 16.dp else 4.dp,
@@ -225,7 +246,11 @@ fun MessageItem(
                     conversationChatType = conversationChatType,
                     modifier = Modifier.padding(12.dp),
                     onImageClick = { imageUrl -> onImageClick(imageUrl) },
-                    onLongClick = { showContextMenu = true },
+                    onLongClick = {
+                        if (!isMultiSelectMode) {
+                            showContextMenuDialog = true
+                        }
+                    },
                     onQuoteMessageClick = onQuoteMessageClick,
                     onQuote = onQuote,
                     onEdit = onEdit,
@@ -297,7 +322,8 @@ fun MessageItem(
         }
     }
 
-    if (showContextMenu) {
+
+    if (showContextMenuDialog) {
         MessageContextMenu(
             message = message,
             showRecall = when (conversationChatType) {
@@ -305,7 +331,7 @@ fun MessageItem(
                 1, 3 -> isMyMessage && message.msgDeleteTime == null
                 else -> false
             },
-            onDismiss = { showContextMenu = false },
+            onDismiss = { showContextMenuDialog = false },
             onCopyAll = {
                 val textToCopy = message.content.text ?: ""
                 if (textToCopy.isNotEmpty()) {
@@ -313,11 +339,11 @@ fun MessageItem(
                     clipboardManager.setPrimaryClip(clip)
                     Toast.makeText(context, "已复制全部", Toast.LENGTH_SHORT).show()
                 }
-                showContextMenu = false
+                showContextMenuDialog = false
             },
             onFreeCopy = {
                 freeCopyText = message.content.text ?: ""
-                showContextMenu = false
+                showContextMenuDialog = false
                 showFreeCopyDialog = true
             },
             onQuote = {
@@ -325,20 +351,20 @@ fun MessageItem(
                 val content = message.content.text ?: ""
                 val quotedText = "$senderName : $content"
                 onQuote(message.msgId, quotedText)
-                showContextMenu = false
+                showContextMenuDialog = false
             },
             onForward = {
                 onForward(message)
-                showContextMenu = false
+                showContextMenuDialog = false
             },
             onRecall = {
                 onRecall(message.msgId)
-                showContextMenu = false
+                showContextMenuDialog = false
             },
             onEdit = if (message.contentType in listOf(1, 3, 8, 14) && isMyMessage) {
                 {
                     onEdit(message)
-                    showContextMenu = false
+                    showContextMenuDialog = false
                 }
             } else null,
             onAddExpression = if (message.contentType == 7) {
@@ -350,13 +376,13 @@ fun MessageItem(
                     } else {
                         Toast.makeText(context, "无法获取表情ID", Toast.LENGTH_SHORT).show()
                     }
-                    showContextMenu = false
+                    showContextMenuDialog = false
                 }
             } else null,
             onBlockUser = if (!isMyMessage) {
                 {
                     onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl)
-                    showContextMenu = false
+                    showContextMenuDialog = false
                 }
             } else null,
             onSaveAudio = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
@@ -372,7 +398,7 @@ fun MessageItem(
                             ).show()
                         }
                     }
-                    showContextMenu = false
+                    showContextMenuDialog = false
                 }
             } else null,
             onSpeechToText = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
@@ -381,16 +407,16 @@ fun MessageItem(
                     if (!audioUrl.isNullOrBlank()) {
                         onSpeechToText(audioUrl)
                     }
-                    showContextMenu = false
+                    showContextMenuDialog = false
                 }
             } else null,
             onPlusOne = {
                 onPlusOne(message)
-                showContextMenu = false
+                showContextMenuDialog = false
             },
             onMultiSelect = {
                 onMultiSelect?.invoke()
-                showContextMenu = false
+                showContextMenuDialog = false
             }
         )
     }

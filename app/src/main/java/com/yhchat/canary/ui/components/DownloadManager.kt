@@ -56,11 +56,8 @@ object DownloadManager {
                     _downloadStates[fileUrl] = DownloadState.Completed(filePath)
                     downloadIds.remove(fileUrl)
                     
-                    // 3秒后自动清除下载状态，恢复到未点击状态
-                    GlobalScope.launch {
-                        delay(3000)
-                        _downloadStates.remove(fileUrl)
-                    }
+                    // 下载完成后保持状态，不自动清除
+                    // 用户可以通过点击已完成的文件来打开文件
                 }
                 
                 override fun onError(downloadId: String, error: String) {

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import com.yhchat.canary.ui.components.MessageSelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
@@ -400,7 +401,17 @@ fun MessageContentView(
                             }
                         }
                     } else if (text.isNotBlank()) {
-                        SelectionContainer {
+                        MessageSelectionContainer(
+                            onQuote = { onQuote(message.msgId, text) },
+                            onForward = { onForward(message) },
+                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                { onEdit(message) }
+                            } else null,
+                            onDelete = if (isMyMessage) {
+                                { onRecall(message.msgId) }
+                            } else null,
+                            onPlusOne = { onPlusOne(message) }
+                        ) {
                             Text(
                                 text = text,
                                 color = textColor,
@@ -416,7 +427,17 @@ fun MessageContentView(
                 content.text?.let { markdownText ->
                     if (showMarkdownRawText) {
                         // 显示Markdown原文 - 支持文本选择
-                        SelectionContainer {
+                        MessageSelectionContainer(
+                            onQuote = { onQuote(message.msgId, markdownText) },
+                            onForward = { onForward(message) },
+                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                { onEdit(message) }
+                            } else null,
+                            onDelete = if (isMyMessage) {
+                                { onRecall(message.msgId) }
+                            } else null,
+                            onPlusOne = { onPlusOne(message) }
+                        ) {
                             Text(
                                 text = markdownText,
                                 color = textColor,

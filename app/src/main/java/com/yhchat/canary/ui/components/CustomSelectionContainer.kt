@@ -24,19 +24,21 @@ fun MessageSelectionContainer(
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onPlusOne: (() -> Unit)? = null,
+    onForward: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
     val defaultToolbar = LocalTextToolbar.current
     
-    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne) {
+    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward) {
         CustomTextToolbar(
             view = view,
             defaultToolbar = defaultToolbar,
             onQuote = onQuote,
             onEdit = onEdit,
             onDelete = onDelete,
-            onPlusOne = onPlusOne
+            onPlusOne = onPlusOne,
+            onForward = onForward
         )
     }
     
@@ -56,7 +58,8 @@ private class CustomTextToolbar(
     private val onQuote: (() -> Unit)?,
     private val onEdit: (() -> Unit)?,
     private val onDelete: (() -> Unit)?,
-    private val onPlusOne: (() -> Unit)?
+    private val onPlusOne: (() -> Unit)?,
+    private val onForward: (() -> Unit)?
 ) : TextToolbar {
     
     private var actionMode: ActionMode? = null
@@ -116,8 +119,13 @@ private class CustomTextToolbar(
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
                 
+                onForward?.let {
+                    menu.add(0, MENU_ITEM_FORWARD, 13, "转发")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
+                
                 onDelete?.let {
-                    menu.add(0, MENU_ITEM_DELETE, 13, "撤回")
+                    menu.add(0, MENU_ITEM_DELETE, 14, "撤回")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
@@ -149,6 +157,11 @@ private class CustomTextToolbar(
                     }
                     MENU_ITEM_EDIT -> {
                         onEdit?.invoke()
+                        mode.finish()
+                        true
+                    }
+                    MENU_ITEM_FORWARD -> {
+                        onForward?.invoke()
                         mode.finish()
                         true
                     }
@@ -188,6 +201,7 @@ private class CustomTextToolbar(
         private const val MENU_ITEM_QUOTE = 1001
         private const val MENU_ITEM_PLUS_ONE = 1002
         private const val MENU_ITEM_EDIT = 1003
-        private const val MENU_ITEM_DELETE = 1004
+        private const val MENU_ITEM_FORWARD = 1004
+        private const val MENU_ITEM_DELETE = 1005
     }
 }

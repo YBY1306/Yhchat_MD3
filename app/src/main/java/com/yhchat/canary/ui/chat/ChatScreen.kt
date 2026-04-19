@@ -389,6 +389,10 @@ fun ChatScreen(
     var showForwardSheet by remember { mutableStateOf(false) }
     var forwardTargetMessage by remember { mutableStateOf<com.yhchat.canary.data.model.ChatMessage?>(null) }
     
+    // 多选转发状态
+    var showSendToChatBottomSheet by remember { mutableStateOf(false) }
+    var messagesToForward by remember { mutableStateOf<List<com.yhchat.canary.data.model.ChatMessage>>(emptyList()) }
+    
     // 生成图片预览状态
     var showImagePreviewDialog by remember { mutableStateOf(false) }
     var generatedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }

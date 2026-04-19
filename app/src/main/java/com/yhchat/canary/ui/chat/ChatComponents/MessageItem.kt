@@ -218,15 +218,6 @@ fun MessageItem(
             Surface(
                 modifier = Modifier
                     .wrapContentWidth()
-                    .onGloballyPositioned { coords ->
-                        val pos = coords.positionInWindow()
-                        bubbleBounds = Rect(
-                            left = pos.x,
-                            top = pos.y,
-                            right = pos.x + coords.size.width,
-                            bottom = pos.y + coords.size.height
-                        )
-                    }
                     .clip(
                         RoundedCornerShape(
                             topStart = if (isMyMessage) 16.dp else 4.dp,
@@ -255,7 +246,8 @@ fun MessageItem(
                     onQuote = onQuote,
                     onEdit = onEdit,
                     onRecall = onRecall,
-                    onPlusOne = onPlusOne
+                    onPlusOne = onPlusOne,
+                    onForward = onForward
                 )
             }
 

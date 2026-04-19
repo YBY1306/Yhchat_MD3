@@ -89,7 +89,8 @@ fun MessageContentView(
     onQuote: (String, String) -> Unit = { _, _ -> },
     onEdit: (ChatMessage) -> Unit = {},
     onRecall: (String) -> Unit = {},
-    onPlusOne: (ChatMessage) -> Unit = {}
+    onPlusOne: (ChatMessage) -> Unit = {},
+    onForward: (ChatMessage) -> Unit = {}
 ) {
     val textColor = if (isMyMessage) {
         MaterialTheme.colorScheme.onPrimary

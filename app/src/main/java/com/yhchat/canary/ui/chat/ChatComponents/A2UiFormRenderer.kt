@@ -120,10 +120,14 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.Path
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -201,7 +205,7 @@ internal data class A2UiComponent(
     val tabs: List<Map<String, Any?>>? = null,
     val poster: A2UiValue? = null,
     val fit: String? = null,
-    val pieData: List<A2UiPieSlice>? = null
+    val pieData: List<A2UiPieDataSlice>? = null
 )
 
 // Extension property to get width as Dp
@@ -260,7 +264,7 @@ internal data class A2UiCheck(
     val message: String? = null
 )
 
-internal data class A2UiPieSlice(
+internal data class A2UiPieDataSlice(
     val label: String,
     val value: Double,
     val color: String
@@ -400,7 +404,7 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         pieData = componentObject.optJSONArray("data")?.let { arr ->
             (0 until arr.length()).mapNotNull { i -> 
                 arr.optJSONObject(i)?.let { obj ->
-                    A2UiPieSlice(
+                    A2UiPieDataSlice(
                         label = obj.optString("label", ""),
                         value = obj.optDouble("value", 0.0),
                         color = obj.optString("color", "#000000")
@@ -1409,7 +1413,7 @@ private fun RenderA2UiComponent(
         "linechart" -> {
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
                 ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
                 ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
             A2UiLineChart(
                 title = title,
@@ -1421,7 +1425,7 @@ private fun RenderA2UiComponent(
         "barchart" -> {
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
                 ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = resolveA2UiValue(spec, dataModel, component.data, scopePath)
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
                 ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
             A2UiBarChart(
                 title = title,
@@ -1433,35 +1437,22 @@ private fun RenderA2UiComponent(
         "piechart" -> {
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
                 ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = component.pieData ?: emptyList()
-            
-            val chartSize = minOf(
-                component.width?.toDp() ?: 150.dp, 
-                component.height?.toDp() ?: 150.dp
+            val slices = component.pieData
+                ?.map { slice ->
+                    A2UiPieChartSlice(
+                        label = slice.label,
+                        value = slice.value.toFloat(),
+                        color = parseA2UiHexColor(slice.color) ?: Color(0xFF90A4AE)
+                    )
+                }
+                ?: emptyList()
+
+            A2UiPieChart(
+                title = title,
+                slices = slices,
+                modifier = modifier.fillMaxWidth(),
+                showPercentageOnChart = true
             )
-            
-            Column(
-                modifier = modifier,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (!title.isNullOrBlank()) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-                
-                Canvas(
-                    modifier = Modifier.size(chartSize)
-                ) {
-                    // Simple pie chart placeholder
-                    drawCircle(
-                        color = Color.Gray,
-                        radius = size.minDimension / 4f
-                    )
-                }
-            }
         }
         
         "tabs" -> {
@@ -2542,7 +2533,7 @@ private data class A2UiChartPoint(
     val y: Float
 )
 
-private data class A2UiPieSlice(
+private data class A2UiPieChartSlice(
     val label: String,
     val value: Float,
     val color: Color
@@ -2801,7 +2792,7 @@ private fun A2UiBarChart(
 @Composable
 private fun A2UiPieChart(
     title: String?,
-    slices: List<A2UiPieSlice>,
+    slices: List<A2UiPieChartSlice>,
     modifier: Modifier = Modifier,
     showPercentageOnChart: Boolean = false
 ) {
@@ -2912,7 +2903,7 @@ private fun parseA2UiChartPoints(rawData: Any?): List<A2UiChartPoint> {
     }
 }
 
-private fun parseA2UiPieSlices(rawData: Any?): List<A2UiPieSlice> {
+private fun parseA2UiPieSlices(rawData: Any?): List<A2UiPieChartSlice> {
     val defaultColors = listOf(
         Color(0xFFEF5350),
         Color(0xFF42A5F5),
@@ -2932,7 +2923,7 @@ private fun parseA2UiPieSlices(rawData: Any?): List<A2UiPieSlice> {
             else -> rawValue?.toString()?.toFloatOrNull()
         } ?: return@mapIndexedNotNull null
         val color = parseA2UiHexColor(obj["color"]?.toString()) ?: defaultColors[index % defaultColors.size]
-        A2UiPieSlice(label = label, value = value, color = color)
+        A2UiPieChartSlice(label = label, value = value, color = color)
     }
 }
 
@@ -2961,8 +2952,6 @@ private fun A2UiCustomPaint(
     elements: List<A2UiPaintElement>,
     modifier: Modifier = Modifier
 ) {
-    val textMeasurer = rememberTextMeasurer()
-    
     Box(
         modifier = modifier
             .fillMaxWidth(),

@@ -38,13 +38,17 @@ class ChatActivity : BaseActivity() {
     private var searchTargetMsgSeq by mutableStateOf<Long?>(null)
     private var launchedFromBubble by mutableStateOf(false)
     
-    // 图片选择器 - 使用与 ChatBackgroundActivity 相同的 API
+    private var pendingImageUrisToSend by mutableStateOf<List<android.net.Uri>>(emptyList())
+
+    // 图片选择器 - 系统选择器多选
     private val imagePickerLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { selectedUri ->
-            android.util.Log.d("ChatActivity", "图片已选择: $selectedUri")
-            imageUriToSend = selectedUri
+        androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        val selected = uris.filterNotNull()
+        if (selected.isNotEmpty()) {
+            android.util.Log.d("ChatActivity", "图片已选择(多选): count=${selected.size}")
+            pendingImageUrisToSend = selected
+            imageUriToSend = selected.firstOrNull()
         }
     }
     
@@ -175,8 +179,18 @@ class ChatActivity : BaseActivity() {
                             fileUriToSend = fileUriToSend,
                             videoUriToSend = videoUriToSend,
                             onImageSent = {
-                                imageUriToSend = null
-                                cameraImageUri = null
+                                val current = imageUriToSend
+                                val remaining = if (current == null) {
+                                    pendingImageUrisToSend
+                                } else {
+                                    pendingImageUrisToSend.drop(1)
+                                }
+                                pendingImageUrisToSend = remaining
+                                imageUriToSend = remaining.firstOrNull()
+
+                                if (imageUriToSend == null) {
+                                    cameraImageUri = null
+                                }
                             },
                             onFileSent = {
                                 android.util.Log.d("ChatActivity", "📁 文件发送完成，清空URI")

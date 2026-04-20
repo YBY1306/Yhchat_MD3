@@ -3630,12 +3630,9 @@ private fun A2UiVideoPlayer(
                     if (returnedIsPlaying && !view.isPlaying) {
                         view.start()
                         isPlaying = true
-                        handler.post(updateProgressRunnable)
-                        scheduleHideController()
                     } else if (!returnedIsPlaying && view.isPlaying) {
                         view.pause()
                         isPlaying = false
-                        handler.removeCallbacks(updateProgressRunnable)
                         showController = true
                     }
                 }

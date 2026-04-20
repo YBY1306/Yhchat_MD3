@@ -25,6 +25,7 @@ message instruction_list {
     uint64 command_id = 1;
     string bot_id = 2;
     string command_name = 3;
+    string command_description = 4;
     uint64 instruction_type = 5;
     string default_text = 7;
     string bot_settings_json = 10;

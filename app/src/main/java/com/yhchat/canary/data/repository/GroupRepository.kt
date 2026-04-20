@@ -177,7 +177,7 @@ class GroupRepository @Inject constructor(
                                 botId = item.botId,
                                 botName = "",
                                 name = item.commandName,
-                                desc = "",
+                                desc = item.commandDescription,
                                 id = item.commandId.toLong(),
                                 sort = 0,
                                 auth = 0,

@@ -2777,6 +2777,11 @@ private fun A2UiBarChart(
 ) {
     val hasData = points.isNotEmpty()
     val maxY = (points.maxOfOrNull { it.y } ?: 0f).takeIf { it > 0f } ?: 1f
+    
+    // 状态管理：选中的条形和工具提示
+    var selectedBarIndex by remember { mutableStateOf<Int?>(null) }
+    var tooltipPosition by remember { mutableStateOf<Offset?>(null) }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2793,63 +2798,159 @@ private fun A2UiBarChart(
             return
         }
         
-        // 图表区域布局：顶部标题，中间绘图区，底部X轴标签
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val leftPadding = 32.dp.toPx()  // 增加左侧空间给Y轴标签
-                val rightPadding = 8.dp.toPx()
-                val topPadding = 8.dp.toPx()
-                val bottomPadding = 8.dp.toPx()
-                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
-                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
-                val slotWidth = plotWidth / points.size.coerceAtLeast(1)
-                val barWidth = slotWidth * 0.6f
-
-                // 绘制Y轴标签 (0, 中间值, 最大值)
-                val yLabels = listOf(0f, maxY / 2, maxY)
-                yLabels.forEach { label ->
-                    val yRatio = label / maxY
-                    val yPos = topPadding + (1f - yRatio) * plotHeight
-                    
-                    // 绘制Y轴刻度线
-                    drawLine(
-                        color = Color(0x11000000),
-                        start = Offset(leftPadding, yPos),
-                        end = Offset(leftPadding + plotWidth, yPos),
-                        strokeWidth = 0.5.dp.toPx()
+        // 图表区域布局
+        Box {
+            Row {
+                // Y轴标签列 - 放在左侧
+                Column(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(200.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = if (maxY == maxY.toLong().toFloat()) maxY.toLong().toString() else String.format("%.1f", maxY),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (maxY / 2 == (maxY / 2).toLong().toFloat()) (maxY / 2).toLong().toString() else String.format("%.1f", maxY / 2),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "0",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
-                // 绘制X轴和Y轴
-                drawLine(
-                    color = Color(0x33000000),
-                    start = Offset(leftPadding, topPadding + plotHeight),
-                    end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
-                    strokeWidth = 1.dp.toPx()
-                )
-                drawLine(
-                    color = Color(0x33000000),
-                    start = Offset(leftPadding, topPadding),
-                    end = Offset(leftPadding, topPadding + plotHeight),
-                    strokeWidth = 1.dp.toPx()
-                )
+                // 图表绘制区域
+                Canvas(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(200.dp)
+                        .pointerInput(points) {
+                            detectTapGestures { offset ->
+                                val leftPadding = 8.dp.toPx()
+                                val rightPadding = 8.dp.toPx()
+                                val topPadding = 8.dp.toPx()
+                                val bottomPadding = 8.dp.toPx()
+                                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+                                val slotWidth = plotWidth / points.size.coerceAtLeast(1)
+                                val barWidth = slotWidth * 0.6f
+                                
+                                // 查找点击的条形
+                                var clickedIndex = -1
+                                
+                                points.forEachIndexed { index, point ->
+                                    val barHeight = (point.y / maxY) * plotHeight
+                                    val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
+                                    val y = topPadding + plotHeight - barHeight
+                                    
+                                    if (offset.x >= x && offset.x <= x + barWidth && 
+                                        offset.y >= y && offset.y <= y + barHeight) {
+                                        clickedIndex = index
+                                    }
+                                }
+                                
+                                if (clickedIndex >= 0) {
+                                    selectedBarIndex = clickedIndex
+                                    tooltipPosition = offset
+                                } else {
+                                    selectedBarIndex = null
+                                    tooltipPosition = null
+                                }
+                            }
+                        }
+                ) {
+                    val leftPadding = 8.dp.toPx()
+                    val rightPadding = 8.dp.toPx()
+                    val topPadding = 8.dp.toPx()
+                    val bottomPadding = 8.dp.toPx()
+                    val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                    val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+                    val slotWidth = plotWidth / points.size.coerceAtLeast(1)
+                    val barWidth = slotWidth * 0.6f
 
-                points.forEachIndexed { index, point ->
-                    val barHeight = (point.y / maxY) * plotHeight
-                    val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
-                    val y = topPadding + plotHeight - barHeight
-                    drawRoundRect(
-                        color = Color(0xFF43A047),
-                        topLeft = Offset(x, y),
-                        size = Size(barWidth, barHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    // 绘制Y轴刻度线
+                    val yLabels = listOf(0f, maxY / 2, maxY)
+                    yLabels.forEach { label ->
+                        val yRatio = label / maxY
+                        val yPos = topPadding + (1f - yRatio) * plotHeight
+                        
+                        drawLine(
+                            color = Color(0x11000000),
+                            start = Offset(leftPadding, yPos),
+                            end = Offset(leftPadding + plotWidth, yPos),
+                            strokeWidth = 0.5.dp.toPx()
+                        )
+                    }
+                    
+                    // 绘制X轴和Y轴
+                    drawLine(
+                        color = Color(0x33000000),
+                        start = Offset(leftPadding, topPadding + plotHeight),
+                        end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                        strokeWidth = 1.dp.toPx()
                     )
+                    drawLine(
+                        color = Color(0x33000000),
+                        start = Offset(leftPadding, topPadding),
+                        end = Offset(leftPadding, topPadding + plotHeight),
+                        strokeWidth = 1.dp.toPx()
+                    )
+
+                    // 绘制条形
+                    points.forEachIndexed { index, point ->
+                        val barHeight = (point.y / maxY) * plotHeight
+                        val x = leftPadding + index * slotWidth + (slotWidth - barWidth) / 2f
+                        val y = topPadding + plotHeight - barHeight
+                        
+                        // 选中的条形颜色更深
+                        val isSelected = selectedBarIndex == index
+                        drawRoundRect(
+                            color = if (isSelected) Color(0xFF2E7D32) else Color(0xFF43A047),
+                            topLeft = Offset(x, y),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                        )
+                    }
+                }
+            }
+            
+            // 工具提示
+            selectedBarIndex?.let { index ->
+                tooltipPosition?.let { position ->
+                    val point = points[index]
+                    val density = LocalDensity.current
+                    Card(
+                        modifier = Modifier
+                            .offset(
+                                x = with(density) { position.x.toDp() } - 40.dp,
+                                y = with(density) { position.y.toDp() } - 60.dp
+                            )
+                            .wrapContentSize(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = point.x,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (point.y == point.y.toLong().toFloat()) point.y.toLong().toString() else String.format("%.1f", point.y),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF43A047)
+                            )
+                        }
+                    }
                 }
             }
             
@@ -2857,7 +2958,7 @@ private fun A2UiBarChart(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 32.dp),
+                    .padding(start = 40.dp, top = 200.dp + 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 points.forEachIndexed { index, point ->
@@ -2868,22 +2969,6 @@ private fun A2UiBarChart(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
-            
-            // Y轴标签列
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                listOf(maxY, maxY / 2, 0f).forEach { label ->
-                    Text(
-                        text = if (label == label.toLong().toFloat()) label.toLong().toString() else String.format("%.1f", label),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }

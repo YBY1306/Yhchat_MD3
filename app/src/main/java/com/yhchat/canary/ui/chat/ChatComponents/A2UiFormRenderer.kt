@@ -11,6 +11,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.sqrt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -2555,6 +2566,10 @@ private fun A2UiLineChart(
     val minY = if (hasData) values.minOrNull() ?: 0f else 0f
     val maxY = if (hasData) values.maxOrNull() ?: 0f else 0f
     val range = (maxY - minY).takeIf { it > 0f } ?: 1f
+    
+    // 状态管理：选中的点和工具提示
+    var selectedPointIndex by remember { mutableStateOf<Int?>(null) }
+    var tooltipPosition by remember { mutableStateOf<Offset?>(null) }
 
     Column(
         modifier = modifier,
@@ -2572,75 +2587,173 @@ private fun A2UiLineChart(
             return
         }
         
-        // 图表区域布局：顶部标题，中间绘图区，底部X轴标签
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val leftPadding = 32.dp.toPx()  // 增加左侧空间给Y轴标签
-                val rightPadding = 8.dp.toPx()
-                val topPadding = 8.dp.toPx()
-                val bottomPadding = 8.dp.toPx()
-                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
-                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
-
-                // 绘制Y轴标签 (0, 中间值, 最大值)
-                val yLabels = listOf(minY, (minY + maxY) / 2, maxY)
-                yLabels.forEach { label ->
-                    val yRatio = (label - minY) / range
-                    val yPos = topPadding + (1f - yRatio) * plotHeight
-                    
-                    // 绘制Y轴刻度线
-                    drawLine(
-                        color = Color(0x11000000),
-                        start = Offset(leftPadding, yPos),
-                        end = Offset(leftPadding + plotWidth, yPos),
-                        strokeWidth = 0.5.dp.toPx()
+        // 图表区域布局
+        Box {
+            Row {
+                // Y轴标签列 - 放在左侧
+                Column(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(200.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = if (maxY == maxY.toLong().toFloat()) maxY.toLong().toString() else String.format("%.1f", maxY),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if ((minY + maxY) / 2 == ((minY + maxY) / 2).toLong().toFloat()) ((minY + maxY) / 2).toLong().toString() else String.format("%.1f", (minY + maxY) / 2),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (minY == minY.toLong().toFloat()) minY.toLong().toString() else String.format("%.1f", minY),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
-                // 绘制X轴和Y轴
-                drawLine(
-                    color = Color(0x33000000),
-                    start = Offset(leftPadding, topPadding + plotHeight),
-                    end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
-                    strokeWidth = 1.dp.toPx()
-                )
-                drawLine(
-                    color = Color(0x33000000),
-                    start = Offset(leftPadding, topPadding),
-                    end = Offset(leftPadding, topPadding + plotHeight),
-                    strokeWidth = 1.dp.toPx()
-                )
+                // 图表绘制区域
+                Canvas(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(200.dp)
+                        .pointerInput(points) {
+                            detectTapGestures { offset ->
+                                val leftPadding = 8.dp.toPx()
+                                val rightPadding = 8.dp.toPx()
+                                val topPadding = 8.dp.toPx()
+                                val bottomPadding = 8.dp.toPx()
+                                val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                                val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
+                                
+                                // 查找最近的点
+                                var nearestIndex = -1
+                                var nearestDistance = Float.MAX_VALUE
+                                
+                                points.forEachIndexed { index, point ->
+                                    val x = leftPadding + if (points.size == 1) plotWidth / 2 else (index * plotWidth / (points.lastIndex.coerceAtLeast(1)))
+                                    val yRatio = (point.y - minY) / range
+                                    val y = topPadding + (1f - yRatio) * plotHeight
+                                    
+                                    val distance = kotlin.math.sqrt(
+                                        (offset.x - x) * (offset.x - x) + (offset.y - y) * (offset.y - y)
+                                    )
+                                    
+                                    if (distance < 30.dp.toPx() && distance < nearestDistance) {
+                                        nearestDistance = distance
+                                        nearestIndex = index
+                                    }
+                                }
+                                
+                                if (nearestIndex >= 0) {
+                                    selectedPointIndex = nearestIndex
+                                    tooltipPosition = offset
+                                } else {
+                                    selectedPointIndex = null
+                                    tooltipPosition = null
+                                }
+                            }
+                        }
+                ) {
+                    val leftPadding = 8.dp.toPx()
+                    val rightPadding = 8.dp.toPx()
+                    val topPadding = 8.dp.toPx()
+                    val bottomPadding = 8.dp.toPx()
+                    val plotWidth = (size.width - leftPadding - rightPadding).coerceAtLeast(1f)
+                    val plotHeight = (size.height - topPadding - bottomPadding).coerceAtLeast(1f)
 
-                val path = Path()
-                points.forEachIndexed { index, point ->
-                    val x = leftPadding + if (points.size == 1) plotWidth / 2 else (index * plotWidth / (points.lastIndex.coerceAtLeast(1)))
-                    val yRatio = (point.y - minY) / range
-                    val y = topPadding + (1f - yRatio) * plotHeight
-                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    drawCircle(
+                    // 绘制Y轴刻度线
+                    val yLabels = listOf(minY, (minY + maxY) / 2, maxY)
+                    yLabels.forEach { label ->
+                        val yRatio = (label - minY) / range
+                        val yPos = topPadding + (1f - yRatio) * plotHeight
+                        
+                        drawLine(
+                            color = Color(0x11000000),
+                            start = Offset(leftPadding, yPos),
+                            end = Offset(leftPadding + plotWidth, yPos),
+                            strokeWidth = 0.5.dp.toPx()
+                        )
+                    }
+                    
+                    // 绘制X轴和Y轴
+                    drawLine(
+                        color = Color(0x33000000),
+                        start = Offset(leftPadding, topPadding + plotHeight),
+                        end = Offset(leftPadding + plotWidth, topPadding + plotHeight),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                    drawLine(
+                        color = Color(0x33000000),
+                        start = Offset(leftPadding, topPadding),
+                        end = Offset(leftPadding, topPadding + plotHeight),
+                        strokeWidth = 1.dp.toPx()
+                    )
+
+                    // 绘制折线和点
+                    val path = Path()
+                    points.forEachIndexed { index, point ->
+                        val x = leftPadding + if (points.size == 1) plotWidth / 2 else (index * plotWidth / (points.lastIndex.coerceAtLeast(1)))
+                        val yRatio = (point.y - minY) / range
+                        val y = topPadding + (1f - yRatio) * plotHeight
+                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                        
+                        // 绘制点，选中的点更大
+                        val isSelected = selectedPointIndex == index
+                        drawCircle(
+                            color = if (isSelected) Color(0xFF0D47A1) else Color(0xFF1E88E5),
+                            radius = if (isSelected) 6.dp.toPx() else 4.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+                    drawPath(
+                        path = path,
                         color = Color(0xFF1E88E5),
-                        radius = 4.dp.toPx(),
-                        center = Offset(x, y)
+                        style = Stroke(width = 2.dp.toPx())
                     )
                 }
-                drawPath(
-                    path = path,
-                    color = Color(0xFF1E88E5),
-                    style = Stroke(width = 2.dp.toPx())
-                )
+            }
+            
+            // 工具提示
+            selectedPointIndex?.let { index ->
+                tooltipPosition?.let { position ->
+                    val point = points[index]
+                    Card(
+                        modifier = Modifier
+                            .offset(
+                                x = (position.x - 40.dp.toPx()).toDp(),
+                                y = (position.y - 60.dp.toPx()).toDp()
+                            )
+                            .wrapContentSize(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = point.x,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (point.y == point.y.toLong().toFloat()) point.y.toLong().toString() else String.format("%.1f", point.y),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF1E88E5)
+                            )
+                        }
+                    }
+                }
             }
             
             // X轴标签行
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 32.dp),
+                    .padding(start = 40.dp, top = 200.dp + 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 points.forEachIndexed { index, point ->
@@ -2651,22 +2764,6 @@ private fun A2UiLineChart(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
-            
-            // Y轴标签列
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                listOf(maxY, (minY + maxY) / 2, minY).forEach { label ->
-                    Text(
-                        text = if (label == label.toLong().toFloat()) label.toLong().toString() else String.format("%.1f", label),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }

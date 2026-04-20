@@ -10,10 +10,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.sqrt
 import androidx.compose.foundation.clickable
@@ -2714,11 +2715,12 @@ private fun A2UiLineChart(
             selectedPointIndex?.let { index ->
                 tooltipPosition?.let { position ->
                     val point = points[index]
+                    val density = LocalDensity.current
                     Card(
                         modifier = Modifier
                             .offset(
-                                x = (position.x - 40.dp.toPx()).toDp(),
-                                y = (position.y - 60.dp.toPx()).toDp()
+                                x = with(density) { position.x.toDp() } - 40.dp,
+                                y = with(density) { position.y.toDp() } - 60.dp
                             )
                             .wrapContentSize(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),

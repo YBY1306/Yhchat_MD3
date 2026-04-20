@@ -1849,6 +1849,21 @@ private fun MarkdownRawTextSettingItem(
         },
         isError = false
     )
+    
+    // A2UI显示原文设置
+    var showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
+    
+    SettingsSwitchItem(
+        icon = Icons.Default.Code,
+        title = "A2UI消息显示原文",
+        subtitle = if (showA2UiRawText) "显示A2UI JSON源代码而不是渲染后的界面" else "正常渲染A2UI消息",
+        checked = showA2UiRawText,
+        onCheckedChange = { checked ->
+            showA2UiRawText = checked
+            prefs.edit().putBoolean("show_a2ui_raw_text", checked).apply()
+        },
+        isError = false
+    )
 }
 
 /**

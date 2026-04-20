@@ -845,6 +845,13 @@ private fun RenderA2UiComponent(
         }
 
         "text" -> {
+            val textAlign = when (component.align) {
+                "center" -> TextAlign.Center
+                "right" -> TextAlign.Right
+                "left" -> TextAlign.Left
+                else -> TextAlign.Start
+            }
+            
             Text(
                 text = resolveA2UiValue(
                     spec,
@@ -854,7 +861,8 @@ private fun RenderA2UiComponent(
                 )?.toString().orEmpty(),
                 modifier = modifier.fillMaxWidth(),
                 style = textStyleFor(component.variant ?: component.usageHint),
-                color = textColorFor(component.variant ?: component.usageHint)
+                color = textColorFor(component.variant ?: component.usageHint),
+                textAlign = textAlign
             )
         }
 
@@ -1372,7 +1380,7 @@ private fun RenderA2UiComponent(
         "modal" -> {
             val triggerId = component.trigger ?: component.entryPointChild ?: component.child
             val contentId = component.content ?: component.contentChild ?: component.child
-            var visible by rememberSaveable(component.id, scopePath) { mutableStateOf(false) }
+            var visible by remember(component.id, scopePath) { mutableStateOf(false) }
 
             triggerId?.let { childId ->
                 Box(
@@ -2496,10 +2504,18 @@ private fun pluralizeA2UiValue(
 
 @Composable
 private fun textStyleFor(variant: String?): TextStyle = when (variant?.lowercase(Locale.ROOT)) {
-    "h1" -> MaterialTheme.typography.headlineMedium
-    "h2" -> MaterialTheme.typography.headlineSmall
-    "h3" -> MaterialTheme.typography.titleLarge
+    "h1" -> MaterialTheme.typography.headlineLarge
+    "h2" -> MaterialTheme.typography.headlineMedium
+    "h3" -> MaterialTheme.typography.headlineSmall
+    "h4" -> MaterialTheme.typography.titleLarge
+    "h5" -> MaterialTheme.typography.titleMedium
+    "h6" -> MaterialTheme.typography.titleSmall
+    "subtitle1" -> MaterialTheme.typography.bodyLarge
+    "subtitle2" -> MaterialTheme.typography.bodyMedium
+    "body1" -> MaterialTheme.typography.bodyLarge
+    "body2" -> MaterialTheme.typography.bodyMedium
     "caption" -> MaterialTheme.typography.labelMedium
+    "overline" -> MaterialTheme.typography.labelSmall
     else -> MaterialTheme.typography.bodyMedium
 }
 
@@ -3366,221 +3382,81 @@ private fun A2UiAudioPlayer(
         label = "progress_animation"
     )
     
-    var mediaPlayer by remember(playerId) { mutableStateOf<MediaPlayer?>(null) }
+    // 使用 AudioPlayerService 而不是自己的 MediaPlayer
+    var audioService by remember(playerId) { mutableStateOf<com.yhchat.canary.service.AudioPlayerService?>(null) }
+    var serviceBound by remember(playerId) { mutableStateOf(false) }
+    
+    val serviceConnection = remember(playerId) {
+        object : android.content.ServiceConnection {
+            override fun onServiceConnected(name: android.content.ComponentName?, service: IBinder?) {
+                val binder = service as? com.yhchat.canary.service.AudioPlayerService.AudioPlayerBinder
+                audioService = binder?.getService()
+                serviceBound = true
+            }
+            
+            override fun onServiceDisconnected(name: android.content.ComponentName?) {
+                audioService = null
+                serviceBound = false
+            }
+        }
+    }
+    
     val handler = remember { Handler(Looper.getMainLooper()) }
     
-    // Cache directory for audio files
-    val cacheDir = remember {
-        val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(
-            android.os.Environment.DIRECTORY_DOWNLOADS
-        )
-        val yhchatCacheDir = java.io.File(downloadDir, "yhchat/cache")
-        if (!yhchatCacheDir.exists()) {
-            yhchatCacheDir.mkdirs()
-        }
-        yhchatCacheDir
-    }
-    
-    // Get cached file path for URL
-    fun getCachedFilePath(urlString: String): java.io.File? {
-        if (urlString.isBlank()) return null
-        return try {
-            val fileName = urlString.substringAfterLast("/").substringBefore("?")
-                .ifBlank { java.util.UUID.nameUUIDFromBytes(urlString.toByteArray()).toString() + ".audio" }
-            java.io.File(cacheDir, fileName)
-        } catch (e: Exception) {
-            null
+    // 绑定到 AudioPlayerService
+    DisposableEffect(playerId) {
+        val intent = Intent(context, com.yhchat.canary.service.AudioPlayerService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        onDispose {
+            if (serviceBound) {
+                context.unbindService(serviceConnection)
+            }
         }
     }
     
-    // Update progress runnable
+    // 监听服务状态并同步进度
     val updateProgressRunnable = remember(playerId) {
         object : Runnable {
             override fun run() {
-                mediaPlayer?.let { player ->
+                audioService?.let { service ->
                     try {
-                        if (player.isPlaying && !isDragging) {
-                            currentPosition = player.currentPosition.toFloat()
-                            currentTimeText = formatTime(player.currentPosition.toLong())
+                        if (service.getCurrentAudioUrl() == url) {
+                            val serviceIsPlaying = service.isPlaying()
+                            val position = service.getCurrentPosition()
+                            val durationMs = service.currentDurationMs
+                            
+                            if (!isDragging) {
+                                isPlaying = serviceIsPlaying
+                                currentPosition = position.toFloat()
+                                duration = durationMs.toFloat()
+                                currentTimeText = formatTime(position)
+                                totalTimeText = formatTime(durationMs)
+                            }
                         }
-                        // Continue updating as long as player exists and is playing
-                        if (player.isPlaying) {
-                            handler.postDelayed(this, 100)
-                        }
+                        
+                        // 继续更新
+                        handler.postDelayed(this, 200)
                     } catch (e: Exception) {
-                        // Handle IllegalStateException when MediaPlayer is released
+                        // Handle errors
                     }
                 }
             }
         }
     }
     
-    // Audio focus management
-    val audioManager = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
-    val audioFocusRequest = remember {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(
-                    android.media.AudioAttributes.Builder()
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                        .build()
-                )
-                .setOnAudioFocusChangeListener { focusChange ->
-                    when (focusChange) {
-                        android.media.AudioManager.AUDIOFOCUS_LOSS -> {
-                            // Lost focus permanently, pause playback
-                            mediaPlayer?.let { player ->
-                                if (player.isPlaying) {
-                                    player.pause()
-                                    isPlaying = false
-                                    handler.removeCallbacks(updateProgressRunnable)
-                                }
-                            }
-                        }
-                        android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                            // Lost focus temporarily, pause playback
-                            mediaPlayer?.let { player ->
-                                if (player.isPlaying) {
-                                    player.pause()
-                                    isPlaying = false
-                                    handler.removeCallbacks(updateProgressRunnable)
-                                }
-                            }
-                        }
-                        android.media.AudioManager.AUDIOFOCUS_GAIN -> {
-                            // Regained focus, can resume if user was playing
-                        }
-                    }
-                }
-                .build()
-        } else {
-            null
+    
+    // 开始进度更新
+    LaunchedEffect(serviceBound, url) {
+        if (serviceBound && url.isNotBlank()) {
+            handler.post(updateProgressRunnable)
         }
     }
     
-    // Cleanup on dispose - but only when component is truly destroyed
+    // 清理资源
     DisposableEffect(playerId) {
         onDispose {
             handler.removeCallbacks(updateProgressRunnable)
-            // Only release MediaPlayer if not playing in background
-            // In a real app, you'd want to move this to a Service for true background playback
-            mediaPlayer?.let {
-                try {
-                    if (it.isPlaying) {
-                        // Don't stop immediately, let it continue for a short time
-                        // In production, this should be handled by a MediaService
-                    }
-                    // Release audio focus
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && audioFocusRequest != null) {
-                        audioManager.abandonAudioFocusRequest(audioFocusRequest)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        audioManager.abandonAudioFocus(null)
-                    }
-                } catch (e: Exception) {
-                    // Handle any cleanup errors
-                }
-            }
-        }
-    }
-    
-    // Initialize media player when URL changes
-    LaunchedEffect(url, playerId) {
-        if (url.isNotBlank()) {
-            isLoading = true
-            try {
-                mediaPlayer?.let {
-                    if (it.isPlaying) {
-                        it.stop()
-                    }
-                    it.release()
-                }
-                
-                val cachedFile = getCachedFilePath(url)
-                val useCache = cachedFile != null && cachedFile.exists()
-                
-                mediaPlayer = MediaPlayer().apply {
-                    // Set audio attributes for background playback
-                    setAudioAttributes(
-                        android.media.AudioAttributes.Builder()
-                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                            .build()
-                    )
-                    
-                    // Enable wake lock to prevent device sleep during playback
-                    setWakeMode(context, android.os.PowerManager.PARTIAL_WAKE_LOCK)
-                    
-                    if (useCache) {
-                        // Use cached file
-                        setDataSource(cachedFile.absolutePath)
-                    } else {
-                        // Stream from URL
-                        setDataSource(url)
-                    }
-                    
-                    setOnPreparedListener { mp ->
-                        // Get duration from MediaPlayer (more accurate)
-                        val durationMs = mp.duration
-                        duration = durationMs.toFloat()
-                        totalTimeText = formatTime(durationMs)
-                        
-                        // Also try to get metadata using MediaMetadataRetriever for additional info
-                        if (useCache) {
-                            try {
-                                val retriever = android.media.MediaMetadataRetriever()
-                                retriever.setDataSource(cachedFile.absolutePath)
-                                val title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
-                                val artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                                retriever.release()
-                            } catch (e: Exception) {
-                                // Ignore metadata extraction errors
-                            }
-                        }
-                        
-                        isLoading = false
-                    }
-                    
-                    setOnCompletionListener {
-                        isPlaying = false
-                        currentPosition = 0f
-                        currentTimeText = "00:00"
-                        handler.removeCallbacks(updateProgressRunnable)
-                    }
-                    
-                    setOnErrorListener { _, _, _ ->
-                        isLoading = false
-                        isPlaying = false
-                        true
-                    }
-                    
-                    prepareAsync()
-                }
-                
-                // Download to cache in background if not already cached
-                if (!useCache && cachedFile != null) {
-                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        try {
-                            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                            connection.connectTimeout = 15000
-                            connection.readTimeout = 15000
-                            connection.connect()
-                            
-                            connection.inputStream.use { input ->
-                                cachedFile.outputStream().use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                            connection.disconnect()
-                        } catch (e: Exception) {
-                            // Cache download failed, continue streaming
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                isLoading = false
-            }
         }
     }
     
@@ -3646,15 +3522,15 @@ private fun A2UiAudioPlayer(
                     }
                 },
                 onValueChangeFinished = {
-                    if (duration > 0 && mediaPlayer != null) {
-                        // 拖动结束，跳转到指定位置
-                        mediaPlayer?.seekTo(dragPosition.toInt())
+                    if (duration > 0 && serviceBound) {
+                        // 拖动结束，通过服务跳转到指定位置
+                        com.yhchat.canary.service.AudioPlayerService.seekTo(context, dragPosition.toLong())
                         currentPosition = dragPosition
                         isDragging = false
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = duration > 0 && mediaPlayer != null
+                enabled = duration > 0 && serviceBound
             )
             
             Row(
@@ -3683,33 +3559,18 @@ private fun A2UiAudioPlayer(
             // Play/Pause button
             FilledIconButton(
                 onClick = {
-                    mediaPlayer?.let { player ->
+                    if (url.isNotBlank()) {
                         if (isPlaying) {
-                            player.pause()
-                            isPlaying = false
-                            handler.removeCallbacks(updateProgressRunnable)
+                            // 暂停播放
+                            com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
                         } else {
-                            // Request audio focus before starting playback
-                            val focusResult = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && audioFocusRequest != null) {
-                                audioManager.requestAudioFocus(audioFocusRequest)
-                            } else {
-                                @Suppress("DEPRECATION")
-                                audioManager.requestAudioFocus(
-                                    null,
-                                    android.media.AudioManager.STREAM_MUSIC,
-                                    android.media.AudioManager.AUDIOFOCUS_GAIN
-                                )
-                            }
-                            
-                            if (focusResult == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                                player.start()
-                                isPlaying = true
-                                handler.post(updateProgressRunnable)
-                            }
+                            // 开始播放
+                            val title = if (description.isNotBlank()) description else "A2UI音频"
+                            com.yhchat.canary.service.AudioPlayerService.startPlayAudio(context, url, title)
                         }
                     }
                 },
-                enabled = !isLoading && mediaPlayer != null
+                enabled = !isLoading && url.isNotBlank()
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -3729,19 +3590,13 @@ private fun A2UiAudioPlayer(
             // Stop button
             OutlinedIconButton(
                 onClick = {
-                    mediaPlayer?.let { player ->
-                        if (player.isPlaying) {
-                            player.stop()
-                        }
-                        player.prepare()
-                        player.seekTo(0)
-                        isPlaying = false
-                        currentPosition = 0f
-                        currentTimeText = "00:00"
-                        handler.removeCallbacks(updateProgressRunnable)
-                    }
+                    // 停止播放并重置进度
+                    com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
+                    isPlaying = false
+                    currentPosition = 0f
+                    currentTimeText = "00:00"
                 },
-                enabled = !isLoading && mediaPlayer != null
+                enabled = !isLoading && serviceBound
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
@@ -3753,8 +3608,8 @@ private fun A2UiAudioPlayer(
 }
 
 // Helper function to format time
-private fun formatTime(milliseconds: Int): String {
-    val seconds = milliseconds / 1000
+private fun formatTime(milliseconds: Long): String {
+    val seconds = (milliseconds / 1000).toInt()
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, remainingSeconds)
@@ -3786,6 +3641,37 @@ private fun A2UiVideoPlayer(
     var videoView by remember(playerId) { mutableStateOf<android.widget.VideoView?>(null) }
     val handler = remember { Handler(Looper.getMainLooper()) }
     val scope = rememberCoroutineScope()
+    
+    // 使用 AudioPlayerService 处理视频音频
+    var audioService by remember(playerId) { mutableStateOf<com.yhchat.canary.service.AudioPlayerService?>(null) }
+    var serviceBound by remember(playerId) { mutableStateOf(false) }
+    
+    val serviceConnection = remember(playerId) {
+        object : android.content.ServiceConnection {
+            override fun onServiceConnected(name: android.content.ComponentName?, service: IBinder?) {
+                val binder = service as? com.yhchat.canary.service.AudioPlayerService.AudioPlayerBinder
+                audioService = binder?.getService()
+                serviceBound = true
+            }
+            
+            override fun onServiceDisconnected(name: android.content.ComponentName?) {
+                audioService = null
+                serviceBound = false
+            }
+        }
+    }
+    
+    // 绑定到 AudioPlayerService
+    DisposableEffect(playerId) {
+        val intent = Intent(context, com.yhchat.canary.service.AudioPlayerService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        onDispose {
+            if (serviceBound) {
+                context.unbindService(serviceConnection)
+            }
+        }
+    }
     
     // Activity result launcher for fullscreen video
     val fullscreenLauncher = rememberLauncherForActivityResult(
@@ -3875,13 +3761,19 @@ private fun A2UiVideoPlayer(
         }
     }
     
-    // Video control functions
+    // Video control functions - 同时控制视频和音频服务
     fun playVideo() {
         videoView?.let { view ->
             view.start()
             isPlaying = true
             handler.post(updateProgressRunnable)
             scheduleHideController()
+            
+            // 同时启动音频服务来处理通知和后台播放
+            if (url.isNotBlank()) {
+                val title = "A2UI视频"
+                com.yhchat.canary.service.AudioPlayerService.startPlayAudio(context, url, title)
+            }
         }
     }
     
@@ -3891,6 +3783,9 @@ private fun A2UiVideoPlayer(
             isPlaying = false
             handler.removeCallbacks(updateProgressRunnable)
             showController = true
+            
+            // 暂停音频服务
+            com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
         }
     }
     
@@ -3905,6 +3800,9 @@ private fun A2UiVideoPlayer(
             currentTimeText = "00:00"
             handler.removeCallbacks(updateProgressRunnable)
             showController = true
+            
+            // 停止音频服务
+            com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
         }
     }
     
@@ -3913,7 +3811,10 @@ private fun A2UiVideoPlayer(
             val newPosition = (view.currentPosition + seconds * 1000).coerceAtMost(duration.toInt())
             view.seekTo(newPosition)
             currentPosition = newPosition.toFloat()
-            currentTimeText = formatTime(newPosition)
+            currentTimeText = formatTime(newPosition.toLong())
+            
+            // 同步音频服务进度
+            com.yhchat.canary.service.AudioPlayerService.seekTo(context, newPosition.toLong())
         }
     }
     
@@ -3922,7 +3823,10 @@ private fun A2UiVideoPlayer(
             val newPosition = (view.currentPosition - seconds * 1000).coerceAtLeast(0)
             view.seekTo(newPosition)
             currentPosition = newPosition.toFloat()
-            currentTimeText = formatTime(newPosition)
+            currentTimeText = formatTime(newPosition.toLong())
+            
+            // 同步音频服务进度
+            com.yhchat.canary.service.AudioPlayerService.seekTo(context, newPosition.toLong())
         }
     }
     
@@ -4113,9 +4017,11 @@ private fun A2UiVideoPlayer(
                             val newPosition = (fraction * duration).toInt()
                             videoView?.seekTo(newPosition)
                             currentPosition = newPosition.toFloat()
+                            currentTimeText = formatTime(newPosition.toLong())
                         },
                         onValueChangeFinished = {
-                            // Video will continue playing after seek
+                            // 同步音频服务进度
+                            com.yhchat.canary.service.AudioPlayerService.seekTo(context, currentPosition.toLong())
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = androidx.compose.material3.SliderDefaults.colors(

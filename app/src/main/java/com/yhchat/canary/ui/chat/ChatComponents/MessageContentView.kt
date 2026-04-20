@@ -385,48 +385,12 @@ fun MessageContentView(
             }
             14 -> {
                 content.text?.let { text ->
-                    val a2UiSpec = remember(text) { parseA2UiSpec(text) }
-                    if (a2UiSpec != null) {
-                        // 提取A2UI JSON之外的文本内容，过滤掉```json```代码块
-                        val (beforeText, afterText) = remember(text) {
-                            val filtered = text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "")
-                            extractTextAroundA2UiJson(filtered)
-                        }
-                        
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            // 显示A2UI JSON之前的文本
-                            if (beforeText.isNotBlank()) {
-                                SelectionContainer {
-                                    Text(
-                                        text = beforeText,
-                                        color = textColor,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            
-                            // 显示A2UI表单
-                            A2UiFormMessage(
-                                spec = a2UiSpec,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            
-                            // 显示A2UI JSON之后的文本
-                            if (afterText.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                SelectionContainer {
-                                    Text(
-                                        text = afterText,
-                                        color = textColor,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                    } else if (text.isNotBlank()) {
+                    val context = LocalContext.current
+                    val prefs = remember { context.getSharedPreferences("message_settings", Context.MODE_PRIVATE) }
+                    val showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
+                    
+                    if (showA2UiRawText) {
+                        // 显示A2UI原文
                         MessageSelectionContainer(
                             onQuote = { onQuote(message.msgId, text) },
                             onForward = { onForward(message) },
@@ -442,9 +406,72 @@ fun MessageContentView(
                             Text(
                                 text = text,
                                 color = textColor,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                                 modifier = Modifier.fillMaxWidth()
                             )
+                        }
+                    } else {
+                        val a2UiSpec = remember(text) { parseA2UiSpec(text) }
+                        if (a2UiSpec != null) {
+                            // 提取A2UI JSON之外的文本内容，过滤掉```json```代码块
+                            val (beforeText, afterText) = remember(text) {
+                                val filtered = text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "")
+                                extractTextAroundA2UiJson(filtered)
+                            }
+                            
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // 显示A2UI JSON之前的文本
+                                if (beforeText.isNotBlank()) {
+                                    SelectionContainer {
+                                        Text(
+                                            text = beforeText,
+                                            color = textColor,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                                
+                                // 显示A2UI表单
+                                A2UiFormMessage(
+                                    spec = a2UiSpec,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                
+                                // 显示A2UI JSON之后的文本
+                                if (afterText.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    SelectionContainer {
+                                        Text(
+                                            text = afterText,
+                                            color = textColor,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (text.isNotBlank()) {
+                            MessageSelectionContainer(
+                                onQuote = { onQuote(message.msgId, text) },
+                                onForward = { onForward(message) },
+                                onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                    { onEdit(message) }
+                                } else null,
+                                onDelete = if (isMyMessage) {
+                                    { onRecall(message.msgId) }
+                                } else null,
+                                onPlusOne = { onPlusOne(message) },
+                                onMultiSelect = onMultiSelect
+                            ) {
+                                Text(
+                                    text = text,
+                                    color = textColor,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }

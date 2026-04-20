@@ -48,6 +48,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import android.content.Intent
 import android.Manifest
 import androidx.compose.runtime.LaunchedEffect
@@ -116,6 +117,14 @@ fun ChatInputBar(
     var pendingVoiceFile by remember { mutableStateOf<java.io.File?>(null) }
     var isConvertingToText by remember { mutableStateOf(false) }
     var voiceToTextProgress by remember { mutableStateOf("") }
+    
+    // 处理返回手势 - 当选择器显示时拦截返回手势
+    BackHandler(enabled = showExpressionPicker || showInstructionPicker) {
+        when {
+            showExpressionPicker -> showExpressionPicker = false
+            showInstructionPicker -> showInstructionPicker = false
+        }
+    }
     
     // 文件选择器 - 使用OpenDocument以获取完整权限
     val audioPickerLauncher = rememberLauncherForActivityResult(

@@ -128,11 +128,18 @@ class AudioPlayerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Referer", "https://myapp.jwznb.com")
+            val originalRequest = chain.request()
+            val url = originalRequest.url.toString()
+            
+            val requestBuilder = originalRequest.newBuilder()
                 .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-                .build()
-            chain.proceed(request)
+            
+            // 只有当 URL 包含 .jwznb.com 时才添加 Referer
+            if (url.contains(".jwznb.com")) {
+                requestBuilder.addHeader("Referer", "https://myapp.jwznb.com")
+            }
+            
+            chain.proceed(requestBuilder.build())
         }
         .build()
     
@@ -1074,4 +1081,14 @@ class AudioPlayerService : Service() {
      * 获取当前播放的音频URL
      */
     fun getCurrentAudioUrl(): String? = currentAudioUrl
+    
+    /**
+     * 获取当前播放进度（毫秒）
+     */
+    fun getCurrentPosition(): Long = getCurrentPositionMs()
+    
+    /**
+     * 获取当前音频总时长（毫秒）
+     */
+    val currentDurationMs: Long get() = currentDurationMs
 }

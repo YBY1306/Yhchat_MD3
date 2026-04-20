@@ -8,12 +8,13 @@ import android.os.Looper
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.sqrt
@@ -2632,9 +2633,9 @@ private fun A2UiLineChart(
                                     val yRatio = (point.y - minY) / range
                                     val y = topPadding + (1f - yRatio) * plotHeight
                                     
-                                    val distance = kotlin.math.sqrt(
-                                        (offset.x - x) * (offset.x - x) + (offset.y - y) * (offset.y - y)
-                                    )
+                                    val dx = offset.x - x
+                                    val dy = offset.y - y
+                                    val distance = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
                                     
                                     if (distance < 30.dp.toPx() && distance < nearestDistance) {
                                         nearestDistance = distance

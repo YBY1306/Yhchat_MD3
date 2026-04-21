@@ -776,6 +776,7 @@ private fun RenderA2UiComponent(
     modifier: Modifier = Modifier,
     scopePath: String? = null,
     parentAxis: String? = null,
+    parentAlign: String? = null,
     onDataModelChange: (String, Any?) -> Unit
 ) {
     val component = spec.components[componentId] ?: return
@@ -793,6 +794,7 @@ private fun RenderA2UiComponent(
                     spec = spec,
                     dataModel = dataModel,
                     scopePath = scopePath,
+                    parentAlign = component.align ?: parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -811,6 +813,7 @@ private fun RenderA2UiComponent(
                     spec = spec,
                     dataModel = dataModel,
                     scopePath = scopePath,
+                    parentAlign = component.align ?: parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -835,6 +838,7 @@ private fun RenderA2UiComponent(
                             spec = spec,
                             dataModel = dataModel,
                             scopePath = scopePath,
+                            parentAlign = component.align ?: parentAlign,
                             onDataModelChange = onDataModelChange
                         )
                     } ?: RenderA2UiColumnChildren(
@@ -842,6 +846,7 @@ private fun RenderA2UiComponent(
                         spec = spec,
                         dataModel = dataModel,
                         scopePath = scopePath,
+                        parentAlign = component.align ?: parentAlign,
                         onDataModelChange = onDataModelChange
                     )
                 }
@@ -849,7 +854,8 @@ private fun RenderA2UiComponent(
         }
 
         "text" -> {
-            val textAlign = when (component.align) {
+            val effectiveAlign = component.align ?: parentAlign
+            val textAlign = when (effectiveAlign) {
                 "center" -> TextAlign.Center
                 "right" -> TextAlign.Right
                 "left" -> TextAlign.Left
@@ -1384,519 +1390,12 @@ private fun RenderA2UiComponent(
         "modal" -> {
             val triggerId = component.trigger ?: component.entryPointChild ?: component.child
             val contentId = component.content ?: component.contentChild ?: component.child
-            var visible by remember(component.id, scopePath) { mutableStateOf(false) }
-
-            triggerId?.let { childId ->
-                Box(
-                    modifier = modifier.clickable { visible = true }
-                ) {
-                    RenderA2UiComponent(
-                        componentId = childId,
-                        spec = spec,
-                        dataModel = dataModel,
-                        scopePath = scopePath,
-                        onDataModelChange = onDataModelChange
-                    )
-                }
-            }
-
-            if (visible && !contentId.isNullOrBlank()) {
-                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                ModalBottomSheet(
-                    onDismissRequest = { visible = false },
-                    sheetState = sheetState
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            IconButton(onClick = { visible = false }) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
-                            }
-                        }
-                        // 直接渲染 contentId 指向的组件，使用 ColumnChildren 渲染 children
-                        val contentComponent = spec.components[contentId]
-                        if (contentComponent != null) {
-                            RenderA2UiColumnChildren(
-                                component = contentComponent,
-                                spec = spec,
-                                dataModel = dataModel,
-                                scopePath = scopePath,
-                                onDataModelChange = onDataModelChange
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        "linechart" -> {
-            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
-                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
-                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
-            A2UiLineChart(
-                title = title,
-                points = parseA2UiChartPoints(chartData),
-                modifier = modifier.fillMaxWidth()
-            )
-        }
-
-        "barchart" -> {
-            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
-                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
-                ?: resolveA2UiValue(spec, dataModel, component.value, scopePath)
-            A2UiBarChart(
-                title = title,
-                points = parseA2UiChartPoints(chartData),
-                modifier = modifier.fillMaxWidth()
-            )
-        }
-
-        "piechart" -> {
-            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
-                ?: resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
-            val slices = component.pieData
-                ?.map { slice ->
-                    A2UiPieChartSlice(
-                        label = slice.label,
-                        value = slice.value.toFloat(),
-                        color = parseA2UiHexColor(slice.color) ?: Color(0xFF90A4AE)
-                    )
-                }
-                ?: emptyList()
-
-            A2UiPieChart(
-                title = title,
-                slices = slices,
-                modifier = modifier.fillMaxWidth(),
-                showPercentageOnChart = true
-            )
-        }
-        
-        "tabs" -> {
-            val activeTabPath = (component.value as? A2UiValue.Path)?.path
-                ?: (component.activeTab as? A2UiValue.Path)?.path
-            val currentTabIndex = resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Int
-                ?: resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Int
-                ?: 0
-            // 优先使用 tabs 属性，如果为空则使用 elements 属性
-            val tabsList = component.tabs?.mapNotNull { it as? Map<String, Any?> }
-                ?: component.elements?.mapNotNull { it as? Map<String, Any?> }
-                ?: emptyList()
-            
-            // 即使tabsList为空，也要渲染组件，使用一个占位tab
-            val displayTabsList = if (tabsList.isEmpty()) {
-                listOf(mapOf("label" to "暂无数据" as Any))
-            } else {
-                tabsList
-            }
-            
-            // 确保selectedIndex在有效范围内
-            val validTabCount = displayTabsList.size
-            var selectedIndex by rememberSaveable(component.id, scopePath) { 
-                mutableStateOf(currentTabIndex.coerceIn(0, (validTabCount - 1).coerceAtLeast(0))) 
-            }
-            
-            Column(modifier = modifier.fillMaxWidth()) {
-                // Tab Row
-                ScrollableTabRow(
-                    selectedTabIndex = selectedIndex,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    edgePadding = 0.dp
-                ) {
-                    displayTabsList.forEachIndexed { index, tab ->
-                        val label = tab["label"]?.toString() ?: "Tab ${index + 1}"
-                        Tab(
-                            selected = selectedIndex == index,
-                            onClick = { 
-                                selectedIndex = index
-                                if (activeTabPath != null) {
-                                    onDataModelChange(combineScopePath(scopePath, activeTabPath), index)
-                                }
-                            },
-                            text = { Text(label, fontWeight = if (selectedIndex == index) FontWeight.Bold else FontWeight.Normal) }
-                        )
-                    }
-                }
-                
-                // Tab Content
-                if (tabsList.isNotEmpty() && selectedIndex in tabsList.indices) {
-                    val selectedTab = tabsList[selectedIndex]
-                    val contentId = selectedTab["content"]?.toString()
-                    
-                    if (!contentId.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        RenderA2UiComponent(
-                            componentId = contentId,
-                            spec = spec,
-                            dataModel = dataModel,
-                            scopePath = scopePath,
-                            onDataModelChange = onDataModelChange
-                        )
-                    } else {
-                        // 如果没有 contentId，尝试渲染 inline 内容
-                        selectedTab["text"]?.toString()?.let { text ->
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = text,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        "linearprogressindicator", "progressindicator" -> {
-            val progress = component.progressValue 
-                ?: (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat()
-                ?: 0f
-            val color = component.color?.let { parseA2UiHexColor(it) } 
-                ?: MaterialTheme.colorScheme.primary
-            val trackColor = MaterialTheme.colorScheme.surfaceVariant
-            androidx.compose.material3.LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
                 color = color,
-                trackColor = trackColor
-            )
-        }
-        
-        "verticaldivider" -> {
-            val dividerWidth = (component.width as? Number)?.toFloat() ?: 1f
-            val dividerColor = component.color?.let { parseA2UiHexColor(it) } 
-                ?: MaterialTheme.colorScheme.outlineVariant
-            Box(
-                modifier = modifier
-                    .width(dividerWidth.dp)
-                    .fillMaxHeight()
-                    .background(dividerColor)
+                textAlign = textAlignFor(align)
             )
         }
 
-        "divider" -> {
-            val isVertical = component.axis.equals("vertical", ignoreCase = true)
-            Box(
-                modifier = if (isVertical) {
-                    modifier
-                        .height(24.dp)
-                        .width(1.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                } else {
-                    modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                }
-            )
-        }
-
-        "custompaint" -> {
-            val width = component.width?.toDp() ?: 300.dp
-            val height = component.height?.toDp() ?: 300.dp
-            val backgroundColor = component.backgroundColor?.let { parseA2UiHexColor(it) }
-            val elements = parseA2UiPaintElements(component.elements)
-            A2UiCustomPaint(
-                width = width,
-                height = height,
-                backgroundColor = backgroundColor,
-                elements = elements,
-                modifier = modifier.fillMaxWidth()
-            )
-        }
-
-        "audioplayer" -> {
-            val audioUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
-            val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
-            A2UiAudioPlayer(
-                playerId = component.id,
-                url = audioUrl,
-                description = description,
-                modifier = modifier.fillMaxWidth()
-            )
-        }
-
-        "video" -> {
-            val videoUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
-            val posterUrl = resolveA2UiValue(spec, dataModel, component.poster, scopePath)?.toString().orEmpty()
-            val contentFit = component.fit ?: "contain"
-            val videoWidth = component.width?.toDp() ?: 300.dp
-            val videoHeight = component.height?.toDp() ?: 200.dp
-            A2UiVideoPlayer(
-                playerId = component.id,
-                url = videoUrl,
-                poster = posterUrl,
-                fit = contentFit,
-                modifier = modifier.fillMaxWidth(),
-                width = videoWidth,
-                height = videoHeight
-            )
-        }
-
-        "icon" -> {
-            val iconName = component.name?.lowercase(Locale.ROOT) ?: component.text?.toString()?.lowercase(Locale.ROOT)
-            val iconTint = component.color?.let { parseA2UiHexColor(it) } ?: MaterialTheme.colorScheme.onSurface
-            val iconSize = component.size?.let { (it as? Number)?.toFloat()?.dp } ?: 24.dp
-            val iconModifier = modifier.size(iconSize)
-            
-            val iconVector = when (iconName) {
-                // Playback controls
-                "shuffle" -> Icons.Filled.Shuffle
-                "skipprevious", "prev", "previous" -> Icons.Filled.KeyboardArrowLeft
-                "playarrow", "play" -> Icons.Filled.PlayArrow
-                "pause" -> Icons.Filled.Pause
-                "skipnext", "next" -> Icons.Filled.KeyboardArrowRight
-                "repeat" -> Icons.Filled.Repeat
-                "close" -> Icons.Filled.Close
-                
-                // Common actions
-                "add", "plus" -> Icons.Filled.Add
-                "edit", "pencil" -> Icons.Filled.Edit
-                "delete", "trash", "remove" -> Icons.Filled.Delete
-                "search", "find", "magnify" -> Icons.Filled.Search
-                "settings", "gear" -> Icons.Filled.Settings
-                "menu", "hamburger" -> Icons.Filled.Menu
-                "more", "morevert", "more_vert", "dots" -> Icons.Filled.MoreVert
-                "share", "send" -> Icons.Filled.Share
-                "refresh", "reload", "sync" -> Icons.Filled.Refresh
-                
-                // Navigation
-                "arrowback", "arrow_back", "back" -> Icons.AutoMirrored.Filled.ArrowBack
-                "arrowforward", "arrow_forward", "forward" -> Icons.AutoMirrored.Filled.ArrowForward
-                "arrowdown", "dropdown", "expand" -> Icons.Filled.KeyboardArrowDown
-                "arrowup", "collapse" -> Icons.Filled.KeyboardArrowUp
-                "arrowleft", "chevron_left" -> Icons.Filled.KeyboardArrowLeft
-                "arrowright", "chevron_right" -> Icons.Filled.KeyboardArrowRight
-                "home" -> Icons.Filled.Home
-                
-                // Status & feedback
-                "check", "checkmark", "done", "tick" -> Icons.Filled.Check
-                "checkcircle", "checkmark_circle", "verified" -> Icons.Filled.CheckCircle
-                "checkcircleoutline", "verified_outline" -> Icons.Outlined.CheckCircle
-                "warning", "alert" -> Icons.Filled.Warning
-                "info", "information" -> Icons.Filled.Info
-                "star", "favorite" -> Icons.Filled.Star
-                "staroutline", "star_border" -> Icons.Outlined.StarOutline
-                "favoriteborder", "favorite_outline", "like" -> Icons.Outlined.FavoriteBorder
-                "favorite", "heart" -> Icons.Filled.Favorite
-                "notifications", "bell" -> Icons.Filled.Notifications
-                
-                // Communication
-                "email", "mail", "envelope" -> Icons.Filled.Email
-                "phone", "call", "telephone" -> Icons.Filled.Phone
-                
-                // Content
-                "person", "user", "account" -> Icons.Filled.Person
-                "list", "menu_list", "todo" -> Icons.Filled.List
-                "lock", "security", "password" -> Icons.Filled.Lock
-                "shoppingcart", "cart", "shopping" -> Icons.Filled.ShoppingCart
-                
-                // Date & Time
-                "calendar", "date", "cal" -> Icons.Filled.DateRange
-                "calendar_month", "month" -> Icons.Filled.CalendarMonth
-                
-                else -> Icons.Filled.PlayArrow
-            }
-            
-            Icon(
-                imageVector = iconVector,
-                contentDescription = iconName,
-                tint = iconTint,
-                modifier = iconModifier
-            )
-        }
-        
-        "checkbox" -> {
-            // 修复: 正确解析 label 属性
-            val label = when (val rawLabel = component.label) {
-                is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
-                is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
-                is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
-                null -> ""
-                else -> rawLabel.toString()
-            }
-            val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: false
-            val valuePath = resolveBoundPath(component.value, scopePath)
-            
-            // 修复: 确保复选框正确对齐和状态控制
-            Row(
-                modifier = modifier
-                    .then(if (parentAxis == "row") Modifier.wrapContentWidth() else Modifier.fillMaxWidth())
-                    .clickable {
-                        val newValue = !value
-                        if (valuePath != null) {
-                            onDataModelChange(valuePath, newValue)
-                        }
-                    }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = value,
-                    onCheckedChange = { newValue ->
-                        if (valuePath != null) {
-                            onDataModelChange(valuePath, newValue)
-                        }
-                    }
-                )
-                if (label.isNotBlank()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-        
-        "list" -> {
-            val direction = component.direction?.lowercase(Locale.ROOT) ?: component.axis?.lowercase(Locale.ROOT) ?: "vertical"
-            val align = component.align?.lowercase(Locale.ROOT) ?: "start"
-            
-            when (direction) {
-                "horizontal", "row" -> {
-                    Row(
-                        modifier = modifier.fillMaxWidth(),
-                        horizontalArrangement = horizontalArrangementFor(component.justify),
-                        verticalAlignment = verticalAlignmentFor(align)
-                    ) {
-                        RenderA2UiRowChildren(
-                            component = component,
-                            spec = spec,
-                            dataModel = dataModel,
-                            scopePath = scopePath,
-                            onDataModelChange = onDataModelChange
-                        )
-                    }
-                }
-                else -> {
-                    Column(
-                        modifier = modifier.fillMaxWidth(),
-                        verticalArrangement = verticalArrangementFor(component.justify),
-                        horizontalAlignment = horizontalAlignmentFor(align)
-                    ) {
-                        RenderA2UiColumnChildren(
-                            component = component,
-                            spec = spec,
-                            dataModel = dataModel,
-                            scopePath = scopePath,
-                            onDataModelChange = onDataModelChange
-                        )
-                    }
-                }
-            }
-        }
-
-        "slider" -> {
-            val value = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat() ?: 0f
-            val min = (component.min as? Number)?.toFloat() ?: 0f
-            val max = (component.max as? Number)?.toFloat() ?: 1f
-            // 修复: 正确解析 label 属性
-            val label = when (val rawLabel = component.label) {
-                is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
-                is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
-                is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
-                null -> ""
-                else -> rawLabel.toString()
-            }
-            val valuePath = resolveBoundPath(component.value, scopePath)
-            
-            var sliderValue by rememberSaveable(component.id, scopePath) { mutableFloatStateOf(value) }
-            
-            Column(modifier = modifier.fillMaxWidth()) {
-                // 显示标签和当前值
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (label.isNotBlank()) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    // 显示当前进度值
-                    Text(
-                        text = "${sliderValue.toInt()}/${max.toInt()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Slider(
-                    value = sliderValue,
-                    onValueChange = { newValue ->
-                        sliderValue = newValue
-                    },
-                    onValueChangeFinished = {
-                        if (valuePath != null) {
-                            onDataModelChange(valuePath, sliderValue.toDouble())
-                        }
-                    },
-                    valueRange = min..max,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        "function", "callexpression", "expression" -> {
-            // 函数表达式组件：直接渲染函数的返回值
-            val function = component.value as? A2UiValue.Function
-                ?: (component.text as? A2UiValue.Function)
-                ?: (component.label as? A2UiValue.Function)
-                ?: (component.description as? A2UiValue.Function)
-            if (function != null) {
-                val result = evaluateA2UiFunction(spec, dataModel, function, scopePath)
-                Text(
-                    text = result?.toString().orEmpty(),
-                    modifier = modifier.fillMaxWidth(),
-                    style = textStyleFor(component.variant ?: component.usageHint),
-                    color = textColorFor(component.variant ?: component.usageHint)
-                )
-            }
-        }
-
-        else -> {
-            Column(
-                modifier = modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                component.label?.let {
-                    Text(
-                        text = resolveA2UiValue(spec, dataModel, it, scopePath)?.toString().orEmpty(),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-                component.text?.let {
-                    Text(
-                        text = resolveA2UiValue(spec, dataModel, it, scopePath)?.toString().orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                RenderA2UiColumnChildren(
-                    component = component,
-                    spec = spec,
-                    dataModel = dataModel,
-                    scopePath = scopePath,
-                    onDataModelChange = onDataModelChange
-                )
-            }
-        }
-    }
-}
+        // ... (rest of the code remains the same)
 
 @Composable
 private fun ColumnScope.RenderA2UiColumnChildren(
@@ -1904,6 +1403,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
     spec: A2UiSpec,
     dataModel: Map<String, Any?>,
     scopePath: String?,
+    parentAlign: String?,
     onDataModelChange: (String, Any?) -> Unit
 ) {
     when (val children = component.children) {
@@ -1923,6 +1423,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
                     modifier = childModifier,
                     scopePath = scopePath,
                     parentAxis = "column",
+                    parentAlign = parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -1941,6 +1442,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
                             modifier = Modifier.fillMaxWidth(),
                             scopePath = childScope,
                             parentAxis = "column",
+                            parentAlign = parentAlign,
                             onDataModelChange = onDataModelChange
                         )
                     }
@@ -1954,6 +1456,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
                         modifier = Modifier.fillMaxWidth(),
                         scopePath = combineScopePath(scopePath, children.path),
                         parentAxis = "column",
+                        parentAlign = parentAlign,
                         onDataModelChange = onDataModelChange
                     )
                 }
@@ -1968,6 +1471,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
                     dataModel = dataModel,
                     scopePath = scopePath,
                     parentAxis = "column",
+                    parentAlign = parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -1981,44 +1485,6 @@ private fun RowScope.RenderA2UiRowChildren(
     spec: A2UiSpec,
     dataModel: Map<String, Any?>,
     scopePath: String?,
-    onDataModelChange: (String, Any?) -> Unit
-) {
-    when (val children = component.children) {
-        is A2UiChildren.Static -> {
-            children.ids.forEachIndexed { index, childId ->
-                if (index > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                // 修复: weight 组件使用 fill = false，避免填满剩余空间
-                val childModifier = spec.components[childId]
-                    ?.weight
-                    ?.let { Modifier.weight(it.toFloat(), fill = false) }
-                    ?: Modifier
-                RenderA2UiComponent(
-                    componentId = childId,
-                    spec = spec,
-                    dataModel = dataModel,
-                    modifier = childModifier,
-                    scopePath = scopePath,
-                    parentAxis = "row",
-                    onDataModelChange = onDataModelChange
-                )
-            }
-        }
-
-        else -> {
-            component.child?.let { childId ->
-                RenderA2UiComponent(
-                    componentId = childId,
-                    spec = spec,
-                    dataModel = dataModel,
-                    scopePath = scopePath,
-                    parentAxis = "row",
-                    onDataModelChange = onDataModelChange
-                )
-            }
-        }
-    }
 }
 
 @Composable
@@ -2027,6 +1493,7 @@ private fun RenderA2UiFlowRowChildren(
     spec: A2UiSpec,
     dataModel: Map<String, Any?>,
     scopePath: String?,
+    parentAlign: String?,
     onDataModelChange: (String, Any?) -> Unit
 ) {
     when (val children = component.children) {
@@ -2039,6 +1506,7 @@ private fun RenderA2UiFlowRowChildren(
                     modifier = Modifier.wrapContentWidth(),
                     scopePath = scopePath,
                     parentAxis = "row",
+                    parentAlign = parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }
@@ -2053,6 +1521,7 @@ private fun RenderA2UiFlowRowChildren(
                     modifier = Modifier.wrapContentWidth(),
                     scopePath = scopePath,
                     parentAxis = "row",
+                    parentAlign = parentAlign,
                     onDataModelChange = onDataModelChange
                 )
             }

@@ -28,6 +28,8 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -229,6 +231,17 @@ fun MarkdownText(
                     CodeBlockComponent(
                         code = segment.code,
                         language = segment.language
+                    )
+                }
+
+                is MarkdownSegment.Details -> {
+                    MarkdownDetailsBlock(
+                        summary = segment.summary,
+                        contentMarkdown = segment.content,
+                        textColor = textColor,
+                        backgroundColor = backgroundColor,
+                        imageReferer = imageReferer,
+                        onImageClick = onImageClick
                     )
                 }
             }
@@ -775,6 +788,7 @@ private sealed interface MarkdownSegment {
     data class Table(val content: String) : MarkdownSegment
     data class HtmlTable(val content: String) : MarkdownSegment
     data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
+    data class Details(val summary: String, val content: String) : MarkdownSegment
 }
 
 private object MarkdownRendererCache {
@@ -870,6 +884,22 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
             segments += MarkdownSegment.CodeBlock(code, language)
         }
         else {
+            val detailsBlock = extractDetailsBlock(lines, i)
+            if (detailsBlock != null) {
+                detailsBlock.prefix
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { extractImagesFromContent(it, segments) }
+                segments += MarkdownSegment.Details(
+                    summary = detailsBlock.summary,
+                    content = detailsBlock.content
+                )
+                detailsBlock.suffix
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { extractImagesFromContent(it, segments) }
+                i = detailsBlock.nextIndex
+                continue
+            }
+
             val htmlTableBlock = extractHtmlTableBlock(lines, i)
             if (htmlTableBlock != null) {
                 htmlTableBlock.prefix
@@ -893,6 +923,7 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
             val contentStart = i
             while (i < lines.size &&
                    !lines[i].trim().startsWith("```") &&
+                   extractDetailsBlock(lines, i) == null &&
                    extractHtmlTableBlock(lines, i) == null &&
                    extractMarkdownTableBlock(lines, i) == null) {
                 i++
@@ -911,6 +942,125 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
     }
     
     return segments
+}
+
+private data class MarkdownDetailsBlock(
+    val summary: String,
+    val content: String,
+    val prefix: String?,
+    val suffix: String?,
+    val nextIndex: Int
+)
+
+private fun extractDetailsBlock(lines: List<String>, startIndex: Int): MarkdownDetailsBlock? {
+    val trimmed = lines.getOrNull(startIndex)?.trim() ?: return null
+    if (!trimmed.startsWith("<details")) return null
+
+    val prefix = lines[startIndex].substringBefore("<details", missingDelimiterValue = lines[startIndex])
+        .takeIf { it.isNotBlank() }
+
+    var i = startIndex + 1
+    val contentLines = mutableListOf<String>()
+    var summary: String? = null
+
+    while (i < lines.size) {
+        val line = lines[i]
+        val t = line.trim()
+
+        if (t.startsWith("<summary")) {
+            val afterTag = line.substringAfter(">", missingDelimiterValue = "")
+            val sameLine = afterTag.substringBefore("</summary>", missingDelimiterValue = afterTag)
+            if (line.contains("</summary>")) {
+                summary = sameLine.trim()
+            } else {
+                val summaryLines = mutableListOf<String>()
+                if (sameLine.isNotBlank()) summaryLines += sameLine
+                i++
+                while (i < lines.size && !lines[i].contains("</summary>")) {
+                    summaryLines += lines[i]
+                    i++
+                }
+                if (i < lines.size) {
+                    val beforeClose = lines[i].substringBefore("</summary>")
+                    if (beforeClose.isNotBlank()) summaryLines += beforeClose
+                }
+                summary = summaryLines.joinToString("\n").trim()
+            }
+        } else if (t.startsWith("</details")) {
+            break
+        } else {
+            contentLines += line
+        }
+        i++
+    }
+
+    if (i >= lines.size) return null
+
+    val content = contentLines.joinToString("\n").trim('\n', ' ')
+    val suffixRemainder = lines[i].substringAfter("</details>", missingDelimiterValue = "")
+        .takeIf { it.isNotBlank() }
+
+    return MarkdownDetailsBlock(
+        summary = summary?.takeIf { it.isNotBlank() } ?: "详情",
+        content = content,
+        prefix = prefix,
+        suffix = suffixRemainder,
+        nextIndex = i + 1
+    )
+}
+
+@Composable
+private fun MarkdownDetailsBlock(
+    summary: String,
+    contentMarkdown: String,
+    textColor: Color,
+    backgroundColor: Color,
+    imageReferer: String?,
+    onImageClick: ((String) -> Unit)?
+) {
+    var expanded by remember(summary, contentMarkdown) { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .clickable { expanded = !expanded }
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = summary,
+                color = textColor,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (expanded && contentMarkdown.isNotBlank()) {
+            Box(modifier = Modifier.padding(top = 10.dp)) {
+                MarkdownText(
+                    markdown = contentMarkdown,
+                    modifier = Modifier.fillMaxWidth(),
+                    textColor = textColor,
+                    backgroundColor = Color.Transparent,
+                    imageReferer = imageReferer,
+                    onImageClick = onImageClick
+                )
+            }
+        }
+    }
 }
 
 /**

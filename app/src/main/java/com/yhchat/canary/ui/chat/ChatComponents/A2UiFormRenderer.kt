@@ -1390,12 +1390,229 @@ private fun RenderA2UiComponent(
         "modal" -> {
             val triggerId = component.trigger ?: component.entryPointChild ?: component.child
             val contentId = component.content ?: component.contentChild ?: component.child
-                color = color,
-                textAlign = textAlignFor(align)
+            var visible by rememberSaveable(component.id, scopePath) { mutableStateOf(false) }
+
+            if (triggerId != null) {
+                Box(
+                    modifier = modifier.clickable { visible = true }
+                ) {
+                    RenderA2UiComponent(
+                        componentId = triggerId,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath,
+                        parentAxis = parentAxis,
+                        parentAlign = parentAlign,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            }
+
+            if (visible && contentId != null) {
+                ModalBottomSheet(
+                    onDismissRequest = { visible = false },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .padding(bottom = 32.dp)
+                    ) {
+                        RenderA2UiComponent(
+                            componentId = contentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+            }
+        }
+
+        "slider" -> {
+            val valuePath = resolveBoundPath(component.value, scopePath)
+            val currentValue = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat() ?: 0f
+            val min = component.min?.toFloat() ?: 0f
+            val max = component.max?.toFloat() ?: 100f
+            
+            Column(modifier = modifier.fillMaxWidth()) {
+                component.label?.let {
+                    Text(
+                        text = resolveA2UiValue(spec, dataModel, it, scopePath)?.toString().orEmpty(),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                Slider(
+                    value = currentValue.coerceIn(min, max),
+                    onValueChange = { newValue ->
+                        if (valuePath != null) {
+                            onDataModelChange(valuePath, newValue)
+                        }
+                    },
+                    valueRange = min..max,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        "audioplayer" -> {
+            val url = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
+            val description = resolveA2UiValue(spec, dataModel, component.description ?: component.text, scopePath)?.toString().orEmpty()
+            if (url.isNotBlank()) {
+                A2UiAudioPlayer(
+                    playerId = component.id,
+                    url = url,
+                    description = description,
+                    modifier = modifier
+                )
+            }
+        }
+
+        "videoplayer" -> {
+            val url = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
+            val poster = resolveA2UiValue(spec, dataModel, component.poster, scopePath)?.toString().orEmpty()
+            if (url.isNotBlank()) {
+                A2UiVideoPlayer(
+                    playerId = component.id,
+                    url = url,
+                    poster = poster,
+                    fit = component.fit ?: "contain",
+                    width = component.width.toDp(),
+                    height = component.height.toHeightDp(),
+                    modifier = modifier
+                )
+            }
+        }
+
+        "chart" -> {
+            val chartType = component.variant ?: "bar"
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+            
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!title.isNullOrBlank()) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                when (chartType.lowercase(Locale.ROOT)) {
+                    "pie" -> {
+                        val slices = parseA2UiPieSlices(chartData)
+                        if (slices.isNotEmpty()) {
+                            A2UiPieChart(title = null, slices = slices)
+                        }
+                    }
+                    else -> {
+                        val points = parseA2UiChartPoints(chartData)
+                        if (points.isNotEmpty()) {
+                            A2UiBarChart(points = points)
+                        }
+                    }
+                }
+            }
+        }
+
+        "custompaint" -> {
+            val elements = parseA2UiPaintElements(component.elements)
+            val bgColor = component.backgroundColor?.let { parseA2UiHexColor(it) }
+            A2UiCustomPaint(
+                width = component.width.toDp(),
+                height = component.height.toHeightDp(),
+                backgroundColor = bgColor,
+                elements = elements,
+                modifier = modifier
             )
         }
 
-        // ... (rest of the code remains the same)
+        "tabview" -> {
+            val tabs = component.tabs ?: emptyList()
+            val activeTabPath = resolveBoundPath(component.activeTab, scopePath)
+            val activeTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
+            
+            Column(modifier = modifier.fillMaxWidth()) {
+                ScrollableTabRow(
+                    selectedTabIndex = activeTabIndex.coerceIn(0, tabs.size.coerceAtLeast(1) - 1),
+                    edgePadding = 0.dp,
+                    containerColor = Color.Transparent
+                ) {
+                    tabs.forEachIndexed { index, tabMap ->
+                        Tab(
+                            selected = activeTabIndex == index,
+                            onClick = {
+                                if (activeTabPath != null) {
+                                    onDataModelChange(activeTabPath, index)
+                                }
+                            },
+                            text = { Text(tabMap["label"]?.toString() ?: "Tab ${index + 1}") }
+                        )
+                    }
+                }
+                
+                val currentTab = tabs.getOrNull(activeTabIndex)
+                val contentId = currentTab?.get("content")?.toString()
+                if (contentId != null) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        RenderA2UiComponent(
+                            componentId = contentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            scopePath = scopePath,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+            }
+        }
+
+        "divider" -> {
+            if (parentAxis == "row") {
+                VerticalDivider(
+                    modifier = Modifier.height(24.dp).padding(horizontal = 8.dp),
+                    color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.outlineVariant
+                )
+            } else {
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        }
+
+        "spacer" -> {
+            val size = component.size?.toDp() ?: 8.dp
+            if (parentAxis == "row") {
+                Spacer(modifier = Modifier.width(size))
+            } else {
+                Spacer(modifier = Modifier.height(size))
+            }
+        }
+
+        "progress" -> {
+            val progress = component.progressValue ?: 0f
+            val color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.primary
+            if (component.variant == "circular") {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = modifier.size(40.dp),
+                    color = color
+                )
+            } else {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = modifier.fillMaxWidth(),
+                    color = color
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun ColumnScope.RenderA2UiColumnChildren(
@@ -1485,6 +1702,77 @@ private fun RowScope.RenderA2UiRowChildren(
     spec: A2UiSpec,
     dataModel: Map<String, Any?>,
     scopePath: String?,
+    parentAlign: String?,
+    onDataModelChange: (String, Any?) -> Unit
+) {
+    when (val children = component.children) {
+        is A2UiChildren.Static -> {
+            children.ids.forEach { childId ->
+                val weightModifier = spec.components[childId]
+                    ?.weight
+                    ?.let { Modifier.weight(it.toFloat(), fill = false) }
+                    ?: Modifier
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = weightModifier,
+                    scopePath = scopePath,
+                    parentAxis = "row",
+                    parentAlign = parentAlign,
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+
+        is A2UiChildren.Template -> {
+            val resolved = getValueAtPath(dataModel, combineScopePath(scopePath, children.path))
+            when (resolved) {
+                is List<*> -> {
+                    resolved.forEachIndexed { index, _ ->
+                        val childScope = combineScopePath(scopePath, "${children.path.trim('/')}/$index")
+                        RenderA2UiComponent(
+                            componentId = children.componentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            modifier = Modifier.wrapContentWidth(),
+                            scopePath = childScope,
+                            parentAxis = "row",
+                            parentAlign = parentAlign,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+
+                is Map<*, *> -> {
+                    RenderA2UiComponent(
+                        componentId = children.componentId,
+                        spec = spec,
+                        dataModel = dataModel,
+                        modifier = Modifier.wrapContentWidth(),
+                        scopePath = combineScopePath(scopePath, children.path.trim('/')),
+                        parentAxis = "row",
+                        parentAlign = parentAlign,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            }
+        }
+
+        null -> {
+            component.child?.let { childId ->
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    scopePath = scopePath,
+                    parentAxis = "row",
+                    parentAlign = parentAlign,
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+    }
 }
 
 @Composable

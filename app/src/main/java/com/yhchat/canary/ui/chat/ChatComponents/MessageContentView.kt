@@ -389,9 +389,7 @@ fun MessageContentView(
                 content.text?.let { text ->
                     val context = LocalContext.current
                     val prefs = remember { context.getSharedPreferences("message_settings", Context.MODE_PRIVATE) }
-                    val showA2UiRawText by remember {
-                        mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false))
-                    }
+                    var showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
                     
                     if (showA2UiRawText) {
                         // 显示A2UI原文

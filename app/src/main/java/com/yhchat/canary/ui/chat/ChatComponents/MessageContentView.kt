@@ -48,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -387,7 +389,9 @@ fun MessageContentView(
                 content.text?.let { text ->
                     val context = LocalContext.current
                     val prefs = remember { context.getSharedPreferences("message_settings", Context.MODE_PRIVATE) }
-                    val showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
+                    val showA2UiRawText by remember {
+                        mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false))
+                    }
                     
                     if (showA2UiRawText) {
                         // 显示A2UI原文

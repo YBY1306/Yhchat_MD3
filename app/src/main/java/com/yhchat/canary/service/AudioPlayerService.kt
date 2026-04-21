@@ -1086,9 +1086,9 @@ class AudioPlayerService : Service() {
      * 获取当前播放进度（毫秒）
      */
     fun getCurrentPosition(): Long = getCurrentPositionMs()
-    
+
     /**
      * 获取当前音频总时长（毫秒）
      */
-    val currentDurationMs: Long get() = currentDurationMs
+    fun getCurrentDurationMs(): Long = currentDurationMs
 }

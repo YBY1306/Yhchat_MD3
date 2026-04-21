@@ -1,8 +1,11 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import android.app.Activity
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
+import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -134,6 +137,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -3388,7 +3392,7 @@ private fun A2UiAudioPlayer(
     
     val serviceConnection = remember(playerId) {
         object : android.content.ServiceConnection {
-            override fun onServiceConnected(name: android.content.ComponentName?, service: IBinder?) {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as? com.yhchat.canary.service.AudioPlayerService.AudioPlayerBinder
                 audioService = binder?.getService()
                 serviceBound = true
@@ -3424,7 +3428,7 @@ private fun A2UiAudioPlayer(
                         if (service.getCurrentAudioUrl() == url) {
                             val serviceIsPlaying = service.isPlaying()
                             val position = service.getCurrentPosition()
-                            val durationMs = service.currentDurationMs
+                            val durationMs = service.getCurrentDurationMs()
                             
                             if (!isDragging) {
                                 isPlaying = serviceIsPlaying
@@ -3692,7 +3696,7 @@ private fun A2UiVideoPlayer(
                 videoView?.let { view ->
                     view.seekTo(returnedPosition.toInt())
                     currentPosition = returnedPosition.toFloat()
-                    currentTimeText = formatTime(returnedPosition.toInt())
+                    currentTimeText = formatTime(returnedPosition)
                     
                     if (returnedIsPlaying && !view.isPlaying) {
                         view.start()
@@ -3733,7 +3737,7 @@ private fun A2UiVideoPlayer(
                 videoView?.let { view ->
                     if (view.isPlaying) {
                         currentPosition = view.currentPosition.toFloat()
-                        currentTimeText = formatTime(view.currentPosition)
+                        currentTimeText = formatTime(view.currentPosition.toLong())
                         handler.postDelayed(this, 100)
                     }
                 }
@@ -3846,7 +3850,7 @@ private fun A2UiVideoPlayer(
                     setOnPreparedListener { mp ->
                         mp.isLooping = false
                         duration = this.duration.toFloat()
-                        totalTimeText = formatTime(this.duration)
+                        totalTimeText = formatTime(this.duration.toLong())
                         isLoading = false
                         isBuffering = false
                     }
@@ -4172,10 +4176,4 @@ private fun A2UiVideoPlayer(
     }
 }
 
-// Helper function to format time in mm:ss format
-private fun formatTime(timeMs: Long): String {
-    val totalSeconds = timeMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
-}
+

@@ -1512,7 +1512,7 @@ private fun RenderA2UiComponent(
                     else -> {
                         val points = parseA2UiChartPoints(chartData)
                         if (points.isNotEmpty()) {
-                            A2UiBarChart(points = points)
+                            A2UiBarChart(title = null, points = points)
                         }
                     }
                 }

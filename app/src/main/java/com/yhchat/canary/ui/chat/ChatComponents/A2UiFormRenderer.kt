@@ -740,7 +740,7 @@ internal fun A2UiFormMessage(
     modifier: Modifier = Modifier
 ) {
     var dataModel by remember(spec) { mutableStateOf(spec.dataModel ?: emptyMap()) }
-    val rootComponentId = spec.components.values.firstOrNull()?.id ?: return
+    val rootComponentId = resolveRootComponentId(spec.components) ?: return
     
     Surface(
         modifier = modifier,
@@ -782,10 +782,11 @@ private fun RenderA2UiComponent(
     val component = spec.components[componentId] ?: return
     val context = LocalContext.current
 
-    when (component.component.lowercase(Locale.ROOT)) {
-        "column" -> {
+    val componentType = component.component.lowercase(Locale.ROOT)
+    when {
+        componentType == "column" -> {
             Column(
-                modifier = modifier,  // 移除 fillMaxWidth，允许子组件控制布局
+                modifier = modifier,
                 verticalArrangement = verticalArrangementFor(component.justify),
                 horizontalAlignment = horizontalAlignmentFor(component.align)
             ) {
@@ -800,8 +801,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "row" -> {
-            // 使用 FlowRow 支持自动换行
+        componentType == "row" -> {
             FlowRow(
                 modifier = modifier.fillMaxWidth(),
                 horizontalArrangement = horizontalArrangementFor(component.justify),
@@ -819,7 +819,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "card" -> {
+        componentType == "card" || componentType == "container" -> {
             Card(
                 modifier = modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -853,7 +853,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "text" -> {
+        componentType == "text" || componentType == "label" || componentType == "paragraph" -> {
             val effectiveAlign = component.align ?: parentAlign
             val textAlign = when (effectiveAlign) {
                 "center" -> TextAlign.Center
@@ -876,7 +876,7 @@ private fun RenderA2UiComponent(
             )
         }
 
-        "image" -> {
+        componentType == "image" -> {
             val imageUrl = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
             var showImageViewer by remember { mutableStateOf(false) }
             var loadError by remember { mutableStateOf(false) }
@@ -972,7 +972,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "button" -> {
+        componentType == "button" -> {
             val enabled = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Boolean) ?: true
             val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
                 ?.toString().orEmpty()
@@ -1054,8 +1054,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "textfield", "datetimeinput" -> {
-            // 修复: 正确解析 label 属性
+        componentType == "textfield" || componentType == "datetimeinput" || componentType == "input" -> {
             val label = when (val rawLabel = component.label) {
                 is A2UiValue.Literal -> rawLabel.value?.toString().orEmpty()
                 is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
@@ -1068,7 +1067,7 @@ private fun RenderA2UiComponent(
             val placeholder = resolveA2UiValue(spec, dataModel, component.placeholder, scopePath)?.toString().orEmpty()
             val description = resolveA2UiValue(spec, dataModel, component.description, scopePath)?.toString().orEmpty()
             val fieldVariant = component.variant ?: component.textFieldType
-            val isDateTimeInput = component.component.equals("datetimeinput", ignoreCase = true)
+            val isDateTimeInput = componentType.equals("datetimeinput", ignoreCase = true)
             val enableDate = component.enableDate == true || (isDateTimeInput && component.variant?.contains("date") != false)
             val enableTime = component.enableTime == true || (isDateTimeInput && component.variant?.contains("time") != false)
             
@@ -1273,7 +1272,7 @@ private fun RenderA2UiComponent(
             )
         }
 
-        "choicepicker" -> {
+        componentType == "choicepicker" -> {
             val label = resolveA2UiValue(spec, dataModel, component.label, scopePath)?.toString()
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)
             val valuePath = resolveBoundPath(component.value, scopePath)
@@ -1387,7 +1386,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "modal" -> {
+        componentType == "modal" || componentType == "dialog" || componentType == "bottomsheet" -> {
             val triggerId = component.trigger ?: component.entryPointChild ?: component.child
             val contentId = component.content ?: component.contentChild ?: component.child
             var visible by rememberSaveable(component.id, scopePath) { mutableStateOf(false) }
@@ -1431,7 +1430,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "slider" -> {
+        componentType == "slider" || componentType == "range" -> {
             val valuePath = resolveBoundPath(component.value, scopePath)
             val currentValue = (resolveA2UiValue(spec, dataModel, component.value, scopePath) as? Number)?.toFloat() ?: 0f
             val min = component.min?.toFloat() ?: 0f

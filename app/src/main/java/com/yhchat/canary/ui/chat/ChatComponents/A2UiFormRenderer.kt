@@ -1456,7 +1456,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "audioplayer" -> {
+        componentType == "audioplayer" || componentType == "audio" -> {
             val url = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
             val description = resolveA2UiValue(spec, dataModel, component.description ?: component.text, scopePath)?.toString().orEmpty()
             if (url.isNotBlank()) {
@@ -1469,7 +1469,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "videoplayer" -> {
+        componentType == "videoplayer" || componentType == "video" -> {
             val url = resolveA2UiValue(spec, dataModel, component.url, scopePath)?.toString().orEmpty()
             val poster = resolveA2UiValue(spec, dataModel, component.poster, scopePath)?.toString().orEmpty()
             if (url.isNotBlank()) {
@@ -1485,7 +1485,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "chart" -> {
+        componentType == "chart" || componentType.contains("chart") -> {
             val chartType = component.variant ?: "bar"
             val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
@@ -1508,6 +1508,12 @@ private fun RenderA2UiComponent(
                             A2UiPieChart(title = null, slices = slices)
                         }
                     }
+                    "line" -> {
+                        val points = parseA2UiChartPoints(chartData)
+                        if (points.isNotEmpty()) {
+                            A2UiLineChart(title = null, points = points)
+                        }
+                    }
                     else -> {
                         val points = parseA2UiChartPoints(chartData)
                         if (points.isNotEmpty()) {
@@ -1518,7 +1524,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "custompaint" -> {
+        componentType == "custompaint" || componentType == "canvas" -> {
             val elements = parseA2UiPaintElements(component.elements)
             val bgColor = component.backgroundColor?.let { parseA2UiHexColor(it) }
             A2UiCustomPaint(
@@ -1530,7 +1536,7 @@ private fun RenderA2UiComponent(
             )
         }
 
-        "tabview" -> {
+        componentType == "tabview" || componentType == "tabs" -> {
             val tabs = component.tabs ?: emptyList()
             val activeTabPath = resolveBoundPath(component.activeTab, scopePath)
             val activeTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
@@ -1570,7 +1576,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "divider" -> {
+        componentType == "divider" || componentType == "separator" -> {
             if (parentAxis == "row") {
                 VerticalDivider(
                     modifier = Modifier.height(24.dp).padding(horizontal = 8.dp),
@@ -1584,7 +1590,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "spacer" -> {
+        componentType == "spacer" -> {
             val size = component.size?.toDp() ?: 8.dp
             if (parentAxis == "row") {
                 Spacer(modifier = Modifier.width(size))
@@ -1593,7 +1599,7 @@ private fun RenderA2UiComponent(
             }
         }
 
-        "progress" -> {
+        componentType == "progress" || componentType == "indicator" -> {
             val progress = component.progressValue ?: 0f
             val color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.primary
             if (component.variant == "circular") {

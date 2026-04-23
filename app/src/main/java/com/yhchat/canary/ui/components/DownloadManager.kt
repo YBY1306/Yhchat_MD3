@@ -47,6 +47,7 @@ object DownloadManager {
             fileUrl = fileUrl,
             fileName = fileName,
             fileSize = fileSize,
+            autoOpen = true,
             progressCallback = object : FileDownloadService.Companion.DownloadProgressCallback {
                 override fun onProgress(downloadId: String, progress: Int, total: Int) {
                     _downloadStates[fileUrl] = DownloadState.Downloading(progress, total)

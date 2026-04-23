@@ -440,6 +440,24 @@ private fun createViewerImageRequest(
         .build()
 }
 
+private fun extensionForContentType(contentType: String?): String {
+    val type = contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
+    return when (type) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        "image/gif" -> "gif"
+        "image/jpeg", "image/jpg" -> "jpg"
+        else -> "jpg"
+    }
+}
+
+private fun looksLikeImageExtension(extension: String): Boolean {
+    return when (extension.lowercase()) {
+        "jpg", "jpeg", "png", "webp", "gif" -> true
+        else -> false
+    }
+}
+
 private fun downloadImageToGallery(context: Context, imageUrl: String) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
@@ -450,29 +468,35 @@ private fun downloadImageToGallery(context: Context, imageUrl: String) {
             if (!picturesDir.exists()) {
                 picturesDir.mkdirs()
             }
-
-            var fileName = imageUrl.substringAfterLast("/", "image_${System.currentTimeMillis()}.jpg")
-                .substringBefore("?")
-            if (!fileName.contains(".")) {
-                fileName += ".jpg"
-            }
-
-            var targetFile = File(picturesDir, fileName)
-            var counter = 1
-            val baseName = fileName.substringBeforeLast(".")
-            val extension = fileName.substringAfterLast(".", "jpg")
-            while (targetFile.exists()) {
-                targetFile = File(picturesDir, "${baseName}_$counter.$extension")
-                counter++
-            }
-
             val url = URL(imageUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
+            connection.instanceFollowRedirects = true
             if (imageUrl.contains(".jwznb.com")) {
                 connection.setRequestProperty("Referer", "https://myapp.jwznb.com")
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
             }
             connection.connect()
+
+            val extFromType = extensionForContentType(connection.contentType)
+            val rawName = imageUrl.substringAfterLast("/", "")
+                .substringBefore("?")
+                .substringBefore("#")
+            val rawExt = rawName.substringAfterLast('.', "").trim()
+            val finalExt = if (rawExt.isNotBlank() && looksLikeImageExtension(rawExt)) {
+                if (rawExt.equals("jpeg", ignoreCase = true)) "jpg" else rawExt.lowercase()
+            } else {
+                extFromType
+            }
+            val baseName = rawName.substringBeforeLast('.', "").takeIf { it.isNotBlank() }
+                ?: "image_${System.currentTimeMillis()}"
+            val fileName = "$baseName.$finalExt"
+
+            var targetFile = File(picturesDir, fileName)
+            var counter = 1
+            while (targetFile.exists()) {
+                targetFile = File(picturesDir, "${baseName}_$counter.$finalExt")
+                counter++
+            }
 
             connection.inputStream.use { input ->
                 FileOutputStream(targetFile).use { output ->
@@ -500,15 +524,18 @@ private fun shareImage(context: Context, imageUrl: String) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
             val cacheDir = context.cacheDir
-            val tempFile = File(cacheDir, "share_${System.currentTimeMillis()}.jpg")
 
             val url = URL(imageUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
+            connection.instanceFollowRedirects = true
             if (imageUrl.contains(".jwznb.com")) {
                 connection.setRequestProperty("Referer", "https://myapp.jwznb.com")
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
             }
             connection.connect()
+
+            val ext = extensionForContentType(connection.contentType)
+            val tempFile = File(cacheDir, "share_${System.currentTimeMillis()}.$ext")
 
             connection.inputStream.use { input ->
                 FileOutputStream(tempFile).use { output ->

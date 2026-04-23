@@ -3265,6 +3265,8 @@ private fun A2UiAudioPlayer(
                                 currentTimeText = formatTime(position)
                                 totalTimeText = formatTime(durationMs)
                             }
+                        } else if (!isDragging) {
+                            isPlaying = false
                         }
                         
                         // 继续更新
@@ -3394,11 +3396,24 @@ private fun A2UiAudioPlayer(
                     if (url.isNotBlank()) {
                         if (isPlaying) {
                             // 暂停播放
-                            com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
+                            context.startService(
+                                Intent(context, com.yhchat.canary.service.AudioPlayerService::class.java).apply {
+                                    action = "action_pause"
+                                }
+                            )
                         } else {
                             // 开始播放
-                            val title = if (description.isNotBlank()) description else "A2UI音频"
-                            com.yhchat.canary.service.AudioPlayerService.startPlayAudio(context, url, title)
+                            val serviceUrl = audioService?.getCurrentAudioUrl()
+                            if (serviceBound && serviceUrl == url) {
+                                context.startService(
+                                    Intent(context, com.yhchat.canary.service.AudioPlayerService::class.java).apply {
+                                        action = "action_play"
+                                    }
+                                )
+                            } else {
+                                val title = if (description.isNotBlank()) description else "A2UI音频"
+                                com.yhchat.canary.service.AudioPlayerService.startPlayAudio(context, url, title)
+                            }
                         }
                     }
                 },

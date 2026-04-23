@@ -7,13 +7,13 @@ data class ChatSearchMessage(
     val id: String,
     @SerializedName("sequence")
     val sequence: Long,
-    @SerializedName("chatId")
+    @SerializedName("chat_id")
     val chatId: String,
-    @SerializedName("chatType")
+    @SerializedName("chat_type")
     val chatType: Int,
     @SerializedName("name")
     val name: String,
-    @SerializedName("avatarUrl")
+    @SerializedName("avatar_url")
     val avatarUrl: String?,
     @SerializedName("content")
     val content: String,
@@ -21,16 +21,16 @@ data class ChatSearchMessage(
     val type: String,
     @SerializedName("time")
     val time: Long,
-    @SerializedName("timeText")
+    @SerializedName("time_text")
     val timeText: String
 )
 
 data class ChatSearchRequest(
     @SerializedName("word")
     val word: String,
-    @SerializedName("chatId")
+    @SerializedName("chat_id")
     val chatId: String,
-    @SerializedName("chatType")
+    @SerializedName("chat_type")
     val chatType: Int,
     @SerializedName("type")
     val type: String = "all",

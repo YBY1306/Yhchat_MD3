@@ -452,24 +452,94 @@ class AudioPlayerService : Service() {
         requestAudioFocus()
         
         // 开始前台服务
-        startForeground(NOTIFICATION_ID, createNotification(title, "正在下载..."))
-        
-        // 检查缓存并播放音频
-        serviceScope.launch {
+        startForeground(NOTIFICATION_ID, createNotification(title, "正在缓冲..."))
+
+        // 优先：若存在并验证通过的缓存文件，则直接播放缓存（避免重复请求）
+        audioCacheManager.getCachedAudioFile(audioUrl)?.let { cachedFile ->
+            if (audioCacheManager.verifyCachedFile(audioUrl)) {
+                updateNotification(title, "从缓存加载")
+                serviceScope.launch {
+                    playAudioFile(cachedFile, title)
+                }
+                return
+            }
+        }
+
+        // 否则：流式播放（边下边播），不再等待整段下载完成
+        serviceScope.launch(Dispatchers.Main) {
             try {
-                val audioFile = getOrDownloadAudio(audioUrl, title)
-                if (audioFile != null) {
-                    playAudioFile(audioFile, title)
-                } else {
-                    updateNotification(title, "获取音频失败")
-                    stopSelf()
+                val uri = Uri.parse(audioUrl)
+                val headers = buildStreamHeadersForUrl(audioUrl)
+
+                mediaPlayer = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    setDataSource(this@AudioPlayerService, uri, headers)
+                    prepareAsync()
+
+                    setOnPreparedListener {
+                        start()
+                        this@AudioPlayerService.isPlaying = true
+                        currentDurationMs = this.duration.toLong().coerceAtLeast(0L)
+                        updateMetadata(title = title, durationMs = currentDurationMs)
+                        val restored = restoreProgressForCurrentAudio()
+                        if (restored > 0L && restored < currentDurationMs) {
+                            runCatching { seekTo(restored) }
+                        }
+                        updatePlaybackState(playing = true)
+                        updateNotification(title, "正在播放")
+                        startProgressUpdates()
+                    }
+
+                    setOnCompletionListener {
+                        this@AudioPlayerService.isPlaying = false
+                        saveProgressForCurrentAudio(0L)
+                        stopProgressUpdates()
+                        updatePlaybackState(playing = false)
+                        stopSelf()
+                    }
+
+                    setOnErrorListener { _, what, extra ->
+                        Log.e(TAG, "MediaPlayer错误(流式): what=$what, extra=$extra")
+                        this@AudioPlayerService.isPlaying = false
+                        saveProgressForCurrentAudio(getCurrentPositionMs())
+                        stopProgressUpdates()
+                        updatePlaybackState(playing = false)
+                        updateNotification(title, "播放出错")
+                        stopSelf()
+                        true
+                    }
+
+                    setOnInfoListener { _, what, _ ->
+                        when (what) {
+                            MediaPlayer.MEDIA_INFO_BUFFERING_START -> updateNotification(title, "缓冲中...")
+                            MediaPlayer.MEDIA_INFO_BUFFERING_END -> if (this@AudioPlayerService.isPlaying) {
+                                updateNotification(title, "正在播放")
+                            }
+                        }
+                        false
+                    }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "播放音频失败", e)
+                Log.e(TAG, "流式播放音频失败", e)
                 updateNotification(title, "播放失败")
                 stopSelf()
             }
         }
+    }
+
+    private fun buildStreamHeadersForUrl(url: String): Map<String, String> {
+        val headers = linkedMapOf(
+            "User-Agent" to "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36"
+        )
+        if (url.contains(".jwznb.com")) {
+            headers["Referer"] = "https://myapp.jwznb.com"
+        }
+        return headers
     }
 
      private suspend fun getOrDownloadAudio(audioUrl: String, title: String): File? = withContext(Dispatchers.IO) {

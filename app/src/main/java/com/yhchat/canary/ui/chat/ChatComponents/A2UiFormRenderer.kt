@@ -1485,6 +1485,72 @@ private fun RenderA2UiComponent(
             }
         }
 
+        componentType == "linechart" -> {
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!title.isNullOrBlank()) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                val points = parseA2UiChartPoints(chartData)
+                if (points.isNotEmpty()) {
+                    A2UiLineChart(title = null, points = points)
+                }
+            }
+        }
+
+        componentType == "barchart" -> {
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!title.isNullOrBlank()) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                val points = parseA2UiChartPoints(chartData)
+                if (points.isNotEmpty()) {
+                    A2UiBarChart(title = null, points = points)
+                }
+            }
+        }
+
+        componentType == "piechart" -> {
+            val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)
+            val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
+
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!title.isNullOrBlank()) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                val slices = parseA2UiPieSlices(chartData)
+                if (slices.isNotEmpty()) {
+                    A2UiPieChart(title = null, slices = slices, showPercentageOnChart = true)
+                }
+            }
+        }
+
         componentType == "chart" || componentType.contains("chart") -> {
             val chartType = component.variant ?: "bar"
             val chartData = resolveA2UiValue(spec, dataModel, component.dataValue, scopePath)

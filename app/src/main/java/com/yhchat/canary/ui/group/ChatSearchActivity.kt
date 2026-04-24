@@ -39,14 +39,21 @@ class ChatSearchActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
-            android.util.Log.e("ChatSearchActivity", "Missing chatId in intent")
-            finish()
-            return
-        }
+        // 增加字段适配转换，优先尝试原本的键名，若无则尝试下划线形式，确保兼容性
+        val chatId = intent.getStringExtra(EXTRA_CHAT_ID) 
+            ?: intent.getStringExtra("chat_id")
+            ?: run {
+                android.util.Log.e("ChatSearchActivity", "Missing chatId in intent")
+                finish()
+                return
+            }
         
-        val chatType = intent.getIntExtra(EXTRA_CHAT_TYPE, 2)
-        val chatName = intent.getStringExtra(EXTRA_CHAT_NAME) ?: "聊天"
+        val chatType = intent.getIntExtra(EXTRA_CHAT_TYPE, -1).takeIf { it != -1 }
+            ?: intent.getIntExtra("chat_type", 2)
+            
+        val chatName = intent.getStringExtra(EXTRA_CHAT_NAME) 
+            ?: intent.getStringExtra("chat_name")
+            ?: "聊天"
         
         android.util.Log.d("ChatSearchActivity", "Opening chat search: id=$chatId, type=$chatType, name=$chatName")
         

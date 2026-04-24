@@ -65,7 +65,7 @@ private fun ComprehensiveSearchScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
     
-    val tabs = listOf("群聊", "用户", "机器")
+    val tabs = listOf("群聊", "用户", "机器人")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
     

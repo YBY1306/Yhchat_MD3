@@ -562,7 +562,8 @@ private fun DisplaySettingsGroup(
             { WebSocketSettingItem(context = context) },
             { WebPQualitySettingItem(context = context) },
             { HtmlRawTextSettingItem(context = context) },
-            { MarkdownRawTextSettingItem(context = context) }
+            { MarkdownRawTextSettingItem(context = context) },
+            { A2UiRawTextSettingItem(context = context) }
         )
     )
 }
@@ -1849,9 +1850,23 @@ private fun MarkdownRawTextSettingItem(
         },
         isError = false
     )
+}
+
+/**
+ * A2UI消息显示原文设置项
+ */
+@Composable
+private fun A2UiRawTextSettingItem(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember { 
+        context.getSharedPreferences("message_settings", Context.MODE_PRIVATE) 
+    }
     
-    // A2UI显示原文设置
-    var showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
+    var showA2UiRawText by remember { 
+        mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) 
+    }
     
     SettingsSwitchItem(
         icon = Icons.Default.Code,

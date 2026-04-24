@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.model.ChatSearchMessage
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

@@ -256,8 +256,8 @@ fun ChatSearchScreen(
                                 onClick = {
                                     // 跳转到ChatActivity并定位到目标消息
                                     onNavigateToChat(
-                                        message.chatId ?: chatId,
-                                        message.chatType ?: chatType,
+                                        chatId,
+                                        chatType,
                                         chatName,
                                         message.msgId,
                                         message.msgSeq

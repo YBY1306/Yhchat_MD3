@@ -26,11 +26,11 @@ data class ChatSearchMessage(
 )
 
 data class ChatSearchRequest(
-    @SerializedName("word")
-    val word: String,
-    @SerializedName("chat_id")
+    @SerializedName("keyword")
+    val keyword: String,
+    @SerializedName("chatId")
     val chatId: String,
-    @SerializedName("chat_type")
+    @SerializedName("chatType")
     val chatType: Int,
     @SerializedName("type")
     val type: String = "all",

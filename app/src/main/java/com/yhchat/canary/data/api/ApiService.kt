@@ -890,6 +890,12 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: com.yhchat.canary.data.model.ChatSearchRequest
     ): Response<com.yhchat.canary.data.model.ChatSearchResponse>
+
+    @POST("v1/search/chat-search")
+    suspend fun searchChatMessagesRaw(
+        @Header("token") token: String,
+        @Body request: RequestBody
+    ): Response<com.yhchat.canary.data.model.ChatSearchResponse>
     
     /**
      * 获取在线设备列表 (Protobuf)

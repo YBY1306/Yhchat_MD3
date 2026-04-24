@@ -3,8 +3,6 @@ package com.yhchat.canary.ui.group
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
-import com.yhchat.canary.data.model.ChatSearchMessage
-import com.yhchat.canary.data.model.ChatSearchRequest
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.MessageRepository
@@ -18,6 +16,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import javax.inject.Inject
 import android.util.Log
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 data class ChatSearchState(
     val isLoading: Boolean = false,
@@ -98,16 +99,30 @@ class ChatSearchViewModel @Inject constructor(
                 // 使用时间戳进行分页，而不是累积数量
                 val timestamp = if (isLoadMore) _state.value.lastTimestamp else 9999999999999L
                 Log.d(TAG, "searchMessages: requesting with timestamp=$timestamp, pageSize=$pageSize, isLoadMore=$isLoadMore")
-                
-                val request = ChatSearchRequest(
-                    word = query,
-                    chatId = chatId,
-                    chatType = chatType,
-                    size = pageSize,
-                    time = timestamp
-                )
-                
-                val response = apiService.searchChatMessages(token, request)
+
+                val json = JSONObject().apply {
+                    // keyword / word
+                    put("keyword", query)
+                    put("word", query)
+
+                    // chatId / chat_id
+                    put("chatId", chatId)
+                    put("chat_id", chatId)
+
+                    // chatType / chat_type
+                    put("chatType", chatType)
+                    put("chat_type", chatType)
+
+                    // other fields
+                    put("type", "all")
+                    put("size", pageSize)
+                    put("time", timestamp)
+                    put("direction", 1)
+                }
+
+                val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
+                val response = apiService.searchChatMessagesRaw(token, requestBody)
                 Log.d(TAG, "searchMessages: API response received, isSuccessful=${response.isSuccessful}, code=${response.code()}")
                 
                 if (response.isSuccessful) {

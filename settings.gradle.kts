@@ -49,5 +49,3 @@ rootProject.name = "Yhchat Canary"
 include(":app")
 include(":player")
 include(":live")
-include(":a2ui-compose")
-project(":a2ui-compose").projectDir = file("a2ui-compose")

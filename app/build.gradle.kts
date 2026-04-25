@@ -126,7 +126,6 @@ protobuf {
 dependencies {
     add("withPlayerImplementation", project(":player"))
     add("withLiveImplementation", project(":live"))
-    implementation(project(":a2ui-compose"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

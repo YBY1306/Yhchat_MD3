@@ -70,9 +70,6 @@ import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.DownloadManager
 import com.yhchat.canary.ui.components.DownloadState
 import com.yhchat.canary.utils.UnifiedLinkHandler
-import org.a2ui.compose.rendering.ActionHandler
-import org.a2ui.compose.service.A2UISurface
-import org.a2ui.compose.service.rememberA2UIRenderer
 import org.json.JSONObject
 import android.widget.Toast
 import androidx.compose.runtime.DisposableEffect
@@ -418,40 +415,14 @@ fun MessageContentView(
                             )
                         }
                     } else {
-                        val a2UiMessages = remember(text) { extractA2UiJsonMessages(text) }
-                        val surfaceId = remember(a2UiMessages) { resolveA2UiSurfaceId(a2UiMessages) }
+                        // 使用 A2UiFormRenderer 解析和渲染 A2UI 消息
+                        val filtered = remember(text) { text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "") }
+                        val a2UiSpec = remember(filtered) { parseA2UiSpec(filtered) }
 
-                        if (a2UiMessages.isNotEmpty() && surfaceId != null) {
-                            // 提取A2UI JSON之外的文本内容，过滤掉```json```代码块
-                            val (beforeText, afterText) = remember(text) {
-                                val filtered = text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "")
+                        if (a2UiSpec != null) {
+                            // 提取A2UI JSON之外的文本内容
+                            val (beforeText, afterText) = remember(filtered) {
                                 extractTextAroundA2UiJson(filtered)
-                            }
-
-                            val actionHandler = remember {
-                                object : ActionHandler {
-                                    override fun onAction(surfaceId: String, actionName: String, context: Map<String, Any>) {
-                                        // 暂不处理自定义事件
-                                    }
-
-                                    override fun openUrl(url: String) {
-                                        UnifiedLinkHandler.handleLink(context, url)
-                                    }
-
-                                    override fun showToast(message: String) {
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-
-                            val rendererState = rememberA2UIRenderer(actionHandler = actionHandler)
-
-                            LaunchedEffect(a2UiMessages) {
-                                rendererState.processMessages(a2UiMessages)
-                            }
-
-                            DisposableEffect(rendererState) {
-                                onDispose { rendererState.dispose() }
                             }
 
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -469,10 +440,9 @@ fun MessageContentView(
                                 }
 
                                 // 显示A2UI表单
-                                A2UISurface(
-                                    surfaceId = surfaceId,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    rendererState = rendererState
+                                A2UiFormMessage(
+                                    spec = a2UiSpec,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
 
                                 // 显示A2UI JSON之后的文本
@@ -1352,15 +1322,7 @@ private fun extractTextAroundA2UiJson(rawText: String): Pair<String, String> {
                     if (depth == 0 && firstJsonStart != -1) {
                         // 检查这是否是有效的A2UI JSON
                         val candidate = rawText.substring(firstJsonStart, index + 1)
-                        val isA2UiJson = runCatching {
-                            val obj = org.json.JSONObject(candidate)
-                            obj.has("version") && (
-                                obj.has("createSurface") ||
-                                obj.has("updateComponents") ||
-                                obj.has("updateDataModel") ||
-                                obj.has("deleteSurface")
-                            )
-                        }.getOrDefault(false)
+                        val isA2UiJson = looksLikeA2UiJson(candidate)
                         
                         if (isA2UiJson) {
                             lastJsonEnd = index + 1
@@ -1421,16 +1383,7 @@ private fun extractA2UiJsonMessages(rawText: String): List<String> {
                     depth -= 1
                     if (depth == 0) {
                         val candidate = rawText.substring(startIndex, index + 1)
-                        val looksLikeA2Ui = runCatching {
-                            val obj = JSONObject(candidate)
-                            obj.has("version") && (
-                                obj.has("createSurface") ||
-                                    obj.has("updateComponents") ||
-                                    obj.has("updateDataModel") ||
-                                    obj.has("deleteSurface")
-                                )
-                        }.getOrDefault(false)
-                        if (looksLikeA2Ui) {
+                        if (looksLikeA2UiJson(candidate)) {
                             objects += candidate
                         }
                         startIndex = -1

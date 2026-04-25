@@ -753,16 +753,19 @@ internal fun A2UiFormMessage(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            RenderA2UiComponent(
-                componentId = rootComponentId,
-                spec = spec,
-                dataModel = dataModel,
-                modifier = Modifier.fillMaxWidth(),
-                onDataModelChange = { path, value ->
-                    val updatedModel = updateA2UiDataModel(dataModel, path, value)
-                    dataModel = updatedModel
-                }
-            )
+            // 使用 key 确保当 dataModel 改变时重新渲染
+            key(dataModel) {
+                RenderA2UiComponent(
+                    componentId = rootComponentId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = Modifier.fillMaxWidth(),
+                    onDataModelChange = { path, value ->
+                        val updatedModel = updateA2UiDataModel(dataModel, path, value)
+                        dataModel = updatedModel
+                    }
+                )
+            }
         }
     }
 }
@@ -1629,14 +1632,16 @@ private fun RenderA2UiComponent(
                 val currentTab = tabs.getOrNull(activeTabIndex)
                 val contentId = currentTab?.get("content")?.toString()
                 if (contentId != null) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        RenderA2UiComponent(
-                            componentId = contentId,
-                            spec = spec,
-                            dataModel = dataModel,
-                            scopePath = scopePath,
-                            onDataModelChange = onDataModelChange
-                        )
+                    key(activeTabIndex) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                            RenderA2UiComponent(
+                                componentId = contentId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                onDataModelChange = onDataModelChange
+                            )
+                        }
                     }
                 }
             }

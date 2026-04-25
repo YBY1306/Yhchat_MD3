@@ -43,7 +43,6 @@ local.properties
 yhapi/
 
 keystore.properties
-app/build.gradle.kts
 
 main.dart.js
 resour/

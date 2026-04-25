@@ -70,7 +70,13 @@ import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.DownloadManager
 import com.yhchat.canary.ui.components.DownloadState
 import com.yhchat.canary.utils.UnifiedLinkHandler
+import org.a2ui.compose.rendering.ActionHandler
+import org.a2ui.compose.service.A2UISurface
+import org.a2ui.compose.service.rememberA2UIRenderer
 import org.json.JSONObject
+import android.widget.Toast
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 
 /**
  * 消息内容视图
@@ -387,7 +393,6 @@ fun MessageContentView(
             }
             14 -> {
                 content.text?.let { text ->
-                    val context = LocalContext.current
                     val prefs = remember { context.getSharedPreferences("message_settings", Context.MODE_PRIVATE) }
                     var showA2UiRawText by remember { mutableStateOf(prefs.getBoolean("show_a2ui_raw_text", false)) }
                     
@@ -413,14 +418,42 @@ fun MessageContentView(
                             )
                         }
                     } else {
-                        val a2UiSpec = remember(text) { parseA2UiSpec(text) }
-                        if (a2UiSpec != null) {
+                        val a2UiMessages = remember(text) { extractA2UiJsonMessages(text) }
+                        val surfaceId = remember(a2UiMessages) { resolveA2UiSurfaceId(a2UiMessages) }
+
+                        if (a2UiMessages.isNotEmpty() && surfaceId != null) {
                             // 提取A2UI JSON之外的文本内容，过滤掉```json```代码块
                             val (beforeText, afterText) = remember(text) {
                                 val filtered = text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "")
                                 extractTextAroundA2UiJson(filtered)
                             }
-                            
+
+                            val actionHandler = remember {
+                                object : ActionHandler {
+                                    override fun onAction(surfaceId: String, actionName: String, context: Map<String, Any>) {
+                                        // 暂不处理自定义事件
+                                    }
+
+                                    override fun openUrl(url: String) {
+                                        UnifiedLinkHandler.handleLink(context, url)
+                                    }
+
+                                    override fun showToast(message: String) {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+
+                            val rendererState = rememberA2UIRenderer(actionHandler = actionHandler)
+
+                            LaunchedEffect(a2UiMessages) {
+                                rendererState.processMessages(a2UiMessages)
+                            }
+
+                            DisposableEffect(rendererState) {
+                                onDispose { rendererState.dispose() }
+                            }
+
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 // 显示A2UI JSON之前的文本
                                 if (beforeText.isNotBlank()) {
@@ -434,13 +467,14 @@ fun MessageContentView(
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
-                                
+
                                 // 显示A2UI表单
-                                A2UiFormMessage(
-                                    spec = a2UiSpec,
-                                    modifier = Modifier.fillMaxWidth()
+                                A2UISurface(
+                                    surfaceId = surfaceId,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    rendererState = rendererState
                                 )
-                                
+
                                 // 显示A2UI JSON之后的文本
                                 if (afterText.isNotBlank()) {
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -1340,8 +1374,85 @@ private fun extractTextAroundA2UiJson(rawText: String): Pair<String, String> {
     return if (firstJsonStart != -1 && lastJsonEnd != -1) {
         val beforeText = rawText.substring(0, firstJsonStart).trim()
         val afterText = rawText.substring(lastJsonEnd).trim()
-        Pair(beforeText, afterText)
+        Pair(beforeText.trim(), afterText.trim())
     } else {
         Pair(rawText.trim(), "")
     }
+}
+
+private fun extractA2UiJsonMessages(rawText: String): List<String> {
+    if (rawText.isBlank()) return emptyList()
+    val objects = mutableListOf<String>()
+    var startIndex = -1
+    var depth = 0
+    var inString = false
+    var escaped = false
+
+    rawText.forEachIndexed { index, current ->
+        if (startIndex == -1) {
+            if (current == '{') {
+                startIndex = index
+                depth = 1
+                inString = false
+                escaped = false
+            }
+            return@forEachIndexed
+        }
+
+        if (escaped) {
+            escaped = false
+            return@forEachIndexed
+        }
+
+        if (inString && current == '\\') {
+            escaped = true
+            return@forEachIndexed
+        }
+
+        if (current == '"') {
+            inString = !inString
+            return@forEachIndexed
+        }
+
+        if (!inString) {
+            when (current) {
+                '{' -> depth += 1
+                '}' -> {
+                    depth -= 1
+                    if (depth == 0) {
+                        val candidate = rawText.substring(startIndex, index + 1)
+                        val looksLikeA2Ui = runCatching {
+                            val obj = JSONObject(candidate)
+                            obj.has("version") && (
+                                obj.has("createSurface") ||
+                                    obj.has("updateComponents") ||
+                                    obj.has("updateDataModel") ||
+                                    obj.has("deleteSurface")
+                                )
+                        }.getOrDefault(false)
+                        if (looksLikeA2Ui) {
+                            objects += candidate
+                        }
+                        startIndex = -1
+                    }
+                }
+            }
+        }
+    }
+
+    return objects
+}
+
+private fun resolveA2UiSurfaceId(messages: List<String>): String? {
+    messages.forEach { raw ->
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
+        val surfaceId = json.optJSONObject("createSurface")?.optString("surfaceId")
+            ?: json.optJSONObject("updateComponents")?.optString("surfaceId")
+            ?: json.optJSONObject("updateDataModel")?.optString("surfaceId")
+            ?: json.optJSONObject("deleteSurface")?.optString("surfaceId")
+        if (!surfaceId.isNullOrBlank()) {
+            return surfaceId
+        }
+    }
+    return null
 }

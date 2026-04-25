@@ -240,8 +240,9 @@ class A2UIRenderer(
         val surfaceId = updateComponents.surfaceId
         val components = updateComponents.components
         val componentMap = surfaceComponents[surfaceId] ?: run {
-            logger.log(A2UILogLevel.WARN, "Surface not found: $surfaceId")
-            return
+            logger.log(A2UILogLevel.WARN, "Surface not found: $surfaceId, auto-creating")
+            handleCreateSurface(CreateSurface(surfaceId = surfaceId, catalogId = "default"))
+            surfaceComponents[surfaceId] ?: return
         }
 
         val currentCount = componentMap.size

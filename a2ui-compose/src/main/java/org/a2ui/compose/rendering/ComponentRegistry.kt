@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -706,19 +707,39 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                             }
                         }
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            dataItems?.let { items ->
-                                itemsIndexed(items, key = { index, _ -> index }) { index, _ ->
-                                    renderer.getComponent(context.surfaceId, templateId)?.let { template ->
-                                        val itemScope = "$dataPath/$index"
-                                        render(template, context.copy(
-                                            renderDepth = context.renderDepth + 1,
-                                            scopePath = itemScope
-                                        ))
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val useLazy = maxHeight != Dp.Infinity
+                            if (useLazy) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    dataItems?.let { items ->
+                                        itemsIndexed(items, key = { index, _ -> index }) { index, _ ->
+                                            renderer.getComponent(context.surfaceId, templateId)?.let { template ->
+                                                val itemScope = "$dataPath/$index"
+                                                render(template, context.copy(
+                                                    renderDepth = context.renderDepth + 1,
+                                                    scopePath = itemScope
+                                                ))
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    dataItems?.forEachIndexed { index, _ ->
+                                        renderer.getComponent(context.surfaceId, templateId)?.let { template ->
+                                            val itemScope = "$dataPath/$index"
+                                            render(template, context.copy(
+                                                renderDepth = context.renderDepth + 1,
+                                                scopePath = itemScope
+                                            ))
+                                        }
                                     }
                                 }
                             }
@@ -736,11 +757,30 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                             }
                         }
                     } else {
-                        LazyColumn(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            itemsIndexed(children.array, key = { _, id -> id }) { _, childId ->
-                                renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
-                                    render(it, context.copy(renderDepth = context.renderDepth + 1))
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val useLazy = maxHeight != Dp.Infinity
+                            if (useLazy) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    itemsIndexed(children.array, key = { _, id -> id }) { _, childId ->
+                                        renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
+                                            render(it, context.copy(renderDepth = context.renderDepth + 1))
+                                        }
+                                    }
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    children.array.forEach { childId ->
+                                        renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
+                                            render(it, context.copy(renderDepth = context.renderDepth + 1))
+                                        }
+                                    }
                                 }
                             }
                         }

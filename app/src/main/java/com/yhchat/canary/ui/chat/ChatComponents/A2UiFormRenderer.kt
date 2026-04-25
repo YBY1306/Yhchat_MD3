@@ -118,6 +118,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -580,6 +581,15 @@ private fun parseA2UiValue(rawValue: Any?): A2UiValue? {
         is JSONArray -> A2UiValue.Literal(jsonToKotlin(rawValue))
         else -> A2UiValue.Literal(rawValue)
     }
+}
+
+private fun looksLikeA2UiJson(candidate: String): Boolean {
+    val trimmed = candidate.trim()
+    if (!trimmed.startsWith("{") || !trimmed.contains("\"version\"")) return false
+    return trimmed.contains("\"createSurface\"") ||
+        trimmed.contains("\"updateComponents\"") ||
+        trimmed.contains("\"updateDataModel\"") ||
+        trimmed.contains("\"deleteSurface\"")
 }
 
 private fun extractA2UiJsonObjects(rawText: String): List<String> {

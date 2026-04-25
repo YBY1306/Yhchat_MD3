@@ -815,13 +815,12 @@ private fun RenderA2UiComponent(
         }
 
         componentType == "row" -> {
-            FlowRow(
+            Row(
                 modifier = modifier.fillMaxWidth(),
                 horizontalArrangement = horizontalArrangementFor(component.justify),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                maxItemsInEachRow = Int.MAX_VALUE
+                verticalAlignment = verticalAlignmentFor(component.align)
             ) {
-                RenderA2UiFlowRowChildren(
+                RenderA2UiRowChildren(
                     component = component,
                     spec = spec,
                     dataModel = dataModel,
@@ -897,11 +896,14 @@ private fun RenderA2UiComponent(
                         else -> ContentScale.Fit
                     }
                     component.variant == "largeFeature" -> ContentScale.Crop
+                    component.variant == "avatar" -> ContentScale.Crop
                     else -> ContentScale.Fit
                 }
                 
-                // 根据 variant 和父布局决定图片尺寸
+                // 根据 variant 和父布局决定图片尺寸和形状
+                val isAvatar = component.variant == "avatar"
                 val imageSize = when {
+                    isAvatar -> 48.dp
                     parentAxis == "row" -> {
                         when (component.variant) {
                             "smallFeature" -> 80.dp
@@ -918,10 +920,12 @@ private fun RenderA2UiComponent(
                     }
                 }
                 
+                val shape = if (isAvatar) CircleShape else RoundedCornerShape(12.dp)
+                
                 Box(
                     modifier = modifier
                         .then(
-                            if (parentAxis == "row") {
+                            if (parentAxis == "row" || isAvatar) {
                                 Modifier.size(imageSize)
                             } else {
                                 Modifier
@@ -929,7 +933,7 @@ private fun RenderA2UiComponent(
                                     .height(imageSize)
                             }
                         )
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(shape)
                         .background(
                             if (loadError) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             else Color.Transparent
@@ -941,8 +945,8 @@ private fun RenderA2UiComponent(
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { showImageViewer = true },
+                            .clip(shape)
+                            .clickable { if (!isAvatar) showImageViewer = true },
                         contentScale = contentScale,
                         onError = { loadError = true }
                     )
@@ -957,19 +961,21 @@ private fun RenderA2UiComponent(
                                 imageVector = Icons.Filled.Warning,
                                 contentDescription = "图片加载失败",
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(if (isAvatar) 16.dp else 24.dp)
                             )
-                            Text(
-                                text = "加载失败",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
+                            if (!isAvatar) {
+                                Text(
+                                    text = "加载失败",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
                 
-                if (showImageViewer && !loadError) {
+                if (showImageViewer && !loadError && !isAvatar) {
                     ImageViewer(
                         imageUrl = imageUrl,
                         onDismiss = { showImageViewer = false }
@@ -1784,10 +1790,10 @@ private fun RowScope.RenderA2UiRowChildren(
     when (val children = component.children) {
         is A2UiChildren.Static -> {
             children.ids.forEach { childId ->
-                val weightModifier = spec.components[childId]
-                    ?.weight
+                val childComponent = spec.components[childId]
+                val weightModifier = childComponent?.weight
                     ?.let { Modifier.weight(it.toFloat(), fill = false) }
-                    ?: Modifier
+                    ?: Modifier.wrapContentWidth()
                 RenderA2UiComponent(
                     componentId = childId,
                     spec = spec,
@@ -1841,6 +1847,7 @@ private fun RowScope.RenderA2UiRowChildren(
                     componentId = childId,
                     spec = spec,
                     dataModel = dataModel,
+                    modifier = Modifier.wrapContentWidth(),
                     scopePath = scopePath,
                     parentAxis = "row",
                     parentAlign = parentAlign,

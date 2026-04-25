@@ -583,7 +583,7 @@ private fun parseA2UiValue(rawValue: Any?): A2UiValue? {
     }
 }
 
-private fun looksLikeA2UiJson(candidate: String): Boolean {
+internal fun looksLikeA2UiJson(candidate: String): Boolean {
     val trimmed = candidate.trim()
     if (!trimmed.startsWith("{") || !trimmed.contains("\"version\"")) return false
     return trimmed.contains("\"createSurface\"") ||

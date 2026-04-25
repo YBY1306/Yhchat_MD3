@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.net.Uri
+import android.content.ContentValues
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -22,9 +23,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.provider.MediaStore
+import android.webkit.MimeTypeMap
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.OutputStream
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
@@ -182,15 +186,9 @@ class FileDownloadService : Service() {
     
     private fun startDownloadFile(fileUrl: String, fileName: String, fileSize: Long, autoOpen: Boolean, downloadId: String) {
         Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen)")
-        
-        // 创建下载目录
-        val downloadDir = File("/storage/emulated/0/Download/yhchat/")
-        if (!downloadDir.exists()) {
-            downloadDir.mkdirs()
-        }
 
-        if (!downloadDir.exists() || !downloadDir.isDirectory) {
-            Log.e(TAG, "❌ Failed to create download directory: ${downloadDir.absolutePath}")
+        val downloadTarget = createDownloadTarget(fileName)
+        if (downloadTarget == null) {
             updateNotification(fileName, "下载失败: 无法创建下载目录", 0, 0, true)
             stopSelf()
             return
@@ -208,76 +206,101 @@ class FileDownloadService : Service() {
                     return@launch
                 }
                 
-                // 先下载到临时文件
-                val tempFile = File(downloadDir, "${fileName}")
-                downloadFileWithProgress(fileUrl, tempFile, fileName, fileSize, downloadId)
-                
-                // 计算下载文件的SHA256
-                val downloadedHash = calculateSHA256(tempFile)
-                Log.d(TAG, "Downloaded file SHA256: $downloadedHash")
-                
-                // 检查目录中是否已有相同内容的文件
-                val existingFile = findFileWithSameHash(downloadDir, downloadedHash, fileName)
-                
-                val finalFile = if (existingFile != null) {
-                    // 找到相同文件，删除临时文件
-                    tempFile.delete()
-                    Log.d(TAG, "Found existing file with same content: ${existingFile.name}")
-                    
-                    serviceScope.launch(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@FileDownloadService, 
-                            "文件已存在，直接打开", 
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        updateNotification(
-                            fileName,
-                            "文件已存在 - ${existingFile.name}",
-                            100,
-                            100,
-                            true
-                        )
+                val completedPath = when (downloadTarget) {
+                    is DownloadTarget.MediaStore -> {
+                        downloadFileWithProgressToUri(fileUrl, downloadTarget.uri, fileName, fileSize, downloadId)
+                        markMediaStoreComplete(downloadTarget.uri)
+                        downloadTarget.uri.toString()
                     }
-                    existingFile
-                } else {
-                    // 没有相同文件，重命名临时文件
-        val originalFile = File(downloadDir, fileName)
-        val targetFile = if (originalFile.exists()) {
-            val nameWithoutExt = fileName.substringBeforeLast(".")
-            val extension = fileName.substringAfterLast(".", "")
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val newFileName = if (extension.isNotEmpty()) {
-                "${nameWithoutExt}_${timestamp}.${extension}"
-            } else {
-                "${nameWithoutExt}_${timestamp}"
-            }
-            File(downloadDir, newFileName)
-        } else {
-            originalFile
-        }
-        
-                    tempFile.renameTo(targetFile)
-                    Log.d(TAG, "Download completed: ${targetFile.absolutePath}")
-                    
-                    serviceScope.launch(Dispatchers.Main) {
-                        updateNotification(
-                            fileName,
-                            "下载完成 - ${targetFile.name}",
-                            100,
-                            100,
-                            true
-                        )
-                        // 显示下载完成提示
-                        Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
-                        progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
+                    is DownloadTarget.FileTarget -> {
+                        val downloadDir = downloadTarget.file.parentFile ?: downloadTarget.file
+                        // 先下载到临时文件
+                        val tempFile = File(downloadDir, fileName)
+                        downloadFileWithProgress(fileUrl, tempFile, fileName, fileSize, downloadId)
+
+                        // 计算下载文件的SHA256
+                        val downloadedHash = calculateSHA256(tempFile)
+                        Log.d(TAG, "Downloaded file SHA256: $downloadedHash")
+
+                        // 检查目录中是否已有相同内容的文件
+                        val existingFile = findFileWithSameHash(downloadDir, downloadedHash, fileName)
+
+                        val finalFile = if (existingFile != null) {
+                            // 找到相同文件，删除临时文件
+                            tempFile.delete()
+                            Log.d(TAG, "Found existing file with same content: ${existingFile.name}")
+
+                            serviceScope.launch(Dispatchers.Main) {
+                                Toast.makeText(
+                                    this@FileDownloadService,
+                                    "文件已存在，直接打开",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                updateNotification(
+                                    fileName,
+                                    "文件已存在 - ${existingFile.name}",
+                                    100,
+                                    100,
+                                    true
+                                )
+                            }
+                            existingFile
+                        } else {
+                            // 没有相同文件，重命名临时文件
+                            val originalFile = File(downloadDir, fileName)
+                            val targetFile = if (originalFile.exists()) {
+                                val nameWithoutExt = fileName.substringBeforeLast(".")
+                                val extension = fileName.substringAfterLast(".", "")
+                                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                val newFileName = if (extension.isNotEmpty()) {
+                                    "${nameWithoutExt}_${timestamp}.${extension}"
+                                } else {
+                                    "${nameWithoutExt}_${timestamp}"
+                                }
+                                File(downloadDir, newFileName)
+                            } else {
+                                originalFile
+                            }
+
+                            tempFile.renameTo(targetFile)
+                            Log.d(TAG, "Download completed: ${targetFile.absolutePath}")
+
+                            serviceScope.launch(Dispatchers.Main) {
+                                updateNotification(
+                                    fileName,
+                                    "下载完成 - ${targetFile.name}",
+                                    100,
+                                    100,
+                                    true
+                                )
+                                // 显示下载完成提示
+                                Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
+                                progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
+                            }
+                            targetFile
+                        }
+                        finalFile.absolutePath
                     }
-                    targetFile
                 }
-                
+
+                serviceScope.launch(Dispatchers.Main) {
+                    updateNotification(
+                        fileName,
+                        "下载完成",
+                        100,
+                        100,
+                        true
+                    )
+                    progressCallbacks[downloadId]?.onCompleted(downloadId, completedPath)
+                }
+
                 // 如果需要自动打开文件
                 if (autoOpen) {
                     serviceScope.launch(Dispatchers.Main) {
-                        openFile(finalFile)
+                        when (downloadTarget) {
+                            is DownloadTarget.MediaStore -> openFileUri(downloadTarget.uri)
+                            is DownloadTarget.FileTarget -> openFile(File(completedPath))
+                        }
                     }
                 }
                 
@@ -289,6 +312,9 @@ class FileDownloadService : Service() {
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed", e)
+                if (downloadTarget is DownloadTarget.MediaStore) {
+                    runCatching { contentResolver.delete(downloadTarget.uri, null, null) }
+                }
                 launch(Dispatchers.Main) {
                     if (!cancelledDownloads.contains(downloadId)) {
                         updateNotification(fileName, "下载失败: ${e.message}", 0, 0, true)
@@ -304,6 +330,126 @@ class FileDownloadService : Service() {
         }
         
         activeDownloads[downloadId] = downloadJob
+    }
+
+    private sealed class DownloadTarget {
+        data class FileTarget(val file: File) : DownloadTarget()
+        data class MediaStore(val uri: Uri) : DownloadTarget()
+    }
+
+    private fun createDownloadTarget(fileName: String): DownloadTarget? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, guessMimeType(fileName))
+                put(MediaStore.Downloads.RELATIVE_PATH, "Download/yhchat/")
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            if (uri != null) DownloadTarget.MediaStore(uri) else null
+        } else {
+            val downloadDir = File("/storage/emulated/0/Download/yhchat/")
+            if (!downloadDir.exists()) {
+                downloadDir.mkdirs()
+            }
+            if (!downloadDir.exists() || !downloadDir.isDirectory) {
+                Log.e(TAG, "❌ Failed to create download directory: ${downloadDir.absolutePath}")
+                null
+            } else {
+                DownloadTarget.FileTarget(File(downloadDir, fileName))
+            }
+        }
+    }
+
+    private fun guessMimeType(fileName: String): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+    }
+
+    private fun markMediaStoreComplete(uri: Uri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+            contentResolver.update(uri, values, null, null)
+        }
+    }
+
+    private suspend fun downloadFileWithProgressToUri(
+        fileUrl: String,
+        targetUri: Uri,
+        fileName: String,
+        expectedSize: Long,
+        downloadId: String
+    ) {
+        val request = Request.Builder()
+            .url(fileUrl)
+            .build()
+
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}")
+            }
+
+            val responseBody = response.body ?: throw Exception("Empty response body")
+            val totalBytes = responseBody.contentLength().takeIf { it > 0 } ?: expectedSize
+
+            Log.d(TAG, "Downloading ${fileName}, total size: $totalBytes bytes")
+
+            responseBody.byteStream().use { inputStream ->
+                val outputStream = contentResolver.openOutputStream(targetUri)
+                    ?: throw Exception("无法创建下载文件")
+                outputStream.use { stream ->
+                    writeStreamWithProgress(stream, inputStream, fileName, totalBytes, downloadId)
+                }
+            }
+        }
+    }
+
+    private fun writeStreamWithProgress(
+        outputStream: OutputStream,
+        inputStream: java.io.InputStream,
+        fileName: String,
+        totalBytes: Long,
+        downloadId: String
+    ) {
+        val buffer = ByteArray(8192)
+        var downloadedBytes = 0L
+        var lastProgressUpdate = 0L
+
+        serviceScope.launch(Dispatchers.Main) {
+            updateNotification(fileName, "下载中...", 0, if (totalBytes > 0) 100 else 0)
+        }
+
+        while (true) {
+            if (cancelledDownloads.contains(downloadId)) {
+                Log.d(TAG, "Download cancelled during progress: $downloadId")
+                throw Exception("Download cancelled")
+            }
+
+            val bytesRead = inputStream.read(buffer)
+            if (bytesRead == -1) break
+
+            outputStream.write(buffer, 0, bytesRead)
+            downloadedBytes += bytesRead
+
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastProgressUpdate > 200 || downloadedBytes == totalBytes) {
+                lastProgressUpdate = currentTime
+                val percentage = if (totalBytes > 0) {
+                    ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
+                } else {
+                    0
+                }
+                serviceScope.launch(Dispatchers.Main) {
+                    val progressText = if (totalBytes > 0) {
+                        "下载中... $percentage% (${formatFileSize(downloadedBytes)}/${formatFileSize(totalBytes)})"
+                    } else {
+                        "下载中... ${formatFileSize(downloadedBytes)}"
+                    }
+                    updateNotification(fileName, progressText, percentage, 100)
+                    progressCallbacks[downloadId]?.onProgress(downloadId, percentage, 100)
+                }
+            }
+        }
     }
     
     private suspend fun downloadFileWithProgress(
@@ -465,6 +611,33 @@ class FileDownloadService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to open file: ${file.name}", e)
+            serviceScope.launch(Dispatchers.Main) {
+                Toast.makeText(this@FileDownloadService, "无法打开文件: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun openFileUri(uri: Uri) {
+        try {
+            val mimeType = contentResolver.getType(uri) ?: "*/*"
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val packageManager = packageManager
+            if (intent.resolveActivity(packageManager) != null) {
+                startActivity(intent)
+                Log.d(TAG, "Opened file uri with external app: $uri")
+            } else {
+                val chooserIntent = Intent.createChooser(intent, "选择应用打开").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(chooserIntent)
+                Log.d(TAG, "Opened file chooser for uri: $uri")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open file uri: $uri", e)
             serviceScope.launch(Dispatchers.Main) {
                 Toast.makeText(this@FileDownloadService, "无法打开文件: ${e.message}", Toast.LENGTH_LONG).show()
             }

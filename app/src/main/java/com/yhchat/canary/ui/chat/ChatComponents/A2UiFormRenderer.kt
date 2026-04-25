@@ -844,14 +844,7 @@ private fun RenderA2UiComponent(
                             parentAlign = component.align ?: parentAlign,
                             onDataModelChange = onDataModelChange
                         )
-                    } ?: RenderA2UiColumnChildren(
-                        component = component,
-                        spec = spec,
-                        dataModel = dataModel,
-                        scopePath = scopePath,
-                        parentAlign = component.align ?: parentAlign,
-                        onDataModelChange = onDataModelChange
-                    )
+                    }
                 }
             }
         }
@@ -980,78 +973,75 @@ private fun RenderA2UiComponent(
             val buttonText = resolveA2UiValue(spec, dataModel, component.text ?: component.label, scopePath)
                 ?.toString().orEmpty()
             
-            // 按钮容器，支持居中和自适应宽度
-            Box(
-                modifier = if (parentAxis == "row") {
-                    modifier.wrapContentWidth()
-                } else {
-                    modifier.fillMaxWidth()
-                },
-                contentAlignment = if (parentAxis == "row") Alignment.Center else Alignment.Center
-            ) {
-                when {
-                    component.variant.equals("borderless", ignoreCase = true) ||
-                        component.variant.equals("text", ignoreCase = true) -> {
-                        TextButton(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled,
-                            modifier = Modifier.wrapContentWidth()
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+            // 按钮在 Column 内应该自动适配宽度，在 Row 内应该自动适配宽度
+            val buttonModifier = if (parentAxis == "row") {
+                modifier.wrapContentWidth()
+            } else {
+                Modifier.wrapContentWidth()
+            }
+            
+            when {
+                component.variant.equals("borderless", ignoreCase = true) ||
+                    component.variant.equals("text", ignoreCase = true) -> {
+                    TextButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled,
+                        modifier = buttonModifier
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
+                }
 
-                    component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
-                        Button(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled,
-                            modifier = Modifier.wrapContentWidth()
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+                component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
+                    Button(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled,
+                        modifier = buttonModifier
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
+                }
 
-                    else -> {
-                        OutlinedButton(
-                            onClick = {
-                                executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
-                            },
-                            enabled = enabled,
-                            modifier = Modifier.wrapContentWidth()
-                        ) {
-                            component.child?.let { childId ->
-                                RenderA2UiComponent(
-                                    componentId = childId,
-                                    spec = spec,
-                                    dataModel = dataModel,
-                                    scopePath = scopePath,
-                                    parentAxis = "row",
-                                    onDataModelChange = onDataModelChange
-                                )
-                            } ?: Text(text = buttonText)
-                        }
+                else -> {
+                    OutlinedButton(
+                        onClick = {
+                            executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
+                        },
+                        enabled = enabled,
+                        modifier = buttonModifier
+                    ) {
+                        component.child?.let { childId ->
+                            RenderA2UiComponent(
+                                componentId = childId,
+                                spec = spec,
+                                dataModel = dataModel,
+                                scopePath = scopePath,
+                                parentAxis = "row",
+                                onDataModelChange = onDataModelChange
+                            )
+                        } ?: Text(text = buttonText)
                     }
                 }
             }

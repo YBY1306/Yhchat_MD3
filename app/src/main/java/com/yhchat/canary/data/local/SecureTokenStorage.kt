@@ -19,14 +19,17 @@ class SecureTokenStorage(context: Context) {
     }
     
     private val encryptedPrefs: SharedPreferences
+    private val isEncrypted: Boolean
     
     init {
-        try {
+        var encrypted = false
+        encryptedPrefs = try {
             // 创建或获取主密钥
             val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
             
             // 创建加密的SharedPreferences
-            encryptedPrefs = EncryptedSharedPreferences.create(
+            encrypted = true
+            EncryptedSharedPreferences.create(
                 PREFS_NAME,
                 masterKeyAlias,
                 context,
@@ -35,9 +38,12 @@ class SecureTokenStorage(context: Context) {
             )
         } catch (e: Exception) {
             // 如果创建加密SharedPreferences失败，回退到普通SharedPreferences
-            // 这种情况通常发生在较老的设备上
-            throw RuntimeException("无法创建安全存储，请检查设备兼容性", e)
+            // 这种情况通常发生在较老的设备上（如Android 4.x或某些定制ROM）
+            android.util.Log.w("SecureTokenStorage", "加密SharedPreferences创建失败，回退到普通存储: ${e.message}")
+            encrypted = false
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         }
+        isEncrypted = encrypted
     }
     
     /**

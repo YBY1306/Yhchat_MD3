@@ -5,12 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -557,44 +561,54 @@ private fun HtmlTableNode(
     val table = remember(node) { extractTable(node) }
     if (table.rows.isEmpty()) return
     val hState = rememberScrollState()
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(table.style)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(hState)
-        ) {
-            Column {
-                table.rows.forEach { row ->
-                    Row(
-                        modifier = Modifier
-                            .then(if (row.style.backgroundColor != null) Modifier.background(row.style.backgroundColor) else Modifier)
-                            .padding(bottom = table.borderSpacing.dp),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        row.cells.forEach { cell ->
-                            val baseText = if (cell.isHeader) inheritedText.copy(fontWeight = FontWeight.Bold) else inheritedText
-                            Box(
-                                modifier = Modifier
-                                    .defaultMinSize(minWidth = (80 * cell.colSpan).dp)
-                                    .then(
-                                        if (cell.node.style.backgroundColor != null) Modifier.background(cell.node.style.backgroundColor)
-                                        else Modifier
-                                    )
-                                    .padding(
-                                        top = cell.node.style.paddingTop ?: cell.node.style.padding ?: table.cellPadding.dp,
-                                        bottom = cell.node.style.paddingBottom ?: cell.node.style.padding ?: table.cellPadding.dp,
-                                        start = cell.node.style.paddingLeft ?: cell.node.style.padding ?: 12.dp,
-                                        end = cell.node.style.paddingRight ?: cell.node.style.padding ?: 12.dp
-                                    )
-                            ) {
-                                Column {
-                                    RenderInlineFlow(
-                                        children = cell.node.children,
-                                        inheritedText = cell.node.style.mergeText(baseText),
-                                        onImageClick = onImageClick,
-                                        onLinkClick = onLinkClick
-                                    )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            // 某些消息气泡场景会给子树无界宽度，horizontalScroll 不能接收无限宽约束。
+            // 这里强制给一个有限视口宽度（优先父约束，否则退化到屏幕宽度）。
+            val viewportWidth = if (maxWidth < Dp.Infinity && maxWidth > 0.dp) {
+                maxWidth
+            } else {
+                screenWidth
+            }
+            Box(
+                modifier = Modifier
+                    .width(viewportWidth)
+                    .horizontalScroll(hState)
+            ) {
+                Column {
+                    table.rows.forEach { row ->
+                        Row(
+                            modifier = Modifier
+                                .then(if (row.style.backgroundColor != null) Modifier.background(row.style.backgroundColor) else Modifier)
+                                .padding(bottom = table.borderSpacing.dp),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            row.cells.forEach { cell ->
+                                val baseText = if (cell.isHeader) inheritedText.copy(fontWeight = FontWeight.Bold) else inheritedText
+                                Box(
+                                    modifier = Modifier
+                                        .defaultMinSize(minWidth = (80 * cell.colSpan).dp)
+                                        .then(
+                                            if (cell.node.style.backgroundColor != null) Modifier.background(cell.node.style.backgroundColor)
+                                            else Modifier
+                                        )
+                                        .padding(
+                                            top = cell.node.style.paddingTop ?: cell.node.style.padding ?: table.cellPadding.dp,
+                                            bottom = cell.node.style.paddingBottom ?: cell.node.style.padding ?: table.cellPadding.dp,
+                                            start = cell.node.style.paddingLeft ?: cell.node.style.padding ?: 12.dp,
+                                            end = cell.node.style.paddingRight ?: cell.node.style.padding ?: 12.dp
+                                        )
+                                ) {
+                                    Column {
+                                        RenderInlineFlow(
+                                            children = cell.node.children,
+                                            inheritedText = cell.node.style.mergeText(baseText),
+                                            onImageClick = onImageClick,
+                                            onLinkClick = onLinkClick
+                                        )
+                                    }
                                 }
                             }
                         }

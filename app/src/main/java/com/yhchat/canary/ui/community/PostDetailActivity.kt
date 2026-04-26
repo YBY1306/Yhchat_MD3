@@ -63,8 +63,6 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.ImageUtils

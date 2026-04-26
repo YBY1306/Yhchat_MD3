@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,6 +116,7 @@ fun BoardDetailScreen(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        val pullToRefreshState = rememberPullToRefreshState()
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -156,129 +159,136 @@ fun BoardDetailScreen(
         )
         
         // 文章列表（包含分区信息卡片）
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        PullToRefreshBox(
+            isRefreshing = boardDetailState.isLoading || postListState.isLoading,
+            onRefresh = { viewModel.refresh(token, boardId) },
+            state = pullToRefreshState,
+            modifier = Modifier.weight(1f)
         ) {
-            // 分区信息卡片 - 作为列表的第一项，跟随滚动
-            item {
-                boardDetailState.board?.let { board ->
-                    BoardInfoCard(
-                        board = board,
-                        onGroupListClick = {
-                            // 跳转到群聊列表Activity
-                            val intent = Intent(context, GroupListActivity::class.java).apply {
-                                putExtra("board_id", boardId)
-                                putExtra("board_name", board.name)
-                                putExtra("token", token)
-                            }
-                            context.startActivity(intent)
-                        },
-                        onFollowClick = {
-                            viewModel.followBoard(token, boardId)
-                        },
-                        followState = followState,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
-            
-            // 错误提示
-            postListState.error?.let { error ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 分区信息卡片 - 作为列表的第一项，跟随滚动
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text(
-                            text = error,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
+                    boardDetailState.board?.let { board ->
+                        BoardInfoCard(
+                            board = board,
+                            onGroupListClick = {
+                                // 跳转到群聊列表Activity
+                                val intent = Intent(context, GroupListActivity::class.java).apply {
+                                    putExtra("board_id", boardId)
+                                    putExtra("board_name", board.name)
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            },
+                            onFollowClick = {
+                                viewModel.followBoard(token, boardId)
+                            },
+                            followState = followState,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
                 }
-            }
-            
-            items(postListState.posts) { post ->
-                PostListItem(
-                    post = post,
-                    onClick = {
-                        if (onPostNavigate != null) {
-                            onPostNavigate(post.id, post.title)
-                        } else {
-                            // 跳转到文章详情
-                            val intent = Intent(context, PostDetailActivity::class.java).apply {
-                                putExtra("post_id", post.id)
-                                putExtra("post_title", post.title)
-                                putExtra("token", token)
-                            }
-                            context.startActivity(intent)
-                        }
-                    },
-                    onLongClick = {
-                        selectedPost = post
-                        showBlockDialog = true
-                    }
-                )
-            }
-            
-            // 自动加载更多指示器
-            if (postListState.posts.isNotEmpty() && postListState.hasMore) {
-                item {
-                    LaunchedEffect(Unit) {
-                        if (!postListState.isLoading) {
-                            viewModel.loadMorePosts(token, boardId)
-                        }
-                    }
-                    
-                    if (postListState.isLoading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
+                
+                // 错误提示
+                postListState.error?.let { error ->
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+                            Text(
+                                text = error,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
                     }
                 }
-            }
-            
-            // 空状态
-            if (postListState.posts.isEmpty() && !postListState.isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "暂无文章",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                
+                items(postListState.posts) { post ->
+                    PostListItem(
+                        post = post,
+                        onClick = {
+                            if (onPostNavigate != null) {
+                                onPostNavigate(post.id, post.title)
+                            } else {
+                                // 跳转到文章详情
+                                val intent = Intent(context, PostDetailActivity::class.java).apply {
+                                    putExtra("post_id", post.id)
+                                    putExtra("post_title", post.title)
+                                    putExtra("token", token)
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
+                        onLongClick = {
+                            selectedPost = post
+                            showBlockDialog = true
+                        }
+                    )
+                }
+                
+                // 自动加载更多指示器
+                if (postListState.posts.isNotEmpty() && postListState.hasMore) {
+                    item {
+                        LaunchedEffect(Unit) {
+                            if (!postListState.isLoading) {
+                                viewModel.loadMorePosts(token, boardId)
+                            }
+                        }
+                        
+                        if (postListState.isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
                     }
                 }
-            }
-            
-            // 加载状态
-            if (postListState.isLoading && postListState.posts.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                
+                // 空状态
+                if (postListState.posts.isEmpty() && !postListState.isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无文章",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // 加载状态
+                if (postListState.isLoading && postListState.posts.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }

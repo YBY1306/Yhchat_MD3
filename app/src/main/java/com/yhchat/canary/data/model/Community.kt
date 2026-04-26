@@ -94,6 +94,9 @@ data class CommunityPost(
     
     @SerializedName("collectNum")
     val collectNum: Int,
+
+    @SerializedName("isDraft")
+    val isDraft: Int = 0,
     
     @SerializedName("amountNum")
     val amountNum: Double,

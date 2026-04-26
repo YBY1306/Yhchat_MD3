@@ -141,9 +141,6 @@ dependencies {
 
     implementation(libs.reorderable)
 
-    // 下拉刷新
-    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
-
     implementation("androidx.documentfile:documentfile:1.0.1")
     
     // 网络请求

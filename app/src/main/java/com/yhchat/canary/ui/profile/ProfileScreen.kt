@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,8 +43,6 @@ import android.text.TextUtils
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.platform.LocalConfiguration
 
 /**
@@ -100,7 +100,7 @@ fun ProfileScreen(
 
     // 下拉刷新状态
     var refreshing by remember { mutableStateOf(false) }
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = refreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // 刷新完成后关闭指示器
     LaunchedEffect(uiState.isLoading) {
@@ -171,12 +171,13 @@ fun ProfileScreen(
             com.yhchat.canary.ui.components.observeScrollForNavigation(scrollState, navigationState)
         }
 
-        SwipeRefresh(
-            state = swipeRefreshState,
+        PullToRefreshBox(
+            isRefreshing = refreshing,
             onRefresh = {
                 refreshing = true
                 viewModel.loadUserProfile()
             },
+            state = pullToRefreshState,
             modifier = Modifier.fillMaxSize()
         ) {
         Column(
@@ -269,7 +270,7 @@ fun ProfileScreen(
             }
         }
     }
-    } // SwipeRefresh
+    } // PullToRefreshBox
     }
     
     // 修改邀请码弹窗

@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -26,6 +24,8 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -126,8 +126,7 @@ fun ConversationScreen(
     var refreshing by rememberSaveable { mutableStateOf(false) }
 
     // 下拉刷新状态
-    val swipeRefreshState =
-        rememberSwipeRefreshState(isRefreshing = refreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // 协程作用域
     val coroutineScope = rememberCoroutineScope()
@@ -691,8 +690,8 @@ fun ConversationScreen(
         } else {
             // ========== 正常模式 ==========
             // 会话列表（支持下拉刷新）
-            SwipeRefresh(
-                state = swipeRefreshState,
+            PullToRefreshBox(
+                isRefreshing = refreshing,
                 onRefresh = {
                     // 只有用户主动下拉刷新时才重新加载数据
                     refreshing = true
@@ -702,7 +701,9 @@ fun ConversationScreen(
                         kotlinx.coroutines.delay(500)
                         refreshing = false
                     }
-                }
+                },
+                state = pullToRefreshState,
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (uiState.isLoading) {
                     Box(

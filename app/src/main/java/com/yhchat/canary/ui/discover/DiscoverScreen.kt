@@ -14,6 +14,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -25,8 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
@@ -80,7 +80,7 @@ fun DiscoverScreen(
     
     // 下拉刷新状态
     var refreshing by remember { mutableStateOf(false) }
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = refreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // 刷新完成后关闭指示器
     LaunchedEffect(isLoadingGroups, isLoadingBots) {
@@ -113,12 +113,13 @@ fun DiscoverScreen(
             )
         }
     ) { padding ->
-        SwipeRefresh(
-            state = swipeRefreshState,
+        PullToRefreshBox(
+            isRefreshing = refreshing,
             onRefresh = {
                 refreshing = true
                 viewModel.refreshAll()
             },
+            state = pullToRefreshState,
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -260,7 +261,7 @@ fun DiscoverScreen(
                 }
             }
         }
-        } // SwipeRefresh
+        } // PullToRefreshBox
     }
 
     // 群聊详情弹窗

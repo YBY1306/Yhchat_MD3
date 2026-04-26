@@ -43,8 +43,6 @@ import kotlinx.coroutines.launch
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
 import androidx.compose.foundation.lazy.rememberLazyListState
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.yhchat.canary.ui.settings.SettingsGroup
 import com.yhchat.canary.ui.settings.SettingsItemCell
 import com.yhchat.canary.ui.settings.SettingsCustomItem

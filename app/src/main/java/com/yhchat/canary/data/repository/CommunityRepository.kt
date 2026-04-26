@@ -685,21 +685,46 @@ class CommunityRepository @Inject constructor(
 
     /**
      * 获取草稿列表
+     * 草稿数据混在 my-post-list 里，按 isDraft=1 过滤
      */
     suspend fun getDraftList(token: String): Result<List<Draft>> {
         return try {
-            val response = apiService.getDraftList(token)
+            val pageSize = 50
+            var page = 1
+            var total = Int.MAX_VALUE
+            var loadedCount = 0
+            val drafts = mutableListOf<Draft>()
 
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body != null && body.code == 1) {
-                    Result.success(body.data.drafts.map { it.toDraft() })
-                } else {
-                    Result.failure(Exception(body?.msg ?: "获取草稿失败"))
+            while (loadedCount < total) {
+                val response = apiService.getMyPostList(
+                    token = token,
+                    request = MyPostListRequest(size = pageSize, page = page)
+                )
+
+                if (!response.isSuccessful) {
+                    return Result.failure(Exception("网络请求失败: ${response.code()}"))
                 }
-            } else {
-                Result.failure(Exception("网络请求失败: ${response.code()}"))
+
+                val body = response.body() ?: return Result.failure(Exception("响应体为空"))
+                if (body.code != 1) {
+                    return Result.failure(Exception(body.msg.ifBlank { "获取草稿失败" }))
+                }
+
+                val posts = body.data.posts
+                total = body.data.total
+                loadedCount += posts.size
+
+                drafts += posts
+                    .filter { it.isDraft == 1 }
+                    .map { it.toDraftFromMyPostList() }
+
+                if (posts.isEmpty() || posts.size < pageSize) {
+                    break
+                }
+                page++
             }
+
+            Result.success(drafts.sortedByDescending { it.updateTime })
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -984,5 +1009,29 @@ class CommunityRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun CommunityPost.toDraftFromMyPostList(): Draft {
+        val draftUpdateTime = when {
+            editTime > 0 -> editTime
+            updateTime > 0 -> updateTime
+            lastActive > 0 -> lastActive
+            else -> createTime
+        }
+
+        return Draft(
+            id = id.toString(),
+            title = title,
+            content = content,
+            boardId = baId,
+            boardName = if (baId > 0) "分区 $baId" else "未分区",
+            isMarkdownMode = contentType == 2,
+            createTime = normalizeTimestampToMillis(createTime),
+            updateTime = normalizeTimestampToMillis(draftUpdateTime)
+        )
+    }
+
+    private fun normalizeTimestampToMillis(timestamp: Long): Long {
+        return if (timestamp in 1..999_999_999_999) timestamp * 1000 else timestamp
     }
 }

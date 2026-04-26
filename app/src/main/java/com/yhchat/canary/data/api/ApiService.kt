@@ -1290,6 +1290,47 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: com.yhchat.canary.data.model.MountSettingDeleteRequest
     ): Response<com.yhchat.canary.data.model.ApiStatus>
+    
+    // ==================== 社区草稿相关API ====================
+    
+    /**
+     * 获取草稿列表
+     * GET /v1/community/drafts
+     */
+    @GET("v1/community/drafts")
+    suspend fun getDraftList(
+        @Header("token") token: String
+    ): Response<DraftListResponse>
+    
+    /**
+     * 保存草稿
+     * POST /v1/community/draft/save
+     */
+    @POST("v1/community/draft/save")
+    suspend fun saveDraft(
+        @Header("token") token: String,
+        @Body request: SaveDraftRequest
+    ): Response<DraftResponse>
+    
+    /**
+     * 更新草稿
+     * POST /v1/community/draft/update
+     */
+    @POST("v1/community/draft/update")
+    suspend fun updateDraft(
+        @Header("token") token: String,
+        @Body request: UpdateDraftRequest
+    ): Response<DraftResponse>
+    
+    /**
+     * 删除草稿
+     * POST /v1/community/draft/delete
+     */
+    @POST("v1/community/draft/delete")
+    suspend fun deleteDraft(
+        @Header("token") token: String,
+        @Body request: DeleteDraftRequest
+    ): Response<BaseResponse>
 }
 
 // ==================== 社区相关请求模型（JSON） ====================

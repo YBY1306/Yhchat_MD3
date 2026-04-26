@@ -180,7 +180,7 @@ class PostDetailActivity : BaseActivity() {
             val intent = Intent().apply {
                 action = MIUI_LONG_SCREENSHOT_ACTION
                 putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
-                putExtra("window_token", window.decorView.windowToken)
+                putExtra("window_token", window.decorView.windowToken?.toString().orEmpty())
             }
             
             // 尝试启动小米截图应用的长截屏功能
@@ -220,8 +220,8 @@ class PostDetailActivity : BaseActivity() {
         return try {
             val clazz = Class.forName("android.os.SystemProperties")
             val method = clazz.getMethod("get", String::class.java)
-            val miuiVersion = method.invoke(null, "ro.miui.ui.version.name") as? String
-            !miuiVersion.isNullOrEmpty()
+            val miuiVersion = method.invoke(null, "ro.miui.ui.version.name")?.toString().orEmpty()
+            miuiVersion.isNotEmpty()
         } catch (e: Exception) {
             false
         }

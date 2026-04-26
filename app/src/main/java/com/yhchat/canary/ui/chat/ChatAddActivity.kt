@@ -32,7 +32,6 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.ChatAddInfo
 import com.yhchat.canary.data.model.ChatAddType
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.utils.ChatAddLinkHandler
 import dagger.hilt.android.AndroidEntryPoint
 
 /**

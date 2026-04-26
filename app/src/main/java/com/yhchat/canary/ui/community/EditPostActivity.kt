@@ -42,6 +42,8 @@ class EditPostActivity : ComponentActivity() {
         val originalTitle = intent.getStringExtra("original_title") ?: ""
         val originalContent = intent.getStringExtra("original_content") ?: ""
         val contentType = intent.getIntExtra("content_type", 1)
+        val boardId = intent.getIntExtra("board_id", 0)
+        val boardName = intent.getStringExtra("board_name").orEmpty()
         
         setContent {
             YhchatCanaryTheme {
@@ -52,6 +54,11 @@ class EditPostActivity : ComponentActivity() {
                         tokenRepository = RepositoryFactory.getTokenRepository(this@EditPostActivity)
                     )
                 }
+                val draftViewModel: CommunityDraftViewModel = viewModel {
+                    CommunityDraftViewModel(
+                        communityRepository = RepositoryFactory.getCommunityRepository(this@EditPostActivity)
+                    )
+                }
                 
                 EditPostScreen(
                     postId = postId,
@@ -59,7 +66,10 @@ class EditPostActivity : ComponentActivity() {
                     originalTitle = originalTitle,
                     originalContent = originalContent,
                     originalContentType = contentType,
+                    boardId = boardId,
+                    boardName = boardName,
                     viewModel = viewModel,
+                    draftViewModel = draftViewModel,
                     onBackClick = { finish() },
                     onPostUpdated = { finish() }
                 )
@@ -133,7 +143,10 @@ fun EditPostScreen(
     originalTitle: String,
     originalContent: String,
     originalContentType: Int,
+    boardId: Int,
+    boardName: String,
     viewModel: EditPostViewModel,
+    draftViewModel: CommunityDraftViewModel,
     onBackClick: () -> Unit,
     onPostUpdated: () -> Unit,
     modifier: Modifier = Modifier
@@ -143,14 +156,28 @@ fun EditPostScreen(
     var isMarkdownMode by remember { mutableStateOf(originalContentType == 2) }
     
     val editPostState by viewModel.editPostState.collectAsState()
+    val draftSaveState by draftViewModel.draftSaveState.collectAsState()
     
     // 控制退出确认对话框
     var showExitDialog by remember { mutableStateOf(false) }
+    var pendingExitAfterDraftSave by remember { mutableStateOf(false) }
     
     // 监听编辑结果
     LaunchedEffect(editPostState.isSuccess) {
         if (editPostState.isSuccess) {
             onPostUpdated()
+        }
+    }
+
+    LaunchedEffect(draftSaveState.savedDraft?.id, draftSaveState.error) {
+        if (pendingExitAfterDraftSave && draftSaveState.savedDraft != null) {
+            pendingExitAfterDraftSave = false
+            showExitDialog = false
+            draftViewModel.clearDraftSaveState()
+            onBackClick()
+        }
+        if (pendingExitAfterDraftSave && draftSaveState.error != null) {
+            pendingExitAfterDraftSave = false
         }
     }
     
@@ -237,11 +264,11 @@ fun EditPostScreen(
                 }
             )
             
-            // 错误提示
-            editPostState.error?.let { error ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
+        // 错误提示
+        editPostState.error?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
                         .padding(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
@@ -252,9 +279,27 @@ fun EditPostScreen(
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
+                )
             }
+        }
+
+        draftSaveState.error?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
             
             LazyColumn(
                 modifier = Modifier
@@ -342,26 +387,49 @@ fun EditPostScreen(
             AlertDialog(
                 onDismissRequest = { showExitDialog = false },
                 title = {
-                    Text("放弃修改")
+                    Text("保存草稿")
                 },
                 text = {
-                    Text("您有未保存的修改，确定要放弃吗？")
+                    Text("您有未保存的修改，是否保存为草稿？")
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            showExitDialog = false
-                            onBackClick()
-                        }
+                            if (!draftSaveState.isSaving && (title.isNotBlank() || content.isNotBlank())) {
+                                pendingExitAfterDraftSave = true
+                                draftViewModel.saveDraft(
+                                    token = token,
+                                    boardId = boardId,
+                                    boardName = boardName,
+                                    title = title.trim(),
+                                    content = content.trim(),
+                                    contentType = if (isMarkdownMode) 2 else 1
+                                )
+                            }
+                        },
+                        enabled = !draftSaveState.isSaving
                     ) {
-                        Text("放弃")
+                        if (draftSaveState.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("保存")
+                        }
                     }
                 },
                 dismissButton = {
                     TextButton(
-                        onClick = { showExitDialog = false }
+                        onClick = {
+                            if (!draftSaveState.isSaving) {
+                                showExitDialog = false
+                                onBackClick()
+                            }
+                        },
+                        enabled = !draftSaveState.isSaving
                     ) {
-                        Text("继续编辑")
+                        Text("不保存")
                     }
                 }
             )

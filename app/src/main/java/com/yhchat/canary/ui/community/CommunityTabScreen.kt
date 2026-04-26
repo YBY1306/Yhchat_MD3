@@ -1156,6 +1156,7 @@ fun MyPostListContent(
                             putExtra("original_title", post.title)
                             putExtra("original_content", post.content)
                             putExtra("content_type", post.contentType)
+                            putExtra("board_id", post.baId)
                         }
                         context.startActivity(intent)
                     },

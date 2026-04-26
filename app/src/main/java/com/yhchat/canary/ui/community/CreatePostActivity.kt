@@ -28,7 +28,6 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.R
 import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.repository.DraftRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -41,7 +40,7 @@ class CreatePostActivity : ComponentActivity() {
         com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
         
         val boardId = intent.getIntExtra("board_id", 0)
-        val boardName = intent.getStringExtra("board_name") ?: "发布文章"
+        val boardName = intent.getStringExtra("board_name").orEmpty()
         val token = intent.getStringExtra("token") ?: ""
         
         // 草稿相关参数
@@ -59,12 +58,19 @@ class CreatePostActivity : ComponentActivity() {
                         tokenRepository = RepositoryFactory.getTokenRepository(this@CreatePostActivity)
                     )
                 }
+                val draftViewModel: CommunityDraftViewModel = viewModel {
+                    CommunityDraftViewModel(
+                        communityRepository = RepositoryFactory.getCommunityRepository(this@CreatePostActivity)
+                    )
+                }
                 
                 CreatePostScreen(
                     boardId = boardId,
                     boardName = boardName,
                     token = token,
+                    draftId = draftId,
                     viewModel = viewModel,
+                    draftViewModel = draftViewModel,
                     onBackClick = { finish() },
                     onPostCreated = { finish() },
                     onDraftBoxClick = {
@@ -149,7 +155,9 @@ fun CreatePostScreen(
     boardId: Int,
     boardName: String,
     token: String,
+    draftId: String? = null,
     viewModel: CreatePostViewModel,
+    draftViewModel: CommunityDraftViewModel,
     onBackClick: () -> Unit,
     onPostCreated: () -> Unit,
     onDraftBoxClick: () -> Unit,
@@ -158,22 +166,37 @@ fun CreatePostScreen(
     draftMarkdownMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val draftRepository = remember { DraftRepository(context) }
-    
     var title by remember { mutableStateOf(draftTitle) }
     var content by remember { mutableStateOf(draftContent) }
     var isMarkdownMode by remember { mutableStateOf(draftMarkdownMode) }
     
     val createPostState by viewModel.createPostState.collectAsState()
+    val draftSaveState by draftViewModel.draftSaveState.collectAsState()
     
     // 控制退出确认对话框
     var showExitDialog by remember { mutableStateOf(false) }
+    var pendingExitAfterDraftSave by remember { mutableStateOf(false) }
+    val displayBoardName = boardName.ifBlank { "发布文章" }
     
     // 监听创建结果
     LaunchedEffect(createPostState.isSuccess) {
         if (createPostState.isSuccess) {
+            if (!draftId.isNullOrBlank()) {
+                draftViewModel.deleteDraft(token, draftId)
+            }
             onPostCreated()
+        }
+    }
+
+    LaunchedEffect(draftSaveState.savedDraft?.id, draftSaveState.error) {
+        if (pendingExitAfterDraftSave && draftSaveState.savedDraft != null) {
+            pendingExitAfterDraftSave = false
+            showExitDialog = false
+            draftViewModel.clearDraftSaveState()
+            onBackClick()
+        }
+        if (pendingExitAfterDraftSave && draftSaveState.error != null) {
+            pendingExitAfterDraftSave = false
         }
     }
     
@@ -196,7 +219,7 @@ fun CreatePostScreen(
         TopAppBar(
             title = {
                 Text(
-                    text = "发布到 $boardName",
+                    text = "发布到 $displayBoardName",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -272,6 +295,24 @@ fun CreatePostScreen(
         
         // 错误提示
         createPostState.error?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+
+        draftSaveState.error?.let { error ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -383,34 +424,44 @@ fun CreatePostScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // 保存草稿
-                        if (title.isNotBlank() || content.isNotBlank()) {
-                            draftRepository.saveDraft(
-                                title = title.trim(),
-                                content = content.trim(),
+                        if (!draftSaveState.isSaving && (title.isNotBlank() || content.isNotBlank())) {
+                            pendingExitAfterDraftSave = true
+                            draftViewModel.saveDraft(
+                                token = token,
                                 boardId = boardId,
                                 boardName = boardName,
-                                isMarkdownMode = isMarkdownMode
+                                title = title.trim(),
+                                content = content.trim(),
+                                contentType = if (isMarkdownMode) 2 else 1,
+                                draftId = draftId
                             )
                         }
-                        showExitDialog = false
-                        onBackClick()
-                    }
+                    },
+                    enabled = !draftSaveState.isSaving
                 ) {
-                    Text("保存")
+                    if (draftSaveState.isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("保存")
+                    }
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showExitDialog = false
-                        onBackClick()
-                    }
+                        if (!draftSaveState.isSaving) {
+                            showExitDialog = false
+                            onBackClick()
+                        }
+                    },
+                    enabled = !draftSaveState.isSaving
                 ) {
                     Text("不保存")
                 }
             }
         )
     }
-}
 }

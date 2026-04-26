@@ -682,6 +682,148 @@ class CommunityRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * 获取草稿列表
+     */
+    suspend fun getDraftList(token: String): Result<List<Draft>> {
+        return try {
+            val response = apiService.getDraftList(token)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body.data.drafts.map { it.toDraft() })
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取草稿失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 保存草稿
+     */
+    suspend fun saveDraft(
+        token: String,
+        boardId: Int,
+        boardName: String,
+        title: String,
+        content: String,
+        contentType: Int
+    ): Result<Draft> {
+        return try {
+            val request = SaveDraftRequest(
+                boardId = boardId,
+                boardName = boardName.takeIf { it.isNotBlank() },
+                title = title,
+                content = content,
+                contentType = contentType
+            )
+            val response = apiService.saveDraft(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    val savedDraft = body.data?.toDraft() ?: Draft(
+                        id = "",
+                        title = title,
+                        content = content,
+                        boardId = boardId,
+                        boardName = boardName.ifBlank { "分区 $boardId" },
+                        isMarkdownMode = contentType == 2,
+                        createTime = System.currentTimeMillis(),
+                        updateTime = System.currentTimeMillis()
+                    )
+                    Result.success(savedDraft)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "保存草稿失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 更新草稿
+     */
+    suspend fun updateDraft(
+        token: String,
+        draftId: String,
+        boardId: Int,
+        boardName: String,
+        title: String,
+        content: String,
+        contentType: Int
+    ): Result<Draft> {
+        return try {
+            val request = UpdateDraftRequest(
+                draftId = draftId,
+                boardId = boardId,
+                boardName = boardName.takeIf { it.isNotBlank() },
+                title = title,
+                content = content,
+                contentType = contentType
+            )
+            val response = apiService.updateDraft(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    val updatedDraft = body.data?.toDraft() ?: Draft(
+                        id = draftId,
+                        title = title,
+                        content = content,
+                        boardId = boardId,
+                        boardName = boardName.ifBlank { "分区 $boardId" },
+                        isMarkdownMode = contentType == 2,
+                        createTime = System.currentTimeMillis(),
+                        updateTime = System.currentTimeMillis()
+                    )
+                    Result.success(updatedDraft)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "更新草稿失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 删除草稿
+     */
+    suspend fun deleteDraft(
+        token: String,
+        draftId: String
+    ): Result<BaseResponse> {
+        return try {
+            val request = DeleteDraftRequest(draftId = draftId)
+            val response = apiService.deleteDraft(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception(body?.message ?: "删除草稿失败"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     
     /**
      * 搜索社区内容

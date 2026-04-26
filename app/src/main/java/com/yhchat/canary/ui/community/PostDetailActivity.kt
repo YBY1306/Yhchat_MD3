@@ -217,14 +217,12 @@ class PostDetailActivity : BaseActivity() {
      * 检查是否为 MIUI 设备
      */
     private fun isMiuiDevice(): Boolean {
-        return try {
+        return runCatching {
             val clazz = Class.forName("android.os.SystemProperties")
             val method = clazz.getMethod("get", String::class.java)
             val miuiVersion = method.invoke(null, "ro.miui.ui.version.name")?.toString().orEmpty()
             miuiVersion.isNotEmpty()
-        } catch (e: Exception) {
-            false
-        }
+        }.getOrDefault(false)
     }
 }
 
@@ -1438,6 +1436,8 @@ fun PostDetailScreen(
                                 putExtra("original_title", post.title)
                                 putExtra("original_content", post.content)
                                 putExtra("content_type", post.contentType)
+                                putExtra("board_id", post.baId)
+                                putExtra("board_name", postDetailState.board?.name ?: "")
                             }
                             context.startActivity(intent)
                         }

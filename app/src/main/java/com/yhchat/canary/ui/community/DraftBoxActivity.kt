@@ -9,7 +9,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,8 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.data.repository.DraftRepository
 import com.yhchat.canary.data.model.Draft
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,8 +47,14 @@ class DraftBoxActivity : ComponentActivity() {
         setContent {
             YhchatCanaryTheme {
                 SetSystemNavigationBarColor()
+                val draftViewModel: CommunityDraftViewModel = viewModel {
+                    CommunityDraftViewModel(
+                        communityRepository = RepositoryFactory.getCommunityRepository(this@DraftBoxActivity)
+                    )
+                }
                 DraftBoxScreen(
                     token = token,
+                    viewModel = draftViewModel,
                     onBackClick = { finish() },
                     onDraftClick = { draft ->
                         // 返回到CreatePostActivity并加载草稿   
@@ -98,20 +104,15 @@ class DraftBoxActivity : ComponentActivity() {
 @Composable
 fun DraftBoxScreen(
     token: String,
+    viewModel: CommunityDraftViewModel,
     onBackClick: () -> Unit,
     onDraftClick: (Draft) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val draftRepository = remember { DraftRepository(context) }
-    
-    var drafts by remember { mutableStateOf(listOf<Draft>()) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    // 加载草稿数据
-    LaunchedEffect(Unit) {
-        drafts = draftRepository.getDrafts()
-        isLoading = false
+    val draftBoxState by viewModel.draftBoxState.collectAsState()
+
+    LaunchedEffect(token) {
+        viewModel.loadDrafts(token)
     }
     
     Surface(
@@ -141,16 +142,34 @@ fun DraftBoxScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             )
         )
+
+        draftBoxState.error?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
         
         // 草稿列表
-        if (isLoading) {
+        if (draftBoxState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
-        } else if (drafts.isEmpty()) {
+        } else if (draftBoxState.drafts.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -183,13 +202,13 @@ fun DraftBoxScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(drafts, key = { it.id }) { draft ->
+                items(draftBoxState.drafts, key = { it.id }) { draft ->
                     DraftItem(
                         draft = draft,
                         onClick = { onDraftClick(draft) },
-                        onDelete = { 
-                            draftRepository.deleteDraft(draft.id)
-                            drafts = drafts.filter { it.id != draft.id }
+                        isDeleting = draftBoxState.isDeleting && draftBoxState.deletingDraftId == draft.id,
+                        onDelete = {
+                            viewModel.deleteDraft(token, draft.id)
                         }
                     )
                 }
@@ -205,6 +224,7 @@ fun DraftBoxScreen(
 fun DraftItem(
     draft: Draft,
     onClick: () -> Unit,
+    isDeleting: Boolean,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -291,12 +311,19 @@ fun DraftItem(
             }
             
             // 删除按钮
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "删除草稿",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            IconButton(onClick = onDelete, enabled = !isDeleting) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除草稿",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -317,4 +344,3 @@ private fun formatTime(timestamp: Long): String {
         else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
     }
 }
-

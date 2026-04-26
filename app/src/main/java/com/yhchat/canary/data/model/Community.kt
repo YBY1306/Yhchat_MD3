@@ -483,6 +483,139 @@ data class EditPostData(
 )
 
 /**
+ * 社区草稿条目
+ */
+data class CommunityDraftResponseItem(
+    @SerializedName(value = "id", alternate = ["draftId"])
+    val id: String = "",
+
+    @SerializedName(value = "baId", alternate = ["boardId"])
+    val boardId: Int = 0,
+
+    @SerializedName(value = "baName", alternate = ["boardName", "name"])
+    val boardName: String? = null,
+
+    @SerializedName("title")
+    val title: String = "",
+
+    @SerializedName("content")
+    val content: String = "",
+
+    @SerializedName(value = "contentType", alternate = ["markdownType"])
+    val contentType: Int = 1,
+
+    @SerializedName(value = "isMarkdownMode", alternate = ["markdownMode"])
+    val isMarkdownMode: Boolean? = null,
+
+    @SerializedName("createTime")
+    val createTime: Long = 0L,
+
+    @SerializedName("updateTime")
+    val updateTime: Long = 0L
+) {
+    fun toDraft(): Draft {
+        val markdownMode = isMarkdownMode ?: (contentType == 2)
+        return Draft(
+            id = id,
+            title = title,
+            content = content,
+            boardId = boardId,
+            boardName = boardName?.takeIf { it.isNotBlank() } ?: "分区 $boardId",
+            isMarkdownMode = markdownMode,
+            createTime = createTime,
+            updateTime = updateTime
+        )
+    }
+}
+
+/**
+ * 草稿列表响应
+ */
+data class DraftListResponse(
+    @SerializedName("code")
+    val code: Int = 0,
+
+    @SerializedName("data")
+    val data: DraftListData = DraftListData(),
+
+    @SerializedName("msg")
+    val msg: String = ""
+)
+
+data class DraftListData(
+    @SerializedName(value = "drafts", alternate = ["list", "rows", "items"])
+    val drafts: List<CommunityDraftResponseItem> = emptyList(),
+
+    @SerializedName("total")
+    val total: Int = 0
+)
+
+/**
+ * 草稿响应
+ */
+data class DraftResponse(
+    @SerializedName("code")
+    val code: Int = 0,
+
+    @SerializedName("data")
+    val data: CommunityDraftResponseItem? = null,
+
+    @SerializedName("msg")
+    val msg: String = ""
+)
+
+/**
+ * 保存草稿请求
+ */
+data class SaveDraftRequest(
+    @SerializedName(value = "baId", alternate = ["boardId"])
+    val boardId: Int,
+
+    @SerializedName(value = "baName", alternate = ["boardName", "name"])
+    val boardName: String? = null,
+
+    @SerializedName("title")
+    val title: String,
+
+    @SerializedName("content")
+    val content: String,
+
+    @SerializedName("contentType")
+    val contentType: Int
+)
+
+/**
+ * 更新草稿请求
+ */
+data class UpdateDraftRequest(
+    @SerializedName(value = "draftId", alternate = ["id"])
+    val draftId: String,
+
+    @SerializedName(value = "baId", alternate = ["boardId"])
+    val boardId: Int? = null,
+
+    @SerializedName(value = "baName", alternate = ["boardName", "name"])
+    val boardName: String? = null,
+
+    @SerializedName("title")
+    val title: String,
+
+    @SerializedName("content")
+    val content: String,
+
+    @SerializedName("contentType")
+    val contentType: Int
+)
+
+/**
+ * 删除草稿请求
+ */
+data class DeleteDraftRequest(
+    @SerializedName(value = "draftId", alternate = ["id"])
+    val draftId: String
+)
+
+/**
  * 我的文章列表响应
  */
 data class MyPostListResponse(

@@ -97,6 +97,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import android.view.KeyEvent
+import android.util.Log
 
 /**
  * 文章详情Activity
@@ -105,6 +106,7 @@ import android.view.KeyEvent
 class PostDetailActivity : BaseActivity() {
     
     companion object {
+        private const val TAG = "PostDetailActivity"
         // MIUI 长截屏相关常量
         private const val MIUI_SCREENSHOT_ACTION = "miui.intent.action.SCREENSHOT"
         private const val MIUI_LONG_SCREENSHOT_ACTION = "miui.intent.action.LONG_SCREENSHOT"
@@ -162,9 +164,11 @@ class PostDetailActivity : BaseActivity() {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && event != null) {
             // 检查是否是长按（长截屏通常需要长按）
             if (event.repeatCount == 0) {
-                // 触发 MIUI 长截屏
-                triggerMiuiLongScreenshot()
-                return true
+                // 仅在符合 MIUI 长截屏条件时拦截按键
+                if (canTriggerMiuiLongScreenshot()) {
+                    triggerMiuiLongScreenshot()
+                    return true
+                }
             }
         }
         return super.onKeyDown(keyCode, event)
@@ -176,6 +180,9 @@ class PostDetailActivity : BaseActivity() {
      */
     private fun triggerMiuiLongScreenshot() {
         try {
+            if (!canTriggerMiuiLongScreenshot()) {
+                return
+            }
             // 方式1：使用 MIUI 长截屏 Intent
             val intent = Intent().apply {
                 action = MIUI_LONG_SCREENSHOT_ACTION
@@ -184,16 +191,18 @@ class PostDetailActivity : BaseActivity() {
             }
             
             // 尝试启动小米截图应用的长截屏功能
-            if (isMiuiDevice()) {
+            if (intent.resolveActivity(packageManager) != null) {
                 try {
                     startActivity(intent)
                 } catch (e: Exception) {
                     // 如果长截屏 Intent 失败，尝试备用方案
                     triggerMiuiScreenshotFallback()
                 }
+            } else {
+                triggerMiuiScreenshotFallback()
             }
         } catch (e: Exception) {
-            android.util.Log.e("PostDetailActivity", "Failed to trigger MIUI long screenshot", e)
+            Log.e(TAG, "Failed to trigger MIUI long screenshot", e)
         }
     }
     
@@ -207,14 +216,31 @@ class PostDetailActivity : BaseActivity() {
                 action = MIUI_SCREENSHOT_ACTION
                 putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
             }
-            startActivity(intent)
+            if (intent.resolveActivity(packageManager) != null) {
+                startActivity(intent)
+            }
         } catch (e: Exception) {
-            android.util.Log.e("PostDetailActivity", "Failed to trigger MIUI screenshot fallback", e)
+            Log.e(TAG, "Failed to trigger MIUI screenshot fallback", e)
         }
     }
     
     /**
-     * 检查是否为 MIUI 设备
+     * 按需求放开到所有 MIUI 设备:
+     * canLong = miui
+     */
+    private fun canTriggerMiuiLongScreenshot(): Boolean {
+        val isMiui = isMiuiDevice()
+        val canLongScreenshot = isMiui
+
+        Log.i(
+            TAG,
+            "can long screenshot values:$canLongScreenshot,$isMiui"
+        )
+        return canLongScreenshot
+    }
+
+    /**
+     * 检查是否为 MIUI ROM
      */
     private fun isMiuiDevice(): Boolean {
         return runCatching {

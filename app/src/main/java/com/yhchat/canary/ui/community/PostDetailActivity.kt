@@ -225,30 +225,36 @@ class PostDetailActivity : BaseActivity() {
     }
     
     /**
-     * 按需求放开到所有 MIUI 设备:
-     * canLong = miui
+     * 按需求放开到所有小米系统设备:
+     * canLong = MIUI || HyperOS
      */
     private fun canTriggerMiuiLongScreenshot(): Boolean {
-        val isMiui = isMiuiDevice()
-        val canLongScreenshot = isMiui
+        val isXiaomiRom = isMiuiOrHyperOs()
+        val canLongScreenshot = isXiaomiRom
 
         Log.i(
             TAG,
-            "can long screenshot values:$canLongScreenshot,$isMiui"
+            "can long screenshot values:$canLongScreenshot,$isXiaomiRom"
         )
         return canLongScreenshot
     }
 
     /**
-     * 检查是否为 MIUI ROM
+     * 检查是否为 MIUI 或 HyperOS
      */
-    private fun isMiuiDevice(): Boolean {
+    private fun isMiuiOrHyperOs(): Boolean {
+        val miuiVersion = getSystemProperty("ro.miui.ui.version.name")
+        val hyperOsName = getSystemProperty("ro.mi.os.version.name")
+        val hyperOsCode = getSystemProperty("ro.mi.os.version.code")
+        return miuiVersion.isNotEmpty() || hyperOsName.isNotEmpty() || hyperOsCode.isNotEmpty()
+    }
+
+    private fun getSystemProperty(key: String): String {
         return runCatching {
             val clazz = Class.forName("android.os.SystemProperties")
             val method = clazz.getMethod("get", String::class.java)
-            val miuiVersion = method.invoke(null, "ro.miui.ui.version.name")?.toString().orEmpty()
-            miuiVersion.isNotEmpty()
-        }.getOrDefault(false)
+            method.invoke(null, key)?.toString().orEmpty()
+        }.getOrDefault("")
     }
 }
 

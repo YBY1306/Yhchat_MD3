@@ -155,52 +155,54 @@ fun BoardDetailScreen(
             }
         )
         
-        // 分区信息卡片
-        boardDetailState.board?.let { board ->
-            BoardInfoCard(
-                board = board,
-                onGroupListClick = {
-                    // 跳转到群聊列表Activity
-                    val intent = Intent(context, GroupListActivity::class.java).apply {
-                        putExtra("board_id", boardId)
-                        putExtra("board_name", board.name)
-                        putExtra("token", token)
-                    }
-                    context.startActivity(intent)
-                },
-                onFollowClick = {
-                    viewModel.followBoard(token, boardId)
-                },
-                followState = followState,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-        
-        // 错误提示
-        postListState.error?.let { error ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Text(
-                    text = error,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-        
-        // 文章列表
+        // 文章列表（包含分区信息卡片）
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // 分区信息卡片 - 作为列表的第一项，跟随滚动
+            item {
+                boardDetailState.board?.let { board ->
+                    BoardInfoCard(
+                        board = board,
+                        onGroupListClick = {
+                            // 跳转到群聊列表Activity
+                            val intent = Intent(context, GroupListActivity::class.java).apply {
+                                putExtra("board_id", boardId)
+                                putExtra("board_name", board.name)
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
+                        },
+                        onFollowClick = {
+                            viewModel.followBoard(token, boardId)
+                        },
+                        followState = followState,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+            
+            // 错误提示
+            postListState.error?.let { error ->
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+            
             items(postListState.posts) { post ->
                 PostListItem(
                     post = post,

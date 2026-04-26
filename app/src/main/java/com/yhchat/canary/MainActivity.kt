@@ -59,7 +59,7 @@ import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.ui.chat.ChatAddActivity
-import com.yhchat.canary.utils.ChatAddLinkHandler
+import com.yhchat.canary.utils.UnifiedLinkHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -931,7 +931,7 @@ class MainActivity : BaseActivity() {
      */
     private fun handleDeepLink() {
         intent?.data?.toString()?.let { uriString ->
-            if (ChatAddLinkHandler.isChatAddLink(uriString)) {
+            if (UnifiedLinkHandler.isChatAddLink(uriString)) {
                 // 延迟执行，确保 Activity 初始化完成
                 window.decorView.post {
                     ChatAddActivity.start(this, uriString)

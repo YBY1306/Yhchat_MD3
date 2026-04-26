@@ -88,9 +88,15 @@ class CreatePostActivity : ComponentActivity() {
     @Composable
     private fun SetSystemNavigationBarColor() {
         val isLightTheme = !isSystemInDarkTheme()
+        // 获取 TopAppBar 的背景颜色
+        val topAppBarContainerColor = MaterialTheme.colorScheme.surface
+        
         SideEffect {
-            window.statusBarColor = Color.Transparent.toArgb()
+            // 状态栏颜色跟随 TopAppBar 背景颜色
+            window.statusBarColor = topAppBarContainerColor.toArgb()
+            // 导航栏保持透明
             window.navigationBarColor = Color.Transparent.toArgb()
+            
             WindowCompat.getInsetsController(window, window.decorView).apply {
                 isAppearanceLightStatusBars = isLightTheme
                 isAppearanceLightNavigationBars = isLightTheme
@@ -190,7 +196,7 @@ fun CreatePostScreen(
         TopAppBar(
             title = {
                 Text(
-                    text = "发布板块 $boardName",
+                    text = "发布到 $boardName",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )

@@ -56,7 +56,6 @@ import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.data.model.CommunityComment
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
-import com.yhchat.canary.util.YunhuLinkHandler
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
@@ -82,7 +81,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.graphics.Color
-import com.yhchat.canary.utils.ChatAddLinkHandler
 import com.yhchat.canary.utils.ImageUploadUtil
 import com.yhchat.canary.data.api.QiniuUploadResponse
 import java.util.regex.Pattern
@@ -98,11 +96,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import android.view.KeyEvent
 
 /**
  * 文章详情Activity
+ * 支持 MIUI 长截屏功能
  */
 class PostDetailActivity : BaseActivity() {
+    
+    companion object {
+        // MIUI 长截屏相关常量
+        private const val MIUI_SCREENSHOT_ACTION = "miui.intent.action.SCREENSHOT"
+        private const val MIUI_LONG_SCREENSHOT_ACTION = "miui.intent.action.LONG_SCREENSHOT"
+        private const val EXTRA_SCREENSHOT_TYPE = "screenshot_type"
+        private const val SCREENSHOT_TYPE_LONG = 2
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -114,7 +123,7 @@ class PostDetailActivity : BaseActivity() {
         
         // 处理深度链接
         if (postId == 0 && intent.data != null) {
-            val deepLinkPostId = YunhuLinkHandler.extractPostIdFromLink(intent.data.toString())
+            val deepLinkPostId = UnifiedLinkHandler.extractPostIdFromLink(intent.data.toString())
             if (deepLinkPostId != null) {
                 postId = deepLinkPostId
                 postTitle = "文章详情"
@@ -141,6 +150,80 @@ class PostDetailActivity : BaseActivity() {
                     onBackClick = { finish() }
                 )
             }
+        }
+    }
+    
+    /**
+     * 处理 MIUI 长截屏
+     * 当用户按下音量下键时，小米截图应用会触发长截屏
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // 处理音量下键 - MIUI 长截屏快捷键
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && event != null) {
+            // 检查是否是长按（长截屏通常需要长按）
+            if (event.repeatCount == 0) {
+                // 触发 MIUI 长截屏
+                triggerMiuiLongScreenshot()
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+    
+    /**
+     * 触发 MIUI 长截屏功能
+     * 通过 Intent 与小米截图应用通信
+     */
+    private fun triggerMiuiLongScreenshot() {
+        try {
+            // 方式1：使用 MIUI 长截屏 Intent
+            val intent = Intent().apply {
+                action = MIUI_LONG_SCREENSHOT_ACTION
+                putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
+                putExtra("window_token", window.decorView.windowToken)
+            }
+            
+            // 尝试启动小米截图应用的长截屏功能
+            if (isMiuiDevice()) {
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    // 如果长截屏 Intent 失败，尝试备用方案
+                    triggerMiuiScreenshotFallback()
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PostDetailActivity", "Failed to trigger MIUI long screenshot", e)
+        }
+    }
+    
+    /**
+     * MIUI 长截屏备用方案
+     * 使用标准的截屏 Intent
+     */
+    private fun triggerMiuiScreenshotFallback() {
+        try {
+            val intent = Intent().apply {
+                action = MIUI_SCREENSHOT_ACTION
+                putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("PostDetailActivity", "Failed to trigger MIUI screenshot fallback", e)
+        }
+    }
+    
+    /**
+     * 检查是否为 MIUI 设备
+     */
+    private fun isMiuiDevice(): Boolean {
+        return try {
+            val clazz = Class.forName("android.os.SystemProperties")
+            val method = clazz.getMethod("get", String::class.java)
+            val miuiVersion = method.invoke(null, "ro.miui.ui.version.name") as? String
+            !miuiVersion.isNullOrEmpty()
+        } catch (e: Exception) {
+            false
         }
     }
 }
@@ -1459,25 +1542,16 @@ fun ArticleLinkText(
                 .firstOrNull()?.let { annotation ->
                     val url = annotation.item
                     
-                    // 优先使用应用内链接处理器
-                    when {
-                        YunhuLinkHandler.containsYunhuLink(url) -> {
-                            YunhuLinkHandler.handleYunhuLink(context, url)
-                        }
-                        ChatAddLinkHandler.isChatAddLink(url) -> {
-                            ChatAddLinkHandler.handleLink(context, url)
-                        }
-                        UnifiedLinkHandler.isHandleableLink(url) -> {
-                            UnifiedLinkHandler.handleLink(context, url)
-                        }
-                        else -> {
-                            // 使用系统浏览器打开其他链接
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
-                            }
+                    // 使用统一的链接处理器
+                    if (UnifiedLinkHandler.isHandleableLink(url)) {
+                        UnifiedLinkHandler.handleLink(context, url)
+                    } else {
+                        // 使用系统浏览器打开其他链接
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }

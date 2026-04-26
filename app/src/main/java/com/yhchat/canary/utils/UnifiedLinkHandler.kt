@@ -4,20 +4,42 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
+import android.view.View
+import android.widget.TextView
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import com.yhchat.canary.data.model.ChatAddInfo
 import com.yhchat.canary.data.model.ChatAddType
 import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
+import com.yhchat.canary.ui.community.BoardDetailActivity
+import java.util.regex.Pattern
 
 /**
  * 统一链接处理器
- * 处理 yunhu:// 和 https://yhfx.jwznb.com/ 链接
+ * 整合处理所有 yunhu:// 和 https:// 链接
+ * 包括：chat-add、post-detail、alley-detail、分享链接等
  */
 object UnifiedLinkHandler {
     
     private const val TAG = "UnifiedLinkHandler"
     private val yhfxHosts = setOf("yhfx.jwznb.com", "jwznb.com", "myapp.jwznb.com")
     private val articleHosts = setOf("www.yhchat.com", "yhchat.com")
+    
+    // 链接正则表达式
+    private val YUNHU_POST_DETAIL_PATTERN = Pattern.compile("yunhu://post-detail\\?id=(\\d+)")
+    private val ALLEY_DETAIL_PATTERN = Pattern.compile("yunhu://alley-detail\\?id=(\\d+)")
+    private val WEB_ARTICLE_PATTERN = Pattern.compile("https://www\\.yhchat\\.com/c/p/(\\d+)")
     
     /**
      * 检查是否为可处理的链接
@@ -46,7 +68,7 @@ object UnifiedLinkHandler {
                     handlePostDetailLink(context, normalizedUrl)
                 }
                 normalizedUrl.startsWith("yunhu://alley-detail") -> {
-                    com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, normalizedUrl)
+                    handleAlleyDetailLink(context, normalizedUrl)
                 }
                 normalizedUrl.startsWith("https://yhfx.jwznb.com/share") -> {
                     handleYhfxShareLink(context, normalizedUrl)
@@ -58,8 +80,8 @@ object UnifiedLinkHandler {
                     
                     if (!key.isNullOrEmpty() && !ts.isNullOrEmpty()) {
                         handleYhfxShareLink(context, normalizedUrl)
-                    } else if (ChatAddLinkHandler.isChatAddLink(normalizedUrl)) {
-                        ChatAddLinkHandler.handleLink(context, normalizedUrl)
+                    } else if (isChatAddLink(normalizedUrl)) {
+                        handleChatAddLink(context, normalizedUrl)
                     } else {
                         handleYhfxShareLink(context, normalizedUrl)
                     }
@@ -155,15 +177,44 @@ object UnifiedLinkHandler {
     }
     
     /**
+     * 处理 yunhu://alley-detail 链接
+     */
+    private fun handleAlleyDetailLink(context: Context, url: String) {
+        val uri = Uri.parse(url)
+        val boardId = uri.getQueryParameter("id")?.toIntOrNull()
+        
+        if (boardId == null || boardId <= 0) {
+            Log.w(TAG, "Invalid alley-detail link: $url")
+            return
+        }
+        
+        Log.d(TAG, "Opening alley detail: boardId=$boardId")
+        val intent = Intent(context, BoardDetailActivity::class.java).apply {
+            putExtra("board_id", boardId)
+            putExtra("board_name", "分区详情")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    }
+    
+    /**
      * 处理网页文章链接 https://www.yhchat.com/c/p/文章id
      */
     private fun handleWebArticleLink(context: Context, url: String) {
         Log.d(TAG, "Handling web article link: $url")
         
-        // 使用 YunhuLinkHandler 来处理
-        val handled = com.yhchat.canary.util.YunhuLinkHandler.handleYunhuLink(context, url)
-        if (!handled) {
-            Log.w(TAG, "Failed to handle web article link: $url")
+        // 尝试从网页链接中提取文章ID
+        val postId = extractPostIdFromLink(url)
+        if (postId != null) {
+            Log.d(TAG, "Opening post detail from web link: postId=$postId")
+            val intent = Intent(context, PostDetailActivity::class.java).apply {
+                putExtra("post_id", postId)
+                putExtra("post_title", "文章详情")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } else {
+            Log.w(TAG, "Failed to extract post id from web article link: $url")
             handleExternalLink(context, url)
         }
     }
@@ -320,5 +371,273 @@ object UnifiedLinkHandler {
         return url.startsWith("yunhu://") ||
             url.startsWith("https://yhfx.jwznb.com/share") ||
             url.contains("https://www.yhchat.com/c/p/")
+    }
+    
+    /**
+     * 检查是否为聊天添加链接
+     */
+    fun isChatAddLink(uriString: String): Boolean {
+        return try {
+            Log.d(TAG, "检查 Deep Link: $uriString")
+            val uri = Uri.parse(uriString)
+            val isValid = uri.scheme == "yunhu" && (uri.host == "chat-add" || uri.host == "jwznb.com")
+            Log.d(TAG, "Deep Link 有效性: $isValid")
+            isValid
+        } catch (e: Exception) {
+            Log.e(TAG, "Deep Link 检查异常: $uriString", e)
+            false
+        }
+    }
+    
+    /**
+     * 解析聊天添加链接
+     * 支持格式：yunhu://chat-add?id=xxx&type=xxx 或 yunhu://jwznb.com?ct=x&id=xxx
+     */
+    fun parseChatAddLink(uriString: String): ChatAddInfo? {
+        return try {
+            Log.d(TAG, "开始解析 Deep Link: $uriString")
+            
+            val uri = Uri.parse(uriString)
+            
+            // 检查scheme
+            if (uri.scheme != "yunhu") {
+                Log.w(TAG, "Invalid scheme: ${uri.scheme}")
+                return null
+            }
+            
+            var id: String? = null
+            var type: ChatAddType? = null
+            
+            if (uri.host == "chat-add") {
+                // 格式: yunhu://chat-add?id=xxx&type=xxx
+                id = uri.getQueryParameter("id")
+                val typeString = uri.getQueryParameter("type")
+                
+                if (!typeString.isNullOrEmpty()) {
+                    type = when (typeString.lowercase()) {
+                        "user" -> ChatAddType.USER
+                        "group" -> ChatAddType.GROUP
+                        "bot" -> ChatAddType.BOT
+                        else -> null
+                    }
+                }
+            } else if (uri.host == "jwznb.com") {
+                // 格式: yunhu://jwznb.com?ct=x&id=xxx
+                id = uri.getQueryParameter("id")
+                val ctString = uri.getQueryParameter("ct")
+                
+                if (!ctString.isNullOrEmpty()) {
+                    type = when (ctString) {
+                        "1" -> ChatAddType.USER
+                        "2" -> ChatAddType.GROUP
+                        "3" -> ChatAddType.BOT
+                        else -> null
+                    }
+                }
+            }
+            
+            if (id.isNullOrEmpty()) {
+                Log.w(TAG, "Missing or empty id parameter")
+                return null
+            }
+            
+            if (type == null) {
+                Log.w(TAG, "Invalid or missing type/ct parameter")
+                return null
+            }
+            
+            Log.d(TAG, "解析成功: id=$id, chatType=${type.chatType}")
+            
+            ChatAddInfo(
+                id = id,
+                type = type,
+                displayName = "", // 将通过API获取
+                avatarUrl = "", // 将通过API获取
+                description = "" // 将通过API获取
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Deep Link 解析异常: $uriString", e)
+            null
+        }
+    }
+    
+    /**
+     * 从链接中提取文章ID
+     * 支持 yunhu://post-detail?id=xxx、yunhu://alley-detail?id=xxx 和 https://www.yhchat.com/c/p/xxx
+     */
+    fun extractPostIdFromLink(link: String): Int? {
+        // 先尝试 yunhu://post-detail 链接
+        val yunhuMatcher = YUNHU_POST_DETAIL_PATTERN.matcher(link)
+        if (yunhuMatcher.find()) {
+            return yunhuMatcher.group(1)?.toIntOrNull()
+        }
+        
+        // 尝试 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(link)
+        if (alleyMatcher.find()) {
+            return alleyMatcher.group(1)?.toIntOrNull()
+        }
+        
+        // 再尝试网页文章链接
+        val webMatcher = WEB_ARTICLE_PATTERN.matcher(link)
+        if (webMatcher.find()) {
+            return webMatcher.group(1)?.toIntOrNull()
+        }
+        
+        return null
+    }
+    
+    /**
+     * 检查文本是否包含可处理的链接
+     */
+    fun containsHandleableLink(text: String): Boolean {
+        return YUNHU_POST_DETAIL_PATTERN.matcher(text).find() || 
+               ALLEY_DETAIL_PATTERN.matcher(text).find() ||
+               WEB_ARTICLE_PATTERN.matcher(text).find()
+    }
+    
+    /**
+     * 提取文本中的所有可处理的链接
+     */
+    fun extractHandleableLinks(text: String): List<String> {
+        val links = mutableListOf<String>()
+        
+        // 提取 yunhu://post-detail 链接
+        val yunhuMatcher = YUNHU_POST_DETAIL_PATTERN.matcher(text)
+        while (yunhuMatcher.find()) {
+            links.add(yunhuMatcher.group())
+        }
+        
+        // 提取 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
+        while (alleyMatcher.find()) {
+            links.add(alleyMatcher.group())
+        }
+        
+        // 提取网页文章链接
+        val webMatcher = WEB_ARTICLE_PATTERN.matcher(text)
+        while (webMatcher.find()) {
+            links.add(webMatcher.group())
+        }
+        
+        return links
+    }
+    
+    /**
+     * 在文本中识别链接并设置为可点击
+     */
+    fun makeLinksClickable(
+        textView: TextView, 
+        text: String, 
+        linkColor: Int = android.graphics.Color.BLUE
+    ) {
+        val spannable = SpannableStringBuilder(text)
+        
+        // 处理 yunhu://post-detail 链接
+        val yunhuMatcher = YUNHU_POST_DETAIL_PATTERN.matcher(text)
+        while (yunhuMatcher.find()) {
+            val start = yunhuMatcher.start()
+            val end = yunhuMatcher.end()
+            val link = yunhuMatcher.group()
+            
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleLink(widget.context, link)
+                }
+            }
+            
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor), 
+                start, 
+                end, 
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        // 处理 yunhu://alley-detail 链接
+        val alleyMatcher = ALLEY_DETAIL_PATTERN.matcher(text)
+        while (alleyMatcher.find()) {
+            val start = alleyMatcher.start()
+            val end = alleyMatcher.end()
+            val link = alleyMatcher.group()
+            
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleLink(widget.context, link)
+                }
+            }
+            
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor), 
+                start, 
+                end, 
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        // 处理网页文章链接
+        val webMatcher = WEB_ARTICLE_PATTERN.matcher(text)
+        while (webMatcher.find()) {
+            val start = webMatcher.start()
+            val end = webMatcher.end()
+            val link = webMatcher.group()
+            
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleLink(widget.context, link)
+                }
+            }
+            
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor), 
+                start, 
+                end, 
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        textView.text = spannable
+        textView.movementMethod = LinkMovementMethod.getInstance()
+    }
+}
+
+/**
+ * Compose版本的链接处理函数
+ */
+@Composable
+fun ClickableLinkText(
+    text: String,
+    linkColor: Color = MaterialTheme.colorScheme.primary,
+    onLinkClick: (String) -> Unit = {}
+) {
+    val context = LocalContext.current
+    
+    // 检查是否包含可处理的链接
+    if (UnifiedLinkHandler.containsHandleableLink(text)) {
+        // 对于包含链接的文本，可以使用AndroidView来实现
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { context ->
+                TextView(context).apply {
+                    UnifiedLinkHandler.makeLinksClickable(
+                        this, 
+                        text, 
+                        linkColor.toArgb()
+                    )
+                }
+            },
+            update = { textView ->
+                UnifiedLinkHandler.makeLinksClickable(
+                    textView, 
+                    text, 
+                    linkColor.toArgb()
+                )
+            }
+        )
+    } else {
+        // 普通文本
+        androidx.compose.material3.Text(text = text)
     }
 }

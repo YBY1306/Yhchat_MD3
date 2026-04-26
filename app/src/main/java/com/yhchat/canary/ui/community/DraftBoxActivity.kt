@@ -46,16 +46,7 @@ class DraftBoxActivity : ComponentActivity() {
         
         setContent {
             YhchatCanaryTheme {
-                val view = LocalView.current
-                val darkTheme = isSystemInDarkTheme()
-                
-                SideEffect {
-                    val window = (view.context as ComponentActivity).window
-                    window.statusBarColor = Color.Transparent.toArgb()
-                    window.navigationBarColor = Color.Transparent.toArgb()
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
-                }
+                SetSystemNavigationBarColor()
                 DraftBoxScreen(
                     token = token,
                     onBackClick = { finish() },
@@ -77,6 +68,25 @@ class DraftBoxActivity : ComponentActivity() {
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars)
                 )
+            }
+        }
+    }
+    
+    @Composable
+    private fun SetSystemNavigationBarColor() {
+        val isLightTheme = !isSystemInDarkTheme()
+        // 获取 TopAppBar 的背景颜色
+        val topAppBarContainerColor = MaterialTheme.colorScheme.surface
+        
+        SideEffect {
+            // 状态栏颜色跟随 TopAppBar 背景颜色
+            window.statusBarColor = topAppBarContainerColor.toArgb()
+            // 导航栏保持透明
+            window.navigationBarColor = Color.Transparent.toArgb()
+            
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                isAppearanceLightStatusBars = isLightTheme
+                isAppearanceLightNavigationBars = isLightTheme
             }
         }
     }

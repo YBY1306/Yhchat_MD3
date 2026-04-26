@@ -867,6 +867,13 @@ private fun RenderA2UiComponent(
                 else -> TextAlign.Start
             }
             
+            // 在 Row 内使用 wrapContentWidth，在 Column 内使用 fillMaxWidth
+            val textModifier = if (parentAxis == "row") {
+                modifier.wrapContentWidth()
+            } else {
+                modifier.fillMaxWidth()
+            }
+            
             Text(
                 text = resolveA2UiValue(
                     spec,
@@ -874,7 +881,7 @@ private fun RenderA2UiComponent(
                     component.text ?: component.label ?: component.description,
                     scopePath
                 )?.toString().orEmpty(),
-                modifier = modifier.fillMaxWidth(),
+                modifier = textModifier,
                 style = textStyleFor(component.variant ?: component.usageHint),
                 color = textColorFor(component.variant ?: component.usageHint),
                 textAlign = textAlign

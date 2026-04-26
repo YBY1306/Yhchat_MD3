@@ -145,7 +145,6 @@ class CreatePostActivity : ComponentActivity() {
         }
     }
 }
-}
 
 /**
  * 创建文章界面
@@ -465,4 +464,5 @@ fun CreatePostScreen(
             }
         )
     }
+}
 }

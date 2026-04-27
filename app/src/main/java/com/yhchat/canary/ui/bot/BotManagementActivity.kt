@@ -135,7 +135,7 @@ private fun BotManagementScreen(
                 // 获取当前机器人的详细信息（包括停用状态）
                 botRepo.getBotInfo(botId).fold(
                     onSuccess = { botInfo ->
-                        botIsStop = botInfo.data.isStop == 1
+                        botIsStop = botInfo.data.isStop == 1L
                     },
                     onFailure = { /* 忽略错误 */ }
                 )
@@ -324,7 +324,7 @@ private fun BotManagementScreen(
                                     val operation = if (botIsStop) 0 else 1 // 当前停用则启用(0)，当前启用则停用(1)
                                     val request = yh_bot.Bot.bot_stop_send.newBuilder()
                                         .setBotId(botId)
-                                        .setOperation(operation)
+                                        .setOperation(operation.toLong())
                                         .build()
                                     
                                     val requestBody = request.toByteArray()
@@ -345,7 +345,7 @@ private fun BotManagementScreen(
                                                     val botRepo = RepositoryFactory.getBotRepository(context)
                                                     botRepo.getBotInfo(botId).fold(
                                                         onSuccess = { botInfo ->
-                                                            botIsStop = botInfo.data.isStop == 1
+                                                            botIsStop = botInfo.data.isStop == 1L
                                                             isStoppingBot = false
                                                         },
                                                         onFailure = { 

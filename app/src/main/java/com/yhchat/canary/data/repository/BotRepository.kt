@@ -61,7 +61,7 @@ class BotRepository @Inject constructor(
                         createBy = data.createBy,
                         createTime = data.createTime,
                         headcount = data.headcount.toInt(), // long转int
-                        isPrivate = data.private
+                        isPrivate = data.private.toInt()
                     )
                     Result.success(botInfo)
                 },

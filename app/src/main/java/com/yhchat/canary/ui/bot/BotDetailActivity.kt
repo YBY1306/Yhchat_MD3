@@ -669,15 +669,15 @@ private fun BotDetailContent(
                             Text("账号信息")
                         }
                         Icon(
-                            imageVector = if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                            imageVector = if (botInfo.data.isStop == 0L) Icons.Default.CheckCircle else Icons.Default.Cancel,
                             contentDescription = null,
-                            tint = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            tint = if (botInfo.data.isStop == 0L) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (botInfo.data.isStop == 0) "正常运行" else "已停用",
+                            text = if (botInfo.data.isStop == 0L) "正常运行" else "已停用",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (botInfo.data.isStop == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            color = if (botInfo.data.isStop == 0L) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -730,12 +730,12 @@ private fun BotDetailContent(
         item {
             BotInfoSectionCard(title = "详细信息") {
                 DetailItem(Icons.Default.Person, "创建者ID", botInfo.data.createBy)
-                DetailItem(if (botInfo.data.private == 1) Icons.Default.Lock else Icons.Default.Public, "可见性", if (botInfo.data.private == 1) "私有" else "公开")
-                DetailItem(if (botInfo.data.isStop == 0) Icons.Default.CheckCircle else Icons.Default.Cancel, "运行状态", if (botInfo.data.isStop == 0) "正常运行" else "已停用")
-                DetailItem(if (botInfo.data.alwaysAgree == 1) Icons.Default.Check else Icons.Default.Close, "自动加群", if (botInfo.data.alwaysAgree == 1) "是" else "否")
-                DetailItem(if (botInfo.data.doNotDisturb == 1) Icons.Default.NotificationsOff else Icons.Default.Notifications, "免打扰", if (botInfo.data.doNotDisturb == 1) "是" else "否")
-                DetailItem(if (botInfo.data.top == 1) Icons.Default.PushPin else Icons.Default.Remove, "置顶", if (botInfo.data.top == 1) "是" else "否")
-                DetailItem(if (botInfo.data.groupLimit == 1) Icons.Default.Block else Icons.Default.GroupAdd, "限制进群", if (botInfo.data.groupLimit == 1) "是" else "否")
+                DetailItem(if (botInfo.data.private == 1L) Icons.Default.Lock else Icons.Default.Public, "可见性", if (botInfo.data.private == 1L) "私有" else "公开")
+                DetailItem(if (botInfo.data.isStop == 0L) Icons.Default.CheckCircle else Icons.Default.Cancel, "运行状态", if (botInfo.data.isStop == 0L) "正常运行" else "已停用")
+                DetailItem(if (botInfo.data.alwaysAgree == 1L) Icons.Default.Check else Icons.Default.Close, "自动加群", if (botInfo.data.alwaysAgree == 1L) "是" else "否")
+                DetailItem(if (botInfo.data.doNotDisturb == 1L) Icons.Default.NotificationsOff else Icons.Default.Notifications, "免打扰", if (botInfo.data.doNotDisturb == 1L) "是" else "否")
+                DetailItem(if (botInfo.data.top == 1L) Icons.Default.PushPin else Icons.Default.Remove, "置顶", if (botInfo.data.top == 1L) "是" else "否")
+                DetailItem(if (botInfo.data.groupLimit == 1L) Icons.Default.Block else Icons.Default.GroupAdd, "限制进群", if (botInfo.data.groupLimit == 1L) "是" else "否")
             }
         }
 
@@ -852,10 +852,10 @@ private fun BotInfoDialog(
                 InfoRow("创建者ID", botInfo.data.createBy)
                 InfoRow("创建时间", formatDate(botInfo.data.createTime))
                 InfoRow("使用人数", botInfo.data.headcount.toString())
-                InfoRow("可见性", if (botInfo.data.private == 1) "私有" else "公开")
-                InfoRow("运行状态", if (botInfo.data.isStop == 0) "正常运行" else "已停用")
-                InfoRow("自动加群", if (botInfo.data.alwaysAgree == 1) "是" else "否")
-                InfoRow("限制进群", if (botInfo.data.groupLimit == 1) "是" else "否")
+                InfoRow("可见性", if (botInfo.data.private == 1L) "私有" else "公开")
+                InfoRow("运行状态", if (botInfo.data.isStop == 0L) "正常运行" else "已停用")
+                InfoRow("自动加群", if (botInfo.data.alwaysAgree == 1L) "是" else "否")
+                InfoRow("限制进群", if (botInfo.data.groupLimit == 1L) "是" else "否")
             }
         }
     )

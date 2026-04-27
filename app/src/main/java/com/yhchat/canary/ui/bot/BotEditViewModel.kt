@@ -47,7 +47,7 @@ class BotEditViewModel(application: Application) : AndroidViewModel(application)
                         avatarUrl = botInfo.data.avatarUrl,
                         nickname = botInfo.data.name,
                         introduction = botInfo.data.introduction,
-                        isPrivate = botInfo.data.private == 1
+                        isPrivate = botInfo.data.private == 1L
                     )
                     Log.d(TAG, "✅ 机器人信息加载成功")
                 },

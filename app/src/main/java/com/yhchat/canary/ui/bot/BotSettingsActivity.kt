@@ -13,12 +13,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.api.ApiClient
@@ -80,6 +83,7 @@ private fun BotSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val api = remember { ApiClient.apiService }
     val webApi = remember { ApiClient.webApiService }
@@ -102,6 +106,8 @@ private fun BotSettingsScreen(
     var groupJoin by remember { mutableStateOf(false) }
     var groupLeave by remember { mutableStateOf(false) }
     var botSetting by remember { mutableStateOf(false) }
+
+    var callbackMode by remember { mutableIntStateOf(0) }
 
     // 辅助函数：提交事件订阅设置
     suspend fun submitEventEdit(typ: String, enabled: Boolean) {
@@ -235,11 +241,28 @@ private fun BotSettingsScreen(
                         ) {
                             OutlinedTextField(
                                 value = token,
-                                onValueChange = { token = it },
+                                onValueChange = { },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("请输入机器人 Token") },
                                 singleLine = true,
-                                enabled = !isLoading
+                                enabled = !isLoading,
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            if (token.isNotBlank()) {
+                                                clipboard.setText(AnnotatedString(token))
+                                                Toast.makeText(context, "已复制机器人 Token", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        enabled = token.isNotBlank()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "复制机器人 Token"
+                                        )
+                                    }
+                                }
                             )
                             
                             Spacer(modifier = Modifier.width(8.dp))
@@ -298,40 +321,120 @@ private fun BotSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = callbackMode == 0,
+                                    onClick = { callbackMode = 0 },
+                                    enabled = !isSavingWebhook && !isLoading
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "使用 Webhook 回调")
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = callbackMode == 1,
+                                    onClick = { callbackMode = 1 },
+                                    enabled = !isSavingWebhook && !isLoading
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "使用长连接接收事件")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        val wsSubscribeUrl = remember(token) {
+                            val tok = token.takeIf { it.isNotBlank() } ?: "{token}"
+                            "wss://ws.jwzhd.com/subscribe?token=$tok"
+                        }
+
+                        if (callbackMode == 0) {
                             OutlinedTextField(
                                 value = webhookUrl,
                                 onValueChange = { webhookUrl = it },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                                 placeholder = { Text("http(s)://ip(域名)...") },
                                 singleLine = true,
                                 enabled = !isSavingWebhook && !isLoading
                             )
-                            
+                        } else {
+                            OutlinedTextField(
+                                value = wsSubscribeUrl,
+                                onValueChange = { },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                enabled = !isSavingWebhook && !isLoading,
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            clipboard.setText(AnnotatedString(wsSubscribeUrl))
+                                            Toast.makeText(context, "已复制 WS 地址", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "复制 WS 地址"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    BotWsTestActivity.start(
+                                        context = context,
+                                        botId = botId,
+                                        botName = botName,
+                                        botToken = token,
+                                        wsUrl = wsSubscribeUrl
+                                    )
+                                },
+                                enabled = !isSavingWebhook && !isLoading
+                            ) {
+                                Text("测试")
+                            }
+
                             Spacer(modifier = Modifier.width(8.dp))
-                            
+
                             Button(
                                 onClick = {
                                     scope.launch {
                                         val userToken = tokenRepo.getTokenSync() ?: return@launch
                                         isSavingWebhook = true
                                         error = null
-                                        runCatching { 
+                                        val subscribeType = if (callbackMode == 1) 1 else 0
+                                        val linkToSave = if (callbackMode == 1) wsSubscribeUrl else webhookUrl
+                                        runCatching {
                                             api.editBotSubscribedLink(
-                                                userToken, 
+                                                userToken,
                                                 com.yhchat.canary.data.api.EditBotSubscribedLinkRequest(
                                                     botId = botId,
-                                                    link = webhookUrl
+                                                    link = linkToSave,
+                                                    subscribeType = subscribeType
                                                 )
                                             )
                                         }.onSuccess { resp ->
                                             isSavingWebhook = false
                                             if (resp.body()?.code == 1) {
-                                                Toast.makeText(context, "Webhook地址保存成功", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "订阅地址保存成功", Toast.LENGTH_SHORT).show()
                                             } else {
                                                 error = resp.body()?.message ?: "保存失败"
                                             }

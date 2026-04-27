@@ -31,6 +31,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.border
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -50,10 +52,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -93,7 +91,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -106,11 +103,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -168,7 +161,6 @@ import com.yhchat.canary.data.model.MsgForwardReceive
  */
 @OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalMaterialApi::class,
     ExperimentalFoundationApi::class,
     ExperimentalLayoutApi::class
 )
@@ -699,10 +691,7 @@ fun ChatScreen(
     }
 
     // 下拉刷新状态（刷新最新消息）
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = uiState.isRefreshing,
-        onRefresh = { viewModel.refreshLatestMessages() }
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // 应用聊天背景
     Box(
@@ -814,12 +803,14 @@ fun ChatScreen(
         }
 
         // 消息列表（占据中间可用空间）
-        Box(
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refreshLatestMessages() },
+            state = pullToRefreshState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clipToBounds()
-                .pullRefresh(pullRefreshState)
         ) {
             if (uiState.isLoading && messages.isEmpty()) {
                 // 初始加载状态
@@ -1290,13 +1281,6 @@ fun ChatScreen(
                 }
             }
 
-            // 下拉刷新指示器
-            PullRefreshIndicator(
-                refreshing = uiState.isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-            
             // "回到最新消息"浮动按钮
             androidx.compose.animation.AnimatedVisibility(
                 visible = showScrollToBottomButton,

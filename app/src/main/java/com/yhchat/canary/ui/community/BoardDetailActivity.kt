@@ -55,10 +55,20 @@ class BoardDetailActivity : BaseActivity() {
         
         val boardId = intent.getIntExtra("board_id", 0)
         val boardName = intent.getStringExtra("board_name") ?: "分区详情"
-        val token = intent.getStringExtra("token") ?: ""
+        val tokenFromIntent = intent.getStringExtra("token") ?: ""
         
         setContent {
             YhchatCanaryTheme {
+                val tokenRepository = remember {
+                    RepositoryFactory.getTokenRepository(this@BoardDetailActivity)
+                }
+                val resolvedToken by produceState(initialValue = tokenFromIntent, key1 = tokenFromIntent) {
+                    if (tokenFromIntent.isNotBlank()) {
+                        value = tokenFromIntent
+                    } else {
+                        value = runCatching { tokenRepository.getTokenSync().orEmpty() }.getOrDefault("")
+                    }
+                }
                 val viewModel: BoardDetailViewModel = viewModel {
                     BoardDetailViewModel(
                         communityRepository = RepositoryFactory.getCommunityRepository(this@BoardDetailActivity),
@@ -69,7 +79,7 @@ class BoardDetailActivity : BaseActivity() {
                 BoardDetailScreen(
                     boardId = boardId,
                     boardName = boardName,
-                    token = token,
+                    token = resolvedToken,
                     viewModel = viewModel,
                     onBackClick = { finish() }
                 )
@@ -161,7 +171,11 @@ fun BoardDetailScreen(
         // 文章列表（包含分区信息卡片）
         PullToRefreshBox(
             isRefreshing = boardDetailState.isLoading || postListState.isLoading,
-            onRefresh = { viewModel.refresh(token, boardId) },
+            onRefresh = {
+                if (token.isNotBlank() && boardId > 0) {
+                    viewModel.refresh(token, boardId)
+                }
+            },
             state = pullToRefreshState,
             modifier = Modifier.weight(1f)
         ) {

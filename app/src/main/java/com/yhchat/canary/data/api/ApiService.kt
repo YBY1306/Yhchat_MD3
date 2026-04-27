@@ -2025,7 +2025,9 @@ data class EditBotSubscribedLinkRequest(
     @SerializedName("botId")
     val botId: String,
     @SerializedName("link")
-    val link: String
+    val link: String,
+    @SerializedName("subscribeType")
+    val subscribeType: Int
 )
 
 /**

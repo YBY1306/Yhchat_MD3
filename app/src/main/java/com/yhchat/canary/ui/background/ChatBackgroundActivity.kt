@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,19 +26,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import coil.compose.AsyncImage
-import com.yhchat.canary.data.di.RepositoryFactory
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.ChatBackground
-import com.yhchat.canary.data.repository.ChatBackgroundRepository
-import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.utils.ImageUploadUtil
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
 
 /**
  * 聊天背景设置Activity
@@ -87,7 +77,7 @@ fun ChatBackgroundScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel = remember { ChatBackgroundViewModel() }
+    val viewModel: ChatBackgroundViewModel = viewModel()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -325,166 +315,4 @@ private fun BackgroundCard(
         }
     }
 }
-
-/**
- * 聊天背景ViewModel
- */
-class ChatBackgroundViewModel : ViewModel() {
-    private lateinit var backgroundRepository: ChatBackgroundRepository
-    private lateinit var tokenRepository: TokenRepository
-    private lateinit var apiService: com.yhchat.canary.data.api.ApiService
-    
-    private val _uiState = MutableStateFlow(ChatBackgroundUiState())
-    val uiState: StateFlow<ChatBackgroundUiState> = _uiState.asStateFlow()
-    
-    fun init(context: Context) {
-        backgroundRepository = RepositoryFactory.getChatBackgroundRepository(context)
-        tokenRepository = RepositoryFactory.getTokenRepository(context)
-        apiService = RepositoryFactory.apiService
-    }
-    
-    fun loadBackgrounds() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            backgroundRepository.getChatBackgroundList().fold(
-                onSuccess = { backgrounds ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        backgrounds = backgrounds
-                    )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message
-                    )
-                }
-            )
-        }
-    }
-    
-    fun uploadAndSetBackground(context: Context, imageUri: Uri, chatId: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isUploading = true, error = null)
-            
-            try {
-                // 1. 获取用户token
-                val userToken = tokenRepository.getTokenSync()
-                if (userToken.isNullOrEmpty()) {
-                    _uiState.value = _uiState.value.copy(
-                        isUploading = false,
-                        error = "用户未登录"
-                    )
-                    return@launch
-                }
-                
-                // 2. 获取七牛云上传token
-                val tokenResponse = apiService.getQiniuImageToken(userToken)
-                if (!tokenResponse.isSuccessful || tokenResponse.body() == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isUploading = false,
-                        error = "获取上传token失败: ${tokenResponse.code()}"
-                    )
-                    return@launch
-                }
-                
-                val qiniuData = tokenResponse.body()!!.data
-                if (qiniuData == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isUploading = false,
-                        error = "获取上传token失败: 返回数据为空"
-                    )
-                    return@launch
-                }
-                
-                val uploadToken = qiniuData.token
-                
-                // 2. 上传图片
-                ImageUploadUtil.uploadImage(context, imageUri, uploadToken).fold(
-                    onSuccess = { uploadResponse ->
-                        // 3. 设置聊天背景
-                        backgroundRepository.setChatBackground(
-                            chatId = chatId,
-                            backgroundUrl = uploadResponse.key
-                        ).fold(
-                            onSuccess = {
-                                _uiState.value = _uiState.value.copy(
-                                    isUploading = false,
-                                    setSuccess = true
-                                )
-                                loadBackgrounds()  // 重新加载列表
-                            },
-                            onFailure = { error ->
-                                _uiState.value = _uiState.value.copy(
-                                    isUploading = false,
-                                    error = "设置背景失败: ${error.message}"
-                                )
-                            }
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            isUploading = false,
-                            error = "上传图片失败: ${error.message}"
-                        )
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isUploading = false,
-                    error = "操作失败: ${e.message}"
-                )
-            }
-        }
-    }
-    
-    fun deleteBackground(background: ChatBackground, chatId: String) {
-        viewModelScope.launch {
-            try {
-                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-                
-                // 删除背景：将URL设置为空字符串
-                val result = backgroundRepository.setChatBackground(
-                    chatId = chatId,
-                    backgroundUrl = ""
-                )
-                
-                result.fold(
-                    onSuccess = { success ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            setSuccess = true
-                        )
-                        // 重新加载背景列表
-                        loadBackgrounds()
-                    },
-                    onFailure = { exception ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = "删除背景失败: ${exception.message}"
-                        )
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "删除背景失败: ${e.message}"
-                )
-            }
-        }
-    }
-    
-    fun resetSetSuccess() {
-        _uiState.value = _uiState.value.copy(setSuccess = false)
-    }
-}
-
-data class ChatBackgroundUiState(
-    val isLoading: Boolean = false,
-    val isUploading: Boolean = false,
-    val backgrounds: List<ChatBackground> = emptyList(),
-    val setSuccess: Boolean = false,
-    val error: String? = null
-)
 

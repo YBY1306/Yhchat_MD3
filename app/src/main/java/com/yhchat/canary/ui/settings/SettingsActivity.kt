@@ -3,38 +3,20 @@ package com.yhchat.canary.ui.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.MainActivity
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.NavigationRepository
-import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.di.RepositoryFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
-import com.yhchat.canary.data.repository.AccountRepository
+import com.yhchat.canary.data.repository.NavigationRepository
+import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
  * 设置页面Activity
@@ -81,6 +63,10 @@ class SettingsActivity : BaseActivity() {
         
         setContent {
             YhchatCanaryTheme {
+                val settingsViewModel: SettingsViewModel = viewModel()
+                LaunchedEffect(Unit) {
+                    settingsViewModel.init(this@SettingsActivity)
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -90,53 +76,19 @@ class SettingsActivity : BaseActivity() {
                         tokenRepository = tokenRepository,
                         accountRepository = accountRepository,
                         onLogout = {
-                            performLogout(this@SettingsActivity)
+                            settingsViewModel.logout {
+                                val intent = Intent(this@SettingsActivity, MainActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                startActivity(intent)
+                                finish()
+                            }
                         },
                         onBackClick = {
                             finish()
                         },
                         modifier = Modifier.fillMaxSize()
                     )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 执行退出登录操作
- */
-private fun performLogout(context: Context) {
-    CoroutineScope(Dispatchers.IO).launch {
-        try {
-            // 1. 使用新的TokenRepository清除token
-            val tokenRepository = RepositoryFactory.getTokenRepository(context)
-            tokenRepository.clearToken()
-            
-            // 2. 在主线程中跳转到登录界面
-            CoroutineScope(Dispatchers.Main).launch {
-                // 清除任务栈并启动MainActivity（会自动显示登录界面）
-                val intent = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                context.startActivity(intent)
-                
-                // 如果当前是Activity，则结束它
-                if (context is ComponentActivity) {
-                    context.finish()
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // 如果清除token失败，仍然跳转到登录界面
-            CoroutineScope(Dispatchers.Main).launch {
-                val intent = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                context.startActivity(intent)
-                
-                if (context is ComponentActivity) {
-                    context.finish()
                 }
             }
         }

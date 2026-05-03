@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.CaptchaData
 import com.yhchat.canary.data.model.LoginData
+import com.yhchat.canary.data.repository.AccountRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +25,8 @@ class LoginViewModel @Inject constructor(
 
     private val userRepository: UserRepository
     private var tokenRepository: TokenRepository? = null
+    private var accountRepository: AccountRepository? = null
+    private var profileRepository: UserRepository? = null
 
     init {
         userRepository = UserRepository(apiService, null)
@@ -36,6 +39,14 @@ class LoginViewModel @Inject constructor(
         if (tokenRepository != null) {
             userRepository.setTokenRepository(tokenRepository)
         }
+    }
+
+    fun setAccountRepositories(
+        accountRepository: AccountRepository,
+        userRepository: UserRepository
+    ) {
+        this.accountRepository = accountRepository
+        this.profileRepository = userRepository
     }
 
     // UI状态
@@ -214,6 +225,38 @@ class LoginViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    fun finalizeLogin(token: String, userId: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val accountRepository = this@LoginViewModel.accountRepository
+                val profileRepository = this@LoginViewModel.profileRepository
+
+                if (accountRepository != null && profileRepository != null) {
+                    profileRepository.getUserProfile().onSuccess { profile ->
+                        accountRepository.saveAccount(
+                            userId = profile.userId,
+                            name = profile.nickname,
+                            avatarUrl = profile.avatarUrl,
+                            displayId = profile.userId,
+                            token = token
+                        )
+                    }.onFailure {
+                        accountRepository.saveAccount(
+                            userId = userId,
+                            name = "User $userId",
+                            avatarUrl = null,
+                            displayId = userId,
+                            token = token
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                onComplete()
+            }
+        }
     }
     
     /**

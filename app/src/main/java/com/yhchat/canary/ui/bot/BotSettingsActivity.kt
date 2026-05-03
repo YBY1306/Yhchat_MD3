@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.bot
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
@@ -24,18 +23,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.model.BotEventEditRequest
-import com.yhchat.canary.data.model.BotIdRequest
-import com.yhchat.canary.data.model.BotInstruction
-import com.yhchat.canary.data.model.BotInstructionRequest
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.bot.InstructionManagementActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.launch
 import android.widget.Toast
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 
 class BotSettingsActivity : BaseActivity() {
     companion object {
@@ -84,109 +76,18 @@ private fun BotSettingsScreen(
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
-    val api = remember { ApiClient.apiService }
-    val webApi = remember { ApiClient.webApiService }
-    val tokenRepo = remember { RepositoryFactory.getTokenRepository(context) }
-
-    var token by remember { mutableStateOf(initialBotToken) }
-    var webhookUrl by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var isResettingLink by remember { mutableStateOf(false) }
-    var isSavingWebhook by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var instructions by remember { mutableStateOf<List<BotInstruction>>(emptyList()) }
-    var isLoadingInstructions by remember { mutableStateOf(true) }
-
-    // 事件订阅开关
-    var messageReceiveNormal by remember { mutableStateOf(false) }
-    var messageReceiveInstruction by remember { mutableStateOf(false) }
-    var botFollowed by remember { mutableStateOf(false) }
-    var botUnfollowed by remember { mutableStateOf(false) }
-    var groupJoin by remember { mutableStateOf(false) }
-    var groupLeave by remember { mutableStateOf(false) }
-    var botSetting by remember { mutableStateOf(false) }
-
-    var callbackMode by remember { mutableIntStateOf(0) }
-
-    // 辅助函数：提交事件订阅设置
-    suspend fun submitEventEdit(typ: String, enabled: Boolean) {
-        val userToken = tokenRepo.getTokenSync() ?: return
-        val value = if (enabled) 1 else 0
-        val req = when (typ) {
-            "messageReceiveNormal" -> BotEventEditRequest(botId, messageReceiveNormal = value, typ = typ)
-            "messageReceiveInstruction" -> BotEventEditRequest(botId, messageReceiveInstruction = value, typ = typ)
-            "botFollowed" -> BotEventEditRequest(botId, botFollowed = value, typ = typ)
-            "botUnfollowed" -> BotEventEditRequest(botId, botUnfollowed = value, typ = typ)
-            "groupJoin" -> BotEventEditRequest(botId, groupJoin = value, typ = typ)
-            "groupLeave" -> BotEventEditRequest(botId, groupLeave = value, typ = typ)
-            "botSetting" -> BotEventEditRequest(botId, botSetting = value, typ = typ)
-            else -> BotEventEditRequest(botId, typ = typ)
-        }
-        runCatching { api.editBotEventSettings(userToken, req) }
-    }
+    val viewModel: BotSettingsViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(botId) {
-        val userToken = tokenRepo.getTokenSync() ?: return@LaunchedEffect
-        // 1 如果没有传递 token，从我的机器人列表中获取
-        if (token.isBlank()) {
-            val botRepo = RepositoryFactory.getBotRepository(context)
-            botRepo.getMyBotList().fold(
-                onSuccess = { bots ->
-                    val found = bots.firstOrNull { it.botId == botId }
-                    token = found?.token ?: ""
-                    webhookUrl = found?.link ?: ""
-                },
-                onFailure = { /* 忽略错误，保持空token */ }
-            )
-        } else {
-            // 如果已有token，也尝试获取webhook地址
-            val botRepo = RepositoryFactory.getBotRepository(context)
-            botRepo.getMyBotList().fold(
-                onSuccess = { bots ->
-                    val found = bots.firstOrNull { it.botId == botId }
-                    webhookUrl = found?.link ?: ""
-                },
-                onFailure = { /* 忽略错误 */ }
-            )
-        }
-        // 2 拉取事件订阅设置（初次进入）
-        isLoading = true
-        error = null
-        runCatching {
-            api.getBotEventSettings(userToken, BotIdRequest(botId))
-        }.onSuccess { resp ->
-            isLoading = false
-            val ok = resp.body()?.code == 1
-            if (!ok) {
-                error = resp.body()?.msg ?: "加载失败"
-            } else {
-                // 解析并设置当前开关状态
-                resp.body()?.data?.list?.let { settings ->
-                    messageReceiveNormal = settings.messageReceiveNormal == 1
-                    messageReceiveInstruction = settings.messageReceiveInstruction == 1
-                    botFollowed = settings.botFollowed == 1
-                    botUnfollowed = settings.botUnfollowed == 1
-                    groupJoin = settings.groupJoin == 1
-                    groupLeave = settings.groupLeave == 1
-                    botSetting = settings.botSetting == 1
-                }
-            }
-        }.onFailure { e ->
-            isLoading = false
-            error = e.message
-        }
-        
-        // 加载机器人指令列表
-        runCatching {
-            api.getBotInstructionList(userToken, BotInstructionRequest(botId))
-        }.onSuccess { resp ->
-            if (resp.body()?.code == 1) {
-                instructions = resp.body()?.data?.list ?: emptyList()
-            }
-            isLoadingInstructions = false
-        }.onFailure {
-            isLoadingInstructions = false
+        viewModel.init(context)
+        viewModel.loadInitial(botId, initialBotToken)
+    }
+
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeActionMessage()
         }
     }
 
@@ -214,8 +115,8 @@ private fun BotSettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (error != null) {
-                    Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
+                if (uiState.error != null) {
+                    Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
                 }
 
                 // Token 区域
@@ -240,22 +141,22 @@ private fun BotSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             OutlinedTextField(
-                                value = token,
+                                value = uiState.token,
                                 onValueChange = { },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("请输入机器人 Token") },
                                 singleLine = true,
-                                enabled = !isLoading,
+                                enabled = !uiState.isLoading,
                                 readOnly = true,
                                 trailingIcon = {
                                     IconButton(
                                         onClick = {
-                                            if (token.isNotBlank()) {
-                                                clipboard.setText(AnnotatedString(token))
+                                            if (uiState.token.isNotBlank()) {
+                                                clipboard.setText(AnnotatedString(uiState.token))
                                                 Toast.makeText(context, "已复制机器人 Token", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        enabled = token.isNotBlank()
+                                        enabled = uiState.token.isNotBlank()
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ContentCopy,
@@ -268,27 +169,8 @@ private fun BotSettingsScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             
                             OutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        val userToken = tokenRepo.getTokenSync() ?: return@launch
-                                        isLoading = true
-                                        error = null
-                                        runCatching { api.resetBotToken(userToken, BotIdRequest(botId)) }
-                                            .onSuccess { resp ->
-                                                isLoading = false
-                                                if (resp.body()?.code == 1) {
-                                                    token = resp.body()?.data?.token ?: token
-                                                } else {
-                                                    error = resp.body()?.msg ?: "重置失败"
-                                                }
-                                            }
-                                            .onFailure { e ->
-                                                isLoading = false
-                                                error = e.message
-                                            }
-                                    }
-                                },
-                                enabled = !isLoading
+                                onClick = { viewModel.resetBotToken(botId) },
+                                enabled = !uiState.isLoading
                             ) {
                                 Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -328,9 +210,9 @@ private fun BotSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = callbackMode == 0,
-                                    onClick = { callbackMode = 0 },
-                                    enabled = !isSavingWebhook && !isLoading
+                                    selected = uiState.callbackMode == 0,
+                                    onClick = { viewModel.updateCallbackMode(0) },
+                                    enabled = !uiState.isSavingWebhook && !uiState.isLoading
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = "使用 Webhook 回调")
@@ -341,9 +223,9 @@ private fun BotSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = callbackMode == 1,
-                                    onClick = { callbackMode = 1 },
-                                    enabled = !isSavingWebhook && !isLoading
+                                    selected = uiState.callbackMode == 1,
+                                    onClick = { viewModel.updateCallbackMode(1) },
+                                    enabled = !uiState.isSavingWebhook && !uiState.isLoading
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = "使用长连接接收事件")
@@ -352,19 +234,19 @@ private fun BotSettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val wsSubscribeUrl = remember(token) {
-                            val tok = token.takeIf { it.isNotBlank() } ?: "{token}"
+                        val wsSubscribeUrl = remember(uiState.token) {
+                            val tok = uiState.token.takeIf { it.isNotBlank() } ?: "{token}"
                             "wss://ws.jwzhd.com/subscribe?token=$tok"
                         }
 
-                        if (callbackMode == 0) {
+                        if (uiState.callbackMode == 0) {
                             OutlinedTextField(
-                                value = webhookUrl,
-                                onValueChange = { webhookUrl = it },
+                                value = uiState.webhookUrl,
+                                onValueChange = { viewModel.updateWebhookUrl(it) },
                                 modifier = Modifier.fillMaxWidth(),
                                 placeholder = { Text("http(s)://ip(域名)...") },
                                 singleLine = true,
-                                enabled = !isSavingWebhook && !isLoading
+                                enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             )
                         } else {
                             OutlinedTextField(
@@ -372,7 +254,7 @@ private fun BotSettingsScreen(
                                 onValueChange = { },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                enabled = !isSavingWebhook && !isLoading,
+                                enabled = !uiState.isSavingWebhook && !uiState.isLoading,
                                 readOnly = true,
                                 trailingIcon = {
                                     IconButton(
@@ -403,11 +285,11 @@ private fun BotSettingsScreen(
                                         context = context,
                                         botId = botId,
                                         botName = botName,
-                                        botToken = token,
+                                        botToken = uiState.token,
                                         wsUrl = wsSubscribeUrl
                                     )
                                 },
-                                enabled = !isSavingWebhook && !isLoading
+                                enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             ) {
                                 Text("测试")
                             }
@@ -415,38 +297,10 @@ private fun BotSettingsScreen(
                             Spacer(modifier = Modifier.width(8.dp))
 
                             Button(
-                                onClick = {
-                                    scope.launch {
-                                        val userToken = tokenRepo.getTokenSync() ?: return@launch
-                                        isSavingWebhook = true
-                                        error = null
-                                        val subscribeType = if (callbackMode == 1) 1 else 0
-                                        val linkToSave = if (callbackMode == 1) webhookUrl else webhookUrl
-                                        runCatching {
-                                            api.editBotSubscribedLink(
-                                                userToken,
-                                                com.yhchat.canary.data.api.EditBotSubscribedLinkRequest(
-                                                    botId = botId,
-                                                    link = linkToSave,
-                                                    subscribeType = subscribeType
-                                                )
-                                            )
-                                        }.onSuccess { resp ->
-                                            isSavingWebhook = false
-                                            if (resp.body()?.code == 1) {
-                                                Toast.makeText(context, "订阅地址保存成功", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                error = resp.body()?.message ?: "保存失败"
-                                            }
-                                        }.onFailure { e ->
-                                            isSavingWebhook = false
-                                            error = e.message
-                                        }
-                                    }
-                                },
-                                enabled = !isSavingWebhook && !isLoading
+                                onClick = { viewModel.saveWebhook(botId) },
+                                enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             ) {
-                                if (isSavingWebhook) {
+                                if (uiState.isSavingWebhook) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
                                         strokeWidth = 2.dp,
@@ -487,36 +341,11 @@ private fun BotSettingsScreen(
                         )
                         
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    val userToken = tokenRepo.getTokenSync() ?: return@launch
-                                    isResettingLink = true
-                                    error = null
-                                    runCatching {
-                                        webApi.resetBotLink(
-                                            token = userToken,
-                                            request = mapOf("botId" to botId)
-                                        )
-                                    }.onSuccess { resp ->
-                                        isResettingLink = false
-                                        if (resp.body()?.code == 1) {
-                                            Toast.makeText(context, "订阅链接已恢复", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            val errorMsg = resp.body()?.message ?: "恢复失败"
-                                            error = errorMsg
-                                            Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
-                                        }
-                                    }.onFailure { e ->
-                                        isResettingLink = false
-                                        error = e.message
-                                        Toast.makeText(context, "恢复失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
+                            onClick = { viewModel.resetBotLink(botId) },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isResettingLink && !isLoading
+                            enabled = !uiState.isResettingLink && !uiState.isLoading
                         ) {
-                            if (isResettingLink) {
+                            if (uiState.isResettingLink) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
@@ -539,33 +368,26 @@ private fun BotSettingsScreen(
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(text = "事件订阅", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
-                        SubscriptionSwitch("普通消息事件", messageReceiveNormal) { checked ->
-                            messageReceiveNormal = checked
-                            scope.launch { submitEventEdit("messageReceiveNormal", checked) }
+                        SubscriptionSwitch("普通消息事件", uiState.messageReceiveNormal) { checked ->
+                            viewModel.toggleEvent(botId, "messageReceiveNormal", checked)
                         }
-                        SubscriptionSwitch("指令消息事件", messageReceiveInstruction) { checked ->
-                            messageReceiveInstruction = checked
-                            scope.launch { submitEventEdit("messageReceiveInstruction", checked) }
+                        SubscriptionSwitch("指令消息事件", uiState.messageReceiveInstruction) { checked ->
+                            viewModel.toggleEvent(botId, "messageReceiveInstruction", checked)
                         }
-                        SubscriptionSwitch("关注机器人事件", botFollowed) { checked ->
-                            botFollowed = checked
-                            scope.launch { submitEventEdit("botFollowed", checked) }
+                        SubscriptionSwitch("关注机器人事件", uiState.botFollowed) { checked ->
+                            viewModel.toggleEvent(botId, "botFollowed", checked)
                         }
-                        SubscriptionSwitch("取关机器人事件", botUnfollowed) { checked ->
-                            botUnfollowed = checked
-                            scope.launch { submitEventEdit("botUnfollowed", checked) }
+                        SubscriptionSwitch("取关机器人事件", uiState.botUnfollowed) { checked ->
+                            viewModel.toggleEvent(botId, "botUnfollowed", checked)
                         }
-                        SubscriptionSwitch("加入群事件", groupJoin) { checked ->
-                            groupJoin = checked
-                            scope.launch { submitEventEdit("groupJoin", checked) }
+                        SubscriptionSwitch("加入群事件", uiState.groupJoin) { checked ->
+                            viewModel.toggleEvent(botId, "groupJoin", checked)
                         }
-                        SubscriptionSwitch("退出群事件", groupLeave) { checked ->
-                            groupLeave = checked
-                            scope.launch { submitEventEdit("groupLeave", checked) }
+                        SubscriptionSwitch("退出群事件", uiState.groupLeave) { checked ->
+                            viewModel.toggleEvent(botId, "groupLeave", checked)
                         }
-                        SubscriptionSwitch("机器人设置消息事件", botSetting) { checked ->
-                            botSetting = checked
-                            scope.launch { submitEventEdit("botSetting", checked) }
+                        SubscriptionSwitch("机器人设置消息事件", uiState.botSetting) { checked ->
+                            viewModel.toggleEvent(botId, "botSetting", checked)
                         }
                     }
                 }
@@ -601,7 +423,7 @@ private fun BotSettingsScreen(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        if (isLoadingInstructions) {
+                        if (uiState.isLoadingInstructions) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -610,7 +432,7 @@ private fun BotSettingsScreen(
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             }
-                        } else if (instructions.isEmpty()) {
+                        } else if (uiState.instructions.isEmpty()) {
                             Text(
                                 text = "暂无指令，点击右上角管理",
                                 style = MaterialTheme.typography.bodySmall,
@@ -618,7 +440,7 @@ private fun BotSettingsScreen(
                             )
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                instructions.take(3).forEach { instruction ->
+                                uiState.instructions.take(3).forEach { instruction ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -651,14 +473,14 @@ private fun BotSettingsScreen(
                                         )
                                     }
                                     
-                                    if (instruction != instructions.take(3).last()) {
+                                    if (instruction != uiState.instructions.take(3).last()) {
                                         Divider()
                                     }
                                 }
                                 
-                                if (instructions.size > 3) {
+                                if (uiState.instructions.size > 3) {
                                     Text(
-                                        text = "还有 ${instructions.size - 3} 个指令...",
+                                        text = "还有 ${uiState.instructions.size - 3} 个指令...",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(top = 4.dp)

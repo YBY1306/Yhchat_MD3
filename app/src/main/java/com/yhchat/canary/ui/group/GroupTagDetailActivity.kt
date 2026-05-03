@@ -26,16 +26,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.repository.TagMemberInfo
-import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class GroupTagDetailActivity : ComponentActivity() {
@@ -94,7 +93,6 @@ fun GroupTagDetailScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAddMemberDialog by remember { mutableStateOf(false) }
     
     LaunchedEffect(groupId, tagId) {
         viewModel.loadMembers(groupId, tagId)
@@ -131,7 +129,7 @@ fun GroupTagDetailScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddMemberDialog = true },
+                onClick = { viewModel.openAddMemberDialog() },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -190,7 +188,7 @@ fun GroupTagDetailScreen(
                                     UserDetailActivity.start(context = context, userId = member.userId, userName = member.name, groupId = groupId)
                                 },
                                 onRemoveClick = {
-                                    viewModel.removeTagFromUser(member.userId, tagId, groupId)
+                                    viewModel.requestRemoveMember(member)
                                 }
                             )
                         }
@@ -200,22 +198,45 @@ fun GroupTagDetailScreen(
         }
         
         // 添加成员对话框
-        if (showAddMemberDialog) {
+        if (uiState.showAddMemberDialog) {
             AddMemberToTagDialog(
-                groupId = groupId,
-                tagId = tagId,
                 currentMembers = uiState.members,
                 groupMembers = uiState.groupMembers,
+                searchQuery = uiState.addMemberSearchQuery,
                 isLoadingGroupMembers = uiState.isLoadingGroupMembers,
                 hasMoreGroupMembers = uiState.hasMoreGroupMembers,
                 isLoadingMoreGroupMembers = uiState.isLoadingMoreGroupMembers,
+                onSearchQueryChange = viewModel::updateAddMemberSearchQuery,
                 onAddMember = { userId ->
                     viewModel.addTagToUser(userId, tagId, groupId)
                 },
                 onLoadMoreGroupMembers = {
                     viewModel.loadMoreGroupMembers(groupId)
                 },
-                onDismiss = { showAddMemberDialog = false }
+                onDismiss = { viewModel.dismissAddMemberDialog() }
+            )
+        }
+
+        uiState.pendingRemoveMember?.let { pendingMember ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissRemoveMemberDialog() },
+                title = { Text("移除标签") },
+                text = { Text("确定要将 ${pendingMember.name} 从该标签中移除吗？") },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.confirmRemoveMember(tagId, groupId) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("移除")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissRemoveMemberDialog() }) {
+                        Text("取消")
+                    }
+                }
             )
         }
     }
@@ -223,21 +244,21 @@ fun GroupTagDetailScreen(
 
 @Composable
 fun AddMemberToTagDialog(
-    groupId: String,
-    tagId: Long,
     currentMembers: List<TagMemberInfo>,
     groupMembers: List<GroupMemberInfo>,
+    searchQuery: String,
     isLoadingGroupMembers: Boolean,
     hasMoreGroupMembers: Boolean,
     isLoadingMoreGroupMembers: Boolean,
+    onSearchQueryChange: (String) -> Unit,
     onAddMember: (String) -> Unit,
     onLoadMoreGroupMembers: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    
+
     // 过滤掉已经在标签中的成员
     val currentMemberIds = currentMembers.map { it.userId }.toSet()
+
     val availableMembers = groupMembers
         .filter { !currentMemberIds.contains(it.userId) }
         .filter { member ->
@@ -254,7 +275,7 @@ fun AddMemberToTagDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = onSearchQueryChange,
                     placeholder = { Text("搜索成员...") },
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = "搜索")
@@ -404,8 +425,7 @@ fun TagMemberCard(
     onClick: () -> Unit,
     onRemoveClick: () -> Unit
 ) {
-    var showRemoveDialog by remember { mutableStateOf(false) }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -481,7 +501,7 @@ fun TagMemberCard(
             }
             
             // 移除按钮
-            IconButton(onClick = { showRemoveDialog = true }) {
+            IconButton(onClick = onRemoveClick) {
                 Icon(
                     imageVector = Icons.Default.PersonRemove,
                     contentDescription = "移除标签",
@@ -490,31 +510,4 @@ fun TagMemberCard(
             }
         }
     }
-    
-    if (showRemoveDialog) {
-        AlertDialog(
-            onDismissRequest = { showRemoveDialog = false },
-            title = { Text("移除标签") },
-            text = { Text("确定要将 ${member.name} 从该标签中移除吗？") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onRemoveClick()
-                        showRemoveDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("移除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemoveDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
 }
-

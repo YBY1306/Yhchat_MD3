@@ -6,10 +6,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.BotRepository
+import com.yhchat.canary.data.repository.CacheRepository
+import com.yhchat.canary.data.repository.FriendRepository
+import com.yhchat.canary.data.repository.UserRepository
 import yh_bot.Bot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -23,6 +27,18 @@ class BotDetailViewModel(application: Application) : AndroidViewModel(applicatio
     
     private val botRepository: BotRepository by lazy {
         RepositoryFactory.getBotRepository(application)
+    }
+    private val friendRepository: FriendRepository by lazy {
+        RepositoryFactory.getFriendRepository(application)
+    }
+    private val userRepository: UserRepository by lazy {
+        RepositoryFactory.getUserRepository(application)
+    }
+    private val cacheRepository: CacheRepository by lazy {
+        CacheRepository(application)
+    }
+    private val tokenRepository by lazy {
+        RepositoryFactory.getTokenRepository(application)
     }
     
     private val _uiState = MutableStateFlow(BotDetailUiState())
@@ -95,6 +111,137 @@ class BotDetailViewModel(application: Application) : AndroidViewModel(applicatio
             )
         }
     }
+
+    fun loadInteractionState(botId: String) {
+        viewModelScope.launch {
+            val cachedConversation = cacheRepository
+                .getCachedConversationsSync()
+                .firstOrNull { it.chatId == botId && it.chatType == 3 }
+
+            _uiState.update {
+                it.copy(
+                    isNoNotify = cachedConversation?.doNotDisturb == 1,
+                    isCheckingAddressBook = true
+                )
+            }
+
+            friendRepository.getAddressBookList().fold(
+                onSuccess = { addressBook ->
+                    val isInAddressBook = addressBook.dataList.any { group ->
+                        group.dataList.any { item -> item.chatId == botId }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isInAddressBook = isInAddressBook,
+                            isCheckingAddressBook = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update {
+                        it.copy(
+                            isInAddressBook = false,
+                            isCheckingAddressBook = false
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun addBot(botId: String) {
+        viewModelScope.launch {
+            if (_uiState.value.isAddingBot) return@launch
+            _uiState.update { it.copy(isAddingBot = true) }
+
+            val localToken = tokenRepository.getTokenSync() ?: ""
+            val result = friendRepository.applyFriend(
+                token = localToken,
+                chatId = botId,
+                chatType = 3,
+                remark = "添加机器人"
+            )
+
+            if (result.code == 1) {
+                _uiState.update {
+                    it.copy(
+                        isAddingBot = false,
+                        isInAddressBook = true,
+                        actionMessage = "已添加机器人"
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isAddingBot = false,
+                        actionMessage = "添加机器人失败: ${result.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun setNoNotify(botId: String, checked: Boolean) {
+        viewModelScope.launch {
+            if (_uiState.value.isSettingNoNotify) return@launch
+            _uiState.update { it.copy(isNoNotify = checked, isSettingNoNotify = true) }
+
+            friendRepository.setNoNotify(
+                chatId = botId,
+                noNotify = if (checked) 1 else 0
+            ).fold(
+                onSuccess = {
+                    cacheRepository.updateConversationDoNotDisturb(
+                        chatId = botId,
+                        doNotDisturb = if (checked) 1 else 0
+                    )
+                    _uiState.update {
+                        it.copy(
+                            isSettingNoNotify = false,
+                            actionMessage = "设置成功"
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isNoNotify = !checked,
+                            isSettingNoNotify = false,
+                            actionMessage = "设置失败：${error.message}"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun deleteBot(botId: String) {
+        viewModelScope.launch {
+            userRepository.deleteFriend(botId, 3).fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            actionMessage = "已删除机器人",
+                            deleteSuccess = true
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(actionMessage = "删除机器人失败: ${error.message}")
+                    }
+                }
+            )
+        }
+    }
+
+    fun consumeActionMessage() {
+        _uiState.update { it.copy(actionMessage = null) }
+    }
+
+    fun consumeDeleteSuccess() {
+        _uiState.update { it.copy(deleteSuccess = false) }
+    }
 }
 
 /**
@@ -106,5 +253,12 @@ data class BotDetailUiState(
     val error: String? = null,
     val isBoardLoading: Boolean = false,
     val boardInfo: Bot.board? = null,
-    val boardError: String? = null
+    val boardError: String? = null,
+    val isInAddressBook: Boolean = false,
+    val isCheckingAddressBook: Boolean = true,
+    val isAddingBot: Boolean = false,
+    val isNoNotify: Boolean = false,
+    val isSettingNoNotify: Boolean = false,
+    val actionMessage: String? = null,
+    val deleteSuccess: Boolean = false
 )

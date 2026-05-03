@@ -160,12 +160,27 @@ class GroupTagManagementViewModel @Inject constructor(
             )
         }
     }
+
+    fun requestDeleteTag(tag: GroupTag) {
+        _uiState.value = _uiState.value.copy(pendingDeleteTag = tag)
+    }
+
+    fun dismissDeleteTagDialog() {
+        _uiState.value = _uiState.value.copy(pendingDeleteTag = null)
+    }
+
+    fun confirmDeleteTag(groupId: String) {
+        val pendingTag = _uiState.value.pendingDeleteTag ?: return
+        dismissDeleteTagDialog()
+        deleteTag(pendingTag.id, groupId)
+    }
 }
 
 data class GroupTagManagementUiState(
     val tags: List<GroupTag> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val pendingDeleteTag: GroupTag? = null,
     val showCreateDialog: Boolean = false,
     val editingTag: GroupTag? = null,
     val editingTagName: String = "",

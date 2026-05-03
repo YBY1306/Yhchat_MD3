@@ -1,7 +1,9 @@
 package com.yhchat.canary.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.DeviceInfo
 import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,11 @@ class DeviceViewModel @Inject constructor(
     
     private val _deviceState = MutableStateFlow(DeviceState())
     val deviceState: StateFlow<DeviceState> = _deviceState.asStateFlow()
+
+    fun init(context: Context) {
+        val tokenRepository = RepositoryFactory.getTokenRepository(context.applicationContext)
+        setTokenRepository(tokenRepository)
+    }
     
     /**
      * 设置 TokenRepository

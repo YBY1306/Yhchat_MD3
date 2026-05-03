@@ -30,12 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotInstruction
-import com.yhchat.canary.data.model.BotInstructionRequest
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -86,44 +84,19 @@ fun InstructionManagementScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val viewModel: InstructionManagementViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    var instructions by remember { mutableStateOf<List<BotInstruction>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    
-    // 加载指令列表
-    fun loadInstructions() {
-        scope.launch {
-            isLoading = true
-            error = null
-            
-            val api = ApiClient.apiService
-            val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
-            
-            if (token != null) {
-                runCatching {
-                    api.getBotInstructionList(token, BotInstructionRequest(botId))
-                }.onSuccess { response ->
-                    if (response.body()?.code == 1) {
-                        instructions = response.body()?.data?.list ?: emptyList()
-                    } else {
-                        error = response.body()?.msg ?: "加载失败"
-                    }
-                    isLoading = false
-                }.onFailure { e ->
-                    error = e.message ?: "未知错误"
-                    isLoading = false
-                }
-            } else {
-                error = "未登录"
-                isLoading = false
-            }
-        }
+    LaunchedEffect(botId) {
+        viewModel.init(context)
+        viewModel.loadInstructions(botId)
     }
-    
-    LaunchedEffect(Unit) {
-        loadInstructions()
+
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeActionMessage()
+        }
     }
     
     Scaffold(
@@ -157,7 +130,7 @@ fun InstructionManagementScreen(
                 .padding(padding)
         ) {
             when {
-                isLoading -> {
+                uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -166,7 +139,7 @@ fun InstructionManagementScreen(
                     }
                 }
                 
-                error != null -> {
+                uiState.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -175,19 +148,19 @@ fun InstructionManagementScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = error!!,
+                                text = uiState.error!!,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { loadInstructions() }) {
+                            Button(onClick = { viewModel.loadInstructions(botId) }) {
                                 Text("重试")
                             }
                         }
                     }
                 }
                 
-                instructions.isEmpty() -> {
+                uiState.instructions.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -218,7 +191,7 @@ fun InstructionManagementScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(instructions) { instruction ->
+                        items(uiState.instructions) { instruction ->
                             InstructionListItem(
                                 instruction = instruction,
                                 onEdit = { 
@@ -228,38 +201,7 @@ fun InstructionManagementScreen(
                                     InstructionPreviewActivity.start(context, instruction)
                                 },
                                 onDelete = {
-                                    scope.launch {
-                                        val api = ApiClient.apiService
-                                        val token = RepositoryFactory.getTokenRepository(context).getTokenSync()
-                                        
-                                        if (token != null) {
-                                            runCatching {
-                                                api.editBotInstruction(
-                                                    token,
-                                                    com.yhchat.canary.data.model.EditInstructionRequest(
-                                                        id = instruction.id,
-                                                        botId = botId,
-                                                        name = instruction.name,
-                                                        desc = instruction.desc,
-                                                        type = instruction.instructionType,
-                                                        hintText = instruction.hintText,
-                                                        defaultText = instruction.defaultText,
-                                                        customJson = instruction.customJson,
-                                                        delFlag = 1
-                                                    )
-                                                )
-                                            }.onSuccess { response ->
-                                                if (response.body()?.code == 1) {
-                                                    Toast.makeText(context, "删除成功", Toast.LENGTH_SHORT).show()
-                                                    loadInstructions()
-                                                } else {
-                                                    Toast.makeText(context, response.body()?.message ?: "删除失败", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }.onFailure { e ->
-                                                Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    }
+                                    viewModel.deleteInstruction(botId, instruction)
                                 }
                             )
                         }

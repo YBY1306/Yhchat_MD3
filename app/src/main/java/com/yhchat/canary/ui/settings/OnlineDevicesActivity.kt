@@ -24,12 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.DeviceInfo
-import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * 在线设备Activity
@@ -38,15 +35,11 @@ import kotlinx.coroutines.launch
 class OnlineDevicesActivity : BaseActivity() {
     
     companion object {
-        private const val EXTRA_HAS_TOKEN_REPO = "has_token_repo"
-        
         /**
          * 启动在线设备Activity
          */
-        fun start(context: Context, tokenRepository: TokenRepository) {
-            val intent = Intent(context, OnlineDevicesActivity::class.java).apply {
-                putExtra(EXTRA_HAS_TOKEN_REPO, true)
-            }
+        fun start(context: Context) {
+            val intent = Intent(context, OnlineDevicesActivity::class.java)
             context.startActivity(intent)
         }
     }
@@ -54,19 +47,13 @@ class OnlineDevicesActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
-        val hasTokenRepo = intent.getBooleanExtra(EXTRA_HAS_TOKEN_REPO, false)
-        val tokenRepository = if (hasTokenRepo) {
-            RepositoryFactory.getTokenRepository(this)
-        } else null
-        
+
         setContent {
             YhchatCanaryTheme {
                 val deviceViewModel: DeviceViewModel = viewModel()
                 
                 OnlineDevicesScreen(
                     deviceViewModel = deviceViewModel,
-                    tokenRepository = tokenRepository,
                     onBack = { finish() }
                 )
             }
@@ -81,22 +68,15 @@ class OnlineDevicesActivity : BaseActivity() {
 @Composable
 fun OnlineDevicesScreen(
     deviceViewModel: DeviceViewModel,
-    tokenRepository: TokenRepository?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val deviceState by deviceViewModel.deviceState.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-    
-    // 获取 token
-    var token by remember { mutableStateOf("") }
-    
-    LaunchedEffect(tokenRepository) {
-        tokenRepository?.let { tokenRepo ->
-            deviceViewModel.setTokenRepository(tokenRepo)
-            deviceViewModel.loadOnlineDevices()
-        }
+
+    LaunchedEffect(Unit) {
+        deviceViewModel.init(context)
+        deviceViewModel.loadOnlineDevices()
     }
     
     Scaffold(

@@ -177,9 +177,7 @@ fun SettingsScreen(
                                 title = "在线设备",
                                 subtitle = "查看当前登录的设备",
                                 onClick = {
-                                    tokenRepository?.let { tokenRepo ->
-                                        OnlineDevicesActivity.start(context, tokenRepo)
-                                    }
+                                    OnlineDevicesActivity.start(context)
                                 }
                             )
                         },

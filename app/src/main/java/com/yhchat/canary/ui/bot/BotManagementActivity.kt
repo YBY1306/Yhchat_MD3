@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.bot
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
@@ -19,22 +18,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.model.CreatedBot
-import com.yhchat.canary.data.model.MyBotListResponse
-import com.yhchat.canary.ui.components.ImageUtils
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import android.widget.Toast
 
 /**
@@ -93,58 +82,25 @@ private fun BotManagementScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    
-    // 缓存机器人列表数据
-    var botList by remember { mutableStateOf<List<CreatedBot>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isStoppingBot by remember { mutableStateOf(false) }
-    var isDeletingBot by remember { mutableStateOf(false) }
-    var botIsStop by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    
-    // 获取当前机器人的token
-    val currentBotToken = remember(botList, botId) {
-        val foundBot = botList.find { it.botId == botId }
-        val finalToken = foundBot?.token ?: botToken
-        android.util.Log.d("BotManagement", "Current bot: $botId, found token: ${foundBot?.token}, final token: $finalToken")
-        finalToken
-    }
-    
-    // 加载机器人列表和详细信息
+    val viewModel: BotManagementViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val botRepo = RepositoryFactory.getBotRepository(context)
-                
-                // 加载机器人列表
-                botRepo.getMyBotList().fold(
-                    onSuccess = { bots ->
-                        botList = bots
-                        // 调试日志
-                        android.util.Log.d("BotManagement", "Loaded ${bots.size} bots")
-                        bots.forEach { bot ->
-                            android.util.Log.d("BotManagement", "Bot: ${bot.botId}, token: ${bot.token}")
-                        }
-                    },
-                    onFailure = { error ->
-                        android.util.Log.e("BotManagement", "Failed to load bots: ${error.message}")
-                    }
-                )
-                
-                // 获取当前机器人的详细信息（包括停用状态）
-                botRepo.getBotInfo(botId).fold(
-                    onSuccess = { botInfo ->
-                        botIsStop = botInfo.data.isStop == 1L
-                    },
-                    onFailure = { /* 忽略错误 */ }
-                )
-                
-            } catch (e: Exception) {
-                // 网络错误，保持空列表
-            } finally {
-                isLoading = false
-            }
+        viewModel.init(context)
+        viewModel.load(botId, botToken)
+    }
+
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeActionMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.deleteSuccess) {
+        if (uiState.deleteSuccess) {
+            onBackClick()
+            viewModel.consumeDeleteSuccess()
         }
     }
     
@@ -177,7 +133,7 @@ private fun BotManagementScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 错误提示
-            if (error != null) {
+            if (uiState.error != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -185,7 +141,7 @@ private fun BotManagementScreen(
                     )
                 ) {
                     Text(
-                        text = error ?: "",
+                        text = uiState.error ?: "",
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -283,7 +239,7 @@ private fun BotManagementScreen(
                         title = "机器人设置",
                         subtitle = "配置机器人参数",
                         onClick = {
-                            BotSettingsActivity.start(context, botId, botName, currentBotToken)
+                            BotSettingsActivity.start(context, botId, botName, uiState.currentBotToken)
                         }
                     )
                 }
@@ -313,68 +269,10 @@ private fun BotManagementScreen(
                     ) {
                         // 停用/启用机器人按钮
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    val tokenRepo = RepositoryFactory.getTokenRepository(context)
-                                    val userToken = tokenRepo.getTokenSync() ?: return@launch
-                                    isStoppingBot = true
-                                    error = null
-                                    
-                                    // 构建 protobuf 请求
-                                    val operation = if (botIsStop) 0 else 1 // 当前停用则启用(0)，当前启用则停用(1)
-                                    val request = yh_bot.Bot.bot_stop_send.newBuilder()
-                                        .setBotId(botId)
-                                        .setOperation(operation.toLong())
-                                        .build()
-                                    
-                                    val requestBody = request.toByteArray()
-                                        .toRequestBody("application/x-protobuf".toMediaType())
-                                    
-                                    runCatching {
-                                        ApiClient.apiService.stopBot(userToken, requestBody)
-                                    }.onSuccess { resp ->
-                                        if (resp.isSuccessful) {
-                                            val responseBody = resp.body()?.bytes()
-                                            if (responseBody != null) {
-                                                val status = yh_bot.Bot.Status.parseFrom(responseBody)
-                                                if (status.code == 1) {
-                                                    val action = if (operation == 1) "停用" else "启用"
-                                                    Toast.makeText(context, "机器人${action}成功", Toast.LENGTH_SHORT).show()
-                                                    
-                                                    // 重新查询机器人状态
-                                                    val botRepo = RepositoryFactory.getBotRepository(context)
-                                                    botRepo.getBotInfo(botId).fold(
-                                                        onSuccess = { botInfo ->
-                                                            botIsStop = botInfo.data.isStop == 1L
-                                                            isStoppingBot = false
-                                                        },
-                                                        onFailure = { 
-                                                            // 如果查询失败，使用预期状态
-                                                            botIsStop = !botIsStop
-                                                            isStoppingBot = false
-                                                        }
-                                                    )
-                                                } else {
-                                                    error = status.msg
-                                                    isStoppingBot = false
-                                                }
-                                            } else {
-                                                error = "响应数据为空"
-                                                isStoppingBot = false
-                                            }
-                                        } else {
-                                            error = "请求失败: ${resp.code()}"
-                                            isStoppingBot = false
-                                        }
-                                    }.onFailure { e ->
-                                        isStoppingBot = false
-                                        error = e.message
-                                    }
-                                }
-                            },
+                            onClick = { viewModel.toggleBotStop(botId) },
                             modifier = Modifier.weight(1f),
-                            enabled = !isStoppingBot && !isLoading && !isDeletingBot,
-                            colors = if (botIsStop) {
+                            enabled = !uiState.isStoppingBot && !uiState.isLoading && !uiState.isDeletingBot,
+                            colors = if (uiState.botIsStop) {
                                 ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
@@ -384,7 +282,7 @@ private fun BotManagementScreen(
                                 )
                             }
                         ) {
-                            if (isStoppingBot) {
+                            if (uiState.isStoppingBot) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
@@ -393,48 +291,20 @@ private fun BotManagementScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("处理中...")
                             } else {
-                                Text(if (botIsStop) "启用机器人" else "停用机器人")
+                                Text(if (uiState.botIsStop) "启用机器人" else "停用机器人")
                             }
                         }
                         
                         // 删除机器人按钮
                         OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    val tokenRepo = RepositoryFactory.getTokenRepository(context)
-                                    val userToken = tokenRepo.getTokenSync() ?: return@launch
-                                    isDeletingBot = true
-                                    error = null
-                                    
-                                    val request = com.yhchat.canary.data.model.DeleteFriendRequest(
-                                        chatId = botId,
-                                        chatType = 3 // 机器人
-                                    )
-                                    
-                                    runCatching {
-                                        ApiClient.apiService.deleteFriend(userToken, request)
-                                    }.onSuccess { resp ->
-                                        isDeletingBot = false
-                                        if (resp.body()?.code == 1) {
-                                            Toast.makeText(context, "机器人删除成功", Toast.LENGTH_SHORT).show()
-                                            // 删除成功后返回上一页
-                                            onBackClick()
-                                        } else {
-                                            error = resp.body()?.message ?: "删除失败"
-                                        }
-                                    }.onFailure { e ->
-                                        isDeletingBot = false
-                                        error = e.message
-                                    }
-                                }
-                            },
+                            onClick = { viewModel.deleteBot(botId) },
                             modifier = Modifier.weight(1f),
-                            enabled = !isDeletingBot && !isLoading && !isStoppingBot,
+                            enabled = !uiState.isDeletingBot && !uiState.isLoading && !uiState.isStoppingBot,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            if (isDeletingBot) {
+                            if (uiState.isDeletingBot) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,

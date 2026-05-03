@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import com.yhchat.canary.utils.WebDAVDownloader
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -44,19 +43,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.di.RepositoryFactory
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.data.model.WebDAVFile
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.utils.RSAEncryptionUtil
 import com.yhchat.canary.utils.SardineWebDAVClient
 import com.yhchat.canary.utils.WebDAVDownloadManager
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -110,7 +102,7 @@ fun WebDAVBrowserScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel = remember { WebDAVBrowserViewModel() }
+    val viewModel: WebDAVBrowserViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
     
     // 下载对话框状态
@@ -538,228 +530,6 @@ private fun WebDAVFileCard(
         }
     }
 }
-
-/**
- * WebDAV 浏览器 ViewModel
- */
-class WebDAVBrowserViewModel : ViewModel() {
-    private lateinit var apiService: com.yhchat.canary.data.api.ApiService
-    private lateinit var tokenRepository: com.yhchat.canary.data.repository.TokenRepository
-    
-    private val _uiState = MutableStateFlow(WebDAVBrowserUiState())
-    val uiState: StateFlow<WebDAVBrowserUiState> = _uiState.asStateFlow()
-
-    fun init(context: Context) {
-        apiService = ApiClient.apiService
-        tokenRepository = RepositoryFactory.getTokenRepository(context)
-    }
-    
-    fun loadMountSettings(groupId: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            try {
-                // 1. 准备加密参数
-                val encryptionResult = RSAEncryptionUtil.prepareEncryptionParams()
-                if (encryptionResult == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "准备加密参数失败"
-                    )
-                    return@launch
-                }
-                
-                val (encryptKey, encryptIv, rawKeyPair) = encryptionResult
-                
-                // 2. 获取用户 token
-                val userToken = tokenRepository.getTokenSync()
-                if (userToken.isNullOrEmpty()) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "用户未登录"
-                    )
-                    return@launch
-                }
-                
-                // 3. 调用 API 获取挂载点列表
-                val request = com.yhchat.canary.data.model.MountSettingRequest(
-                    groupId = groupId,
-                    encryptKey = encryptKey,
-                    encryptIv = encryptIv
-                )
-                
-                val response = apiService.getMountSettingList(userToken, request)
-                
-                if (response.isSuccessful && response.body()?.code == 1) {
-                    val encryptedMountSettings = response.body()?.data?.list ?: emptyList()
-                    
-                    // 4. 解密所有挂载点的密码
-                    val decryptedMountSettings = mutableListOf<MountSetting>()
-                    for (mountSetting in encryptedMountSettings) {
-                        try {
-                            val decryptedPassword = RSAEncryptionUtil.decryptWebDAVPassword(
-                                mountSetting.webdavPassword,
-                                rawKeyPair.first,  // AES key
-                                rawKeyPair.second  // AES IV
-                            ) ?: ""
-                            
-                            // 创建解密后的挂载点配置
-                            val decryptedMountSetting = mountSetting.copy(
-                                webdavPassword = decryptedPassword
-                            )
-                            decryptedMountSettings.add(decryptedMountSetting)
-                            
-                            android.util.Log.d("WebDAVBrowser", "挂载点 ${mountSetting.mountName} 密码解密成功")
-                        } catch (e: Exception) {
-                            android.util.Log.e("WebDAVBrowser", "挂载点 ${mountSetting.mountName} 密码解密失败", e)
-                            decryptedMountSettings.add(mountSetting.copy(webdavPassword = ""))
-                        }
-                    }
-                    
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        mountSettings = decryptedMountSettings,
-                        selectedMountIndex = if (decryptedMountSettings.isNotEmpty()) 0 else -1
-                    )
-                    
-                    // 5. 自动加载第一个挂载点的文件（webdavUrl + webdavRootPath 就是默认路径）
-                    if (decryptedMountSettings.isNotEmpty()) {
-                        val firstMount = decryptedMountSettings[0]
-                        loadFiles(firstMount, "") // 传入空字符串，使用默认路径
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = response.body()?.msg ?: "获取挂载点列表失败"
-                    )
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("WebDAVBrowser", "加载挂载点失败", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "加载失败: ${e.message}"
-                )
-            }
-        }
-    }
-    
-    fun selectMount(index: Int) {
-        if (index in _uiState.value.mountSettings.indices) {
-            val selectedMount = _uiState.value.mountSettings[index]
-            
-            _uiState.value = _uiState.value.copy(
-                selectedMountIndex = index
-            )
-            
-            // 如果该挂载点还没有加载过文件，则加载
-            val mountState = _uiState.value.mountStates[index]
-            if (mountState == null) {
-                loadFiles(selectedMount, "") // 传入空字符串，使用默认路径
-            }
-        }
-    }
-    
-    fun loadFiles(mountSetting: MountSetting, path: String = "") {
-        viewModelScope.launch {
-            val mountIndex = _uiState.value.selectedMountIndex
-            
-            // 更新对应挂载点的加载状态
-            val currentMountStates = _uiState.value.mountStates.toMutableMap()
-            currentMountStates[mountIndex] = currentMountStates[mountIndex]?.copy(
-                isLoading = true,
-                error = null
-            ) ?: MountState(isLoading = true)
-            
-            _uiState.value = _uiState.value.copy(
-                mountStates = currentMountStates,
-                isLoadingFiles = true
-                // 不清除全局error，因为全局error只用于挂载点列表加载失败
-            )
-            
-            SardineWebDAVClient.listFiles(mountSetting, path).fold(
-                onSuccess = { files ->
-                    val updatedMountStates = _uiState.value.mountStates.toMutableMap()
-                    updatedMountStates[mountIndex] = MountState(
-                        files = files,
-                        currentPath = path,
-                        isLoading = false,
-                        error = null
-                    )
-                    
-                    _uiState.value = _uiState.value.copy(
-                        mountStates = updatedMountStates,
-                        isLoadingFiles = false,
-                        files = files,
-                        currentPath = path
-                        // 不设置error，保持全局error不变（全局error只用于挂载点列表加载失败）
-                    )
-                },
-                onFailure = { error ->
-                    val updatedMountStates = _uiState.value.mountStates.toMutableMap()
-                    updatedMountStates[mountIndex] = updatedMountStates[mountIndex]?.copy(
-                        isLoading = false,
-                        error = "加载文件失败: ${error.message}"
-                    ) ?: MountState(
-                        isLoading = false,
-                        error = "加载文件失败: ${error.message}"
-                    )
-                    
-                    _uiState.value = _uiState.value.copy(
-                        mountStates = updatedMountStates,
-                        isLoadingFiles = false
-                        // 不设置全局error，只设置对应挂载点的error，这样分类栏不会消失
-                    )
-                }
-            )
-        }
-    }
-    
-    fun enterFolder(relativePath: String) {
-        val selectedMount = _uiState.value.mountSettings.getOrNull(_uiState.value.selectedMountIndex)
-        if (selectedMount != null) {
-            Log.d("WebDAVBrowser", "enterFolder: relativePath=$relativePath")
-            loadFiles(selectedMount, relativePath)
-        }
-    }
-
-    fun navigateToPath(targetPath: String) {
-        val selectedMount = _uiState.value.mountSettings.getOrNull(_uiState.value.selectedMountIndex)
-        if (selectedMount != null) {
-            loadFiles(selectedMount, targetPath)
-        }
-    }
-
-    fun navigateUp(): Boolean {
-        val selectedIndex = _uiState.value.selectedMountIndex
-        val mountState = _uiState.value.mountStates[selectedIndex] ?: return false
-        val currentPath = mountState.currentPath
-        if (currentPath.isBlank()) return false
-        val parentPath = currentPath.substringBeforeLast('/', "")
-        val selectedMount = _uiState.value.mountSettings.getOrNull(selectedIndex) ?: return false
-        loadFiles(selectedMount, parentPath)
-        return true
-    }
-
-}
-
-data class WebDAVBrowserUiState(
-    val isLoading: Boolean = false,
-    val isLoadingFiles: Boolean = false,
-    val mountSettings: List<MountSetting> = emptyList(),
-    val selectedMountIndex: Int = -1,
-    val files: List<WebDAVFile> = emptyList(),
-    val currentPath: String = "",
-    val error: String? = null,
-    // 为每个挂载点单独管理状态
-    val mountStates: Map<Int, MountState> = emptyMap()
-)
-
-data class MountState(
-    val files: List<WebDAVFile> = emptyList(),
-    val currentPath: String = "",
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
 
 @Composable
 private fun WebDAVBreadcrumbBar(

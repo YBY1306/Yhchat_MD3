@@ -185,7 +185,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
     
     // Security - 使用Android官方的安全存储方案
     implementation("androidx.security:security-crypto:1.1.0-alpha06")

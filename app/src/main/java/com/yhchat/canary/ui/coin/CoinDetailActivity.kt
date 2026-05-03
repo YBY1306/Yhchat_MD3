@@ -16,16 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.di.RepositoryFactory
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.MyTaskInfo
-import com.yhchat.canary.data.repository.CoinRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * 金币明细Activity
@@ -53,7 +47,7 @@ fun CoinDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel = remember { CoinDetailViewModel() }
+    val viewModel: CoinDetailViewModel = viewModel()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -269,45 +263,4 @@ private fun TaskTipCard(
         }
     }
 }
-
-/**
- * 金币明细ViewModel
- */
-class CoinDetailViewModel : ViewModel() {
-    private lateinit var coinRepository: CoinRepository
-    
-    private val _uiState = MutableStateFlow(CoinDetailUiState())
-    val uiState: StateFlow<CoinDetailUiState> = _uiState.asStateFlow()
-    
-    fun init(context: android.content.Context) {
-        coinRepository = RepositoryFactory.getCoinRepository(context)
-    }
-    
-    fun loadTaskInfo() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            coinRepository.getMyTaskInfo().fold(
-                onSuccess = { taskInfo ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        taskInfo = taskInfo
-                    )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message
-                    )
-                }
-            )
-        }
-    }
-}
-
-data class CoinDetailUiState(
-    val isLoading: Boolean = false,
-    val taskInfo: MyTaskInfo? = null,
-    val error: String? = null
-)
 

@@ -165,7 +165,7 @@ fun GroupTagManagementScreen(
                                 tag = tag,
                                 onClick = { onTagClick(tag) },
                                 onEditClick = { viewModel.showEditDialog(tag) },
-                                onDeleteClick = { viewModel.deleteTag(tag.id, groupId) }
+                                onDeleteClick = { viewModel.requestDeleteTag(tag) }
                             )
                         }
                     }
@@ -190,6 +190,29 @@ fun GroupTagManagementScreen(
             onDismiss = viewModel::dismissDialog
         )
     }
+
+    uiState.pendingDeleteTag?.let { pendingTag ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteTagDialog,
+            title = { Text("删除标签") },
+            text = { Text("确定要删除标签 ${pendingTag.tag} 吗？") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.confirmDeleteTag(groupId) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissDeleteTagDialog) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -199,8 +222,7 @@ fun TagCard(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -255,7 +277,7 @@ fun TagCard(
                 )
             }
             
-            IconButton(onClick = { showDeleteDialog = true }) {
+            IconButton(onClick = onDeleteClick) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "删除",
@@ -263,32 +285,6 @@ fun TagCard(
                 )
             }
         }
-    }
-    
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除标签") },
-            text = { Text("确定要删除标签 ${tag.tag} 吗？") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDeleteClick()
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("删除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
     }
 }
 

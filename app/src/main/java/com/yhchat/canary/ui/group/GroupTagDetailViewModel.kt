@@ -46,6 +46,35 @@ class GroupTagDetailViewModel @Inject constructor(
             )
         }
     }
+
+    fun openAddMemberDialog() {
+        _uiState.value = _uiState.value.copy(showAddMemberDialog = true)
+    }
+
+    fun dismissAddMemberDialog() {
+        _uiState.value = _uiState.value.copy(
+            showAddMemberDialog = false,
+            addMemberSearchQuery = ""
+        )
+    }
+
+    fun updateAddMemberSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(addMemberSearchQuery = query)
+    }
+
+    fun requestRemoveMember(member: TagMemberInfo) {
+        _uiState.value = _uiState.value.copy(pendingRemoveMember = member)
+    }
+
+    fun dismissRemoveMemberDialog() {
+        _uiState.value = _uiState.value.copy(pendingRemoveMember = null)
+    }
+
+    fun confirmRemoveMember(tagId: Long, groupId: String) {
+        val member = _uiState.value.pendingRemoveMember ?: return
+        dismissRemoveMemberDialog()
+        removeTagFromUser(member.userId, tagId, groupId)
+    }
     
     fun removeTagFromUser(userId: String, tagId: Long, groupId: String) {
         viewModelScope.launch {
@@ -158,6 +187,9 @@ data class GroupTagDetailUiState(
     val total: Long = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val showAddMemberDialog: Boolean = false,
+    val addMemberSearchQuery: String = "",
+    val pendingRemoveMember: TagMemberInfo? = null,
     // 群成员分页相关字段
     val groupMembers: List<GroupMemberInfo> = emptyList(),
     val isLoadingGroupMembers: Boolean = false,

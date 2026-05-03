@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
@@ -31,26 +30,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.local.AppDatabase
-import com.yhchat.canary.data.repository.BotRepository
-import com.yhchat.canary.data.repository.GroupRepository
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * 群聊机器人管理Activity
@@ -106,17 +92,14 @@ fun GroupBotManagementScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel = remember { GroupBotManagementViewModel() }
-    
-    LaunchedEffect(Unit) {
-        viewModel.init(context)
-        viewModel.loadGroupBots(groupId)
-        viewModel.loadMyBots(context)
-    }
-    
+    val viewModel: GroupBotManagementViewModel = viewModel()
+
     val uiState by viewModel.uiState.collectAsState()
-    var showInviteBotDialog by remember { mutableStateOf(false) }
-    
+
+    LaunchedEffect(Unit) {
+        viewModel.onScreenEnter(groupId)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -130,7 +113,7 @@ fun GroupBotManagementScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showInviteBotDialog = true }
+                onClick = { viewModel.openInviteDialog() }
             ) {
                 Icon(Icons.Default.Add, contentDescription = "邀请机器人")
             }
@@ -179,9 +162,7 @@ fun GroupBotManagementScreen(
                         items(uiState.bots) { bot ->
                             BotCard(
                                 bot = bot,
-                                onRemoveClick = {
-                                    viewModel.removeBot(bot.botId, groupId)
-                                },
+                                onRemoveClick = { viewModel.requestRemoveBot(bot) },
                                 onManageClick = {
                                     viewModel.openPermissionDialog(groupId, bot)
                                 },
@@ -197,38 +178,45 @@ fun GroupBotManagementScreen(
             }
         }
     }
-    
-    // 显示操作结果
-    LaunchedEffect(uiState.operationSuccess) {
-        if (uiState.operationSuccess) {
-            Toast.makeText(context, "操作成功", Toast.LENGTH_SHORT).show()
-            viewModel.resetOperationState()
-            viewModel.loadGroupBots(groupId)
-        }
-    }
-    
-    LaunchedEffect(uiState.operationError) {
-        uiState.operationError?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
-            viewModel.resetOperationState()
+
+    LaunchedEffect(uiState.userMessage) {
+        uiState.userMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.consumeUserMessage()
         }
     }
 
-    LaunchedEffect(uiState.permissionError) {
-        uiState.permissionError?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
-            viewModel.clearPermissionMessage()
-        }
-    }
-    
     // 邀请机器人对话框
-    if (showInviteBotDialog) {
+    if (uiState.showInviteBotDialog) {
         InviteBotDialog(
             myBots = uiState.myBots,
-            onDismiss = { showInviteBotDialog = false },
+            searchQuery = uiState.inviteSearchQuery,
+            onSearchQueryChange = viewModel::updateInviteSearchQuery,
+            onDismiss = { viewModel.dismissInviteDialog() },
             onInvite = { botId ->
                 viewModel.inviteBot(botId, groupId)
-                showInviteBotDialog = false
+            }
+        )
+    }
+
+    uiState.pendingRemoveBot?.let { pendingBot ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissRemoveBotDialog() },
+            title = { Text("移除机器人") },
+            text = { Text("确定要从群聊中移除「${pendingBot.name}」吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.removeBot(pendingBot.botId, groupId)
+                    }
+                ) {
+                    Text("确定", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissRemoveBotDialog() }) {
+                    Text("取消")
+                }
             }
         )
     }
@@ -261,8 +249,7 @@ fun BotCard(
     canRemove: Boolean = true  // 是否可以删除机器人
 ) {
     val context = LocalContext.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -336,7 +323,7 @@ fun BotCard(
                 }
 
                 if (canRemove) {
-                    IconButton(onClick = { showDeleteDialog = true }) {
+                    IconButton(onClick = onRemoveClick) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "移除机器人",
@@ -346,30 +333,6 @@ fun BotCard(
                 }
             }
         }
-    }
-    
-    // 删除确认对话框
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("移除机器人") },
-            text = { Text("确定要从群聊中移除「${bot.name}」吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        onRemoveClick()
-                    }
-                ) {
-                    Text("确定", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
     }
 }
 
@@ -463,11 +426,12 @@ private fun PermissionCheckboxRow(
 @Composable
 fun InviteBotDialog(
     myBots: List<Contact>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onInvite: (String) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    
+
     val filteredBots = remember(searchQuery, myBots) {
         if (searchQuery.isEmpty()) {
             myBots
@@ -491,7 +455,7 @@ fun InviteBotDialog(
                 // 搜索框
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = onSearchQueryChange,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("搜索机器人") },
                     leadingIcon = {
@@ -589,233 +553,4 @@ fun InviteBotItem(
             )
         }
     }
-}
-
-class GroupBotManagementViewModel : ViewModel() {
-    private lateinit var groupRepository: GroupRepository
-    private lateinit var botRepository: BotRepository
-    
-    private val _uiState = MutableStateFlow(GroupBotManagementUiState())
-    val uiState: StateFlow<GroupBotManagementUiState> = _uiState.asStateFlow()
-    
-    fun init(context: Context) {
-        groupRepository = RepositoryFactory.getGroupRepository(context)
-        botRepository = RepositoryFactory.getBotRepository(context)
-    }
-    
-    fun loadGroupBots(groupId: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            groupRepository.getGroupBots(groupId).fold(
-                onSuccess = { bots ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        bots = bots
-                    )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message
-                    )
-                }
-            )
-        }
-    }
-    
-    fun removeBot(botId: String, groupId: String) {
-        viewModelScope.launch {
-            botRepository.removeGroupBot(botId, groupId).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(operationSuccess = true)
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(operationError = error.message)
-                }
-            )
-        }
-    }
-    
-    fun resetOperationState() {
-        _uiState.value = _uiState.value.copy(
-            operationSuccess = false,
-            operationError = null
-        )
-    }
-    
-    fun loadMyBots(context: Context) {
-        viewModelScope.launch {
-            try {
-                val db = AppDatabase.getDatabase(context)
-                val tokenRepository = TokenRepository(db.userTokenDao(), context)
-                val friendRepository = com.yhchat.canary.data.repository.FriendRepository(
-                    com.yhchat.canary.data.api.ApiClient.apiService,
-                    tokenRepository
-                )
-                
-                friendRepository.getAddressBookList().fold(
-                    onSuccess = { addressBookList ->
-                        // 获取机器人列表
-                        val botsList = mutableListOf<Contact>()
-                        addressBookList.dataList.forEach { data ->
-                            if (data.listName == "机器人") {
-                                data.dataList.forEach { botData ->
-                                    botsList.add(
-                                        Contact(
-                                            chatId = botData.chatId,
-                                            name = botData.name,
-                                            avatarUrl = botData.avatarUrl,
-                                            permissionLevel = botData.permissonLevel
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                        _uiState.value = _uiState.value.copy(myBots = botsList)
-                    },
-                    onFailure = { error ->
-                        android.util.Log.e("GroupBotManagement", "加载我的机器人失败", error)
-                    }
-                )
-            } catch (e: Exception) {
-                android.util.Log.e("GroupBotManagement", "加载我的机器人异常", e)
-            }
-        }
-    }
-    
-    fun inviteBot(botId: String, groupId: String) {
-        viewModelScope.launch {
-            groupRepository.inviteToGroup(botId, 3, groupId).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(operationSuccess = true)
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(operationError = error.message ?: "邀请失败")
-                }
-            )
-        }
-    }
-
-    fun openPermissionDialog(groupId: String, bot: Bot_data) {
-        val permissionStates = _uiState.value.botPermissionStates.toMutableMap()
-        permissionStates.putIfAbsent(bot.botId, BotGroupPermissionState())
-        _uiState.value = _uiState.value.copy(
-            selectedPermissionBot = bot,
-            botPermissionStates = permissionStates,
-            loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds + bot.botId,
-            permissionError = null
-        )
-
-        viewModelScope.launch {
-            groupRepository.getBotGroupPermission(groupId = groupId, botId = bot.botId).fold(
-                onSuccess = { permissionData ->
-                    _uiState.value = _uiState.value.copy(
-                        botPermissionStates = _uiState.value.botPermissionStates + (
-                            bot.botId to permissionData.toUiState()
-                        ),
-                        loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds - bot.botId
-                    )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        loadingPermissionBotIds = _uiState.value.loadingPermissionBotIds - bot.botId,
-                        permissionError = error.message ?: "获取机器人权限失败"
-                    )
-                }
-            )
-        }
-    }
-
-    fun closePermissionDialog() {
-        _uiState.value = _uiState.value.copy(selectedPermissionBot = null)
-    }
-
-    fun clearPermissionMessage() {
-        _uiState.value = _uiState.value.copy(permissionError = null)
-    }
-
-    fun updateBotPermission(
-        groupId: String,
-        botId: String,
-        field: BotPermissionField,
-        enabled: Boolean
-    ) {
-        viewModelScope.launch {
-            val currentState = _uiState.value.botPermissionStates[botId] ?: BotGroupPermissionState()
-            val nextState = when (field) {
-                BotPermissionField.EditGroupInfo -> currentState.copy(allowEditGroupInfo = enabled)
-                BotPermissionField.GagMember -> currentState.copy(allowGagMember = enabled)
-                BotPermissionField.RemoveMember -> currentState.copy(allowRemoveMember = enabled)
-                BotPermissionField.GroupTagManage -> currentState.copy(allowGroupTagManage = enabled)
-            }
-
-            _uiState.value = _uiState.value.copy(
-                botPermissionStates = _uiState.value.botPermissionStates + (botId to nextState),
-                updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds + botId,
-                permissionError = null
-            )
-
-            groupRepository.editBotGroupPermission(
-                groupId = groupId,
-                botId = botId,
-                allowEditGroupInfo = nextState.allowEditGroupInfo.toApiValue(),
-                allowGagMember = nextState.allowGagMember.toApiValue(),
-                allowRemoveMember = nextState.allowRemoveMember.toApiValue(),
-                allowGroupTagManage = nextState.allowGroupTagManage.toApiValue()
-            ).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds - botId
-                    )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        botPermissionStates = _uiState.value.botPermissionStates + (botId to currentState),
-                        updatingPermissionBotIds = _uiState.value.updatingPermissionBotIds - botId,
-                        permissionError = error.message ?: "更新机器人权限失败"
-                    )
-                }
-            )
-        }
-    }
-}
-
-data class GroupBotManagementUiState(
-    val isLoading: Boolean = false,
-    val bots: List<Bot_data> = emptyList(),
-    val myBots: List<Contact> = emptyList(),
-    val error: String? = null,
-    val operationSuccess: Boolean = false,
-    val operationError: String? = null,
-    val selectedPermissionBot: Bot_data? = null,
-    val botPermissionStates: Map<String, BotGroupPermissionState> = emptyMap(),
-    val updatingPermissionBotIds: Set<String> = emptySet(),
-    val loadingPermissionBotIds: Set<String> = emptySet(),
-    val permissionError: String? = null
-)
-
-data class BotGroupPermissionState(
-    val allowEditGroupInfo: Boolean = false,
-    val allowGagMember: Boolean = false,
-    val allowRemoveMember: Boolean = false,
-    val allowGroupTagManage: Boolean = false
-)
-
-enum class BotPermissionField {
-    EditGroupInfo,
-    GagMember,
-    RemoveMember,
-    GroupTagManage
-}
-
-private fun Boolean.toApiValue(): Int = if (this) 1 else 0
-
-private fun com.yhchat.canary.data.api.BotGroupPermissionData.toUiState(): BotGroupPermissionState {
-    return BotGroupPermissionState(
-        allowEditGroupInfo = allowEditGroupInfo == 1,
-        allowGagMember = allowGagMember == 1,
-        allowRemoveMember = allowRemoveMember == 1,
-        allowGroupTagManage = allowGroupTagManage == 1
-    )
 }

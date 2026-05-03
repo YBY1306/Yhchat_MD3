@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.bot
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
@@ -30,16 +29,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.ui.components.ReportDialog
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import yh_bot.Bot
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
@@ -47,12 +40,6 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.yhchat.canary.data.local.AppDatabase
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.UserRepository
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.model.BotInfo
-import com.yhchat.canary.ui.bot.BotDetailViewModel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -132,6 +119,7 @@ class BotDetailActivity : BaseActivity() {
         // 加载数据
         viewModel.loadBotDetail(botId)
         viewModel.loadBoardInfo(botId, chatType)
+        viewModel.loadInteractionState(botId)
     }
 }
 
@@ -154,33 +142,20 @@ private fun BotDetailScreen(
     var showBotInfoDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
-    var isInAddressBook by remember { mutableStateOf(false) }
-    var isCheckingAddressBook by remember { mutableStateOf(true) }
-    var isAddingBot by remember { mutableStateOf(false) }
-    
-    var isNoNotify by remember { mutableStateOf(false) }
-    var isSettingNoNotify by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    
-    // 初始化免打扰状态
-    LaunchedEffect(botId) {
-        val cachedConversation = CacheRepository(context)
-            .getCachedConversationsSync()
-            .firstOrNull { it.chatId == botId && it.chatType == 3 }
-        isNoNotify = cachedConversation?.doNotDisturb == 1
-        val friendRepository = RepositoryFactory.getFriendRepository(context)
-        friendRepository.getAddressBookList().fold(
-            onSuccess = { addressBook ->
-                isInAddressBook = addressBook.dataList.any { group ->
-                    group.dataList.any { item -> item.chatId == botId }
-                }
-                isCheckingAddressBook = false
-            },
-            onFailure = {
-                isInAddressBook = false
-                isCheckingAddressBook = false
-            }
-        )
+
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeActionMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.deleteSuccess) {
+        if (uiState.deleteSuccess) {
+            onBackClick()
+            viewModel.consumeDeleteSuccess()
+        }
     }
 
     Scaffold(
@@ -246,7 +221,11 @@ private fun BotDetailScreen(
                             textAlign = TextAlign.Center
                         )
                         Button(
-                            onClick = { viewModel.loadBotDetail(botId) }
+                            onClick = {
+                                viewModel.loadBotDetail(botId)
+                                viewModel.loadBoardInfo(botId, chatType)
+                                viewModel.loadInteractionState(botId)
+                            }
                         ) {
                             Text("重试")
                         }
@@ -260,38 +239,19 @@ private fun BotDetailScreen(
                     isBoardLoading = uiState.isBoardLoading,
                     modifier = Modifier.padding(paddingValues),
                     listState = listState,
-                    isInAddressBook = isInAddressBook,
-                    isCheckingAddressBook = isCheckingAddressBook,
-                    isAddingBot = isAddingBot,
+                    isInAddressBook = uiState.isInAddressBook,
+                    isCheckingAddressBook = uiState.isCheckingAddressBook,
+                    isAddingBot = uiState.isAddingBot,
                     onPrimaryAction = {
-                        if (isInAddressBook) {
+                        if (uiState.isInAddressBook) {
                             val intent = Intent(context, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
                                 putExtra("chatId", botId)
                                 putExtra("chatType", 3)
                                 putExtra("chatName", uiState.botInfo?.data?.name ?: botName)
                             }
                             context.startActivity(intent)
-                        } else if (!isAddingBot) {
-                            isAddingBot = true
-                            CoroutineScope(Dispatchers.Main).launch {
-                                val friendRepository = RepositoryFactory.getFriendRepository(context)
-                                val tokenRepository = RepositoryFactory.getTokenRepository(context)
-                                val localToken = tokenRepository.getTokenSync() ?: ""
-                                friendRepository.applyFriend(
-                                    token = localToken,
-                                    chatId = botId,
-                                    chatType = 3,
-                                    remark = "添加机器人"
-                                ).let { result ->
-                                    if (result.code == 1) {
-                                        isInAddressBook = true
-                                        Toast.makeText(context, "已添加机器人", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "添加机器人失败: ${result.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                                isAddingBot = false
-                            }
+                        } else {
+                            viewModel.addBot(botId)
                         }
                     },
                     onShowInfo = { showBotInfoDialog = true },
@@ -397,47 +357,26 @@ private fun BotDetailScreen(
                 ListItem(
                     headlineContent = { Text("免打扰") },
                     supportingContent = {
-                        Text(if (isNoNotify) "已开启" else "未开启")
+                        Text(if (uiState.isNoNotify) "已开启" else "未开启")
                     },
                     leadingContent = {
                         Icon(
-                            imageVector = if (isNoNotify) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                            imageVector = if (uiState.isNoNotify) Icons.Default.NotificationsOff else Icons.Default.Notifications,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     trailingContent = {
-                        if (isSettingNoNotify) {
+                        if (uiState.isSettingNoNotify) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
                             Switch(
-                                checked = isNoNotify,
+                                checked = uiState.isNoNotify,
                                 onCheckedChange = { checked ->
-                                    if (isSettingNoNotify) return@Switch
-                                    isNoNotify = checked
-                                    isSettingNoNotify = true
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        val friendRepository = RepositoryFactory.getFriendRepository(context)
-                                        friendRepository.setNoNotify(
-                                            chatId = botId,
-                                            noNotify = if (checked) 1 else 0
-                                        ).fold(
-                                            onSuccess = {
-                                                CacheRepository(context).updateConversationDoNotDisturb(
-                                                    chatId = botId,
-                                                    doNotDisturb = if (checked) 1 else 0
-                                                )
-                                                Toast.makeText(context, "设置成功", Toast.LENGTH_SHORT).show()
-                                            },
-                                            onFailure = { error ->
-                                                isNoNotify = !checked
-                                                Toast.makeText(context, "设置失败：${error.message}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        )
-                                        isSettingNoNotify = false
-                                    }
+                                    if (uiState.isSettingNoNotify) return@Switch
+                                    viewModel.setNoNotify(botId, checked)
                                 },
-                                enabled = !isSettingNoNotify
+                                enabled = !uiState.isSettingNoNotify
                             )
                         }
                     },
@@ -480,27 +419,7 @@ private fun BotDetailScreen(
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        // 调用删除机器人API
-                        val db = com.yhchat.canary.data.local.AppDatabase.getDatabase(context)
-                        val tokenRepository = com.yhchat.canary.data.repository.TokenRepository(db.userTokenDao(), context)
-                        val userRepository = com.yhchat.canary.data.repository.UserRepository(
-                            com.yhchat.canary.data.api.ApiClient.apiService,
-                            tokenRepository
-                        )
-                        CoroutineScope(Dispatchers.Main).launch {
-                            userRepository.deleteFriend(botId, 3).fold(
-                                onSuccess = {
-                                    Toast.makeText(context, "已删除机器人", Toast.LENGTH_SHORT).show()
-                                    // 返回上一页
-                                    if (context is android.app.Activity) {
-                                        context.finish()
-                                    }
-                                },
-                                onFailure = { exception: Throwable ->
-                                    Toast.makeText(context, "删除机器人失败: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }
+                        viewModel.deleteBot(botId)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error

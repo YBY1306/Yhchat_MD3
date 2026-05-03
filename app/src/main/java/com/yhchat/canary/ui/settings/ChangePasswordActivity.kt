@@ -22,15 +22,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.yhchat.canary.data.repository.UserRepository
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.model.ChangePasswordRequest
-import com.yhchat.canary.data.model.CaptchaData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import com.yhchat.canary.data.di.RepositoryFactory
-import kotlinx.coroutines.launch
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -142,107 +137,21 @@ fun ChangePasswordScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { 
-        val userRepo: UserRepository = RepositoryFactory.getUserRepository(context)
-        val tokenRepo: TokenRepository = RepositoryFactory.getTokenRepository(context)
-        userRepo.setTokenRepository(tokenRepo)
-        userRepo
-    }
-    val scope = rememberCoroutineScope()
-    
-    var email by remember { mutableStateOf(userEmail) }
-    var captchaCode by remember { mutableStateOf("") }
-    var captchaId by remember { mutableStateOf("") }
-    var captchaImage by remember { mutableStateOf<String?>(null) }
-    var emailVerificationCode by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    val viewModel: ChangePasswordViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return ChangePasswordViewModel(context) as T
+            }
+        }
+    )
+    val uiState by viewModel.uiState.collectAsState()
+
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var success by remember { mutableStateOf(false) }
-    
-    // 获取验证码  
-    fun getCaptcha() {
-        scope.launch {
-            isLoading = true
-            error = null
-            repository.getCaptcha()
-                .onSuccess { captchaData: CaptchaData ->
-                    captchaImage = captchaData.b64s
-                    captchaId = captchaData.id
-                }
-                .onFailure { e: Throwable ->
-                    error = e.message ?: "获取验证码失败"
-                }
-            isLoading = false
-        }
-    }
-    
-    // 发送邮箱验证码
-    fun sendEmailVerificationCode() {
-        if (captchaCode.isEmpty()) {
-            error = "请输入图片验证码"
-            return
-        }
-        
-        scope.launch {
-            isLoading = true
-            error = null
-            repository.getEmailVerificationCode(email, captchaCode, captchaId)
-                .onSuccess { response: Map<String, Any> ->
-                    val code = response["code"] as? Int
-                    if (code == 1) {
-                        error = "验证码已发送到邮箱，请查收"
-                    } else {
-                        error = response["msg"] as? String ?: "发送验证码失败"
-                    }
-                }
-                .onFailure { e: Throwable ->
-                    error = e.message ?: "发送验证码失败"
-                }
-            isLoading = false
-        }
-    }
-    
-    // 更改密码
-    fun changePassword() {
-        if (emailVerificationCode.isEmpty()) {
-            error = "请输入邮箱验证码"
-            return
-        }
-        if (newPassword.isEmpty()) {
-            error = "请输入新密码"
-            return
-        }
-        if (newPassword != confirmPassword) {
-            error = "两次输入的密码不一样"
-            return
-        }
-        
-        scope.launch {
-            isLoading = true
-            error = null
-            repository.changePassword(ChangePasswordRequest(email, emailVerificationCode, newPassword))
-                .onSuccess { response: Map<String, Any> ->
-                    val code = response["code"] as? Int
-                    if (code == 1) {
-                        success = true
-                    } else {
-                        error = response["msg"] as? String ?: "更改密码失败"
-                    }
-                }
-                .onFailure { e: Throwable ->
-                    error = e.message ?: "更改密码失败"
-                }
-            isLoading = false
-        }
-    }
-    
-    // 自动获取验证码
-    LaunchedEffect(Unit) {
-        getCaptcha()
+
+    LaunchedEffect(userEmail) {
+        viewModel.initialize(userEmail)
     }
     
     Column(
@@ -269,8 +178,8 @@ fun ChangePasswordScreen(
         ) {
             // 邮箱输入
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = uiState.email,
+                onValueChange = { },
                 label = { Text("邮箱") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = false // 默认邮箱不可编辑
@@ -299,7 +208,7 @@ fun ChangePasswordScreen(
                             .clip(RoundedCornerShape(8.dp)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        if (isLoading) {
+                        if (uiState.isLoading) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -309,10 +218,10 @@ fun ChangePasswordScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                        } else if (captchaImage != null) {
+                        } else if (uiState.captchaImage != null) {
                             CaptchaImage(
-                                captchaImage = captchaImage,
-                                onRefresh = { getCaptcha() }
+                                captchaImage = uiState.captchaImage,
+                                onRefresh = { viewModel.getCaptcha() }
                             )
                         } else {
                             Box(
@@ -331,15 +240,15 @@ fun ChangePasswordScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedTextField(
-                            value = captchaCode,
-                            onValueChange = { captchaCode = it },
+                            value = uiState.captchaCode,
+                            onValueChange = { viewModel.updateCaptchaCode(it) },
                             label = { Text("请输入验证码") },
                             modifier = Modifier.weight(1f)
                         )
                         
                         Button(
-                            onClick = { getCaptcha() },
-                            enabled = !isLoading
+                            onClick = { viewModel.getCaptcha() },
+                            enabled = !uiState.isLoading
                         ) {
                             Text("刷新")
                         }
@@ -348,9 +257,9 @@ fun ChangePasswordScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Button(
-                        onClick = { sendEmailVerificationCode() },
+                        onClick = { viewModel.sendEmailVerificationCode() },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading && captchaCode.isNotEmpty()
+                        enabled = !uiState.isLoading && uiState.captchaCode.isNotEmpty()
                     ) {
                         Text("发送邮箱验证码")
                     }
@@ -359,16 +268,16 @@ fun ChangePasswordScreen(
             
             // 邮箱验证码输入
             OutlinedTextField(
-                value = emailVerificationCode,
-                onValueChange = { emailVerificationCode = it },
+                value = uiState.emailVerificationCode,
+                onValueChange = { viewModel.updateEmailVerificationCode(it) },
                 label = { Text("邮箱验证") },
                 modifier = Modifier.fillMaxWidth()
             )
             
             // 新密码输入            
             OutlinedTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
+                value = uiState.newPassword,
+                onValueChange = { viewModel.updateNewPassword(it) },
                 label = { Text("新密码") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
@@ -384,8 +293,8 @@ fun ChangePasswordScreen(
             
             // 确认密码输入
             OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
+                value = uiState.confirmPassword,
+                onValueChange = { viewModel.updateConfirmPassword(it) },
                 label = { Text("确认密码") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
@@ -400,13 +309,13 @@ fun ChangePasswordScreen(
             )
             
             // 错误信息
-            if (error != null) {
+            if (uiState.message != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
                     Text(
-                        text = error!!,
+                        text = uiState.message!!,
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -415,11 +324,14 @@ fun ChangePasswordScreen(
             
             // 更改密码按钮
             Button(
-                onClick = { changePassword() },
+                onClick = { viewModel.changePassword() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading && emailVerificationCode.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()
+                enabled = !uiState.isLoading &&
+                    uiState.emailVerificationCode.isNotEmpty() &&
+                    uiState.newPassword.isNotEmpty() &&
+                    uiState.confirmPassword.isNotEmpty()
             ) {
-                if (isLoading) {
+                if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         color = MaterialTheme.colorScheme.onPrimary
@@ -432,7 +344,7 @@ fun ChangePasswordScreen(
     }
     
     // 成功
-    if (success) {
+    if (uiState.success) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("更改成功") },
@@ -440,7 +352,7 @@ fun ChangePasswordScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        success = false
+                        viewModel.consumeSuccess()
                         onBackClick()
                     }
                 ) {

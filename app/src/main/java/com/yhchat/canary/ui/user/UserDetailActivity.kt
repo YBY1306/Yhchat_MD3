@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.compose.foundation.background
@@ -49,29 +48,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.yhchat.canary.data.api.ApiClient
-import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.model.MedalInfo
 import com.yhchat.canary.data.model.ProfileInfo
 import com.yhchat.canary.data.model.RemarkInfo
 import com.yhchat.canary.data.model.UserDetail
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.UserRepository
-import com.yhchat.canary.data.repository.CommunityRepository
-import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.components.ReportDialog
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
-import yh_user.User
 
 /**
  * 用户详情Activity
@@ -113,17 +102,6 @@ class UserDetailActivity : BaseActivity() {
     }
 }
 
-/**
- * 用户详情数据状态
- */
-data class UserDetailUiState(
-    val isLoading: Boolean = true,
-    val error: String? = null,
-    val userDetail: UserDetail? = null,
-    val createdBoards: List<com.yhchat.canary.data.model.BoardsByCreateItem> = emptyList(),
-    val isLoadingBoards: Boolean = false
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDetailScreen(
@@ -135,21 +113,22 @@ fun UserDetailScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val activity = context as? Activity
-    var uiState by remember { mutableStateOf(UserDetailUiState()) }
+    val viewModel: UserDetailViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return UserDetailViewModel(context) as T
+            }
+        }
+    )
+    val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     var showAddFriendDialog by remember { mutableStateOf(false) }
     var showUserInfoDialog by remember { mutableStateOf(false) }
     var addFriendRemark by remember { mutableStateOf("") }
-    var isAddingFriend by remember { mutableStateOf(false) }
-    var isInAddressBook by remember { mutableStateOf(false) }
-    var isCheckingAddressBook by remember { mutableStateOf(true) }
-    var token by remember { mutableStateOf("") }
 
-    var showMemberMenu by remember { mutableStateOf(false) }
     var showGagMenu by remember { mutableStateOf(false) }
-    var isProcessingMemberAction by remember { mutableStateOf(false) }
-    var targetUserPermission by remember { mutableStateOf(0) }
 
     var showMoreSheet by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -157,9 +136,6 @@ fun UserDetailScreen(
     var showShareDialog by remember { mutableStateOf(false) }
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf("") }
-
-    var isNoNotify by remember { mutableStateOf(false) }
-    var isSettingNoNotify by remember { mutableStateOf(false) }
 
     val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
     
@@ -185,102 +161,21 @@ fun UserDetailScreen(
         }
     }
     
-    // 加载用户详情
-    LaunchedEffect(userId) {
-        uiState = uiState.copy(isLoading = true, error = null)
-        
-        try {
-            val db = AppDatabase.getDatabase(context)
-            val tokenRepository = TokenRepository(db.userTokenDao(), context)
-            val userRepository = UserRepository(ApiClient.apiService, tokenRepository)
-            val communityRepository = CommunityRepository(ApiClient.apiService)
-            val friendRepository = RepositoryFactory.getFriendRepository(context)
-            val groupRepository = RepositoryFactory.getGroupRepository(context)
+    LaunchedEffect(userId, groupId) {
+        viewModel.load(userId, groupId)
+    }
 
-            val localToken = tokenRepository.getTokenSync() ?: ""
-            token = localToken
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeActionMessage()
+        }
+    }
 
-            val cachedConversation = CacheRepository(context)
-                .getCachedConversationsSync()
-                .firstOrNull { it.chatId == userId && it.chatType == 1 }
-            isNoNotify = cachedConversation?.doNotDisturb == 1
-
-            isCheckingAddressBook = true
-            friendRepository.getAddressBookList().fold(
-                onSuccess = { addressBook ->
-                    val allIds = addressBook.dataList.flatMap { it.dataList }.map { it.chatId }.toSet()
-                    isInAddressBook = allIds.contains(userId)
-                    isCheckingAddressBook = false
-                },
-                onFailure = {
-                    isInAddressBook = false
-                    isCheckingAddressBook = false
-                }
-            )
-            
-            // 构建ProtoBuf请求
-            val requestProto = User.get_user_send.newBuilder()
-                .setId(userId)
-                .build()
-            
-            val requestBody = requestProto.toByteArray()
-                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
-            
-            userRepository.getUserDetail(localToken, requestBody).fold(
-                onSuccess = { userDetail ->
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        userDetail = userDetail
-                    )
-                },
-                onFailure = { throwable ->
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        error = throwable.message ?: "加载失败"
-                    )
-                }
-            )
-
-            uiState = uiState.copy(isLoadingBoards = true)
-            communityRepository.listBoardsByCreate(token = localToken, userId = userId).fold(
-                onSuccess = { resp ->
-                    uiState = uiState.copy(
-                        isLoadingBoards = false,
-                        createdBoards = resp.data.boards
-                    )
-                },
-                onFailure = { throwable ->
-                    uiState = uiState.copy(
-                        isLoadingBoards = false
-                    )
-                }
-            )
-
-            if (groupId != null) {
-                var page = 1
-                var hasMore = true
-                val allMembers = mutableListOf<com.yhchat.canary.data.model.GroupMemberInfo>()
-
-                while (hasMore) {
-                    groupRepository.getGroupMembers(groupId, page = page, size = 50).fold(
-                        onSuccess = { members ->
-                            allMembers.addAll(members)
-                            hasMore = members.size >= 50
-                            page++
-                        },
-                        onFailure = {
-                            hasMore = false
-                        }
-                    )
-                }
-
-                targetUserPermission = allMembers.find { it.userId == userId }?.permissionLevel ?: 0
-            }
-        } catch (e: Exception) {
-            uiState = uiState.copy(
-                isLoading = false,
-                error = e.message ?: "加载失败"
-            )
+    LaunchedEffect(uiState.friendDeleted) {
+        if (uiState.friendDeleted) {
+            viewModel.consumeFriendDeleted()
+            onBackClick()
         }
     }
     
@@ -342,12 +237,12 @@ fun UserDetailScreen(
                         userDetail = uiState.userDetail!!,
                         createdBoards = uiState.createdBoards,
                         isLoadingBoards = uiState.isLoadingBoards,
-                        token = token,
+                        token = uiState.token,
                         listState = listState,
-                        isInAddressBook = isInAddressBook,
-                        isCheckingAddressBook = isCheckingAddressBook,
+                        isInAddressBook = uiState.isInAddressBook,
+                        isCheckingAddressBook = uiState.isCheckingAddressBook,
                         onPrimaryAction = {
-                            if (isInAddressBook) {
+                            if (uiState.isInAddressBook) {
                                 val intent = Intent(context, ChatActivity::class.java).apply {
                                     putExtra("chatId", userId)
                                     putExtra("chatType", 1)
@@ -387,7 +282,7 @@ fun UserDetailScreen(
         
         if (showAddFriendDialog) {
             AlertDialog(
-                onDismissRequest = { if (!isAddingFriend) showAddFriendDialog = false },
+                onDismissRequest = { if (!uiState.isAddingFriend) showAddFriendDialog = false },
                 title = { Text("添加好友") },
                 text = {
                     Column {
@@ -398,7 +293,7 @@ fun UserDetailScreen(
                             onValueChange = { addFriendRemark = it },
                             label = { Text("申请备注（可选）") },
                             singleLine = true,
-                            enabled = !isAddingFriend,
+                            enabled = !uiState.isAddingFriend,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -406,26 +301,14 @@ fun UserDetailScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            if (isAddingFriend) return@Button
-                            isAddingFriend = true
-                            CoroutineScope(Dispatchers.Main).launch {
-                                val friendRepository = RepositoryFactory.getFriendRepository(context)
-                                val tokenRepository = RepositoryFactory.getTokenRepository(context)
-                                val localToken = tokenRepository.getTokenSync() ?: ""
-                                friendRepository.applyFriend(
-                                    token = localToken,
-                                    chatId = userId,
-                                    chatType = 1,
-                                    remark = addFriendRemark
-                                )
-                                isAddingFriend = false
-                                showAddFriendDialog = false
-                                Toast.makeText(context, "好友申请已发送", Toast.LENGTH_SHORT).show()
-                            }
+                            if (uiState.isAddingFriend) return@Button
+                            viewModel.sendFriendRequest(userId, addFriendRemark)
+                            showAddFriendDialog = false
+                            addFriendRemark = ""
                         },
-                        enabled = !isAddingFriend
+                        enabled = !uiState.isAddingFriend
                     ) {
-                        if (isAddingFriend) {
+                        if (uiState.isAddingFriend) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
                             Text("添加")
@@ -433,7 +316,7 @@ fun UserDetailScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddFriendDialog = false }, enabled = !isAddingFriend) {
+                    TextButton(onClick = { showAddFriendDialog = false }, enabled = !uiState.isAddingFriend) {
                         Text("取消")
                     }
                 }
@@ -443,19 +326,14 @@ fun UserDetailScreen(
         if (showGagMenu && groupId != null) {
             GagMemberDialog(
                 userName = uiState.userDetail?.name ?: userName,
-                isLoading = isProcessingMemberAction,
+                isLoading = uiState.isProcessingMemberAction,
                 onConfirm = { gagTime ->
-                    if (!isProcessingMemberAction) {
-                        isProcessingMemberAction = true
-                        CoroutineScope(Dispatchers.Main).launch {
-                            val groupRepository = RepositoryFactory.getGroupRepository(context)
-                            groupRepository.gagMember(groupId, userId, gagTime)
-                            isProcessingMemberAction = false
-                            showGagMenu = false
-                        }
+                    if (!uiState.isProcessingMemberAction) {
+                        viewModel.gagMember(groupId, userId, gagTime)
+                        showGagMenu = false
                     }
                 },
-                onDismiss = { if (!isProcessingMemberAction) showGagMenu = false }
+                onDismiss = { if (!uiState.isProcessingMemberAction) showGagMenu = false }
             )
         }
 
@@ -515,47 +393,26 @@ fun UserDetailScreen(
                     ListItem(
                         headlineContent = { Text("免打扰") },
                         supportingContent = {
-                            Text(if (isNoNotify) "已开启" else "未开启")
+                            Text(if (uiState.isNoNotify) "已开启" else "未开启")
                         },
                         leadingContent = {
                             Icon(
-                                imageVector = if (isNoNotify) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                                imageVector = if (uiState.isNoNotify) Icons.Default.NotificationsOff else Icons.Default.Notifications,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         trailingContent = {
-                            if (isSettingNoNotify) {
+                            if (uiState.isSettingNoNotify) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             } else {
                                 Switch(
-                                    checked = isNoNotify,
+                                    checked = uiState.isNoNotify,
                                     onCheckedChange = { checked ->
-                                        if (isSettingNoNotify) return@Switch
-                                        isNoNotify = checked
-                                        isSettingNoNotify = true
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val friendRepository = RepositoryFactory.getFriendRepository(context)
-                                            friendRepository.setNoNotify(
-                                                chatId = userId,
-                                                noNotify = if (checked) 1 else 0
-                                            ).fold(
-                                                onSuccess = {
-                                                    CacheRepository(context).updateConversationDoNotDisturb(
-                                                        chatId = userId,
-                                                        doNotDisturb = if (checked) 1 else 0
-                                                    )
-                                                    Toast.makeText(context, "设置成功", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onFailure = { error ->
-                                                    isNoNotify = !checked
-                                                    Toast.makeText(context, "设置失败：${error.message}", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                            isSettingNoNotify = false
-                                        }
+                                        if (uiState.isSettingNoNotify) return@Switch
+                                        viewModel.setNoNotify(userId, checked)
                                     },
-                                    enabled = !isSettingNoNotify
+                                    enabled = !uiState.isSettingNoNotify
                                 )
                             }
                         },
@@ -567,7 +424,7 @@ fun UserDetailScreen(
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-                    if (!isCheckingAddressBook && isInAddressBook) {
+                    if (!uiState.isCheckingAddressBook && uiState.isInAddressBook) {
                         SheetActionItem(
                             icon = Icons.Default.Delete,
                             title = "删除好友",
@@ -583,37 +440,27 @@ fun UserDetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         SheetSectionHeader(title = "群聊管理")
 
-                        if (targetUserPermission == 2) {
+                        if (uiState.targetUserPermission == 2) {
                             SheetActionItem(
                                 icon = Icons.Default.AdminPanelSettings,
                                 title = "卸任管理员",
-                                enabled = !isProcessingMemberAction,
+                                enabled = !uiState.isProcessingMemberAction,
                                 onClick = {
                                     showMoreSheet = false
-                                    if (!isProcessingMemberAction) {
-                                        isProcessingMemberAction = true
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                            groupRepository.setMemberRole(groupId, userId, 0)
-                                            isProcessingMemberAction = false
-                                        }
+                                    if (!uiState.isProcessingMemberAction) {
+                                        viewModel.setMemberRole(groupId, userId, 0)
                                     }
                                 }
                             )
-                        } else if (targetUserPermission == 0) {
+                        } else if (uiState.targetUserPermission == 0) {
                             SheetActionItem(
                                 icon = Icons.Default.AdminPanelSettings,
                                 title = "设为管理员",
-                                enabled = !isProcessingMemberAction,
+                                enabled = !uiState.isProcessingMemberAction,
                                 onClick = {
                                     showMoreSheet = false
-                                    if (!isProcessingMemberAction) {
-                                        isProcessingMemberAction = true
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                            groupRepository.setMemberRole(groupId, userId, 2)
-                                            isProcessingMemberAction = false
-                                        }
+                                    if (!uiState.isProcessingMemberAction) {
+                                        viewModel.setMemberRole(groupId, userId, 2)
                                     }
                                 }
                             )
@@ -622,24 +469,19 @@ fun UserDetailScreen(
                         SheetActionItem(
                             icon = Icons.Default.Delete,
                             title = "踢出群聊",
-                            enabled = !isProcessingMemberAction,
+                            enabled = !uiState.isProcessingMemberAction,
                             isDestructive = true,
                             onClick = {
                                 showMoreSheet = false
-                                if (!isProcessingMemberAction) {
-                                    isProcessingMemberAction = true
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        val groupRepository = RepositoryFactory.getGroupRepository(context)
-                                        groupRepository.removeMember(groupId, userId)
-                                        isProcessingMemberAction = false
-                                    }
+                                if (!uiState.isProcessingMemberAction) {
+                                    viewModel.removeMember(groupId, userId)
                                 }
                             }
                         )
                         SheetActionItem(
                             icon = Icons.Default.Block,
                             title = "禁言",
-                            enabled = !isProcessingMemberAction,
+                            enabled = !uiState.isProcessingMemberAction,
                             onClick = {
                                 showMoreSheet = false
                                 showGagMenu = true
@@ -669,18 +511,7 @@ fun UserDetailScreen(
                     Button(
                         onClick = {
                             showDeleteFriendDialog = false
-                            val userRepository = RepositoryFactory.getUserRepository(context)
-                            CoroutineScope(Dispatchers.Main).launch {
-                                userRepository.deleteFriend(userId, 1).fold(
-                                    onSuccess = {
-                                        Toast.makeText(context, "已删除好友", Toast.LENGTH_SHORT).show()
-                                        onBackClick()
-                                    },
-                                    onFailure = { exception: Throwable ->
-                                        Toast.makeText(context, "删除好友失败: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            }
+                            viewModel.deleteFriend(userId)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error

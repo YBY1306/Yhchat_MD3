@@ -404,7 +404,7 @@ private fun BotSettingsScreen(
                                         botId = botId,
                                         botName = botName,
                                         botToken = token,
-                                        wsUrl = wsSubscribeUrl
+                                        wsUrl = webHookUrl
                                     )
                                 },
                                 enabled = !isSavingWebhook && !isLoading

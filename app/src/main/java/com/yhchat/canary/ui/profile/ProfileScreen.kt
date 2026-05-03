@@ -694,6 +694,12 @@ private fun CoinMenuBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
+        val activity = context as? android.app.Activity
+        val sheetColor = MaterialTheme.colorScheme.surface
+        val darkIcons = sheetColor.luminance() > 0.5f
+        if (activity != null) {
+            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -847,6 +853,12 @@ private fun UserDataEditBottomSheet(
         },
         sheetState = sheetState
     ) {
+        val activity = LocalContext.current as? android.app.Activity
+        val sheetColor = MaterialTheme.colorScheme.surface
+        val darkIcons = sheetColor.luminance() > 0.5f
+        if (activity != null) {
+            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+        }
         val scrollState = rememberScrollState()
         val maxSheetHeight = (configuration.screenHeightDp.dp * 0.95f)
 
@@ -1716,6 +1728,12 @@ private fun InviteCodeMenuBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
+        val activity = context as? android.app.Activity
+        val sheetColor = MaterialTheme.colorScheme.surface
+        val darkIcons = sheetColor.luminance() > 0.5f
+        if (activity != null) {
+            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()

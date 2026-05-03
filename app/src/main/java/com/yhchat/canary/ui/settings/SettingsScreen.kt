@@ -388,6 +388,12 @@ private fun AccountSwitchBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
+        val activity = LocalContext.current as? android.app.Activity
+        val sheetColor = MaterialTheme.colorScheme.surface
+        val darkIcons = sheetColor.luminance() > 0.5f
+        if (activity != null) {
+            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()

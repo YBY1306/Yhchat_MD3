@@ -1428,6 +1428,12 @@ private fun RenderA2UiComponent(
                     onDismissRequest = { visible = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 ) {
+                    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+                    val sheetColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                    val darkIcons = androidx.compose.ui.graphics.luminance(sheetColor) > 0.5f
+                    if (activity != null) {
+                        com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -300,27 +300,6 @@ fun UserDetailScreen(
                     }
                 },
                 actions = {
-                    if (isCheckingAddressBook) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else if (isInAddressBook) {
-                        IconButton(
-                            onClick = {
-                                val intent = Intent(context, ChatActivity::class.java).apply {
-                                    putExtra("chatId", userId)
-                                    putExtra("chatType", 1)
-                                    putExtra("chatName", uiState.userDetail?.name ?: userName)
-                                }
-                                context.startActivity(intent)
-                            }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Chat, "发消息")
-                        }
-                    } else {
-                        IconButton(onClick = { showAddFriendDialog = true }) {
-                            Icon(Icons.Default.PersonAdd, "添加")
-                        }
-                    }
-
                     IconButton(onClick = { showMoreSheet = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }

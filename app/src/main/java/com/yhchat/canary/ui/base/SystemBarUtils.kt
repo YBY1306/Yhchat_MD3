@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 
@@ -65,6 +67,71 @@ object SystemBarUtils {
                         0,
                     android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                 )
+            }
+        }
+    }
+
+    @Composable
+    fun ApplyNavigationBarColor(activity: Activity, color: ComposeColor, darkIcons: Boolean) {
+        val isLightTheme = !isSystemInDarkTheme()
+
+        SideEffect {
+            activity.window.navigationBarColor = color.toArgb()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                @Suppress("DEPRECATION")
+                activity.window.decorView.systemUiVisibility = if (darkIcons) {
+                    activity.window.decorView.systemUiVisibility or
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                } else {
+                    activity.window.decorView.systemUiVisibility and
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                activity.window.isNavigationBarContrastEnforced = false
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                activity.window.insetsController?.setSystemBarsAppearance(
+                    if (darkIcons)
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                    else
+                        0,
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                )
+            }
+        }
+
+        DisposableEffect(color, darkIcons) {
+            onDispose {
+                activity.window.navigationBarColor = ComposeColor.Transparent.toArgb()
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    @Suppress("DEPRECATION")
+                    activity.window.decorView.systemUiVisibility = if (isLightTheme) {
+                        activity.window.decorView.systemUiVisibility or
+                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                    } else {
+                        activity.window.decorView.systemUiVisibility and
+                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                    }
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    activity.window.isNavigationBarContrastEnforced = false
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    activity.window.insetsController?.setSystemBarsAppearance(
+                        if (isLightTheme)
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                        else
+                            0,
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                    )
+                }
             }
         }
     }

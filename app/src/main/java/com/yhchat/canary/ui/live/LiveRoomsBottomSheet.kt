@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.live
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,12 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.LiveRoomItem
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.base.SystemBarUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,6 +62,12 @@ fun LiveRoomsBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = null
     ) {
+        val activity = context as? Activity
+        val sheetColor = MaterialTheme.colorScheme.surface
+        val darkIcons = sheetColor.luminance() > 0.5f
+        if (activity != null) {
+            SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()

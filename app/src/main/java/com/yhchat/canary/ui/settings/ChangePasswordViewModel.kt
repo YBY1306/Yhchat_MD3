@@ -160,8 +160,8 @@ class ChangePasswordViewModel(context: Context) : ViewModel() {
             userRepository.changePassword(
                 ChangePasswordRequest(
                     email = state.email,
-                    code = state.emailVerificationCode,
-                    passwd = state.newPassword
+                    captcha = state.emailVerificationCode,
+                    password = state.newPassword
                 )
             ).onSuccess { response: Map<String, Any> ->
                 val code = response["code"] as? Int

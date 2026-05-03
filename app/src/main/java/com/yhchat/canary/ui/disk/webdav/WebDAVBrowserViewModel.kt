@@ -9,6 +9,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.data.model.WebDAVFile
 import com.yhchat.canary.utils.RSAEncryptionUtil
+import com.yhchat.canary.utils.SardineWebDAVClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -139,39 +140,37 @@ class WebDAVBrowserViewModel : ViewModel() {
                 isLoadingFiles = true
             )
 
-            SardineWebDAVClient.listFiles(mountSetting, path).fold(
-                onSuccess = { files ->
-                    val updatedMountStates = _uiState.value.mountStates.toMutableMap()
-                    updatedMountStates[mountIndex] = MountState(
-                        files = files,
-                        currentPath = path,
-                        isLoading = false,
-                        error = null
-                    )
+            val result = SardineWebDAVClient.listFiles(mountSetting, path)
+            result.onSuccess { files ->
+                val updatedMountStates = _uiState.value.mountStates.toMutableMap()
+                updatedMountStates[mountIndex] = MountState(
+                    files = files,
+                    currentPath = path,
+                    isLoading = false,
+                    error = null
+                )
 
-                    _uiState.value = _uiState.value.copy(
-                        mountStates = updatedMountStates,
-                        isLoadingFiles = false,
-                        files = files,
-                        currentPath = path
-                    )
-                },
-                onFailure = { error ->
-                    val updatedMountStates = _uiState.value.mountStates.toMutableMap()
-                    updatedMountStates[mountIndex] = updatedMountStates[mountIndex]?.copy(
-                        isLoading = false,
-                        error = "加载文件失败: ${error.message}"
-                    ) ?: MountState(
-                        isLoading = false,
-                        error = "加载文件失败: ${error.message}"
-                    )
+                _uiState.value = _uiState.value.copy(
+                    mountStates = updatedMountStates,
+                    isLoadingFiles = false,
+                    files = files,
+                    currentPath = path
+                )
+            }.onFailure { error ->
+                val updatedMountStates = _uiState.value.mountStates.toMutableMap()
+                updatedMountStates[mountIndex] = updatedMountStates[mountIndex]?.copy(
+                    isLoading = false,
+                    error = "加载文件失败: ${error.message}"
+                ) ?: MountState(
+                    isLoading = false,
+                    error = "加载文件失败: ${error.message}"
+                )
 
-                    _uiState.value = _uiState.value.copy(
-                        mountStates = updatedMountStates,
-                        isLoadingFiles = false
-                    )
-                }
-            )
+                _uiState.value = _uiState.value.copy(
+                    mountStates = updatedMountStates,
+                    isLoadingFiles = false
+                )
+            }
         }
     }
 

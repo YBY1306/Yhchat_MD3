@@ -219,8 +219,7 @@ class MainActivity : BaseActivity() {
                         pendingLoginToken = loginToken
                         userId = loginUserId
                         mainViewModel.onLoginSuccess(loginToken, loginUserId)
-                    },
-                    tokenRepository = tokenRepository
+                    }
                 )
             }
             currentScreen == "chat" -> {

@@ -404,7 +404,7 @@ private fun BotSettingsScreen(
                                         botId = botId,
                                         botName = botName,
                                         botToken = token,
-                                        wsUrl = webHookUrl
+                                        wsUrl = wsSubscribeUrl
                                     )
                                 },
                                 enabled = !isSavingWebhook && !isLoading
@@ -421,7 +421,7 @@ private fun BotSettingsScreen(
                                         isSavingWebhook = true
                                         error = null
                                         val subscribeType = if (callbackMode == 1) 1 else 0
-                                        val linkToSave = if (callbackMode == 1) wsSubscribeUrl else webhookUrl
+                                        val linkToSave = if (callbackMode == 1) webhookUrl else webhookUrl
                                         runCatching {
                                             api.editBotSubscribedLink(
                                                 userToken,

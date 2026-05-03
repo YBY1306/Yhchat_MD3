@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.luminance
 import kotlin.math.sqrt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -1430,7 +1431,7 @@ private fun RenderA2UiComponent(
                 ) {
                     val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
                     val sheetColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                    val darkIcons = androidx.compose.ui.graphics.luminance(sheetColor) > 0.5f
+                    val darkIcons = sheetColor.luminance() > 0.5f
                     if (activity != null) {
                         com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
                     }

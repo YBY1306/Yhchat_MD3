@@ -1,6 +1,8 @@
 package com.yhchat.canary.data.model
 
+import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 
 /**
  * 用户详情信息
@@ -38,8 +40,35 @@ data class MedalInfo(
 data class RemarkInfo(
     val remarkName: String,
     val phoneNumber: String,
-    val extraRemark: String
+    val extraRemark: String,
+    val extraRemarks: List<RemarkExtraEntry> = emptyList()
 )
+
+data class RemarkExtraEntry(
+    val key: String,
+    val value: String
+)
+
+object RemarkInfoJsonAdapter {
+    private val gson = Gson()
+    private val listType = object : TypeToken<List<RemarkExtraEntry>>() {}.type
+
+    fun parse(extra: String): List<RemarkExtraEntry> {
+        if (extra.isBlank()) return emptyList()
+        return try {
+            gson.fromJson<List<RemarkExtraEntry>>(extra, listType)
+                ?.filter { it.key.isNotBlank() || it.value.isNotBlank() }
+                ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun encode(entries: List<RemarkExtraEntry>): String {
+        if (entries.isEmpty()) return ""
+        return gson.toJson(entries)
+    }
+}
 
 /**
  * 个人资料信息

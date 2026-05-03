@@ -94,24 +94,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
-import android.view.KeyEvent
-import android.util.Log
 
 /**
  * 文章详情Activity
- * 支持 MIUI 长截屏功能
  */
 class PostDetailActivity : BaseActivity() {
-    
-    companion object {
-        private const val TAG = "PostDetailActivity"
-        // MIUI 长截屏相关常量
-        private const val MIUI_SCREENSHOT_ACTION = "miui.intent.action.SCREENSHOT"
-        private const val MIUI_LONG_SCREENSHOT_ACTION = "miui.intent.action.LONG_SCREENSHOT"
-        private const val EXTRA_SCREENSHOT_TYPE = "screenshot_type"
-        private const val SCREENSHOT_TYPE_LONG = 2
-    }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -151,109 +139,6 @@ class PostDetailActivity : BaseActivity() {
                 )
             }
         }
-    }
-    
-    /**
-     * 处理 MIUI 长截屏
-     * 当用户按下音量下键时，小米截图应用会触发长截屏
-     */
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // 处理音量下键 - MIUI 长截屏快捷键
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && event != null) {
-            // 检查是否是长按（长截屏通常需要长按）
-            if (event.repeatCount == 0) {
-                // 仅在符合 MIUI 长截屏条件时拦截按键
-                if (canTriggerMiuiLongScreenshot()) {
-                    triggerMiuiLongScreenshot()
-                    return true
-                }
-            }
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-    
-    /**
-     * 触发 MIUI 长截屏功能
-     * 通过 Intent 与小米截图应用通信
-     */
-    private fun triggerMiuiLongScreenshot() {
-        try {
-            if (!canTriggerMiuiLongScreenshot()) {
-                return
-            }
-            // 方式1：使用 MIUI 长截屏 Intent
-            val intent = Intent().apply {
-                action = MIUI_LONG_SCREENSHOT_ACTION
-                putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
-                putExtra("window_token", window.decorView.windowToken?.toString().orEmpty())
-            }
-            
-            // 尝试启动小米截图应用的长截屏功能
-            if (intent.resolveActivity(packageManager) != null) {
-                try {
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    // 如果长截屏 Intent 失败，尝试备用方案
-                    triggerMiuiScreenshotFallback()
-                }
-            } else {
-                triggerMiuiScreenshotFallback()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to trigger MIUI long screenshot", e)
-        }
-    }
-    
-    /**
-     * MIUI 长截屏备用方案
-     * 使用标准的截屏 Intent
-     */
-    private fun triggerMiuiScreenshotFallback() {
-        try {
-            val intent = Intent().apply {
-                action = MIUI_SCREENSHOT_ACTION
-                putExtra(EXTRA_SCREENSHOT_TYPE, SCREENSHOT_TYPE_LONG)
-            }
-            if (intent.resolveActivity(packageManager) != null) {
-                startActivity(intent)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to trigger MIUI screenshot fallback", e)
-        }
-    }
-    
-    /**
-     * 按需求放开到所有小米系统设备:
-     * canLong = MIUI || HyperOS
-     */
-    private fun canTriggerMiuiLongScreenshot(): Boolean {
-        val isXiaomiRom = isMiuiOrHyperOs()
-        val canLongScreenshot = isXiaomiRom
-
-        Log.i(
-            TAG,
-            "can long screenshot values:$canLongScreenshot,$isXiaomiRom"
-        )
-        return canLongScreenshot
-    }
-
-    /**
-     * 检查是否为 MIUI 或 HyperOS
-     */
-    private fun isMiuiOrHyperOs(): Boolean {
-        val miuiVersion = getSystemProperty("ro.miui.ui.version.name")
-        val hyperOsName = getSystemProperty("ro.mi.os.version.name")
-        val hyperOsCode = getSystemProperty("ro.mi.os.version.code")
-        return miuiVersion.isNotEmpty() || hyperOsName.isNotEmpty() || hyperOsCode.isNotEmpty()
-    }
-
-    private fun getSystemProperty(key: String): String {
-        return runCatching {
-            val clazz = Class.forName("android.os.SystemProperties")
-            val method = clazz.getMethod("get", String::class.java)
-            method.invoke(null, key)?.toString().orEmpty()
-        }.getOrDefault("")
-    }
 }
 
 /**
@@ -1338,11 +1223,23 @@ fun PostDetailScreen(
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    
-                                    TextButton(
-                                        onClick = { showCommentInput = !showCommentInput }
-                                    ) {
-                                        Text("写评论")
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        TextButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                val clip = ClipData.newPlainText("帖子原文", post.content)
+                                                clipboard.setPrimaryClip(clip)
+                                                Toast.makeText(context, "原文已复制", Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Text("复制原文")
+                                        }
+                                        TextButton(
+                                            onClick = { showCommentInput = !showCommentInput }
+                                        ) {
+                                            Text("写评论")
+                                        }
                                     }
                                 }
                             }

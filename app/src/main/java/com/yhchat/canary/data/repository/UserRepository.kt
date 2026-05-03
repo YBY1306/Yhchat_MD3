@@ -8,7 +8,6 @@ import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.local.CachedProfileData
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
-// import com.google.protobuf.util.JsonFormat
 import yh_user.User as ProtoUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -75,6 +74,36 @@ class UserRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "从缓存加载用户资料失败", e)
             null
+        }
+    }
+
+    suspend fun saveUserRemarks(
+        friendId: String,
+        name: String,
+        phone: String,
+        others: List<RemarkExtraEntry>
+    ): Result<Unit> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("未登录"))
+            val request = SaveUserRemarkRequest(
+                friendId = friendId,
+                name = name,
+                phone = phone,
+                others = RemarkInfoJsonAdapter.encode(others)
+            )
+            val response = apiService.saveUserRemarks(token, request)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body?.message ?: "备注保存失败"))
+                }
+            } else {
+                Result.failure(Exception("备注保存失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
     
@@ -951,12 +980,6 @@ class UserRepository @Inject constructor(
     }
     
     /**
-     * 删除好友/群聊/机器人
-     */
-    /**
-     * 获取用户详细信息
-     */
-    /**
      * 获取用户详细信息
      */
     suspend fun getUserDetail(token: String, requestBody: RequestBody): Result<UserDetail> {
@@ -975,7 +998,8 @@ class UserRepository @Inject constructor(
                         RemarkInfo(
                             remarkName = data.remarkInfo.remarkName,
                             phoneNumber = data.remarkInfo.phoneNumber,
-                            extraRemark = data.remarkInfo.extraRemark
+                            extraRemark = data.remarkInfo.extraRemark,
+                            extraRemarks = RemarkInfoJsonAdapter.parse(data.remarkInfo.extraRemark)
                         )
                     } else null
                     

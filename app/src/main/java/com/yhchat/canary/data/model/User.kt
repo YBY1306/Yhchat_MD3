@@ -645,6 +645,17 @@ data class SaveUserDataRequest(
     val locationCode: String
 )
 
+data class SaveUserRemarkRequest(
+    @SerializedName("friendId")
+    val friendId: String,
+    @SerializedName("name")
+    val name: String,
+    @SerializedName("phone")
+    val phone: String,
+    @SerializedName("others")
+    val others: String
+)
+
 /**
  * 七牛云音频上传 token 响应
  */

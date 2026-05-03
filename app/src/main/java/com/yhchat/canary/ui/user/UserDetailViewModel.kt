@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BoardsByCreateItem
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.data.model.RemarkExtraEntry
+import com.yhchat.canary.data.model.RemarkInfo
+import com.yhchat.canary.data.model.RemarkInfoJsonAdapter
 import com.yhchat.canary.data.model.UserDetail
 import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.data.repository.CommunityRepository
@@ -47,8 +50,25 @@ data class UserDetailUiState(
     val showImageViewer: Boolean = false,
     val currentImageUrl: String = "",
     val actionMessage: String? = null,
-    val friendDeleted: Boolean = false
+    val friendDeleted: Boolean = false,
+    val remarkEditorConfig: RemarkEditorConfig? = null,
+    val isSavingRemark: Boolean = false
 )
+
+data class RemarkEditorConfig(
+    val mode: RemarkEditorMode,
+    val friendId: String,
+    val targetIndex: Int? = null,
+    val initialPrimary: String = "",
+    val initialKey: String = "",
+    val initialValue: String = ""
+)
+
+sealed class RemarkEditorMode {
+    object Name : RemarkEditorMode()
+    object Phone : RemarkEditorMode()
+    data class Other(val isNew: Boolean) : RemarkEditorMode()
+}
 
 class UserDetailViewModel(context: Context) : ViewModel() {
     private val appContext = context.applicationContext
@@ -144,6 +164,89 @@ class UserDetailViewModel(context: Context) : ViewModel() {
 
     fun dismissImageViewer() {
         _uiState.update { it.copy(showImageViewer = false, currentImageUrl = "") }
+    }
+
+    fun openNameEditor(friendId: String) {
+        val currentName = _uiState.value.userDetail?.remarkInfo?.remarkName.orEmpty()
+        _uiState.update {
+            it.copy(
+                remarkEditorConfig = RemarkEditorConfig(
+                    mode = RemarkEditorMode.Name,
+                    friendId = friendId,
+                    initialPrimary = currentName
+                )
+            )
+        }
+    }
+
+    fun openPhoneEditor(friendId: String) {
+        val currentPhone = _uiState.value.userDetail?.remarkInfo?.phoneNumber.orEmpty()
+        _uiState.update {
+            it.copy(
+                remarkEditorConfig = RemarkEditorConfig(
+                    mode = RemarkEditorMode.Phone,
+                    friendId = friendId,
+                    initialPrimary = currentPhone
+                )
+            )
+        }
+    }
+
+    fun openOtherRemarkEditor(friendId: String, index: Int?, key: String, value: String) {
+        _uiState.update {
+            it.copy(
+                remarkEditorConfig = RemarkEditorConfig(
+                    mode = RemarkEditorMode.Other(isNew = index == null),
+                    friendId = friendId,
+                    targetIndex = index,
+                    initialKey = key,
+                    initialValue = value
+                )
+            )
+        }
+    }
+
+    fun dismissRemarkEditor() {
+        _uiState.update { it.copy(remarkEditorConfig = null) }
+    }
+
+    fun saveRemark(
+        friendId: String,
+        remarkName: String,
+        phone: String,
+        others: List<RemarkExtraEntry>
+    ) {
+        if (_uiState.value.isSavingRemark) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingRemark = true) }
+            userRepository.saveUserRemarks(friendId, remarkName, phone, others).fold(
+                onSuccess = {
+                    val updatedRemark = RemarkInfo(
+                        remarkName = remarkName,
+                        phoneNumber = phone,
+                        extraRemark = RemarkInfoJsonAdapter.encode(others),
+                        extraRemarks = others
+                    )
+                    val updatedDetail = _uiState.value.userDetail?.copy(remarkInfo = updatedRemark)
+                    _uiState.update {
+                        it.copy(
+                            isSavingRemark = false,
+                            userDetail = updatedDetail,
+                            actionMessage = "备注已更新",
+                            remarkEditorConfig = null
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSavingRemark = false,
+                            actionMessage = error.message ?: "备注更新失败"
+                        )
+                    }
+                }
+            )
+        }
     }
 
     fun load(userId: String, groupId: String?) {

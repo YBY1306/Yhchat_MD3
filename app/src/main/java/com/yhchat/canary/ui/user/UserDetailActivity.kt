@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -54,6 +55,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.model.MedalInfo
 import com.yhchat.canary.data.model.ProfileInfo
+import com.yhchat.canary.data.model.RemarkExtraEntry
 import com.yhchat.canary.data.model.RemarkInfo
 import com.yhchat.canary.data.model.UserDetail
 import com.yhchat.canary.ui.chat.ChatActivity
@@ -108,6 +110,129 @@ class UserDetailActivity : BaseActivity() {
             }
         }
     }
+}
+
+@Composable
+private fun RemarkEditorDialog(
+    config: RemarkEditorConfig,
+    remarkInfo: RemarkInfo,
+    isSaving: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String, String, List<RemarkExtraEntry>) -> Unit
+) {
+    val mode = config.mode
+    var primaryValue by remember(config) { mutableStateOf(config.initialPrimary) }
+    var otherKey by remember(config) { mutableStateOf(config.initialKey) }
+    var otherValue by remember(config) { mutableStateOf(config.initialValue) }
+
+    val title = when (mode) {
+        RemarkEditorMode.Name -> "编辑备注名"
+        RemarkEditorMode.Phone -> "编辑手机号"
+        is RemarkEditorMode.Other -> if (mode.isNew) "添加其他备注" else "编辑其他备注"
+    }
+
+    val confirmEnabled = when (mode) {
+        is RemarkEditorMode.Other -> otherKey.isNotBlank() && otherValue.isNotBlank()
+        else -> true
+    } && !isSaving
+
+    val showDelete = when (mode) {
+        RemarkEditorMode.Name -> remarkInfo.remarkName.isNotEmpty()
+        RemarkEditorMode.Phone -> remarkInfo.phoneNumber.isNotEmpty()
+        is RemarkEditorMode.Other -> !mode.isNew && config.targetIndex != null
+    }
+
+    fun handleSave() {
+        when (mode) {
+            RemarkEditorMode.Name -> onSave(primaryValue.trim(), remarkInfo.phoneNumber, remarkInfo.extraRemarks)
+            RemarkEditorMode.Phone -> onSave(remarkInfo.remarkName, primaryValue.trim(), remarkInfo.extraRemarks)
+            is RemarkEditorMode.Other -> {
+                val updated = remarkInfo.extraRemarks.toMutableList()
+                val entry = RemarkExtraEntry(otherKey.trim(), otherValue.trim())
+                val index = config.targetIndex
+                if (!mode.isNew && index != null && index in updated.indices) {
+                    updated[index] = entry
+                } else {
+                    updated.add(entry)
+                }
+                onSave(remarkInfo.remarkName, remarkInfo.phoneNumber, updated)
+            }
+        }
+    }
+
+    fun handleDelete() {
+        when (mode) {
+            RemarkEditorMode.Name -> onSave("", remarkInfo.phoneNumber, remarkInfo.extraRemarks)
+            RemarkEditorMode.Phone -> onSave(remarkInfo.remarkName, "", remarkInfo.extraRemarks)
+            is RemarkEditorMode.Other -> {
+                val updated = remarkInfo.extraRemarks.toMutableList()
+                val index = config.targetIndex
+                if (index != null && index in updated.indices) {
+                    updated.removeAt(index)
+                }
+                onSave(remarkInfo.remarkName, remarkInfo.phoneNumber, updated)
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
+        },
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                when (mode) {
+                    RemarkEditorMode.Name, RemarkEditorMode.Phone -> {
+                        OutlinedTextField(
+                            value = primaryValue,
+                            onValueChange = { primaryValue = it },
+                            singleLine = true,
+                            label = { Text(if (mode is RemarkEditorMode.Name) "备注名" else "手机号") },
+                            enabled = !isSaving
+                        )
+                    }
+
+                    is RemarkEditorMode.Other -> {
+                        OutlinedTextField(
+                            value = otherKey,
+                            onValueChange = { otherKey = it },
+                            singleLine = true,
+                            label = { Text("备注名") },
+                            enabled = !isSaving
+                        )
+                        OutlinedTextField(
+                            value = otherValue,
+                            onValueChange = { otherValue = it },
+                            label = { Text("备注内容") },
+                            enabled = !isSaving
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (showDelete) {
+                    TextButton(onClick = { if (!isSaving) handleDelete() }, enabled = !isSaving) {
+                        Text("删除")
+                    }
+                }
+                Button(onClick = { handleSave() }, enabled = confirmEnabled) {
+                    if (isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("确定")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (!isSaving) onDismiss() }, enabled = !isSaving) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -243,7 +368,18 @@ fun UserDetailScreen(
                             }
                         },
                         onShowUserInfo = viewModel::openUserInfoDialog,
-                        onAvatarClick = viewModel::openImageViewer
+                        onAvatarClick = viewModel::openImageViewer,
+                        onEditRemarkName = { viewModel.openNameEditor(uiState.userDetail!!.id) },
+                        onEditRemarkPhone = { viewModel.openPhoneEditor(uiState.userDetail!!.id) },
+                        onAddOtherRemark = { viewModel.openOtherRemarkEditor(uiState.userDetail!!.id, null, "", "") },
+                        onEditOtherRemark = { index, entry ->
+                            viewModel.openOtherRemarkEditor(
+                                uiState.userDetail!!.id,
+                                index,
+                                entry.key,
+                                entry.value
+                            )
+                        }
                     )
                 }
             }
@@ -260,6 +396,26 @@ fun UserDetailScreen(
             com.yhchat.canary.ui.components.ImageViewer(
                 imageUrl = uiState.currentImageUrl,
                 onDismiss = viewModel::dismissImageViewer
+            )
+        }
+
+        if (uiState.remarkEditorConfig != null && uiState.userDetail != null) {
+            val remarkInfo = uiState.userDetail.remarkInfo ?: RemarkInfo("", "", "", emptyList())
+            val config = uiState.remarkEditorConfig
+            RemarkEditorDialog(
+                config = config,
+                remarkInfo = remarkInfo,
+                isSaving = uiState.isSavingRemark,
+                onDismiss = {
+                    if (!uiState.isSavingRemark) {
+                        viewModel.dismissRemarkEditor()
+                    }
+                },
+                onSave = { name, phone, others ->
+                    if (!uiState.isSavingRemark) {
+                        viewModel.saveRemark(config.friendId, name, phone, others)
+                    }
+                }
             )
         }
         
@@ -647,7 +803,11 @@ fun UserDetailContent(
     isCheckingAddressBook: Boolean,
     onPrimaryAction: () -> Unit,
     onShowUserInfo: () -> Unit,
-    onAvatarClick: (String) -> Unit
+    onAvatarClick: (String) -> Unit,
+    onEditRemarkName: () -> Unit,
+    onEditRemarkPhone: () -> Unit,
+    onAddOtherRemark: () -> Unit,
+    onEditOtherRemark: (Int, RemarkExtraEntry) -> Unit
 ) {
     val context = LocalContext.current
     LazyColumn(
@@ -672,16 +832,57 @@ fun UserDetailContent(
         }
 
         userDetail.remarkInfo?.let { remark ->
+            val nameValue = remark.remarkName.ifEmpty { "未设置" }
+            val phoneValue = remark.phoneNumber.ifEmpty { "未设置" }
             item {
-                InfoSectionCard(title = "备注信息") {
-                    if (remark.remarkName.isNotEmpty()) {
-                        InfoRow("备注名", remark.remarkName)
+                InfoSectionCard(
+                    title = "备注信息",
+                    action = {
+                        IconButton(onClick = onAddOtherRemark) {
+                            Icon(Icons.Default.Add, contentDescription = "添加备注")
+                        }
                     }
-                    if (remark.phoneNumber.isNotEmpty()) {
-                        InfoRow("手机号", remark.phoneNumber)
-                    }
-                    if (remark.extraRemark.isNotEmpty()) {
-                        InfoRow("其他备注", remark.extraRemark)
+                ) {
+                    InfoRow(
+                        label = "备注名",
+                        value = nameValue,
+                        valueColor = if (remark.remarkName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onEditRemarkName() }
+                    )
+                    InfoRow(
+                        label = "手机号",
+                        value = phoneValue,
+                        valueColor = if (remark.phoneNumber.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onEditRemarkPhone() }
+                    )
+                    Text(
+                        text = "其他备注",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
+                    if (remark.extraRemarks.isEmpty()) {
+                        Text(
+                            text = "暂无其他备注",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    } else {
+                        remark.extraRemarks.forEachIndexed { index, entry ->
+                            val label = entry.key.ifBlank { "备注${index + 1}" }
+                            InfoRow(
+                                label = label,
+                                value = entry.value,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onEditOtherRemark(index, entry) }
+                            )
+                        }
                     }
                 }
             }
@@ -940,6 +1141,7 @@ private fun VipBadge() {
 @Composable
 private fun InfoSectionCard(
     title: String,
+    action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -952,11 +1154,18 @@ private fun InfoSectionCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             content = {
-                Text(
-                    text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    action?.invoke()
+                }
                 content()
             }
         )
@@ -1011,9 +1220,14 @@ private fun UserInfoDialog(
 }
 
 @Composable
-fun InfoRow(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
+fun InfoRow(
+    label: String,
+    value: String,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween

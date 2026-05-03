@@ -52,6 +52,12 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: SaveUserDataRequest
     ): Response<ApiStatus>
+
+    @POST("v1/user/save-user-remarks")
+    suspend fun saveUserRemarks(
+        @Header("token") token: String,
+        @Body request: SaveUserRemarkRequest
+    ): Response<ApiStatus>
     
     // 获取七牛云音频上传 token
     @GET("v1/misc/qiniu-token-audio")

@@ -226,7 +226,7 @@ fun MessageItem(
                             bottomEnd = 16.dp
                         )
                     ),
-                color = if (isMyMessage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                color = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                 tonalElevation = if (isMyMessage) 0.dp else 2.dp
             ) {
                 MessageContentView(

@@ -102,7 +102,7 @@ fun MessageContentView(
     onMultiSelect: (() -> Unit)? = null
 ) {
     val textColor = if (isMyMessage) {
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -526,7 +526,7 @@ fun MessageContentView(
                             MarkdownText(
                                 markdown = markdownText,
                                 textColor = if (isMyMessage) {
-                                    MaterialTheme.colorScheme.onPrimary
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.onSurface
                                 },
@@ -673,22 +673,14 @@ fun MessageContentView(
                             ExpressionText(
                                 text = text,
                                 style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
-                                linkColor = if (isMyMessage) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                }
+                                linkColor = MaterialTheme.colorScheme.primary
                             )
                         } else if (LinkDetector.containsLink(text)) {
                             // 包含链接的文本
                             LinkText(
                                 text = text,
                                 style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
-                                linkColor = if (isMyMessage) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                }
+                                linkColor = MaterialTheme.colorScheme.primary
                             )
                         } else {
                             // 普通文本
@@ -897,7 +889,7 @@ private fun PostMessageView(
             .border(
                 width = 1.dp,
                 color = if (isMyMessage) {
-                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
                 } else {
                     MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 },
@@ -967,7 +959,7 @@ private fun PostMessageView(
                 text = "点击查看文章详情 →",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (isMyMessage) {
-                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 } else {
                     MaterialTheme.colorScheme.primary
                 },
@@ -1091,7 +1083,7 @@ private fun FormItemView(
 ) {
     val secondaryTextColor = textColor.copy(alpha = 0.7f)
     val accentColor = if (isMyMessage) {
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.primary
     }

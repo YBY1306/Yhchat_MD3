@@ -203,8 +203,9 @@ class MainActivity : BaseActivity() {
         }
 
         LaunchedEffect(accountRepository, userRepository) {
-            if (userRepository != null) {
-                loginViewModel.setAccountRepositories(accountRepository, userRepository)
+            val currentUserRepository = userRepository
+            if (currentUserRepository != null) {
+                loginViewModel.setAccountRepositories(accountRepository, currentUserRepository)
             }
         }
 

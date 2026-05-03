@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.yhchat.canary.ui.login.LoginScreen
+import com.yhchat.canary.ui.login.LoginViewModel
 import com.yhchat.canary.ui.conversation.ConversationScreen
 import com.yhchat.canary.ui.chat.ChatScreen
 import com.yhchat.canary.ui.community.*
@@ -58,6 +59,7 @@ import com.yhchat.canary.ui.conversation.ConversationViewModel
 import com.yhchat.canary.ui.search.SearchViewModel
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.data.repository.AccountRepository
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -144,6 +146,7 @@ class MainActivity : BaseActivity() {
         val context = LocalContext.current
         // 使用MainViewModel
         val mainViewModel: MainViewModel = viewModel()
+        val loginViewModel: LoginViewModel = viewModel()
         val isInitialized by mainViewModel.isInitialized.collectAsStateWithLifecycle()
         val isLoggedIn by mainViewModel.isLoggedIn.collectAsStateWithLifecycle()
         val savedToken by mainViewModel.savedToken.collectAsStateWithLifecycle()
@@ -183,6 +186,7 @@ class MainActivity : BaseActivity() {
         
         // 导航配置
         val navigationRepository = remember { RepositoryFactory.getNavigationRepository(this@MainActivity) }
+        val accountRepository = remember { RepositoryFactory.getAccountRepository(this@MainActivity) }
         val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
         val visibleNavItems = navigationConfig.items.filter { it.isVisible }.sortedBy { it.order }
 
@@ -192,6 +196,16 @@ class MainActivity : BaseActivity() {
         }
         LaunchedEffect(savedUserId) {
             savedUserId?.let { userId = it }
+        }
+
+        LaunchedEffect(tokenRepository) {
+            loginViewModel.setTokenRepository(tokenRepository)
+        }
+
+        LaunchedEffect(accountRepository, userRepository) {
+            if (userRepository != null) {
+                loginViewModel.setAccountRepositories(accountRepository, userRepository)
+            }
         }
 
         // 处理登录后的用户信息获取
@@ -214,6 +228,7 @@ class MainActivity : BaseActivity() {
             !isLoggedIn -> {
                 // 未登录，显示登录界面
                 LoginScreen(
+                    viewModel = loginViewModel,
                     onLoginSuccess = { loginToken, loginUserId -> 
                         token = loginToken
                         pendingLoginToken = loginToken

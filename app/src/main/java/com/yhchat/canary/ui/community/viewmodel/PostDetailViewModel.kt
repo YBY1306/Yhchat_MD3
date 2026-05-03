@@ -500,13 +500,22 @@ class PostDetailViewModel @Inject constructor(
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
-            messageRepository.sendPostMessage(
+            val previewContent = if (post.content.length > 50) {
+                post.content.substring(0, 50) + "..."
+            } else {
+                post.content
+            }
+
+            messageRepository.sendMessage(
                 chatId = chatId,
                 chatType = chatType,
-                postId = post.id.toString(),
-                postTitle = post.title,
-                postContent = if (post.content.length > 50) post.content.substring(0, 50) + "..." else post.content,
-                postType = post.contentType.toString() // 1-文本, 2-Markdown
+                payload = com.yhchat.canary.data.repository.SendMessagePayload(
+                    contentType = 6,
+                    postId = post.id.toString(),
+                    postTitle = post.title,
+                    postContent = previewContent,
+                    postType = post.contentType.toString()
+                )
             ).fold(
                 onSuccess = { onSuccess() },
                 onFailure = { onError(it.message ?: "发送失败") }

@@ -626,6 +626,26 @@ class ChatViewModel @Inject constructor(
                         Log.d(tag, "   key: ${uploadResponse.key}")
                         Log.d(tag, "   hash: ${uploadResponse.hash}")
                         Log.d(tag, "   size: ${uploadResponse.fsize}")
+
+                        val videoSuffix = uploadResponse.key.substringAfterLast('.', "mp4").lowercase()
+                        val sendResult = messageRepository.sendMessage(
+                            chatId = currentChatId,
+                            chatType = currentChatType,
+                            payload = SendMessagePayload(
+                                contentType = 10,
+                                videoKey = uploadResponse.key,
+                                quoteMsgId = quoteMsgId,
+                                quoteMsgText = quoteMsgText,
+                                quoteImageUrl = quoteImageUrl,
+                                quoteImageName = quoteImageName,
+                                quoteVideoUrl = quoteVideoUrl,
+                                quoteVideoTime = quoteVideoTime,
+                                media = SendMessageMedia(
+                                    fileKey = uploadResponse.key,
+                                    fileType = "video/mp4",
+                                    fileHash = uploadResponse.hash,
+                                    fileSize = uploadResponse.fsize,
+                                    fileSuffix = videoSuffix
                                 )
                             )
                         )
@@ -1514,17 +1534,20 @@ class ChatViewModel @Inject constructor(
             try {
                 Log.d(tag, "Sending expression message: id=${expression.id}, url=${expression.url}")
                 
-                // 发送表情类型消息（contentType=7）
-                val result = messageRepository.sendExpressionMessage(
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    expression = expression,
-                    quoteMsgId = quoteMsgId,
-                    quoteMsgText = quoteMsgText,
-                    quoteImageUrl = quoteImageUrl,
-                    quoteImageName = quoteImageName,
-                    quoteVideoUrl = quoteVideoUrl,
-                    quoteVideoTime = quoteVideoTime
+                    payload = SendMessagePayload(
+                        contentType = 7,
+                        expressionId = expression.id.toString(),
+                        imageKey = expression.url,
+                        quoteMsgId = quoteMsgId,
+                        quoteMsgText = quoteMsgText,
+                        quoteImageUrl = quoteImageUrl,
+                        quoteImageName = quoteImageName,
+                        quoteVideoUrl = quoteVideoUrl,
+                        quoteVideoTime = quoteVideoTime
+                    )
                 )
                 
                 result.fold(
@@ -1571,17 +1594,21 @@ class ChatViewModel @Inject constructor(
             try {
                 Log.d(tag, "Sending sticker message: id=${stickerItem.id}, url=${stickerItem.url}")
                 
-                // 发送表情包贴纸消息（contentType=7）
-                val result = messageRepository.sendStickerMessage(
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    stickerItem = stickerItem,
-                    quoteMsgId = quoteMsgId,
-                    quoteMsgText = quoteMsgText,
-                    quoteImageUrl = quoteImageUrl,
-                    quoteImageName = quoteImageName,
-                    quoteVideoUrl = quoteVideoUrl,
-                    quoteVideoTime = quoteVideoTime
+                    payload = SendMessagePayload(
+                        contentType = 7,
+                        imageKey = stickerItem.url,
+                        stickerItemId = stickerItem.id,
+                        stickerPackId = stickerItem.stickerPackId,
+                        quoteMsgId = quoteMsgId,
+                        quoteMsgText = quoteMsgText,
+                        quoteImageUrl = quoteImageUrl,
+                        quoteImageName = quoteImageName,
+                        quoteVideoUrl = quoteVideoUrl,
+                        quoteVideoTime = quoteVideoTime
+                    )
                 )
                 
                 result.fold(

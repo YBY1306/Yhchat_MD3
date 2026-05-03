@@ -18,7 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.Instruction
+import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.Dispatchers

@@ -13,6 +13,47 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class SendMessageMedia(
+    val fileKey: String,
+    val fileType: String,
+    val fileSize: Long? = null,
+    val fileHash: String? = null,
+    val fileSuffix: String? = null,
+    val imageWidth: Long? = null,
+    val imageHeight: Long? = null
+)
+
+data class SendMessagePayload(
+    val contentType: Int,
+    val text: String? = null,
+    val buttons: String? = null,
+    val imageKey: String? = null,
+    val fileName: String? = null,
+    val fileKey: String? = null,
+    val fileSize: Long? = null,
+    val form: String? = null,
+    val postId: String? = null,
+    val postTitle: String? = null,
+    val postContent: String? = null,
+    val postType: String? = null,
+    val expressionId: String? = null,
+    val videoKey: String? = null,
+    val audioKey: String? = null,
+    val audioTime: Long? = null,
+    val stickerItemId: Long? = null,
+    val stickerPackId: Long? = null,
+    val roomName: String? = null,
+    val quoteMsgId: String? = null,
+    val quoteMsgText: String? = null,
+    val quoteImageUrl: String? = null,
+    val quoteImageName: String? = null,
+    val quoteVideoUrl: String? = null,
+    val quoteVideoTime: Long? = null,
+    val commandId: Long? = null,
+    val mentionedIds: List<String>? = null,
+    val media: SendMessageMedia? = null
+)
+
 @Singleton
 class MessageRepository @Inject constructor(
     private val apiService: ApiService,
@@ -249,7 +290,7 @@ class MessageRepository @Inject constructor(
     }
     
     /**
-     * 发送消息
+     * 发送文本/指令消息（便捷重载）
      */
     suspend fun sendMessage(
         chatId: String,
@@ -258,93 +299,142 @@ class MessageRepository @Inject constructor(
         contentType: Int = CONTENT_TYPE_TEXT,
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
-        quoteImageUrl: String? = null,  // 引用图片URL
-        quoteImageName: String? = null,  // 引用图片名称
-        quoteVideoUrl: String? = null,  // 引用视频URL
-        quoteVideoTime: Long? = null,  // 引用视频时长
-        commandId: Long? = null,  // 指令ID
-        mentionedIds: List<String>? = null  // @的用户ID列表
+        quoteImageUrl: String? = null,
+        quoteImageName: String? = null,
+        quoteVideoUrl: String? = null,
+        quoteVideoTime: Long? = null,
+        commandId: Long? = null,
+        mentionedIds: List<String>? = null
+    ): Result<Boolean> {
+        val payload = SendMessagePayload(
+            contentType = contentType,
+            text = text,
+            quoteMsgId = quoteMsgId,
+            quoteMsgText = quoteMsgText,
+            quoteImageUrl = quoteImageUrl,
+            quoteImageName = quoteImageName,
+            quoteVideoUrl = quoteVideoUrl,
+            quoteVideoTime = quoteVideoTime,
+            commandId = commandId,
+            mentionedIds = mentionedIds
+        )
+        return sendMessage(chatId, chatType, payload)
+    }
+
+    /**
+     * 发送通用载荷（图片/文件/语音/表单/A2UI等）
+     */
+    suspend fun sendMessage(
+        chatId: String,
+        chatType: Int,
+        payload: SendMessagePayload
     ): Result<Boolean> {
         return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "Token is null or empty")
-                return Result.failure(Exception("用户未登录"))
-            }
+            val token = getToken() ?: return Result.failure(Exception("用户未登录"))
 
             val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            // 构建protobuf请求
             val contentBuilder = send_message_send.Content.newBuilder()
-                .setText(text)
-            
-            // 添加引用消息文本
-            if (!quoteMsgText.isNullOrEmpty()) {
-                contentBuilder.setQuoteMsgText(quoteMsgText)
+            var hasPrimaryContent = false
+
+            fun markContent(block: () -> Unit) {
+                hasPrimaryContent = true
+                block()
             }
-            
-            // 添加引用消息的图片信息
-            if (!quoteImageUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageUrl(quoteImageUrl)
-                Log.d(tag, "🖼️ 引用消息包含图片: $quoteImageUrl")
+
+            payload.text?.takeIf { it.isNotBlank() }?.let { markContent { contentBuilder.text = it } }
+            payload.buttons?.takeIf { it.isNotBlank() }?.let(contentBuilder::setButtons)
+            payload.form?.takeIf { it.isNotBlank() }?.let { markContent { contentBuilder.form = it } }
+            payload.roomName?.takeIf { it.isNotBlank() }?.let(contentBuilder::setRoomName)
+
+            payload.imageKey?.let { key ->
+                markContent { contentBuilder.image = key }
+                payload.fileSize?.let(contentBuilder::setFileSize)
             }
-            if (!quoteImageName.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageName(quoteImageName)
+
+            payload.fileKey?.let { key ->
+                markContent {
+                    contentBuilder.file = key
+                    payload.fileName?.let(contentBuilder::setFileName)
+                    payload.fileSize?.let(contentBuilder::setFileSize)
+                }
             }
-            
-            // 添加引用消息的视频信息
-            if (!quoteVideoUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
-                Log.d(tag, "🎬 引用消息包含视频: $quoteVideoUrl")
+
+            payload.postId?.let { id ->
+                markContent {
+                    contentBuilder.postId = id
+                    contentBuilder.postTitle = payload.postTitle.orEmpty()
+                    contentBuilder.postContent = payload.postContent.orEmpty()
+                    contentBuilder.postType = payload.postType ?: "1"
+                }
             }
-            if (quoteVideoTime != null && quoteVideoTime > 0) {
-                contentBuilder.setQuoteVideoTime(quoteVideoTime)
-                Log.d(tag, "⏱️ 引用视频时长: ${quoteVideoTime}s")
+
+            payload.expressionId?.let { id ->
+                markContent { contentBuilder.expressionId = id }
             }
-            
-            // 添加@的用户ID列表
-            if (!mentionedIds.isNullOrEmpty()) {
-                contentBuilder.addAllMentionedId(mentionedIds)
-                Log.d(tag, "📢 发送消息@了 ${mentionedIds.size} 个用户: $mentionedIds")
+
+            payload.stickerItemId?.let(contentBuilder::setStickerItemId)
+            payload.stickerPackId?.let(contentBuilder::setStickerPackId)
+
+            payload.videoKey?.let { key ->
+                markContent { contentBuilder.video = key }
             }
-            
+
+            payload.audioKey?.let { key ->
+                markContent {
+                    contentBuilder.audio = key
+                    payload.audioTime?.let(contentBuilder::setAudioTime)
+                }
+            }
+
+            payload.quoteMsgText?.let(contentBuilder::setQuoteMsgText)
+            payload.quoteImageUrl?.let(contentBuilder::setQuoteImageUrl)
+            payload.quoteImageName?.let(contentBuilder::setQuoteImageName)
+            payload.quoteVideoUrl?.let(contentBuilder::setQuoteVideoUrl)
+            payload.quoteVideoTime?.takeIf { it > 0 }?.let(contentBuilder::setQuoteVideoTime)
+
+            payload.mentionedIds?.takeIf { it.isNotEmpty() }?.let(contentBuilder::addAllMentionedId)
+
+            if (!hasPrimaryContent) {
+                return Result.failure(Exception("发送内容为空"))
+            }
+
             val requestBuilder = send_message_send.newBuilder()
                 .setMsgId(msgId)
                 .setChatId(chatId)
                 .setChatType(chatType.toLong())
                 .setContent(contentBuilder.build())
-                .setContentType(contentType.toLong())
-            
-            if (!quoteMsgId.isNullOrEmpty()) {
-                requestBuilder.setQuoteMsgId(quoteMsgId)
+                .setContentType(payload.contentType.toLong())
+
+            payload.quoteMsgId?.let(requestBuilder::setQuoteMsgId)
+            payload.commandId?.let(requestBuilder::setCommandId)
+
+            payload.media?.let { media ->
+                val mediaBuilder = send_message_send.Media.newBuilder()
+                    .setFileKey(media.fileKey)
+                    .setFileKey2(media.fileKey)
+                    .setFileType(media.fileType)
+                media.fileHash?.let(mediaBuilder::setFileHash)
+                media.fileSize?.let(mediaBuilder::setFileSize)
+                media.imageWidth?.let(mediaBuilder::setImageWidth)
+                media.imageHeight?.let(mediaBuilder::setImageHeight)
+                media.fileSuffix?.let(mediaBuilder::setFileSuffix)
+                requestBuilder.setMedia(mediaBuilder.build())
             }
-            
-            // 添加指令ID
-            if (commandId != null) {
-                requestBuilder.setCommandId(commandId)
-                Log.d(tag, "📋 发送指令消息，commandId: $commandId")
-            }
-            
+
             val request = requestBuilder.build()
             val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
 
-            Log.d(tag, "Sending message to chat: $chatId, type: $chatType, text: $text")
-            
             val response = apiService.sendMessage(token, requestBody)
-            
             if (response.isSuccessful) {
                 response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
+                    val sendResponse = send_message.parseFrom(responseBody.bytes())
                     if (sendResponse.status.code == 1) {
                         Log.d(tag, "Message sent successfully")
-                    Result.success(true)
-                } else {
+                        Result.success(true)
+                    } else {
                         Log.e(tag, "Send message error: ${sendResponse.status.msg}")
                         Result.failure(Exception(sendResponse.status.msg))
-                }
+                    }
                 } ?: Result.failure(Exception("响应体为空"))
             } else {
                 Log.e(tag, "HTTP error: ${response.code()}")
@@ -356,77 +446,6 @@ class MessageRepository @Inject constructor(
         }
     }
     
-    /**
-     * 发送表单消息（类型5）
-     * @param chatId 会话ID
-     * @param chatType 会话类型
-     * @param formJson 表单数据JSON
-     * @param commandId 指令ID
-     */
-    suspend fun sendFormMessage(
-        chatId: String,
-        chatType: Int,
-        formJson: String,
-        commandId: Long
-    ): Result<Boolean> {
-        return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "❌ Token为空")
-                return Result.failure(Exception("用户未登录"))
-            }
-
-            val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            Log.d(tag, "📤 ========== 发送表单消息 ==========")
-            Log.d(tag, "📤 msgId: $msgId")
-            Log.d(tag, "📤 chatId: $chatId")
-            Log.d(tag, "📤 chatType: $chatType")
-            Log.d(tag, "📤 commandId: $commandId")
-            Log.d(tag, "📤 formJson: ${formJson.take(200)}${if (formJson.length > 200) "..." else ""}")
-            
-            // 构建protobuf请求
-            val contentBuilder = send_message_send.Content.newBuilder()
-                .setForm(formJson)  // 设置表单内容
-            
-            val requestBuilder = send_message_send.newBuilder()
-                .setMsgId(msgId)
-                .setChatId(chatId)
-                .setChatType(chatType.toLong())
-                .setContent(contentBuilder.build())
-                .setContentType(5)  // 表单消息类型为5
-                .setCommandId(commandId)  // 设置指令ID
-            
-            val request = requestBuilder.build()
-            val requestBody = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
-
-            Log.d(tag, "发送表单消息: $chatId, commandId: $commandId")
-            
-            val response = apiService.sendMessage(token, requestBody)
-            
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
-                    if (sendResponse.status.code == 1) {
-                        Log.d(tag, "✅ 表单消息发送成功")
-                        Result.success(true)
-                    } else {
-                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
-                        Result.failure(Exception(sendResponse.status.msg))
-                    }
-                } ?: Result.failure(Exception("响应体为空"))
-            } else {
-                Log.e(tag, "❌ HTTP错误: ${response.code()}")
-                Result.failure(Exception("发送失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "❌ 发送表单消息异常", e)
-            Result.failure(e)
-        }
-    }
     
     /**
      * 撤回消息
@@ -665,508 +684,27 @@ class MessageRepository @Inject constructor(
     }
     
     /**
-     * 发送图片消息
-     * 参考Python实现：只需在content.image设置图片key即可
+     * 发送消息
+     * 使用protobuf的send_message_send
      */
-    suspend fun sendImageMessage(
+    suspend fun sendMessage(
         chatId: String,
         chatType: Int,
-        imageKey: String,
-        width: Int,
-        height: Int,
-        fileSize: Long,
+        content: String,
+        contentType: Int,
         quoteMsgId: String? = null,
         quoteMsgText: String? = null,
         quoteImageUrl: String? = null,
         quoteImageName: String? = null,
         quoteVideoUrl: String? = null,
-        quoteVideoTime: Long? = null
-    ): Result<Boolean> {
-        return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "❌ Token为空")
-                return Result.failure(Exception("用户未登录"))
-            }
-
-            val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            Log.d(tag, "📤 ========== 发送图片消息 ==========")
-            Log.d(tag, "📤 msgId: $msgId")
-            Log.d(tag, "📤 chatId: $chatId")
-            Log.d(tag, "📤 chatType: $chatType")
-            Log.d(tag, "📤 imageKey: $imageKey")
-            Log.d(tag, "📤 图片尺寸: ${width}x${height}")
-            Log.d(tag, "📤 文件大小: $fileSize bytes")
-            
-            // 构建protobuf请求 - 根据Python实现，只需设置content.image
-            val contentBuilder = send_message_send.Content.newBuilder()
-                .setImage(imageKey)  // 设置图片key，例如：f812a79eca05dfa884c9e89d54b2bca5.jpg
-            
-            // 添加引用消息文本
-            if (!quoteMsgText.isNullOrEmpty()) {
-                contentBuilder.setQuoteMsgText(quoteMsgText)
-                Log.d(tag, "📤 引用消息: $quoteMsgText")
-            }
-            
-            // 添加引用消息的图片信息
-            if (!quoteImageUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageUrl(quoteImageUrl)
-                Log.d(tag, "📤 引用消息包含图片: $quoteImageUrl")
-            }
-            if (!quoteImageName.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageName(quoteImageName)
-            }
-            
-            // 添加引用消息的视频信息
-            if (!quoteVideoUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
-                Log.d(tag, "📤 引用消息包含视频: $quoteVideoUrl")
-            }
-            if (quoteVideoTime != null && quoteVideoTime > 0) {
-                contentBuilder.setQuoteVideoTime(quoteVideoTime)
-            }
-            
-            val requestBuilder = send_message_send.newBuilder()
-                .setMsgId(msgId)
-                .setChatId(chatId)
-                .setChatType(chatType.toLong())
-                .setContent(contentBuilder.build())
-                .setContentType(CONTENT_TYPE_IMAGE.toLong())
-            
-            if (!quoteMsgId.isNullOrEmpty()) {
-                requestBuilder.setQuoteMsgId(quoteMsgId)
-                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
-            }
-            
-            // 添加media信息 - 包含图片的详细元数据
-            val mediaBuilder = send_message_send.Media.newBuilder()
-                .setFileKey(imageKey)
-                .setFileKey2(imageKey) // 据说不写会报错
-                .setFileType("image/jpeg")
-                .setImageWidth(width.toLong())
-                .setImageHeight(height.toLong())
-                .setFileSize(fileSize)
-                .setFileSuffix(imageKey.substringAfterLast("."))
-            
-            requestBuilder.setMedia(mediaBuilder.build())
-            
-            val request = requestBuilder.build()
-            val requestBytes = request.toByteArray()
-            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
-
-            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
-            
-            val response = apiService.sendMessage(token, requestBody)
-            
-            Log.d(tag, "📥 服务器响应码: ${response.code()}")
-            
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
-                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
-                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
-                    
-                    if (sendResponse.status.code == 1) {
-                        Log.d(tag, "✅ ========== 图片消息发送成功！ ==========")
-                        Result.success(true)
-                    } else {
-                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
-                        Result.failure(Exception(sendResponse.status.msg))
-                    }
-                } ?: Result.failure(Exception("响应体为空"))
-            } else {
-                val errorBody = response.errorBody()?.string()
-                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
-                Result.failure(Exception("发送失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "❌ 发送图片消息异常", e)
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * 发送文件消息
-     * contentType = 4
-     */
-    suspend fun sendFileMessage(
-        chatId: String,
-        chatType: Int,
-        fileName: String,
-        fileKey: String,  // 七牛云返回的key，格式：disk/xxx.ext
-        fileSize: Long,
-        quoteMsgId: String? = null,
-        quoteMsgText: String? = null,
-        quoteImageUrl: String? = null,
-        quoteImageName: String? = null,
-        quoteVideoUrl: String? = null,
-        quoteVideoTime: Long? = null
-    ): Result<Boolean> {
-        return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "❌ Token为空")
-                return Result.failure(Exception("用户未登录"))
-            }
-
-            val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            Log.d(tag, "📤 ========== 发送文件消息 ==========")
-            Log.d(tag, "📤 msgId: $msgId")
-            Log.d(tag, "📤 chatId: $chatId")
-            Log.d(tag, "📤 chatType: $chatType")
-            Log.d(tag, "📤 fileName: $fileName")
-            Log.d(tag, "📤 fileKey: $fileKey")
-            Log.d(tag, "📤 fileSize: $fileSize bytes")
-            
-            // 构建protobuf请求 - 文件消息需要设置content.fileName、content.file和content.fileSize
-            // 注意：content.file字段应该只填写key（例如：disk/xxx.ext），不需要完整URL
-            // content.fileSize应该是纯数字（字节数），不带单位
-            val contentBuilder = send_message_send.Content.newBuilder()
-                .setFileName(fileName)
-                .setFile(fileKey)  // 只填写key，例如：disk/xxx.ext
-                .setFileSize(fileSize)  // 文件大小（字节）
-            
-            // 添加引用消息文本
-            if (!quoteMsgText.isNullOrEmpty()) {
-                contentBuilder.setQuoteMsgText(quoteMsgText)
-                Log.d(tag, "📤 引用消息: $quoteMsgText")
-            }
-            
-            // 添加引用消息的图片信息
-            if (!quoteImageUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageUrl(quoteImageUrl)
-            }
-            if (!quoteImageName.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageName(quoteImageName)
-            }
-            
-            // 添加引用消息的视频信息
-            if (!quoteVideoUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
-            }
-            if (quoteVideoTime != null && quoteVideoTime > 0) {
-                contentBuilder.setQuoteVideoTime(quoteVideoTime)
-            }
-            
-            val requestBuilder = send_message_send.newBuilder()
-                .setMsgId(msgId)
-                .setChatId(chatId)
-                .setChatType(chatType.toLong())
-                .setContent(contentBuilder.build())
-                .setContentType(CONTENT_TYPE_FILE.toLong())
-            
-            if (!quoteMsgId.isNullOrEmpty()) {
-                requestBuilder.setQuoteMsgId(quoteMsgId)
-                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
-            }
-            
-            // 文件消息不需要media字段，只在content中设置即可
-            
-            val request = requestBuilder.build()
-            val requestBytes = request.toByteArray()
-            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
-
-            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
-            
-            val response = apiService.sendMessage(token, requestBody)
-            
-            Log.d(tag, "📥 服务器响应码: ${response.code()}")
-            
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
-                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
-                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
-                    
-                    if (sendResponse.status.code == 1) {
-                        Log.d(tag, "✅ ========== 文件消息发送成功！ ==========")
-                        Result.success(true)
-                    } else {
-                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
-                        Result.failure(Exception(sendResponse.status.msg))
-                    }
-                } ?: Result.failure(Exception("响应体为空"))
-            } else {
-                val errorBody = response.errorBody()?.string()
-                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
-                Result.failure(Exception("发送失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "❌ 发送文件消息异常", e)
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * 发送视频消息
-     * contentType = 10
-     */
-    suspend fun sendVideoMessage(
-        chatId: String,
-        chatType: Int,
-        videoKey: String,  // 七牛云返回的key，格式：xxx.mp4
-        fileHash: String = "",  // 七牛云返回的hash
-        fileSize: Long = 0L,    // 文件大小
-        quoteMsgId: String? = null,
-        quoteMsgText: String? = null,
-        quoteImageUrl: String? = null,
-        quoteImageName: String? = null,
-        quoteVideoUrl: String? = null,
-        quoteVideoTime: Long? = null
-    ): Result<Boolean> {
-        return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "❌ Token为空")
-                return Result.failure(Exception("用户未登录"))
-            }
-
-            val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            Log.d(tag, "📤 ========== 发送视频消息 ==========")
-            Log.d(tag, "📤 msgId: $msgId")
-            Log.d(tag, "📤 chatId: $chatId")
-            Log.d(tag, "📤 chatType: $chatType")
-            Log.d(tag, "📤 videoKey: $videoKey")
-            Log.d(tag, "📤 fileHash: $fileHash")
-            Log.d(tag, "📤 fileSize: $fileSize bytes")
-            
-            // 构建protobuf请求 - 视频消息需要设置content.video和media字段
-            val contentBuilder = send_message_send.Content.newBuilder()
-                .setVideo(videoKey)  // 设置视频key，例如：f812a79eca05dfa884c9e89d54b2bca5.mp4
-            
-            // 添加引用消息文本
-            if (!quoteMsgText.isNullOrEmpty()) {
-                contentBuilder.setQuoteMsgText(quoteMsgText)
-                Log.d(tag, "📤 引用消息: $quoteMsgText")
-            }
-            
-            // 添加引用消息的图片信息
-            if (!quoteImageUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageUrl(quoteImageUrl)
-            }
-            if (!quoteImageName.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageName(quoteImageName)
-            }
-            
-            // 添加引用消息的视频信息
-            if (!quoteVideoUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
-            }
-            if (quoteVideoTime != null && quoteVideoTime > 0) {
-                contentBuilder.setQuoteVideoTime(quoteVideoTime)
-            }
-            
-            // 构建media字段 - 视频消息需要media信息
-            val mediaBuilder = send_message_send.Media.newBuilder()
-                .setFileKey(videoKey)
-                .setFileHash(fileHash)
-                .setFileType("video/mp4")
-                .setFileSize(fileSize)
-                .setFileKey2(videoKey)  // 据说不写会报错
-                .setFileSuffix("mp4")
-            
-            val requestBuilder = send_message_send.newBuilder()
-                .setMsgId(msgId)
-                .setChatId(chatId)
-                .setChatType(chatType.toLong())
-                .setContent(contentBuilder.build())
-                .setContentType(CONTENT_TYPE_VIDEO.toLong())
-                .setMedia(mediaBuilder.build())
-            
-            if (!quoteMsgId.isNullOrEmpty()) {
-                requestBuilder.setQuoteMsgId(quoteMsgId)
-                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
-            }
-            
-            val request = requestBuilder.build()
-            val requestBytes = request.toByteArray()
-            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
-
-            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
-            
-            val response = apiService.sendMessage(token, requestBody)
-            
-            Log.d(tag, "📥 服务器响应码: ${response.code()}")
-            
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
-                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
-                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
-                    
-                    if (sendResponse.status.code == 1) {
-                        Log.d(tag, "✅ ========== 视频消息发送成功！ ==========")
-                        Result.success(true)
-                    } else {
-                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
-                        Result.failure(Exception(sendResponse.status.msg))
-                    }
-                } ?: Result.failure(Exception("响应体为空"))
-            } else {
-                val errorBody = response.errorBody()?.string()
-                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
-                Result.failure(Exception("发送失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "❌ 发送视频消息异常", e)
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * 发送语音消息 (contentType=11)
-     * contentType = 11
-     */
-    suspend fun sendAudioMessage(
-        chatId: String,
-        chatType: Int,
-        audioKey: String,   // 七牛云返回的key
-        fileHash: String = "",   // 七牛云返回的hash
-        fileSize: Long = 0L,     // 文件大小
-        duration: Long = 0L,     // 音频时长（秒）
-        quoteMsgId: String? = null,
-        quoteMsgText: String? = null,
-        quoteImageUrl: String? = null,
-        quoteImageName: String? = null,
-        quoteVideoUrl: String? = null,
-        quoteVideoTime: Long? = null
-    ): Result<Boolean> {
-        return try {
-            val tokenFlow = tokenRepository.getToken()
-            val token = tokenFlow.first()?.token
-            if (token.isNullOrEmpty()) {
-                Log.e(tag, "❌ Token为空")
-                return Result.failure(Exception("用户未登录"))
-            }
-
-            val msgId = UUID.randomUUID().toString().replace("-", "")
-            
-            Log.d(tag, "📤 ========== 发送语音消息 ==========")
-            Log.d(tag, "📤 msgId: $msgId")
-            Log.d(tag, "📤 chatId: $chatId")
-            Log.d(tag, "📤 chatType: $chatType")
-            Log.d(tag, "📤 audioKey: $audioKey")
-            Log.d(tag, "📤 fileHash: $fileHash")
-            Log.d(tag, "📤 fileSize: $fileSize bytes")
-            Log.d(tag, "📤 duration: ${duration}秒")
-            
-            // 构建protobuf请求 - 语音消息需要设置content.audio、audioTime和media字段
-            val contentBuilder = send_message_send.Content.newBuilder()
-                .setAudio(audioKey)        // 设置音频key
-                .setAudioTime(duration)    // 设置音频时长
-            
-            // 添加引用消息文本
-            if (!quoteMsgText.isNullOrEmpty()) {
-                contentBuilder.setQuoteMsgText(quoteMsgText)
-                Log.d(tag, "📤 引用消息: $quoteMsgText")
-            }
-            
-            // 添加引用消息的图片信息
-            if (!quoteImageUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageUrl(quoteImageUrl)
-            }
-            if (!quoteImageName.isNullOrEmpty()) {
-                contentBuilder.setQuoteImageName(quoteImageName)
-            }
-            
-            // 添加引用消息的视频信息
-            if (!quoteVideoUrl.isNullOrEmpty()) {
-                contentBuilder.setQuoteVideoUrl(quoteVideoUrl)
-            }
-            if (quoteVideoTime != null && quoteVideoTime > 0) {
-                contentBuilder.setQuoteVideoTime(quoteVideoTime)
-            }
-            
-            // 构建media字段 - 语音消息需要media信息
-            val fileExtension = audioKey.substringAfterLast(".", "wav")
-            val mediaBuilder = send_message_send.Media.newBuilder()
-                .setFileKey(audioKey)
-                .setFileHash(fileHash)
-                .setFileType("video/mp4")  // 必须固定为 video/mp4 才会显示音频
-                .setFileSize(fileSize)
-                .setFileKey2(audioKey)
-                .setFileSuffix(fileExtension.lowercase(Locale.getDefault()))
-            
-            val requestBuilder = send_message_send.newBuilder()
-                .setMsgId(msgId)
-                .setChatId(chatId)
-                .setChatType(chatType.toLong())
-                .setContent(contentBuilder.build())
-                .setContentType(CONTENT_TYPE_AUDIO.toLong())
-                .setMedia(mediaBuilder.build())
-            
-            if (!quoteMsgId.isNullOrEmpty()) {
-                requestBuilder.setQuoteMsgId(quoteMsgId)
-                Log.d(tag, "📤 引用消息ID: $quoteMsgId")
-            }
-            
-            val request = requestBuilder.build()
-            val requestBytes = request.toByteArray()
-            val requestBody = requestBytes.toRequestBody("application/x-protobuf".toMediaType())
-
-            Log.d(tag, "📤 Protobuf请求大小: ${requestBytes.size} bytes")
-            
-            val response = apiService.sendMessage(token, requestBody)
-            
-            Log.d(tag, "📥 服务器响应码: ${response.code()}")
-            
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    val bytes = responseBody.bytes()
-                    val sendResponse = send_message.parseFrom(bytes)
-                    
-                    Log.d(tag, "📥 响应状态码: ${sendResponse.status.code}")
-                    Log.d(tag, "📥 响应消息: ${sendResponse.status.msg}")
-                    
-                    if (sendResponse.status.code == 1) {
-                        Log.d(tag, "✅ ========== 语音消息发送成功！ ==========")
-                        Result.success(true)
-                    } else {
-                        Log.e(tag, "❌ 发送失败: ${sendResponse.status.msg}")
-                        Result.failure(Exception(sendResponse.status.msg))
-                    }
-                } ?: Result.failure(Exception("响应体为空"))
-            } else {
-                val errorBody = response.errorBody()?.string()
-                Log.e(tag, "❌ HTTP错误: ${response.code()}, 错误详情: $errorBody")
-                Result.failure(Exception("发送失败: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "❌ 发送语音消息异常", e)
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * 发送表情消息 (contentType=7)
-     * @param expression 表情对象，包含id、url等信息
-     */
-    suspend fun sendExpressionMessage(
-        chatId: String,
-        chatType: Int,
-        expression: com.yhchat.canary.data.model.Expression,
-        quoteMsgId: String? = null,
-        quoteMsgText: String? = null,
-        quoteImageUrl: String? = null,
-        quoteImageName: String? = null,
-        quoteVideoUrl: String? = null,
-        quoteVideoTime: Long? = null
+        quoteVideoTime: Long? = null,
+        audioKey: String? = null,
+        fileHash: String? = null,
+        fileSize: Long? = null,
+        duration: Long? = null,
+        buttons: String? = null,
+        expression: com.yhchat.canary.data.model.Expression? = null,
+        stickerItem: com.yhchat.canary.data.model.StickerItem? = null
     ): Result<Boolean> {
         return try {
             val tokenFlow = tokenRepository.getToken()

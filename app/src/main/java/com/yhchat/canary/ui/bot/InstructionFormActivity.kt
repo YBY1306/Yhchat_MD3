@@ -531,7 +531,7 @@ suspend fun sendFormMessage(
 ): Boolean {
     return withContext(Dispatchers.IO) {
         try {
-            val messageRepository = com.yhchat.canary.data.di.RepositoryFactory.getMessageRepository(context)
+            val messageRepository = RepositoryFactory.getMessageRepository(context)
             val formJson = buildFormDataJson(formData)
             
             android.util.Log.d("InstructionForm", "📤 发送表单消息:")
@@ -539,11 +539,14 @@ suspend fun sendFormMessage(
             android.util.Log.d("InstructionForm", "   commandId=$commandId")
             android.util.Log.d("InstructionForm", "   formJson=$formJson")
             
-            val result = messageRepository.sendFormMessage(
+            val result = messageRepository.sendMessage(
                 chatId = chatId,
                 chatType = chatType,
-                formJson = formJson,
-                commandId = commandId
+                payload = SendMessagePayload(
+                    contentType = 5,
+                    form = formJson,
+                    commandId = commandId
+                )
             )
             
             result.getOrElse {

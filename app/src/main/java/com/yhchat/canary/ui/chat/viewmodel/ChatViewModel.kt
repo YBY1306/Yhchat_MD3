@@ -9,6 +9,8 @@ import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.data.repository.GroupRepository
 import com.yhchat.canary.data.repository.MessageRepository
+import com.yhchat.canary.data.repository.SendMessageMedia
+import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.BlocklistRepository
 import com.yhchat.canary.data.websocket.WebSocketManager
@@ -530,21 +532,37 @@ class ChatViewModel @Inject constructor(
                         // 3. 发送图片消息
                         val width = uploadResponse.avinfo?.video?.width ?: 1080
                         val height = uploadResponse.avinfo?.video?.height ?: 1920
-                        
+                        val imageSuffix = uploadResponse.key.substringAfterLast('.', "jpg").lowercase()
+                        val imageMime = when (imageSuffix) {
+                            "png" -> "image/png"
+                            "gif" -> "image/gif"
+                            "webp" -> "image/webp"
+                            else -> "image/jpeg"
+                        }
+
                         Log.d(tag, "📤 发送图片消息...")
-                        val sendResult = messageRepository.sendImageMessage(
+                        val sendResult = messageRepository.sendMessage(
                             chatId = currentChatId,
                             chatType = currentChatType,
-                            imageKey = uploadResponse.key,
-                            width = width,
-                            height = height,
-                            fileSize = uploadResponse.fsize,
-                            quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText,
-                            quoteImageUrl = quoteImageUrl,
-                            quoteImageName = quoteImageName,
-                            quoteVideoUrl = quoteVideoUrl,
-                            quoteVideoTime = quoteVideoTime
+                            payload = SendMessagePayload(
+                                contentType = 2,
+                                imageKey = uploadResponse.key,
+                                fileSize = uploadResponse.fsize,
+                                quoteMsgId = quoteMsgId,
+                                quoteMsgText = quoteMsgText,
+                                quoteImageUrl = quoteImageUrl,
+                                quoteImageName = quoteImageName,
+                                quoteVideoUrl = quoteVideoUrl,
+                                quoteVideoTime = quoteVideoTime,
+                                media = SendMessageMedia(
+                                    fileKey = uploadResponse.key,
+                                    fileType = imageMime,
+                                    fileSize = uploadResponse.fsize,
+                                    fileSuffix = imageSuffix,
+                                    imageWidth = width.toLong(),
+                                    imageHeight = height.toLong()
+                                )
+                            )
                         )
                         
                         sendResult.fold(
@@ -608,22 +626,8 @@ class ChatViewModel @Inject constructor(
                         Log.d(tag, "   key: ${uploadResponse.key}")
                         Log.d(tag, "   hash: ${uploadResponse.hash}")
                         Log.d(tag, "   size: ${uploadResponse.fsize}")
-                        Log.d(tag, "   尺寸: ${uploadResponse.avinfo?.video?.width}x${uploadResponse.avinfo?.video?.height}")
-                        
-                        // 3. 发送视频消息
-                        Log.d(tag, "📤 发送视频消息...")
-                        val sendResult = messageRepository.sendVideoMessage(
-                            chatId = currentChatId,
-                            chatType = currentChatType,
-                            videoKey = uploadResponse.key,
-                            fileHash = uploadResponse.hash,
-                            fileSize = uploadResponse.fsize,
-                            quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText,
-                            quoteImageUrl = quoteImageUrl,
-                            quoteImageName = quoteImageName,
-                            quoteVideoUrl = quoteVideoUrl,
-                            quoteVideoTime = quoteVideoTime
+                                )
+                            )
                         )
                         
                         sendResult.fold(
@@ -709,18 +713,21 @@ class ChatViewModel @Inject constructor(
                         Log.d(tag, "   fileKey: $fileKey")
                         Log.d(tag, "   fileSize: ${uploadResponse.fsize}")
                         
-                        val sendResult = messageRepository.sendFileMessage(
+                        val sendResult = messageRepository.sendMessage(
                             chatId = currentChatId,
                             chatType = currentChatType,
-                            fileName = fileName,
-                            fileKey = fileKey,
-                            fileSize = uploadResponse.fsize,
-                            quoteMsgId = quoteMsgId,
-                            quoteMsgText = quoteMsgText,
-                            quoteImageUrl = quoteImageUrl,
-                            quoteImageName = quoteImageName,
-                            quoteVideoUrl = quoteVideoUrl,
-                            quoteVideoTime = quoteVideoTime
+                            payload = SendMessagePayload(
+                                contentType = 4,
+                                fileName = fileName,
+                                fileKey = fileKey,
+                                fileSize = uploadResponse.fsize,
+                                quoteMsgId = quoteMsgId,
+                                quoteMsgText = quoteMsgText,
+                                quoteImageUrl = quoteImageUrl,
+                                quoteImageName = quoteImageName,
+                                quoteVideoUrl = quoteVideoUrl,
+                                quoteVideoTime = quoteVideoTime
+                            )
                         )
                         
                         sendResult.fold(
@@ -826,19 +833,29 @@ class ChatViewModel @Inject constructor(
                 
                 // 7. 发送语音消息（contentType = 11）
                 Log.d(tag, "📤 发送语音消息...")
-                val sendResult = messageRepository.sendAudioMessage(
+                val audioSuffix = uploadResponse.key.substringAfterLast('.', "m4a").lowercase()
+                val sendResult = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    audioKey = uploadResponse.key,
-                    fileHash = uploadResponse.hash,
-                    fileSize = uploadResponse.fsize,
-                    duration = duration,
-                    quoteMsgId = quoteMsgId,
-                    quoteMsgText = quoteMsgText,
-                    quoteImageUrl = quoteImageUrl,
-                    quoteImageName = quoteImageName,
-                    quoteVideoUrl = quoteVideoUrl,
-                    quoteVideoTime = quoteVideoTime
+                    payload = SendMessagePayload(
+                        contentType = 11,
+                        audioKey = uploadResponse.key,
+                        audioTime = duration,
+                        fileSize = uploadResponse.fsize,
+                        quoteMsgId = quoteMsgId,
+                        quoteMsgText = quoteMsgText,
+                        quoteImageUrl = quoteImageUrl,
+                        quoteImageName = quoteImageName,
+                        quoteVideoUrl = quoteVideoUrl,
+                        quoteVideoTime = quoteVideoTime,
+                        media = SendMessageMedia(
+                            fileKey = uploadResponse.key,
+                            fileType = "video/mp4",
+                            fileHash = uploadResponse.hash,
+                            fileSize = uploadResponse.fsize,
+                            fileSuffix = audioSuffix
+                        )
+                    )
                 )
                 
                 sendResult.fold(
@@ -1624,14 +1641,30 @@ class ChatViewModel @Inject constructor(
                 
                 // 从URL提取图片key（假设URL格式为 https://chat-img.jwznb.com/xxx）
                 val imageKey = imageUrl.substringAfterLast("/").substringBefore("?")
+                val imageSuffix = imageKey.substringAfterLast('.', "jpg").lowercase()
+                val imageMime = when (imageSuffix) {
+                    "png" -> "image/png"
+                    "gif" -> "image/gif"
+                    "webp" -> "image/webp"
+                    else -> "image/jpeg"
+                }
                 
-                val result = messageRepository.sendImageMessage(
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    imageKey = imageKey,
-                    width = width,
-                    height = height,
-                    fileSize = fileSize
+                    payload = SendMessagePayload(
+                        contentType = 2,
+                        imageKey = imageKey,
+                        fileSize = fileSize,
+                        media = SendMessageMedia(
+                            fileKey = imageKey,
+                            fileType = imageMime,
+                            fileSize = fileSize,
+                            fileSuffix = imageSuffix,
+                            imageWidth = width.toLong(),
+                            imageHeight = height.toLong()
+                        )
+                    )
                 )
                 
                 result.fold(
@@ -1667,12 +1700,15 @@ class ChatViewModel @Inject constructor(
                 // 从URL提取文件key
                 val fileKey = fileUrl.substringAfterLast("/").substringBefore("?")
                 
-                val result = messageRepository.sendFileMessage(
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    fileName = fileName,
-                    fileKey = fileKey,
-                    fileSize = fileSize
+                    payload = SendMessagePayload(
+                        contentType = 4,
+                        fileName = fileName,
+                        fileKey = fileKey,
+                        fileSize = fileSize
+                    )
                 )
                 
                 result.fold(
@@ -1708,10 +1744,19 @@ class ChatViewModel @Inject constructor(
                 // 从URL提取视频key
                 val videoKey = videoUrl.substringAfterLast("/").substringBefore("?")
                 
-                val result = messageRepository.sendVideoMessage(
+                val videoSuffix = videoKey.substringAfterLast('.', "mp4").lowercase()
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    videoKey = videoKey
+                    payload = SendMessagePayload(
+                        contentType = 10,
+                        videoKey = videoKey,
+                        media = SendMessageMedia(
+                            fileKey = videoKey,
+                            fileType = "video/mp4",
+                            fileSuffix = videoSuffix
+                        )
+                    )
                 )
                 
                 result.fold(
@@ -1747,11 +1792,20 @@ class ChatViewModel @Inject constructor(
                 // 从URL提取音频key
                 val audioKey = audioUrl.substringAfterLast("/").substringBefore("?")
                 
-                val result = messageRepository.sendAudioMessage(
+                val audioSuffix = audioKey.substringAfterLast('.', "m4a").lowercase()
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    audioKey = audioKey,
-                    duration = audioDuration
+                    payload = SendMessagePayload(
+                        contentType = 11,
+                        audioKey = audioKey,
+                        audioTime = audioDuration,
+                        media = SendMessageMedia(
+                            fileKey = audioKey,
+                            fileType = "video/mp4",
+                            fileSuffix = audioSuffix
+                        )
+                    )
                 )
                 
                 result.fold(
@@ -1784,13 +1838,16 @@ class ChatViewModel @Inject constructor(
             try {
                 Log.d(tag, "📄 +1发送文章: id=$postId, title=$postTitle")
                 
-                val result = messageRepository.sendPostMessage(
+                val result = messageRepository.sendMessage(
                     chatId = currentChatId,
                     chatType = currentChatType,
-                    postId = postId,
-                    postTitle = postTitle,
-                    postContent = postContent,
-                    postType = postType
+                    payload = SendMessagePayload(
+                        contentType = 6,
+                        postId = postId,
+                        postTitle = postTitle,
+                        postContent = postContent,
+                        postType = postType
+                    )
                 )
                 
                 result.fold(

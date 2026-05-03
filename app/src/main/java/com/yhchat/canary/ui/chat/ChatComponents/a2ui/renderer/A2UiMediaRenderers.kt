@@ -61,6 +61,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 // A2UI AudioPlayer Component
@@ -358,7 +361,7 @@ internal fun A2UiVideoPlayer(
     var currentTimeText by remember(playerId) { mutableStateOf("00:00") }
     var totalTimeText by remember(playerId) { mutableStateOf("00:00") }
     var isBuffering by remember(playerId) { mutableStateOf(false) }
-    var hideControllerJob by remember(playerId) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var hideControllerJob by remember(playerId) { mutableStateOf<Job?>(null) }
     
     var videoView by remember(playerId) { mutableStateOf<android.widget.VideoView?>(null) }
     val handler = remember { Handler(Looper.getMainLooper()) }

@@ -154,8 +154,6 @@ private fun GroupSettingsContent(
     } else {
         groupInfo.avatarUrl
     }
-    var showImageViewer by remember { mutableStateOf(false) }
-    var showKeywordDialog by remember { mutableStateOf(false) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -193,7 +191,7 @@ private fun GroupSettingsContent(
                                             .size(100.dp)
                                             .clip(CircleShape)
                                             .clickable(enabled = currentAvatarUrl.isNotBlank()) {
-                                                showImageViewer = true
+                                                viewModel.openImageViewer()
                                             },
                                         contentScale = ContentScale.Crop
                                     )
@@ -322,7 +320,7 @@ private fun GroupSettingsContent(
                             icon = Icons.Default.Lock,
                             title = "群口令",
                             value = groupInfo.groupCode?.takeIf { it.isNotBlank() } ?: "未设置",
-                            onClick = { showKeywordDialog = true }
+                            onClick = viewModel::openKeywordDialog
                         )
                     }
                 )
@@ -471,44 +469,34 @@ private fun GroupSettingsContent(
         }
     }
 
-    if (showImageViewer && currentAvatarUrl.isNotBlank()) {
+    if (uiState.showImageViewer && currentAvatarUrl.isNotBlank()) {
         ImageViewer(
             imageUrl = currentAvatarUrl,
-            onDismiss = { showImageViewer = false }
+            onDismiss = viewModel::dismissImageViewer
         )
     }
 
-    if (showKeywordDialog) {
-        var keywordInput by remember { mutableStateOf(groupInfo.groupCode ?: "") }
-        var isLoading by remember { mutableStateOf(false) }
-
+    if (uiState.showKeywordDialog) {
         AlertDialog(
-            onDismissRequest = { if (!isLoading) showKeywordDialog = false },
+            onDismissRequest = viewModel::dismissKeywordDialog,
             title = { Text("设置群口令") },
             text = {
                 OutlinedTextField(
-                    value = keywordInput,
-                    onValueChange = { keywordInput = it },
+                    value = uiState.keywordInput,
+                    onValueChange = viewModel::updateKeywordInput,
                     label = { Text("群口令") },
-                    enabled = !isLoading,
+                    enabled = !uiState.isSettingKeyword,
                     modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        isLoading = true
-                        viewModel.editGroupKeyword(groupInfo.groupId, keywordInput) { success ->
-                            isLoading = false
-                            if (success) {
-                                showKeywordDialog = false
-                                viewModel.loadGroupInfo(groupInfo.groupId)
-                            }
-                        }
+                        viewModel.confirmKeyword(groupInfo.groupId)
                     },
-                    enabled = !isLoading
+                    enabled = !uiState.isSettingKeyword
                 ) {
-                    if (isLoading) {
+                    if (uiState.isSettingKeyword) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
@@ -521,8 +509,8 @@ private fun GroupSettingsContent(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showKeywordDialog = false },
-                    enabled = !isLoading
+                    onClick = viewModel::dismissKeywordDialog,
+                    enabled = !uiState.isSettingKeyword
                 ) {
                     Text("取消")
                 }

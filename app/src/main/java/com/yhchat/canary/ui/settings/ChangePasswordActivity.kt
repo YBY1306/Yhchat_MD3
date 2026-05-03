@@ -147,9 +147,6 @@ fun ChangePasswordScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
 
-    var showPassword by remember { mutableStateOf(false) }
-    var showConfirmPassword by remember { mutableStateOf(false) }
-
     LaunchedEffect(userEmail) {
         viewModel.initialize(userEmail)
     }
@@ -280,12 +277,12 @@ fun ChangePasswordScreen(
                 onValueChange = { viewModel.updateNewPassword(it) },
                 label = { Text("新密码") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = { showPassword = !showPassword }) {
+                    IconButton(onClick = viewModel::togglePasswordVisibility) {
                         Icon(
-                            imageVector = if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (showPassword) "隐藏密码" else "显示密码"
+                            imageVector = if (uiState.showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (uiState.showPassword) "隐藏密码" else "显示密码"
                         )
                     }
                 }
@@ -297,12 +294,12 @@ fun ChangePasswordScreen(
                 onValueChange = { viewModel.updateConfirmPassword(it) },
                 label = { Text("确认密码") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
+                    IconButton(onClick = viewModel::toggleConfirmPasswordVisibility) {
                         Icon(
-                            imageVector = if (showConfirmPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (showConfirmPassword) "隐藏密码" else "显示密码"
+                            imageVector = if (uiState.showConfirmPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (uiState.showConfirmPassword) "隐藏密码" else "显示密码"
                         )
                     }
                 }

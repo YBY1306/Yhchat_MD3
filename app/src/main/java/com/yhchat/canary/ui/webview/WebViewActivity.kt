@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -101,28 +102,13 @@ fun WebViewScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-
-    // 使用数据类合并状态，减少重组
-    data class WebViewUiState(
-        val url: String = initialUrl,
-        val title: String = initialTitle,
-        val progress: Float = 0f,
-        val canGoBack: Boolean = false,
-        val canGoForward: Boolean = false,
-        val isLoading: Boolean = true
-    )
-
-    var uiState by remember { mutableStateOf(WebViewUiState()) }
+    val viewModel: WebViewViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
     var webView by remember { mutableStateOf<WebView?>(null) }
-    var showMenu by remember { mutableStateOf(false) }
 
-    // 外部跳转拦截对话框状态
-    var showJumpDialog by remember { mutableStateOf(false) }
-    var pendingJumpUrl by remember { mutableStateOf("") }
-    var showDownloadDialog by remember { mutableStateOf(false) }
-    var pendingDownloadUrl by remember { mutableStateOf("") }
-    var pendingContentDisposition by remember { mutableStateOf<String?>(null) }
-    var pendingMimeType by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(initialUrl, initialTitle) {
+        viewModel.initialize(initialUrl, initialTitle)
+    }
 
     // 处理物理返回键
     BackHandler(enabled = uiState.canGoBack) {
@@ -169,17 +155,17 @@ fun WebViewScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { showMenu = true }) {
+                        IconButton(onClick = { viewModel.setMenuVisible(true) }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "更多")
                         }
                         DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
+                            expanded = uiState.showMenu,
+                            onDismissRequest = { viewModel.setMenuVisible(false) }
                         ) {
                             DropdownMenuItem(
                                 text = { Text("刷新") },
                                 onClick = {
-                                    showMenu = false
+                                    viewModel.setMenuVisible(false)
                                     webView?.reload()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Refresh, null) }
@@ -187,7 +173,7 @@ fun WebViewScreen(
                             DropdownMenuItem(
                                 text = { Text("在浏览器中打开") },
                                 onClick = {
-                                    showMenu = false
+                                    viewModel.setMenuVisible(false)
                                     WebViewActivity.openInExternalBrowser(context, uiState.url)
                                 },
                                 leadingIcon = { Icon(Icons.Default.OpenInBrowser, null) }
@@ -195,7 +181,7 @@ fun WebViewScreen(
                             DropdownMenuItem(
                                 text = { Text("复制链接") },
                                 onClick = {
-                                    showMenu = false
+                                    viewModel.setMenuVisible(false)
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     val clip = ClipData.newPlainText("url", uiState.url)
                                     clipboard.setPrimaryClip(clip)
@@ -207,7 +193,7 @@ fun WebViewScreen(
                             DropdownMenuItem(
                                 text = { Text("关闭") },
                                 onClick = {
-                                    showMenu = false
+                                    viewModel.setMenuVisible(false)
                                     onBack()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Close, null) }
@@ -313,22 +299,19 @@ fun WebViewScreen(
                             }
                             
                             override fun onPageStarted(view: WebView?, urlStr: String?, favicon: Bitmap?) {
-                                uiState = uiState.copy(
-                                    url = urlStr ?: uiState.url,
-                                    isLoading = true,
+                                viewModel.onPageStarted(
+                                    url = urlStr,
                                     canGoBack = view?.canGoBack() ?: false,
                                     canGoForward = view?.canGoForward() ?: false
                                 )
                             }
 
                             override fun onPageFinished(view: WebView?, urlStr: String?) {
-                                uiState = uiState.copy(
-                                    url = urlStr ?: uiState.url,
-                                    title = view?.title ?: uiState.title,
+                                viewModel.onPageFinished(
+                                    url = urlStr,
+                                    title = view?.title,
                                     canGoBack = view?.canGoBack() ?: false,
-                                    canGoForward = view?.canGoForward() ?: false,
-                                    progress = 1.0f,
-                                    isLoading = false
+                                    canGoForward = view?.canGoForward() ?: false
                                 )
                             }
 
@@ -337,8 +320,7 @@ fun WebViewScreen(
                                 
                                 // 拦截非 http/https 协议
                                 if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                                    pendingJumpUrl = url
-                                    showJumpDialog = true
+                                    viewModel.requestExternalJump(url)
                                     return true
                                 }
                                 return false
@@ -347,19 +329,20 @@ fun WebViewScreen(
 
                         webChromeClient = object : WebChromeClient() {
                             override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                                uiState = uiState.copy(progress = newProgress / 100f)
+                                viewModel.onProgressChanged(newProgress)
                             }
 
                             override fun onReceivedTitle(view: WebView?, webTitle: String?) {
-                                webTitle?.let { uiState = uiState.copy(title = it) }
+                                viewModel.onReceivedTitle(webTitle)
                             }
                         }
 
                         setDownloadListener { downloadUrl, _, contentDisposition, mimetype, _ ->
-                            pendingDownloadUrl = downloadUrl
-                            pendingContentDisposition = contentDisposition
-                            pendingMimeType = mimetype
-                            showDownloadDialog = true
+                            viewModel.requestDownload(
+                                url = downloadUrl,
+                                contentDisposition = contentDisposition,
+                                mimeType = mimetype
+                            )
                         }
 
                         // 加载 URL 时添加 token 请求头
@@ -381,16 +364,16 @@ fun WebViewScreen(
     }
 
     // 外部跳转拦截对话框
-    if (showJumpDialog) {
+    if (uiState.showJumpDialog) {
         AlertDialog(
-            onDismissRequest = { showJumpDialog = false },
+            onDismissRequest = { viewModel.dismissJumpDialog() },
             title = { Text("外部应用跳转请求") },
             text = { 
                 Column {
                     Text("该网页请求打开外部应用，是否允许？")
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = pendingJumpUrl,
+                        text = uiState.pendingJumpUrl,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
@@ -400,9 +383,10 @@ fun WebViewScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    showJumpDialog = false
+                    val jumpUrl = uiState.pendingJumpUrl
+                    viewModel.dismissJumpDialog()
                     try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(pendingJumpUrl)).apply {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jumpUrl)).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)
@@ -414,21 +398,21 @@ fun WebViewScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showJumpDialog = false }) {
+                TextButton(onClick = { viewModel.dismissJumpDialog() }) {
                     Text("忽略")
                 }
             }
         )
     }
 
-    if (showDownloadDialog) {
+    if (uiState.showDownloadDialog) {
         val fileName = URLUtil.guessFileName(
-            pendingDownloadUrl,
-            pendingContentDisposition,
-            pendingMimeType
+            uiState.pendingDownloadUrl,
+            uiState.pendingContentDisposition,
+            uiState.pendingMimeType
         )
         AlertDialog(
-            onDismissRequest = { showDownloadDialog = false },
+            onDismissRequest = { viewModel.dismissDownloadDialog() },
             title = { Text("下载文件") },
             text = {
                 Column {
@@ -445,14 +429,16 @@ fun WebViewScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    showDownloadDialog = false
+                    val downloadUrl = uiState.pendingDownloadUrl
+                    val mimeType = uiState.pendingMimeType
+                    viewModel.dismissDownloadDialog()
                     if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
                         Toast.makeText(context, "外部存储不可用", Toast.LENGTH_LONG).show()
                         return@Button
                     }
                     try {
-                        val request = DownloadManager.Request(pendingDownloadUrl.toUri()).apply {
-                            setMimeType(pendingMimeType)
+                        val request = DownloadManager.Request(downloadUrl.toUri()).apply {
+                            setMimeType(mimeType)
                             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                             setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
                             setTitle(fileName)
@@ -471,7 +457,7 @@ fun WebViewScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDownloadDialog = false }) {
+                TextButton(onClick = { viewModel.dismissDownloadDialog() }) {
                     Text("取消")
                 }
             }

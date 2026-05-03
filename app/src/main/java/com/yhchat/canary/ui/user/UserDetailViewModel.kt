@@ -36,6 +36,16 @@ data class UserDetailUiState(
     val isSettingNoNotify: Boolean = false,
     val isProcessingMemberAction: Boolean = false,
     val targetUserPermission: Int = 0,
+    val showAddFriendDialog: Boolean = false,
+    val addFriendRemark: String = "",
+    val showUserInfoDialog: Boolean = false,
+    val showGagDialog: Boolean = false,
+    val showMoreSheet: Boolean = false,
+    val showReportDialog: Boolean = false,
+    val showDeleteFriendDialog: Boolean = false,
+    val showShareDialog: Boolean = false,
+    val showImageViewer: Boolean = false,
+    val currentImageUrl: String = "",
     val actionMessage: String? = null,
     val friendDeleted: Boolean = false
 )
@@ -59,6 +69,81 @@ class UserDetailViewModel(context: Context) : ViewModel() {
 
     fun consumeFriendDeleted() {
         _uiState.update { it.copy(friendDeleted = false) }
+    }
+
+    fun openAddFriendDialog() {
+        _uiState.update { it.copy(showAddFriendDialog = true) }
+    }
+
+    fun dismissAddFriendDialog() {
+        _uiState.update { it.copy(showAddFriendDialog = false, addFriendRemark = "") }
+    }
+
+    fun updateAddFriendRemark(remark: String) {
+        _uiState.update { it.copy(addFriendRemark = remark) }
+    }
+
+    fun confirmAddFriend(userId: String) {
+        val state = _uiState.value
+        if (state.isAddingFriend) return
+        sendFriendRequest(userId, state.addFriendRemark)
+        _uiState.update { it.copy(showAddFriendDialog = false, addFriendRemark = "") }
+    }
+
+    fun openUserInfoDialog() {
+        _uiState.update { it.copy(showUserInfoDialog = true) }
+    }
+
+    fun dismissUserInfoDialog() {
+        _uiState.update { it.copy(showUserInfoDialog = false) }
+    }
+
+    fun openGagDialog() {
+        _uiState.update { it.copy(showGagDialog = true) }
+    }
+
+    fun dismissGagDialog() {
+        _uiState.update { it.copy(showGagDialog = false) }
+    }
+
+    fun openMoreSheet() {
+        _uiState.update { it.copy(showMoreSheet = true) }
+    }
+
+    fun dismissMoreSheet() {
+        _uiState.update { it.copy(showMoreSheet = false) }
+    }
+
+    fun openReportDialog() {
+        _uiState.update { it.copy(showReportDialog = true) }
+    }
+
+    fun dismissReportDialog() {
+        _uiState.update { it.copy(showReportDialog = false) }
+    }
+
+    fun openDeleteFriendDialog() {
+        _uiState.update { it.copy(showDeleteFriendDialog = true) }
+    }
+
+    fun dismissDeleteFriendDialog() {
+        _uiState.update { it.copy(showDeleteFriendDialog = false) }
+    }
+
+    fun openShareDialog() {
+        _uiState.update { it.copy(showShareDialog = true) }
+    }
+
+    fun dismissShareDialog() {
+        _uiState.update { it.copy(showShareDialog = false) }
+    }
+
+    fun openImageViewer(imageUrl: String) {
+        _uiState.update { it.copy(showImageViewer = true, currentImageUrl = imageUrl) }
+    }
+
+    fun dismissImageViewer() {
+        _uiState.update { it.copy(showImageViewer = false, currentImageUrl = "") }
     }
 
     fun load(userId: String, groupId: String?) {

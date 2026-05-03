@@ -124,18 +124,6 @@ fun UserDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
-    var showAddFriendDialog by remember { mutableStateOf(false) }
-    var showUserInfoDialog by remember { mutableStateOf(false) }
-    var addFriendRemark by remember { mutableStateOf("") }
-
-    var showGagMenu by remember { mutableStateOf(false) }
-
-    var showMoreSheet by remember { mutableStateOf(false) }
-    var showReportDialog by remember { mutableStateOf(false) }
-    var showDeleteFriendDialog by remember { mutableStateOf(false) }
-    var showShareDialog by remember { mutableStateOf(false) }
-    var showImageViewer by remember { mutableStateOf(false) }
-    var currentImageUrl by remember { mutableStateOf("") }
 
     val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
     
@@ -195,7 +183,7 @@ fun UserDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showMoreSheet = true }) {
+                    IconButton(onClick = { viewModel.openMoreSheet() }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
                 },
@@ -250,47 +238,45 @@ fun UserDetailScreen(
                                 }
                                 context.startActivity(intent)
                             } else {
-                                showAddFriendDialog = true
+                                viewModel.openAddFriendDialog()
                             }
                         },
-                        onShowUserInfo = { showUserInfoDialog = true },
-                        onAvatarClick = { avatarUrl ->
-                            currentImageUrl = avatarUrl
-                            showImageViewer = true
-                        }
+                        onShowUserInfo = viewModel::openUserInfoDialog,
+                        onAvatarClick = viewModel::openImageViewer
                     )
                 }
             }
         }
 
-        if (showUserInfoDialog && uiState.userDetail != null) {
+        if (uiState.showUserInfoDialog && uiState.userDetail != null) {
             UserInfoDialog(
                 userDetail = uiState.userDetail!!,
-                onDismiss = { showUserInfoDialog = false }
+                onDismiss = viewModel::dismissUserInfoDialog
             )
         }
 
-        if (showImageViewer && currentImageUrl.isNotBlank()) {
+        if (uiState.showImageViewer && uiState.currentImageUrl.isNotBlank()) {
             com.yhchat.canary.ui.components.ImageViewer(
-                imageUrl = currentImageUrl,
-                onDismiss = {
-                    showImageViewer = false
-                    currentImageUrl = ""
-                }
+                imageUrl = uiState.currentImageUrl,
+                onDismiss = viewModel::dismissImageViewer
             )
         }
         
-        if (showAddFriendDialog) {
+        if (uiState.showAddFriendDialog) {
             AlertDialog(
-                onDismissRequest = { if (!uiState.isAddingFriend) showAddFriendDialog = false },
+                onDismissRequest = {
+                    if (!uiState.isAddingFriend) {
+                        viewModel.dismissAddFriendDialog()
+                    }
+                },
                 title = { Text("添加好友") },
                 text = {
                     Column {
                         Text("确定要添加 ${uiState.userDetail?.name ?: userName} 为好友吗？")
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = addFriendRemark,
-                            onValueChange = { addFriendRemark = it },
+                            value = uiState.addFriendRemark,
+                            onValueChange = viewModel::updateAddFriendRemark,
                             label = { Text("申请备注（可选）") },
                             singleLine = true,
                             enabled = !uiState.isAddingFriend,
@@ -302,9 +288,7 @@ fun UserDetailScreen(
                     Button(
                         onClick = {
                             if (uiState.isAddingFriend) return@Button
-                            viewModel.sendFriendRequest(userId, addFriendRemark)
-                            showAddFriendDialog = false
-                            addFriendRemark = ""
+                            viewModel.confirmAddFriend(userId)
                         },
                         enabled = !uiState.isAddingFriend
                     ) {
@@ -316,30 +300,37 @@ fun UserDetailScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddFriendDialog = false }, enabled = !uiState.isAddingFriend) {
+                    TextButton(
+                        onClick = viewModel::dismissAddFriendDialog,
+                        enabled = !uiState.isAddingFriend
+                    ) {
                         Text("取消")
                     }
                 }
             )
         }
 
-        if (showGagMenu && groupId != null) {
+        if (uiState.showGagDialog && groupId != null) {
             GagMemberDialog(
                 userName = uiState.userDetail?.name ?: userName,
                 isLoading = uiState.isProcessingMemberAction,
                 onConfirm = { gagTime ->
                     if (!uiState.isProcessingMemberAction) {
                         viewModel.gagMember(groupId, userId, gagTime)
-                        showGagMenu = false
+                        viewModel.dismissGagDialog()
                     }
                 },
-                onDismiss = { if (!uiState.isProcessingMemberAction) showGagMenu = false }
+                onDismiss = {
+                    if (!uiState.isProcessingMemberAction) {
+                        viewModel.dismissGagDialog()
+                    }
+                }
             )
         }
 
-        if (showMoreSheet) {
+        if (uiState.showMoreSheet) {
             ModalBottomSheet(
-                onDismissRequest = { showMoreSheet = false }
+                onDismissRequest = viewModel::dismissMoreSheet
             ) {
                 val scrollState = rememberScrollState()
                 Column(
@@ -354,8 +345,8 @@ fun UserDetailScreen(
                         icon = Icons.Default.Search,
                         title = "账号信息",
                         onClick = {
-                            showMoreSheet = false
-                            showUserInfoDialog = true
+                            viewModel.dismissMoreSheet()
+                            viewModel.openUserInfoDialog()
                         }
                     )
 
@@ -363,8 +354,8 @@ fun UserDetailScreen(
                         icon = Icons.Default.Share,
                         title = "分享好友",
                         onClick = {
-                            showMoreSheet = false
-                            showShareDialog = true
+                            viewModel.dismissMoreSheet()
+                            viewModel.openShareDialog()
                         }
                     )
 
@@ -372,8 +363,8 @@ fun UserDetailScreen(
                         icon = Icons.Default.Report,
                         title = "举报",
                         onClick = {
-                            showMoreSheet = false
-                            showReportDialog = true
+                            viewModel.dismissMoreSheet()
+                            viewModel.openReportDialog()
                         }
                     )
 
@@ -381,7 +372,7 @@ fun UserDetailScreen(
                         icon = Icons.Default.Wallpaper,
                         title = "聊天背景",
                         onClick = {
-                            showMoreSheet = false
+                            viewModel.dismissMoreSheet()
                             com.yhchat.canary.ui.background.ChatBackgroundActivity.start(
                                 context,
                                 userId,
@@ -430,8 +421,8 @@ fun UserDetailScreen(
                             title = "删除好友",
                             isDestructive = true,
                             onClick = {
-                                showMoreSheet = false
-                                showDeleteFriendDialog = true
+                                viewModel.dismissMoreSheet()
+                                viewModel.openDeleteFriendDialog()
                             }
                         )
                     }
@@ -446,7 +437,7 @@ fun UserDetailScreen(
                                 title = "卸任管理员",
                                 enabled = !uiState.isProcessingMemberAction,
                                 onClick = {
-                                    showMoreSheet = false
+                                    viewModel.dismissMoreSheet()
                                     if (!uiState.isProcessingMemberAction) {
                                         viewModel.setMemberRole(groupId, userId, 0)
                                     }
@@ -458,7 +449,7 @@ fun UserDetailScreen(
                                 title = "设为管理员",
                                 enabled = !uiState.isProcessingMemberAction,
                                 onClick = {
-                                    showMoreSheet = false
+                                    viewModel.dismissMoreSheet()
                                     if (!uiState.isProcessingMemberAction) {
                                         viewModel.setMemberRole(groupId, userId, 2)
                                     }
@@ -472,7 +463,7 @@ fun UserDetailScreen(
                             enabled = !uiState.isProcessingMemberAction,
                             isDestructive = true,
                             onClick = {
-                                showMoreSheet = false
+                                viewModel.dismissMoreSheet()
                                 if (!uiState.isProcessingMemberAction) {
                                     viewModel.removeMember(groupId, userId)
                                 }
@@ -483,8 +474,8 @@ fun UserDetailScreen(
                             title = "禁言",
                             enabled = !uiState.isProcessingMemberAction,
                             onClick = {
-                                showMoreSheet = false
-                                showGagMenu = true
+                                viewModel.dismissMoreSheet()
+                                viewModel.openGagDialog()
                             }
                         )
                     }
@@ -494,9 +485,9 @@ fun UserDetailScreen(
             }
         }
 
-        if (showDeleteFriendDialog) {
+        if (uiState.showDeleteFriendDialog) {
             AlertDialog(
-                onDismissRequest = { showDeleteFriendDialog = false },
+                onDismissRequest = viewModel::dismissDeleteFriendDialog,
                 title = {
                     Text(
                         text = "删除好友",
@@ -510,7 +501,7 @@ fun UserDetailScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            showDeleteFriendDialog = false
+                            viewModel.dismissDeleteFriendDialog()
                             viewModel.deleteFriend(userId)
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -521,31 +512,31 @@ fun UserDetailScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteFriendDialog = false }) {
+                    TextButton(onClick = viewModel::dismissDeleteFriendDialog) {
                         Text("取消")
                     }
                 }
             )
         }
 
-        if (showReportDialog) {
+        if (uiState.showReportDialog) {
             ReportDialog(
                 chatId = userId,
                 chatType = 1,
                 chatName = uiState.userDetail?.name ?: userName,
-                onDismiss = { showReportDialog = false },
+                onDismiss = viewModel::dismissReportDialog,
                 onSuccess = {
                     Toast.makeText(context, "举报已提交", Toast.LENGTH_SHORT).show()
                 }
             )
         }
         
-        if (showShareDialog) {
+        if (uiState.showShareDialog) {
             com.yhchat.canary.ui.components.ShareDialog(
                 chatId = userId,
                 chatType = 1, // 用户
                 chatName = uiState.userDetail?.name ?: userName,
-                onDismiss = { showShareDialog = false }
+                onDismiss = viewModel::dismissShareDialog
             )
         }
     }

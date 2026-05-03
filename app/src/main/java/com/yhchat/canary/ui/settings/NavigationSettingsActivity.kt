@@ -20,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import org.burnoutcrew.reorderable.ItemPosition
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -78,17 +81,20 @@ fun NavigationSettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val viewModel: NavigationSettingsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return NavigationSettingsViewModel(navigationRepository) as T
+            }
+        }
+    )
     val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
-    
-    // 使用State管理可编辑的列表
-    var items by remember { mutableStateOf(navigationConfig.items.sortedBy { it.order }) }
-    var hasChanges by remember { mutableStateOf(false) }
-    var showRestartDialog by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     // 当配置更新时同步items
     LaunchedEffect(navigationConfig) {
-        items = navigationConfig.items.sortedBy { it.order }
-        hasChanges = false
+        viewModel.syncFromConfig(navigationConfig)
     }
     
     Column(
@@ -114,7 +120,7 @@ fun NavigationSettingsScreen(
             actions = {
                 TextButton(
                     onClick = {
-                        navigationRepository.resetToDefault()
+                        viewModel.resetToDefault()
                     }
                 ) {
                     Text("重置")
@@ -149,7 +155,7 @@ fun NavigationSettingsScreen(
         }
         
         // 应用更改按钮
-        if (hasChanges) {
+        if (uiState.hasChanges) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,9 +179,7 @@ fun NavigationSettingsScreen(
                     )
                     Button(
                         onClick = {
-                            // 保存更改
-                            navigationRepository.updateItemsOrder(items)
-                            showRestartDialog = true
+                            viewModel.applyChanges()
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -191,13 +195,7 @@ fun NavigationSettingsScreen(
         val state = rememberReorderableLazyListState(onMove = { from: ItemPosition, to: ItemPosition ->
             val fromIndex = from.index
             val toIndex = to.index
-            val mutable = items.toMutableList()
-            val moved = mutable.removeAt(fromIndex)
-            val target = if (fromIndex < toIndex) toIndex - 1 else toIndex
-            val clampedTarget = target.coerceIn(0, mutable.size)
-            mutable.add(clampedTarget, moved)
-            items = mutable
-            hasChanges = true
+            viewModel.moveItem(fromIndex, toIndex)
         })
 
         LazyColumn(
@@ -208,19 +206,16 @@ fun NavigationSettingsScreen(
                 .reorderable(state)
                 .detectReorderAfterLongPress(state)
         ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+            itemsIndexed(uiState.items, key = { _, item -> item.id }) { index, item ->
                 ReorderableItem(state, key = item.id) { isDragging ->
                     val elevation = animateDpAsState(if (isDragging) 8.dp else 2.dp, label = "elevation")
                     NavigationItemCard(
                         item = item,
                         index = index,
-                        totalItems = items.size,
+                        totalItems = uiState.items.size,
                         elevation = elevation.value,
                         onVisibilityChange = { isVisible ->
-                            items = items.map {
-                                if (it.id == item.id) it.copy(isVisible = isVisible) else it
-                            }
-                            hasChanges = true
+                            viewModel.updateVisibility(item.id, isVisible)
                         }
                     )
                 }
@@ -233,9 +228,9 @@ fun NavigationSettingsScreen(
         }
         
         // 重启确认对话框
-        if (showRestartDialog) {
+        if (uiState.showRestartDialog) {
             AlertDialog(
-                onDismissRequest = { showRestartDialog = false },
+                onDismissRequest = viewModel::dismissRestartDialog,
                 title = { Text("重启应用") },
                 text = { Text("更改已保存。应用需要重启才能生效，是否立即重启？") },
                 confirmButton = {
@@ -255,7 +250,7 @@ fun NavigationSettingsScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRestartDialog = false }) {
+                    TextButton(onClick = viewModel::dismissRestartDialog) {
                         Text("稍后")
                     }
                 }

@@ -43,6 +43,11 @@ data class GroupSettingsUiState(
     val showAutoDeleteMessageDialog: Boolean = false,
     val isSettingAutoDeleteMessage: Boolean = false,
 
+    val showImageViewer: Boolean = false,
+    val showKeywordDialog: Boolean = false,
+    val keywordInput: String = "",
+    val isSettingKeyword: Boolean = false,
+
     val isSettingHideGroupMembers: Boolean = false,
     val isSettingDenyMembersUploadToGroupDisk: Boolean = false
 )
@@ -68,6 +73,55 @@ class GroupSettingsViewModel @Inject constructor(
 
     fun dismissAutoDeleteMessageDialog() {
         _uiState.value = _uiState.value.copy(showAutoDeleteMessageDialog = false)
+    }
+
+    fun openImageViewer() {
+        if (_uiState.value.groupInfo?.avatarUrl.isNullOrBlank()) return
+        _uiState.value = _uiState.value.copy(showImageViewer = true)
+    }
+
+    fun dismissImageViewer() {
+        _uiState.value = _uiState.value.copy(showImageViewer = false)
+    }
+
+    fun openKeywordDialog() {
+        val keyword = _uiState.value.groupInfo?.groupCode ?: ""
+        _uiState.value = _uiState.value.copy(
+            showKeywordDialog = true,
+            keywordInput = keyword,
+            isSettingKeyword = false
+        )
+    }
+
+    fun dismissKeywordDialog() {
+        if (_uiState.value.isSettingKeyword) return
+        _uiState.value = _uiState.value.copy(showKeywordDialog = false)
+    }
+
+    fun updateKeywordInput(keyword: String) {
+        _uiState.value = _uiState.value.copy(keywordInput = keyword)
+    }
+
+    fun confirmKeyword(groupId: String) {
+        val keyword = _uiState.value.keywordInput
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSettingKeyword = true)
+            groupRepository.editGroupKeyword(groupId, keyword).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        isSettingKeyword = false,
+                        showKeywordDialog = false
+                    )
+                    loadGroupInfo(groupId)
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isSettingKeyword = false,
+                        saveError = error.message ?: "修改群口令失败"
+                    )
+                }
+            )
+        }
     }
 
     fun setAutoDeleteMessage(groupId: String, autoDeleteMessage: Int) {
@@ -420,26 +474,5 @@ class GroupSettingsViewModel @Inject constructor(
      */
     fun getCurrentUserId(): String {
         return tokenRepository.getUserIdSync() ?: ""
-    }
-    
-    /**
-     * 修改群口令
-     */
-    fun editGroupKeyword(groupId: String, keyword: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            groupRepository.editGroupKeyword(groupId, keyword).fold(
-                onSuccess = {
-                    Log.d(tag, "✅ 群口令修改成功")
-                    onResult(true)
-                },
-                onFailure = { error ->
-                    Log.e(tag, "❌ 群口令修改失败", error)
-                    _uiState.value = _uiState.value.copy(
-                        saveError = error.message ?: "修改群口令失败"
-                    )
-                    onResult(false)
-                }
-            )
-        }
     }
 }

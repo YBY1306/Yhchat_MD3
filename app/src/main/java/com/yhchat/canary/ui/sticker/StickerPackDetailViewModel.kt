@@ -16,7 +16,9 @@ import javax.inject.Inject
 data class StickerPackDetailUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val stickerPack: StickerPackDetailData? = null
+    val stickerPack: StickerPackDetailData? = null,
+    val showImageViewer: Boolean = false,
+    val currentImageIndex: Int = 0
 )
 
 @HiltViewModel
@@ -87,6 +89,20 @@ class StickerPackDetailViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
+    }
+
+    fun openImageViewer(index: Int) {
+        _uiState.value = _uiState.value.copy(
+            showImageViewer = true,
+            currentImageIndex = index
+        )
+    }
+
+    fun dismissImageViewer() {
+        _uiState.value = _uiState.value.copy(
+            showImageViewer = false,
+            currentImageIndex = 0
+        )
     }
 }
 

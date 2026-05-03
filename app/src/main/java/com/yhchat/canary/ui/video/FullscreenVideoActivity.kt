@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -121,19 +122,23 @@ private fun FullscreenVideoPlayer(
 ) {
     val context = LocalContext.current
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val viewModel: FullscreenVideoViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     val handler = remember { Handler(Looper.getMainLooper()) }
-    
-    var showControls by remember { mutableStateOf(true) }
+
     var videoView by remember { mutableStateOf<android.widget.VideoView?>(null) }
-    var isPlaying by remember { mutableStateOf(initialPlaying) }
-    var currentPosition by remember { mutableFloatStateOf(initialPosition.toFloat()) }
-    var duration by remember { mutableFloatStateOf(0f) }
-    var currentTimeText by remember { mutableStateOf(formatTime(initialPosition)) }
-    var totalTimeText by remember { mutableStateOf("00:00") }
-    var isBuffering by remember { mutableStateOf(false) }
-    var volume by remember { mutableFloatStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) }
-    var showVolumeSlider by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialPosition, initialPlaying) {
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        viewModel.initialize(
+            initialPosition = initialPosition,
+            initialPlaying = initialPlaying,
+            initialVolume = currentVolume.toFloat() / maxVolume.toFloat()
+        )
+    }
+
     var hideControllerJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     
     // Update progress runnable
@@ -142,8 +147,7 @@ private fun FullscreenVideoPlayer(
             override fun run() {
                 videoView?.let { view ->
                     if (view.isPlaying) {
-                        currentPosition = view.currentPosition.toFloat()
-                        currentTimeText = formatTime(view.currentPosition.toLong())
+                        viewModel.onProgressUpdated(view.currentPosition.toLong())
                         handler.postDelayed(this, 100)
                     }
                 }
@@ -156,9 +160,9 @@ private fun FullscreenVideoPlayer(
         hideControllerJob?.cancel()
         hideControllerJob = scope.launch {
             delay(3000)
-            if (isPlaying) {
-                showControls = false
-                showVolumeSlider = false
+            if (uiState.isPlaying) {
+                viewModel.setControlsVisible(false)
+                viewModel.setVolumeSliderVisible(false)
             }
         }
     }
@@ -167,7 +171,7 @@ private fun FullscreenVideoPlayer(
     fun playVideo() {
         videoView?.let { view ->
             view.start()
-            isPlaying = true
+            viewModel.onPlayStarted()
             handler.post(updateProgressRunnable)
             scheduleHideController()
         }
@@ -176,18 +180,18 @@ private fun FullscreenVideoPlayer(
     fun pauseVideo() {
         videoView?.let { view ->
             view.pause()
-            isPlaying = false
+            viewModel.onPaused()
             handler.removeCallbacks(updateProgressRunnable)
-            showControls = true
         }
     }
     
     fun seekForward(seconds: Int = 10) {
         videoView?.let { view ->
-            val newPosition = (view.currentPosition + seconds * 1000).coerceAtMost(duration.toInt())
+            val durationMs = uiState.durationMs
+            val newPosition = (view.currentPosition + seconds * 1000)
+                .coerceAtMost(durationMs.toInt())
             view.seekTo(newPosition)
-            currentPosition = newPosition.toFloat()
-            currentTimeText = formatTime(newPosition.toLong())
+            viewModel.onSeek(newPosition.toLong())
         }
     }
     
@@ -195,8 +199,7 @@ private fun FullscreenVideoPlayer(
         videoView?.let { view ->
             val newPosition = (view.currentPosition - seconds * 1000).coerceAtLeast(0)
             view.seekTo(newPosition)
-            currentPosition = newPosition.toFloat()
-            currentTimeText = formatTime(newPosition.toLong())
+            viewModel.onSeek(newPosition.toLong())
         }
     }
     
@@ -213,8 +216,9 @@ private fun FullscreenVideoPlayer(
             .fillMaxSize()
             .background(Color.Black)
             .clickable { 
-                showControls = !showControls
-                if (showControls && isPlaying) {
+                val nextVisible = !uiState.showControls
+                viewModel.setControlsVisible(nextVisible)
+                if (nextVisible && uiState.isPlaying) {
                     scheduleHideController()
                 }
             }
@@ -226,30 +230,26 @@ private fun FullscreenVideoPlayer(
                     setVideoPath(videoUrl)
                     setOnPreparedListener { mediaPlayer ->
                         mediaPlayer.seekTo(initialPosition.toInt())
-                        duration = this.duration.toFloat()
-                        totalTimeText = formatTime(this.duration.toLong())
+                        viewModel.onPrepared(this.duration.toLong())
                         if (initialPlaying) {
                             start()
-                            isPlaying = true
+                            viewModel.onPlayStarted()
                             handler.post(updateProgressRunnable)
                             scheduleHideController()
                         }
                         videoView = this
                     }
                     setOnCompletionListener {
-                        isPlaying = false
-                        currentPosition = 0f
-                        currentTimeText = "00:00"
+                        viewModel.onCompletion()
                         handler.removeCallbacks(updateProgressRunnable)
-                        showControls = true
                     }
                     setOnInfoListener { _, what, _ ->
                         when (what) {
                             MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
-                                isBuffering = true
+                                viewModel.onBufferingChanged(true)
                             }
                             MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
-                                isBuffering = false
+                                viewModel.onBufferingChanged(false)
                             }
                         }
                         false
@@ -260,7 +260,7 @@ private fun FullscreenVideoPlayer(
         )
         
         // Loading indicator
-        if (isBuffering) {
+        if (uiState.isBuffering) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -273,7 +273,7 @@ private fun FullscreenVideoPlayer(
         }
         
         // 控制栏
-        if (showControls) {
+        if (uiState.showControls) {
             // Top gradient
             Box(
                 modifier = Modifier
@@ -292,7 +292,7 @@ private fun FullscreenVideoPlayer(
                 // 关闭按钮
                 IconButton(
                     onClick = { 
-                        onClose(currentPosition.toLong(), isPlaying)
+                        onClose(uiState.currentPositionMs, uiState.isPlaying)
                     },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -308,7 +308,7 @@ private fun FullscreenVideoPlayer(
             }
             
             // Center play/pause button (when paused)
-            if (!isPlaying && !isBuffering) {
+            if (!uiState.isPlaying && !uiState.isBuffering) {
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -347,14 +347,18 @@ private fun FullscreenVideoPlayer(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    val durationMs = uiState.durationMs
                     // Seek slider
                     Slider(
-                        value = if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f,
+                        value = if (durationMs > 0L) {
+                            (uiState.currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        },
                         onValueChange = { fraction ->
-                            val newPosition = (fraction * duration).toInt()
+                            val newPosition = (fraction * durationMs.toFloat()).toInt()
                             videoView?.seekTo(newPosition)
-                            currentPosition = newPosition.toFloat()
-                            currentTimeText = formatTime(newPosition.toLong())
+                            viewModel.onSeek(newPosition.toLong())
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
@@ -370,13 +374,13 @@ private fun FullscreenVideoPlayer(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = currentTimeText,
+                            text = formatTime(uiState.currentPositionMs),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = totalTimeText,
+                            text = formatTime(durationMs),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White,
                             fontWeight = FontWeight.Medium
@@ -412,7 +416,7 @@ private fun FullscreenVideoPlayer(
                     // Play/Pause button (large)
                     FilledIconButton(
                         onClick = {
-                            if (isPlaying) {
+                            if (uiState.isPlaying) {
                                 pauseVideo()
                             } else {
                                 playVideo()
@@ -420,7 +424,7 @@ private fun FullscreenVideoPlayer(
                         },
                         modifier = Modifier.size(64.dp)
                     ) {
-                        if (isBuffering) {
+                        if (uiState.isBuffering) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(32.dp),
                                 strokeWidth = 3.dp,
@@ -428,8 +432,8 @@ private fun FullscreenVideoPlayer(
                             )
                         } else {
                             Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "暂停" else "播放",
+                                imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (uiState.isPlaying) "暂停" else "播放",
                                 modifier = Modifier.size(36.dp)
                             )
                         }
@@ -455,15 +459,16 @@ private fun FullscreenVideoPlayer(
                     // Volume button
                     IconButton(
                         onClick = { 
-                            showVolumeSlider = !showVolumeSlider
-                            if (showVolumeSlider) {
+                            val nextVisible = !uiState.showVolumeSlider
+                            viewModel.setVolumeSliderVisible(nextVisible)
+                            if (nextVisible) {
                                 scheduleHideController()
                             }
                         },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = if (volume > 0) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            imageVector = if (uiState.volume > 0f) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
                             contentDescription = "音量",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -472,7 +477,7 @@ private fun FullscreenVideoPlayer(
                 }
                 
                 // Volume slider
-                if (showVolumeSlider) {
+                if (uiState.showVolumeSlider) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -486,12 +491,12 @@ private fun FullscreenVideoPlayer(
                             modifier = Modifier.size(20.dp)
                         )
                         Slider(
-                            value = volume,
+                            value = uiState.volume,
                             onValueChange = { newVolume ->
-                                volume = newVolume
                                 val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                                 val volumeLevel = (newVolume * maxVolume).toInt()
                                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volumeLevel, 0)
+                                viewModel.onVolumeChanged(newVolume)
                             },
                             modifier = Modifier.weight(1f),
                             colors = SliderDefaults.colors(

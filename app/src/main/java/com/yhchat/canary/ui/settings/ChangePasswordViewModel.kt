@@ -22,6 +22,8 @@ data class ChangePasswordUiState(
     val emailVerificationCode: String = "",
     val newPassword: String = "",
     val confirmPassword: String = "",
+    val showPassword: Boolean = false,
+    val showConfirmPassword: Boolean = false,
     val isLoading: Boolean = false,
     val message: String? = null,
     val success: Boolean = false
@@ -57,6 +59,14 @@ class ChangePasswordViewModel(context: Context) : ViewModel() {
 
     fun updateConfirmPassword(value: String) {
         _uiState.update { it.copy(confirmPassword = value) }
+    }
+
+    fun togglePasswordVisibility() {
+        _uiState.update { it.copy(showPassword = !it.showPassword) }
+    }
+
+    fun toggleConfirmPasswordVisibility() {
+        _uiState.update { it.copy(showConfirmPassword = !it.showConfirmPassword) }
     }
 
     fun clearMessage() {

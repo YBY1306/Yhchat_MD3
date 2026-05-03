@@ -77,10 +77,6 @@ fun StickerPackDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     
-    // 图片预览状态
-    var showImageViewer by remember { mutableStateOf(false) }
-    var currentImageIndex by remember { mutableIntStateOf(0) }
-    
     LaunchedEffect(stickerPackId) {
         viewModel.loadStickerPackDetail(stickerPackId)
     }
@@ -135,8 +131,7 @@ fun StickerPackDetailScreen(
                         StickerPackDetailContent(
                             stickerPackData = stickerPackData,
                             onImageClick = { imageIndex ->
-                                currentImageIndex = imageIndex
-                                showImageViewer = true
+                                viewModel.openImageViewer(imageIndex)
                             },
                             onCreatorClick = { userId ->
                                 UserDetailActivity.start(context = context, userId = userId)
@@ -156,14 +151,11 @@ fun StickerPackDetailScreen(
             ?.filter { it.isNotBlank() }
             .orEmpty()
     }
-    if (showImageViewer && previewImageUrls.isNotEmpty()) {
+    if (uiState.showImageViewer && previewImageUrls.isNotEmpty()) {
         ImageViewer(
             imageUrls = previewImageUrls,
-            initialIndex = currentImageIndex.coerceIn(0, previewImageUrls.lastIndex),
-            onDismiss = {
-                showImageViewer = false
-                currentImageIndex = 0
-            }
+            initialIndex = uiState.currentImageIndex.coerceIn(0, previewImageUrls.lastIndex),
+            onDismiss = viewModel::dismissImageViewer
         )
     }
 }
@@ -307,7 +299,7 @@ fun StickerPackDetailContent(
 @Composable
 fun StickerItemView(
     sticker: com.yhchat.canary.data.model.StickerItem,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: () -> Unit = {}
 ) {
     val imageUrl = sticker.toStickerImageUrl()
     
@@ -316,7 +308,7 @@ fun StickerItemView(
             .aspectRatio(0.8f) // Adjust aspect ratio to accommodate text
             .clickable {
                 // 点击打开图片预览器
-                onImageClick(imageUrl)
+                onImageClick()
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {

@@ -39,6 +39,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,6 +103,20 @@ fun MarkdownText(
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
 
+    val markdownState = rememberSaveable(
+        markdown,
+        saver = MarkdownSavedStateSaver
+    ) {
+        val normalized = processTaskLists(markdown)
+        MarkdownSavedState(
+            normalizedMarkdown = normalized,
+            segments = MarkdownRendererCache.getSegments(normalized)
+        )
+    }
+
+    val normalizedMarkdown = markdownState.normalizedMarkdown
+    val segments = markdownState.segments
+
     val richTextStyle = RichTextStyle(
         stringStyle = RichTextStringStyle(
             linkStyle = SpanStyle(
@@ -121,11 +137,6 @@ fun MarkdownText(
         paragraphSpacing = 8.sp,
         tableStyle = null
     )
-
-    val normalizedMarkdown = remember(markdown) { processTaskLists(markdown) }
-    val segments = remember(normalizedMarkdown) {
-        MarkdownRendererCache.getSegments(normalizedMarkdown)
-    }
 
     Column(
         modifier = modifier
@@ -790,6 +801,21 @@ private sealed interface MarkdownSegment {
     data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
     data class Details(val summary: String, val content: String) : MarkdownSegment
 }
+
+private data class MarkdownSavedState(
+    val normalizedMarkdown: String,
+    val segments: List<MarkdownSegment>
+)
+
+private val MarkdownSavedStateSaver: Saver<MarkdownSavedState, String> = Saver(
+    save = { it.normalizedMarkdown },
+    restore = { normalized ->
+        MarkdownSavedState(
+            normalizedMarkdown = normalized,
+            segments = MarkdownRendererCache.getSegments(normalized)
+        )
+    }
+)
 
 private object MarkdownRendererCache {
     private const val SEGMENT_CACHE_SIZE = 256

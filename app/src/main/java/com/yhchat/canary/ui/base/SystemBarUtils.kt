@@ -38,11 +38,18 @@ object SystemBarUtils {
         
         SideEffect {
             val window = activity.window
+            WindowCompat.setDecorFitsSystemWindows(window, false)
             // 设置系统导航栏背景色
             window.navigationBarColor = navigationBarColor.toArgb()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.navigationBarDividerColor = Color.TRANSPARENT
+            }
 
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-            insetsController?.isAppearanceLightNavigationBars = isLightTheme
+            insetsController?.apply {
+                isAppearanceLightNavigationBars = isLightTheme
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
 
             // Android 8.0+ 旧版设备仍需要 systemUiVisibility 兜底
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -69,10 +76,17 @@ object SystemBarUtils {
 
         SideEffect {
             val window = activity.window
+            WindowCompat.setDecorFitsSystemWindows(window, false)
             window.navigationBarColor = color.toArgb()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.navigationBarDividerColor = Color.TRANSPARENT
+            }
 
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-            insetsController?.isAppearanceLightNavigationBars = darkIcons
+            insetsController?.apply {
+                isAppearanceLightNavigationBars = darkIcons
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 @Suppress("DEPRECATION")

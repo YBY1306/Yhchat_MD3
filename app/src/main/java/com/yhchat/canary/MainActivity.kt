@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhchat.canary.ui.contacts.ContactsScreen
 import com.yhchat.canary.ui.discover.DiscoverScreen
 import com.yhchat.canary.ui.profile.ProfileScreen
+import com.yhchat.canary.ui.community.PostDetailScreen
 import com.yhchat.canary.ui.search.SearchScreen
 import com.yhchat.canary.ui.components.AdaptiveNavigationBar
 import com.yhchat.canary.ui.components.isLargeScreenLayout

@@ -347,8 +347,9 @@ fun UserDetailScreen(
                     }
                 }
                 uiState.userDetail != null -> {
+                    val userDetail = uiState.userDetail!!
                     UserDetailContent(
-                        userDetail = uiState.userDetail!!,
+                        userDetail = userDetail,
                         createdBoards = uiState.createdBoards,
                         isLoadingBoards = uiState.isLoadingBoards,
                         token = uiState.token,
@@ -360,7 +361,7 @@ fun UserDetailScreen(
                                 val intent = Intent(context, ChatActivity::class.java).apply {
                                     putExtra("chatId", userId)
                                     putExtra("chatType", 1)
-                                    putExtra("chatName", uiState.userDetail?.name ?: userName)
+                                    putExtra("chatName", userDetail.name)
                                 }
                                 context.startActivity(intent)
                             } else {
@@ -369,12 +370,12 @@ fun UserDetailScreen(
                         },
                         onShowUserInfo = viewModel::openUserInfoDialog,
                         onAvatarClick = viewModel::openImageViewer,
-                        onEditRemarkName = { viewModel.openNameEditor(uiState.userDetail!!.id) },
-                        onEditRemarkPhone = { viewModel.openPhoneEditor(uiState.userDetail!!.id) },
-                        onAddOtherRemark = { viewModel.openOtherRemarkEditor(uiState.userDetail!!.id, null, "", "") },
+                        onEditRemarkName = { viewModel.openNameEditor(userDetail.id) },
+                        onEditRemarkPhone = { viewModel.openPhoneEditor(userDetail.id) },
+                        onAddOtherRemark = { viewModel.openOtherRemarkEditor(userDetail.id, null, "", "") },
                         onEditOtherRemark = { index, entry ->
                             viewModel.openOtherRemarkEditor(
-                                uiState.userDetail!!.id,
+                                userDetail.id,
                                 index,
                                 entry.key,
                                 entry.value
@@ -400,8 +401,8 @@ fun UserDetailScreen(
         }
 
         if (uiState.remarkEditorConfig != null && uiState.userDetail != null) {
-            val remarkInfo = uiState.userDetail.remarkInfo ?: RemarkInfo("", "", "", emptyList())
-            val config = uiState.remarkEditorConfig
+            val remarkInfo = uiState.userDetail?.remarkInfo ?: RemarkInfo("", "", "", emptyList())
+            val config = uiState.remarkEditorConfig!!
             RemarkEditorDialog(
                 config = config,
                 remarkInfo = remarkInfo,

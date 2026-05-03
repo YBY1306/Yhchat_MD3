@@ -685,6 +685,7 @@ class MessageRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "❌ 编辑消息异常", e)
             e.printStackTrace()
+            Result.failure(e)
         }
     }
     

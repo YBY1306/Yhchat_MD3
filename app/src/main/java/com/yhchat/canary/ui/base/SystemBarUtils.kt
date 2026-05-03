@@ -10,6 +10,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * 系统导航栏工具类
@@ -36,37 +37,28 @@ object SystemBarUtils {
         val isLightTheme = !isSystemInDarkTheme()
         
         SideEffect {
+            val window = activity.window
             // 设置系统导航栏背景色
-            activity.window.navigationBarColor = navigationBarColor.toArgb()
-            
-            // Android 8.0+ 支持设置导航栏图标颜色
+            window.navigationBarColor = navigationBarColor.toArgb()
+
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            insetsController?.isAppearanceLightNavigationBars = isLightTheme
+
+            // Android 8.0+ 旧版设备仍需要 systemUiVisibility 兜底
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 @Suppress("DEPRECATION")
-                activity.window.decorView.systemUiVisibility = if (isLightTheme) {
-                    // 浅色主题：使用深色图标和手势线
-                    activity.window.decorView.systemUiVisibility or 
+                window.decorView.systemUiVisibility = if (isLightTheme) {
+                    window.decorView.systemUiVisibility or
                         android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 } else {
-                    // 深色主题：使用浅色图标和手势线
-                    activity.window.decorView.systemUiVisibility and 
+                    window.decorView.systemUiVisibility and
                         android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
                 }
             }
-            
+
             // Android 10+ 禁用系统强制对比度，完全使用我们设置的颜色
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                activity.window.isNavigationBarContrastEnforced = false
-            }
-            
-            // Android 11+ 使用新的API设置导航栏外观
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                activity.window.insetsController?.setSystemBarsAppearance(
-                    if (isLightTheme) 
-                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS 
-                    else 
-                        0,
-                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                )
+                window.isNavigationBarContrastEnforced = false
             }
         }
     }
@@ -76,25 +68,29 @@ object SystemBarUtils {
         val isLightTheme = !isSystemInDarkTheme()
 
         SideEffect {
-            activity.window.navigationBarColor = color.toArgb()
+            val window = activity.window
+            window.navigationBarColor = color.toArgb()
+
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            insetsController?.isAppearanceLightNavigationBars = darkIcons
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 @Suppress("DEPRECATION")
-                activity.window.decorView.systemUiVisibility = if (darkIcons) {
-                    activity.window.decorView.systemUiVisibility or
+                window.decorView.systemUiVisibility = if (darkIcons) {
+                    window.decorView.systemUiVisibility or
                         android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 } else {
-                    activity.window.decorView.systemUiVisibility and
+                    window.decorView.systemUiVisibility and
                         android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
                 }
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                activity.window.isNavigationBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                activity.window.insetsController?.setSystemBarsAppearance(
+                window.insetsController?.setSystemBarsAppearance(
                     if (darkIcons)
                         android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                     else
@@ -106,25 +102,29 @@ object SystemBarUtils {
 
         DisposableEffect(color, darkIcons) {
             onDispose {
-                activity.window.navigationBarColor = ComposeColor.Transparent.toArgb()
+                val window = activity.window
+                window.navigationBarColor = ComposeColor.Transparent.toArgb()
+
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController?.isAppearanceLightNavigationBars = isLightTheme
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     @Suppress("DEPRECATION")
-                    activity.window.decorView.systemUiVisibility = if (isLightTheme) {
-                        activity.window.decorView.systemUiVisibility or
+                    window.decorView.systemUiVisibility = if (isLightTheme) {
+                        window.decorView.systemUiVisibility or
                             android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                     } else {
-                        activity.window.decorView.systemUiVisibility and
+                        window.decorView.systemUiVisibility and
                             android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
                     }
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    activity.window.isNavigationBarContrastEnforced = false
+                    window.isNavigationBarContrastEnforced = false
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    activity.window.insetsController?.setSystemBarsAppearance(
+                    window.insetsController?.setSystemBarsAppearance(
                         if (isLightTheme)
                             android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                         else

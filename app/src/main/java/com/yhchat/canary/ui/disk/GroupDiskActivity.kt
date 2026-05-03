@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -33,7 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.DiskFile
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.disk.webdav.WebDAVBrowserActivity
@@ -44,6 +44,7 @@ import java.util.*
  * 群网盘Activity
  */
 class GroupDiskActivity : BaseActivity() {
+    private val viewModel: GroupDiskViewModel by viewModels()
     
     companion object {
         const val EXTRA_GROUP_ID = "extra_group_id"
@@ -75,6 +76,7 @@ class GroupDiskActivity : BaseActivity() {
                 GroupDiskScreen(
                     groupId = groupId,
                     groupName = groupName,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -87,11 +89,11 @@ class GroupDiskActivity : BaseActivity() {
 fun GroupDiskScreen(
     groupId: String,
     groupName: String,
+    viewModel: GroupDiskViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: GroupDiskViewModel = viewModel()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)

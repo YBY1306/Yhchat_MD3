@@ -1,18 +1,15 @@
 package com.yhchat.canary.ui.settings
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.TokenRepository
 import kotlinx.coroutines.launch
 
-class SettingsViewModel : ViewModel() {
-    private lateinit var tokenRepository: TokenRepository
-
-    fun init(context: Context) {
-        tokenRepository = RepositoryFactory.getTokenRepository(context.applicationContext)
-    }
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+    private val tokenRepository: TokenRepository =
+        RepositoryFactory.getTokenRepository(application.applicationContext)
 
     fun logout(onComplete: () -> Unit) {
         viewModelScope.launch {

@@ -7,6 +7,7 @@ import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import android.graphics.BitmapFactory
@@ -39,6 +38,14 @@ import kotlinx.coroutines.launch
  * 邮箱修改Activity
  */
 class EmailModificationActivity : BaseActivity() {
+    private val viewModel: EmailModificationViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return EmailModificationViewModel(this@EmailModificationActivity) as T
+            }
+        }
+    }
     
     companion object {
         fun start(context: Context) {
@@ -54,6 +61,7 @@ class EmailModificationActivity : BaseActivity() {
         setContent {
             YhchatCanaryTheme {
                 EmailModificationScreen(
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -64,17 +72,10 @@ class EmailModificationActivity : BaseActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmailModificationScreen(
+    viewModel: EmailModificationViewModel,
     onBackClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel: EmailModificationViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return EmailModificationViewModel(context) as T
-            }
-        }
-    )
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     

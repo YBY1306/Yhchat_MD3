@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,11 +32,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class WebViewActivity : BaseActivity() {
+    private val viewModel: WebViewViewModel by viewModels()
 
     companion object {
         private const val EXTRA_URL = "extra_url"
@@ -86,6 +87,7 @@ class WebViewActivity : BaseActivity() {
                     initialUrl = url,
                     initialTitle = initialTitle,
                     token = token,
+                    viewModel = viewModel,
                     onBack = { finish() }
                 )
             }
@@ -99,10 +101,10 @@ fun WebViewScreen(
     initialUrl: String,
     initialTitle: String,
     token: String?,
+    viewModel: WebViewViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: WebViewViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     var webView by remember { mutableStateOf<WebView?>(null) }
 

@@ -5,24 +5,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class SearchActivity : ComponentActivity() {
+    private val viewModel: SearchViewModel by viewModels()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         com.yhchat.canary.ui.base.SystemBarUtils.setupTransparentSystemBars(this)
-        
-        val tokenRepository = RepositoryFactory.getTokenRepository(this)
         
         setContent {
             YhchatCanaryTheme {
@@ -32,6 +31,7 @@ class SearchActivity : ComponentActivity() {
                 ) {
                     SearchScreen(
                         onBackClick = { finish() },
+                        viewModel = viewModel,
                         onItemClick = { chatId, chatType, chatName ->
                             val intent = Intent(this, ChatActivity::class.java).apply {
                                 putExtra("chatId", chatId)
@@ -39,8 +39,7 @@ class SearchActivity : ComponentActivity() {
                                 putExtra("chatName", chatName)
                             }
                             startActivity(intent)
-                        },
-                        tokenRepository = tokenRepository
+                        }
                     )
                 }
             }

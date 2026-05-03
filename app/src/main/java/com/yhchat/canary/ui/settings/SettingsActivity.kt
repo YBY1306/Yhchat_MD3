@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.MainActivity
@@ -64,9 +63,6 @@ class SettingsActivity : BaseActivity() {
         setContent {
             YhchatCanaryTheme {
                 val settingsViewModel: SettingsViewModel = viewModel()
-                LaunchedEffect(Unit) {
-                    settingsViewModel.init(this@SettingsActivity)
-                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

@@ -24,12 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.yhchat.canary.data.di.RepositoryFactory
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.R
-import com.yhchat.canary.data.repository.TokenRepository
 
 /**
  * 搜索界面
@@ -39,18 +36,10 @@ import com.yhchat.canary.data.repository.TokenRepository
 fun SearchScreen(
     onBackClick: () -> Unit,
     onItemClick: (chatId: String, chatType: Int, chatName: String) -> Unit,
-    tokenRepository: TokenRepository?,
+    viewModel: SearchViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: SearchViewModel = viewModel {
-        SearchViewModel(
-            apiService = RepositoryFactory.apiService,
-            tokenRepository = tokenRepository,
-            friendRepository = try { RepositoryFactory.getFriendRepository(context) } catch (e: Exception) { null },
-            conversationRepository = try { RepositoryFactory.getConversationRepository(context) } catch (e: Exception) { null }
-        )
-    }
 
     val uiState by viewModel.uiState.collectAsState()
     val searchResult by viewModel.searchResult.collectAsState()

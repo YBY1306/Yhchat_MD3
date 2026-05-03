@@ -56,7 +56,6 @@ class LoginActivity : BaseActivity() {
                         onLoginSuccess = { token, userId ->
                             handleLoginSuccess(token, userId)
                         },
-                        tokenRepository = tokenRepository,
                         viewModel = loginViewModel
                     )
                 }

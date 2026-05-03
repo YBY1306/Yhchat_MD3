@@ -16,6 +16,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.yhchat.canary.ui.base.BaseActivity
@@ -43,7 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.data.model.WebDAVFile
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
  * WebDAV 浏览器 Activity
  */
 class WebDAVBrowserActivity : BaseActivity() {
+    private val viewModel: WebDAVBrowserViewModel by viewModels()
     
     companion object {
         const val EXTRA_GROUP_ID = "extra_group_id"
@@ -86,6 +87,7 @@ class WebDAVBrowserActivity : BaseActivity() {
                 WebDAVBrowserScreen(
                     groupId = groupId,
                     groupName = groupName,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -98,11 +100,11 @@ class WebDAVBrowserActivity : BaseActivity() {
 fun WebDAVBrowserScreen(
     groupId: String,
     groupName: String,
+    viewModel: WebDAVBrowserViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: WebDAVBrowserViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
     
     // 下载对话框状态

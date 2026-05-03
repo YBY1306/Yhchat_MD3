@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +23,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.Product
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -31,6 +31,8 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
  * 金币商城Activity
  */
 class CoinShopActivity : BaseActivity() {
+    private val viewModel: CoinShopViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -38,6 +40,7 @@ class CoinShopActivity : BaseActivity() {
         setContent {
             YhchatCanaryTheme {
                 CoinShopScreen(
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -48,11 +51,11 @@ class CoinShopActivity : BaseActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinShopScreen(
+    viewModel: CoinShopViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: CoinShopViewModel = viewModel()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)

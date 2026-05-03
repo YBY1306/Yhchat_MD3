@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,9 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.model.MedalInfo
@@ -66,6 +65,14 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
  * 用户详情Activity
  */
 class UserDetailActivity : BaseActivity() {
+    private val viewModel: UserDetailViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return UserDetailViewModel(this@UserDetailActivity) as T
+            }
+        }
+    }
     
     companion object {
         private const val EXTRA_USER_ID = "user_id"
@@ -95,6 +102,7 @@ class UserDetailActivity : BaseActivity() {
                     userId = userId,
                     userName = userName,
                     groupId = groupId,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -108,19 +116,12 @@ fun UserDetailScreen(
     userId: String,
     userName: String,
     groupId: String?,
+    viewModel: UserDetailViewModel,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val activity = context as? Activity
-    val viewModel: UserDetailViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return UserDetailViewModel(context) as T
-            }
-        }
-    )
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }

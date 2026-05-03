@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,13 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 
 class WebDAVSettingsActivity : BaseActivity() {
+    private val viewModel: WebDAVSettingsViewModel by viewModels()
 
     companion object {
         private const val EXTRA_GROUP_ID = "extra_group_id"
@@ -85,6 +86,7 @@ class WebDAVSettingsActivity : BaseActivity() {
                 WebDAVSettingsScreen(
                     groupId = groupId,
                     groupName = groupName,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -98,10 +100,10 @@ class WebDAVSettingsActivity : BaseActivity() {
 private fun WebDAVSettingsScreen(
     groupId: String,
     groupName: String,
+    viewModel: WebDAVSettingsViewModel,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: WebDAVSettingsViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     var showInputDialog by remember { mutableStateOf(false) }
     var editingMount by remember { mutableStateOf<MountSetting?>(null) }

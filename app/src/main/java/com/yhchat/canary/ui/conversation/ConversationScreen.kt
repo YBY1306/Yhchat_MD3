@@ -76,7 +76,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.yhchat.canary.ui.components.ConversationMenuDialog
 import com.yhchat.canary.R
-import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.search.SearchViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -210,14 +209,7 @@ fun ConversationScreen(
     }
 
     // 搜索ViewModel（用于API搜索）
-    val searchViewModel: SearchViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-        SearchViewModel(
-            apiService = RepositoryFactory.apiService,
-            tokenRepository = tokenRepository,
-            friendRepository = try { RepositoryFactory.getFriendRepository(context) } catch (e: Exception) { null },
-            conversationRepository = try { RepositoryFactory.getConversationRepository(context) } catch (e: Exception) { null }
-        )
-    }
+    val searchViewModel: SearchViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val searchUiState by searchViewModel.uiState.collectAsState()
     val searchResult by searchViewModel.searchResult.collectAsState()
 

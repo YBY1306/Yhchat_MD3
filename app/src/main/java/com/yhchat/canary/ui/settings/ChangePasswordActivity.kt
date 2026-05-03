@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,9 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -37,6 +36,15 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 
 class ChangePasswordActivity : ComponentActivity() {
+    private val viewModel: ChangePasswordViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return ChangePasswordViewModel(this@ChangePasswordActivity) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -48,6 +56,7 @@ class ChangePasswordActivity : ComponentActivity() {
             YhchatCanaryTheme {
                 ChangePasswordScreen(
                     userEmail = userEmail,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -134,17 +143,9 @@ fun CaptchaImage(
 @Composable
 fun ChangePasswordScreen(
     userEmail: String,
+    viewModel: ChangePasswordViewModel,
     onBackClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    val viewModel: ChangePasswordViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return ChangePasswordViewModel(context) as T
-            }
-        }
-    )
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(userEmail) {

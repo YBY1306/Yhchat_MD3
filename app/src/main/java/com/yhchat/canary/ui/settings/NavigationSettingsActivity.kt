@@ -20,9 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import org.burnoutcrew.reorderable.ItemPosition
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -38,6 +35,12 @@ import kotlin.system.exitProcess
  * 导航栏设置Activity
  */
 class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
+    private val navigationRepository by lazy {
+        com.yhchat.canary.data.di.RepositoryFactory.getNavigationRepository(this)
+    }
+    private val navigationSettingsViewModel by lazy {
+        NavigationSettingsViewModel(navigationRepository)
+    }
     
     companion object {
         fun start(context: Context, navigationRepository: NavigationRepository) {
@@ -50,10 +53,6 @@ class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // 这里我们需要通过其他方式获取NavigationRepository，例如通过Hilt注入
-        // 为了简化，我们创建一个新的实例
-        val navigationRepository = com.yhchat.canary.data.di.RepositoryFactory.getNavigationRepository(this)
-        
         setContent {
             YhchatCanaryTheme {
                 Surface(
@@ -62,6 +61,7 @@ class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
                 ) {
                     NavigationSettingsScreen(
                         navigationRepository = navigationRepository,
+                        viewModel = navigationSettingsViewModel,
                         onBackClick = { finish() }
                     )
                 }
@@ -77,18 +77,11 @@ class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
 @Composable
 fun NavigationSettingsScreen(
     navigationRepository: NavigationRepository,
+    viewModel: NavigationSettingsViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val viewModel: NavigationSettingsViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return NavigationSettingsViewModel(navigationRepository) as T
-            }
-        }
-    )
     val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     

@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.components.ImageViewer
@@ -37,6 +37,7 @@ import java.util.*
 
 @AndroidEntryPoint
 class StickerPackDetailActivity : ComponentActivity() {
+    private val viewModel: StickerPackDetailViewModel by viewModels()
     
     companion object {
         private const val EXTRA_STICKER_PACK_ID = "sticker_pack_id"
@@ -60,6 +61,7 @@ class StickerPackDetailActivity : ComponentActivity() {
                 com.yhchat.canary.ui.base.SystemBarUtils.SetSystemNavigationBarColor(this@StickerPackDetailActivity)
                 StickerPackDetailScreen(
                     stickerPackId = stickerPackId,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -71,9 +73,9 @@ class StickerPackDetailActivity : ComponentActivity() {
 @Composable
 fun StickerPackDetailScreen(
     stickerPackId: String,
+    viewModel: StickerPackDetailViewModel,
     onBackClick: () -> Unit
 ) {
-    val viewModel: StickerPackDetailViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     

@@ -55,6 +55,7 @@ import okhttp3.OkHttpClient
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.conversation.ConversationViewModel
+import com.yhchat.canary.ui.search.SearchViewModel
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.NavigationItem
@@ -176,6 +177,7 @@ class MainActivity : BaseActivity() {
         
         // 保持ConversationScreen的ViewModel状态，避免重新创建
         val conversationViewModel: ConversationViewModel = viewModel()
+        val searchViewModel: SearchViewModel = viewModel()
 
         // 左右滑动切换主页面已废除：固定禁用 pager 的手势滑动
         
@@ -733,7 +735,7 @@ class MainActivity : BaseActivity() {
 
                             // 处理搜索页面
                             if (currentScreen == "search") {
-                                if (isInitialized && tokenRepository != null) {
+                                if (isInitialized) {
                                     SearchScreen(
                                         onBackClick = {
                                             currentScreen = "conversation"
@@ -745,7 +747,7 @@ class MainActivity : BaseActivity() {
                                             splitChatName = chatName
                                             currentScreen = "conversation"
                                         },
-                                        tokenRepository = tokenRepository,
+                                        viewModel = searchViewModel,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } else {
@@ -844,7 +846,7 @@ class MainActivity : BaseActivity() {
 
                                 // 处理搜索页面
                                 if (currentScreen == "search") {
-                                    if (isInitialized && tokenRepository != null) {
+                                    if (isInitialized) {
                                         SearchScreen(
                                             onBackClick = {
                                                 currentScreen = "conversation"
@@ -852,7 +854,7 @@ class MainActivity : BaseActivity() {
                                             onItemClick = { chatId, chatType, chatName ->
                                                 launchChatActivity(chatId, chatType, chatName)
                                             },
-                                            tokenRepository = tokenRepository,
+                                            viewModel = searchViewModel,
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     } else {

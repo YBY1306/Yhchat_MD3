@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +31,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.components.ImageUtils
@@ -42,6 +42,7 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
  * 群聊机器人管理Activity
  */
 class GroupBotManagementActivity : BaseActivity() {
+    private val viewModel: GroupBotManagementViewModel by viewModels()
     
     companion object {
         private const val EXTRA_GROUP_ID = "group_id"
@@ -76,6 +77,7 @@ class GroupBotManagementActivity : BaseActivity() {
                     GroupBotManagementScreen(
                         groupId = groupId,
                         groupName = groupName,
+                        viewModel = viewModel,
                         onBackClick = { finish() }
                     )
                 }
@@ -89,10 +91,10 @@ class GroupBotManagementActivity : BaseActivity() {
 fun GroupBotManagementScreen(
     groupId: String,
     groupName: String,
+    viewModel: GroupBotManagementViewModel,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: GroupBotManagementViewModel = viewModel()
 
     val uiState by viewModel.uiState.collectAsState()
 

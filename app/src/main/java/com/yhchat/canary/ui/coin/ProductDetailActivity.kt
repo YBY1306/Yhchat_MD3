@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,7 +25,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.Product
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -34,6 +34,7 @@ import com.yhchat.canary.ui.components.MarkdownText
  * 商品详情Activity
  */
 class ProductDetailActivity : BaseActivity() {
+    private val viewModel: ProductDetailViewModel by viewModels()
     
     companion object {
         private const val EXTRA_PRODUCT_ID = "product_id"
@@ -61,6 +62,7 @@ class ProductDetailActivity : BaseActivity() {
             YhchatCanaryTheme {
                 ProductDetailScreen(
                     productId = productId,
+                    viewModel = viewModel,
                     onBackClick = { finish() },
                     onPurchaseSuccess = {
                         Toast.makeText(this, "购买成功！", Toast.LENGTH_SHORT).show()
@@ -76,12 +78,12 @@ class ProductDetailActivity : BaseActivity() {
 @Composable
 fun ProductDetailScreen(
     productId: Int,
+    viewModel: ProductDetailViewModel,
     onBackClick: () -> Unit,
     onPurchaseSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: ProductDetailViewModel = viewModel()
     
     LaunchedEffect(productId) {
         viewModel.init(context)

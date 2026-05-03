@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -33,6 +33,7 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
  * 创建群聊/机器人 Activity
  */
 class CreateActivity : BaseActivity() {
+    private val viewModel: CreateViewModel by viewModels()
     
     companion object {
         private const val EXTRA_INITIAL_TAB = "initial_tab"
@@ -57,6 +58,7 @@ class CreateActivity : BaseActivity() {
             YhchatCanaryTheme {
                 CreateScreen(
                     initialTab = initialTab,
+                    viewModel = viewModel,
                     onBackClick = { finish() }
                 )
             }
@@ -68,10 +70,10 @@ class CreateActivity : BaseActivity() {
 @Composable
 fun CreateScreen(
     initialTab: Int = CreateActivity.TAB_GROUP,
+    viewModel: CreateViewModel,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: CreateViewModel = viewModel()
     
     LaunchedEffect(Unit) {
         viewModel.init(context)

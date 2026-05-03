@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.yhchat.canary.data.repository.TokenRepository
 
 /**
  * 登录界面
@@ -49,17 +48,11 @@ import com.yhchat.canary.data.repository.TokenRepository
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String, String) -> Unit, // token, userId
-    tokenRepository: TokenRepository? = null,
     viewModel: LoginViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val captchaData by viewModel.captchaData.collectAsState()
-    
-    // 设置tokenRepository
-    LaunchedEffect(tokenRepository) {
-        viewModel.setTokenRepository(tokenRepository)
-    }
     
     var selectedTab by remember { mutableIntStateOf(0) }
     var mobile by remember { mutableStateOf("") }

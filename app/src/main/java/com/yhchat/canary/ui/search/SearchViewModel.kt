@@ -1,19 +1,19 @@
 package com.yhchat.canary.ui.search
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.SearchData
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.ConversationRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 申请入群状态
@@ -30,24 +30,20 @@ data class JoinRequestState(
  * 搜索ViewModel
  */
 class SearchViewModel(
-    private val apiService: ApiService,
-    private val tokenRepository: TokenRepository?,
-    private val friendRepository: FriendRepository? = null,
-    private val conversationRepository: ConversationRepository? = null
-) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val appContext = application.applicationContext
+    private val apiService: ApiService = RepositoryFactory.apiService
+    private val tokenRepository: TokenRepository = RepositoryFactory.getTokenRepository(appContext)
+    private val friendRepository: FriendRepository = RepositoryFactory.getFriendRepository(appContext)
+    private val conversationRepository: ConversationRepository = RepositoryFactory.getConversationRepository(appContext)
 
     private val userRepository: UserRepository
 
     init {
         userRepository = UserRepository(apiService, null)
         userRepository.setTokenRepository(tokenRepository)
-    }
-
-
-    fun setTokenRepository(tokenRepository: TokenRepository?) {
-        if (tokenRepository != null) {
-            userRepository.setTokenRepository(tokenRepository)
-        }
     }
 
     // UI状态
@@ -117,21 +113,21 @@ class SearchViewModel(
                     isSuccess = false
                 )
                 
-                val response = friendRepository?.applyFriend(
+                val response = friendRepository.applyFriend(
                     token = token,
                     chatId = groupId,
                     chatType = 2, // 群聊类型
                     remark = "申请加入群聊"
                 )
                 
-                if (response?.code == 1) {
+                if (response.code == 1) {
                     _joinRequestState.value = _joinRequestState.value.copy(
                         isLoading = false,
                         isSuccess = true
                     )
                 } else {
                     _joinRequestState.value = _joinRequestState.value.copy(
-                        error = response?.message ?: "申请失败",
+                        error = response.message,
                         isLoading = false
                     )
                 }
@@ -156,8 +152,8 @@ class SearchViewModel(
      */
     suspend fun checkGroupInConversations(token: String, groupId: String): Boolean {
         return try {
-            val result = conversationRepository?.getConversations()
-            if (result?.isSuccess == true) {
+            val result = conversationRepository.getConversations()
+            if (result.isSuccess) {
                 val conversations = result.getOrNull() ?: emptyList()
                 conversations.any { conversation -> 
                     conversation.chatId == groupId && conversation.chatType == 2 // 2表示群聊

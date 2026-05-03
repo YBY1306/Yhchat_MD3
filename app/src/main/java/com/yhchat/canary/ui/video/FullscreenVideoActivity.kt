@@ -13,6 +13,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,13 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
 
 class FullscreenVideoActivity : ComponentActivity() {
+    private val viewModel: FullscreenVideoViewModel by viewModels()
     
     companion object {
         const val EXTRA_VIDEO_URL = "video_url"
@@ -93,6 +94,7 @@ class FullscreenVideoActivity : ComponentActivity() {
                     videoUrl = videoUrl,
                     initialPosition = currentPosition,
                     initialPlaying = isPlaying,
+                    viewModel = viewModel,
                     onClose = { position, playing ->
                         currentVideoPosition = position
                         isVideoPlaying = playing
@@ -118,11 +120,11 @@ private fun FullscreenVideoPlayer(
     videoUrl: String,
     initialPosition: Long,
     initialPlaying: Boolean,
+    viewModel: FullscreenVideoViewModel,
     onClose: (position: Long, isPlaying: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val viewModel: FullscreenVideoViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     val handler = remember { Handler(Looper.getMainLooper()) }

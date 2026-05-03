@@ -74,6 +74,9 @@ import org.json.JSONObject
 import android.widget.Toast
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpec
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.looksLikeA2UiJson
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiSpec
 
 /**
  * 消息内容视图

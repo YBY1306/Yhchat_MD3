@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,7 +63,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -80,6 +83,12 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
+import com.yhchat.canary.utils.UnifiedLinkHandler
 
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -123,6 +132,7 @@ fun MessageItem(
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     var showContextMenuDialog by remember { mutableStateOf(false) }
+
     var showFreeCopyDialog by remember { mutableStateOf(false) }
     var freeCopyText by remember { mutableStateOf("") }
 
@@ -218,6 +228,8 @@ fun MessageItem(
                 )
             }
 
+            val bubbleColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+
             Surface(
                 modifier = Modifier
                     .wrapContentWidth()
@@ -229,23 +241,37 @@ fun MessageItem(
                             bottomEnd = 16.dp
                         )
                     ),
-                color = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                color = bubbleColor,
                 tonalElevation = if (isMyMessage) 0.dp else 2.dp
             ) {
                 if (isCollapsed && onToggleCollapse != null) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         val textColor = if (isMyMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                        message.content.text?.let { previewText ->
-                            SelectionContainer {
-                                Text(
-                                    text = previewText.take(200) + if (previewText.length > 200) "..." else "",
-                                    color = textColor,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 3,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+
+                        val htmlPreviewShown = message.contentType == 8 && !message.content.text.isNullOrBlank()
+
+                        if (htmlPreviewShown) {
+                            HtmlCollapsedPreview(
+                                html = message.content.text.orEmpty(),
+                                bubbleColor = bubbleColor,
+                                modifier = Modifier.fillMaxWidth(),
+                                onImageClick = onImageClick,
+                                onLinkClick = { link -> UnifiedLinkHandler.handleLink(context, link) }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        } else {
+                            message.content.text?.let { previewText ->
+                                SelectionContainer {
+                                    Text(
+                                        text = previewText.take(200) + if (previewText.length > 200) "..." else "",
+                                        color = textColor,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 3,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
 
                         Text(
@@ -260,7 +286,7 @@ fun MessageItem(
                             onClick = onToggleCollapse,
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("显示原文", style = MaterialTheme.typography.labelMedium)
+                            Text("展开", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 } else {
@@ -853,6 +879,43 @@ fun AnimatedMessageItem(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun HtmlCollapsedPreview(
+    html: String,
+    bubbleColor: Color,
+    modifier: Modifier = Modifier,
+    onImageClick: (String) -> Unit,
+    onLinkClick: (String) -> Unit
+) {
+    Box(
+        modifier = modifier
+            .heightIn(max = 200.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clipToBounds()
+    ) {
+        AdvancedHtmlRenderer(
+            html = html,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            onImageClick = onImageClick,
+            onLinkClick = onLinkClick
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, bubbleColor.copy(alpha = 0.95f))
+                    )
+                )
+        )
     }
 }
 

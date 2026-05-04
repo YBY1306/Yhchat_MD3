@@ -103,7 +103,7 @@ fun ChatInputBar(
 
     var showAttachMenu by remember { mutableStateOf(false) }
 
-private fun insertMentionPlaceholder(text: String, userName: String): String {
+fun insertMentionPlaceholder(text: String, userName: String): String {
     val lastAtIndex = text.lastIndexOf('@')
     if (lastAtIndex == -1) {
         val prefix = if (text.isEmpty() || text.endsWith(" ")) text else "$text "

@@ -408,6 +408,7 @@ private fun UserProfileContent(
     val showCoin by rememberBooleanPreference("layout_settings", "profile_show_coin", true)
     val showVipExpire by rememberBooleanPreference("layout_settings", "profile_show_vip_expire", true)
     val showInviteCode by rememberBooleanPreference("layout_settings", "profile_show_invite_code", true)
+    
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -415,10 +416,10 @@ private fun UserProfileContent(
     ) {
         // 头像和姓名部分
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             shape = RoundedCornerShape(24.dp),
-            tonalElevation = 4.dp,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            tonalElevation = 0.dp,
+            color = androidx.compose.ui.graphics.Color.Transparent
         ) {
             Column(
                 modifier = Modifier
@@ -742,7 +743,8 @@ private fun UserProfileContent(
         if (detailItems.isNotEmpty()) {
             SettingsGroup(
                 title = "详细信息",
-                items = detailItems
+                items = detailItems,
+                modifier = Modifier.fillMaxWidth()
             )
         }
 

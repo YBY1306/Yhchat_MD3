@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillParentMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
@@ -237,11 +240,11 @@ fun ProfileScreen(
             }
         )
         
-        val scrollState = rememberScrollState()
+        val listState = rememberLazyListState()
         
         // 监听滚动状态，自动隐藏/显示导航栏
         if (navigationState != null) {
-            observeScrollForNavigation(scrollState, navigationState)
+            observeScrollForNavigation(listState, navigationState)
         }
 
         PullToRefreshBox(
@@ -253,93 +256,102 @@ fun ProfileScreen(
             state = pullToRefreshState,
             modifier = Modifier.fillMaxSize()
         ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-        when {
-            uiState.isLoading -> {
-                // 加载状态
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            
-            uiState.error != null -> {
-                // 错误状态
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = "加载失败",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = uiState.error ?: "未知错误",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-        Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { viewModel.loadUserProfile() }
-                    ) {
-                        Text("重试")
+            when {
+                uiState.isLoading -> {
+                    item("profile_loading") {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
-            }
-            
-            uiState.userProfile != null -> {
-                // 成功状态 - 显示用户信息
-                uiState.userProfile?.let { userProfile ->
-                    UserProfileContent(
-                        userProfile = userProfile,
-                        navigationRepository = navigationRepository,
-                        tokenRepository = tokenRepository,
-                        viewModel = viewModel,
-                        userDataState = userDataState,
-                        saveUserDataState = saveUserDataState,
-                        showUserDataDialog = showUserDataDialog,
-                        onShowUserDataDialog = {
-                            showUserDataDialog = true
-                            viewModel.loadUserData()
-                        },
-                        onDismissUserDataDialog = {
-                            if (!saveUserDataState.isLoading) {
-                                showUserDataDialog = false
-                                viewModel.resetSaveUserDataState()
+                uiState.error != null -> {
+                    item("profile_error") {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillParentMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = "加载失败",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = uiState.error ?: "未知错误",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.loadUserProfile() }
+                            ) {
+                                Text("重试")
                             }
-                        },
-                        onSaveUserData = { req ->
-                            viewModel.saveUserData(req)
-                        },
-                        onShowChangeInviteCodeDialog = { showChangeInviteCodeDialog = true },
-                        onShowChangeNicknameDialog = { showChangeNicknameDialog = true },
-                        imagePickerLauncher = imagePickerLauncher,
-                        changeAvatarState = changeAvatarState,
-                        betaState = betaState,
-                        changeInviteCodeState = changeInviteCodeState,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        }
+                    }
                 }
-            }
-            
-            else -> {
-                // 空状态
-                Text(
-                    text = "暂无用户信息",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                uiState.userProfile != null -> {
+                    item("profile_content") {
+                        uiState.userProfile?.let { userProfile ->
+                            UserProfileContent(
+                                userProfile = userProfile,
+                                navigationRepository = navigationRepository,
+                                tokenRepository = tokenRepository,
+                                viewModel = viewModel,
+                                userDataState = userDataState,
+                                saveUserDataState = saveUserDataState,
+                                showUserDataDialog = showUserDataDialog,
+                                onShowUserDataDialog = {
+                                    showUserDataDialog = true
+                                    viewModel.loadUserData()
+                                },
+                                onDismissUserDataDialog = {
+                                    if (!saveUserDataState.isLoading) {
+                                        showUserDataDialog = false
+                                        viewModel.resetSaveUserDataState()
+                                    }
+                                },
+                                onSaveUserData = { req ->
+                                    viewModel.saveUserData(req)
+                                },
+                                onShowChangeInviteCodeDialog = { showChangeInviteCodeDialog = true },
+                                onShowChangeNicknameDialog = { showChangeNicknameDialog = true },
+                                imagePickerLauncher = imagePickerLauncher,
+                                changeAvatarState = changeAvatarState,
+                                betaState = betaState,
+                                changeInviteCodeState = changeInviteCodeState,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    item("profile_empty") {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无用户信息",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -411,7 +423,7 @@ private fun UserProfileContent(
     
     Column(
         modifier = modifier
-        .fillMaxWidth(),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -747,9 +759,7 @@ private fun UserProfileContent(
             SettingsGroup(
                 title = "详细信息",
                 items = detailItems,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier = Modifier.fillMaxWidth()
             )
         }
 

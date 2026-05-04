@@ -15,7 +15,11 @@ import javax.inject.Inject
 class GroupTagManagementViewModel @Inject constructor(
     private val groupTagRepository: GroupTagRepository
 ) : ViewModel() {
-    
+
+    companion object {
+        private const val PAGE_SIZE = 50
+    }
+
     private val _uiState = MutableStateFlow(GroupTagManagementUiState())
     val uiState: StateFlow<GroupTagManagementUiState> = _uiState.asStateFlow()
     
@@ -23,14 +27,19 @@ class GroupTagManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
-                error = null
+                error = null,
+                currentPage = 1,
+                hasMore = true,
+                isLoadingMore = false
             )
             
-            groupTagRepository.getGroupTagList(groupId).fold(
+            groupTagRepository.getGroupTagList(groupId, page = 1, size = PAGE_SIZE).fold(
                 onSuccess = { tags ->
                     _uiState.value = _uiState.value.copy(
                         tags = tags,
-                        isLoading = false
+                        isLoading = false,
+                        currentPage = 1,
+                        hasMore = tags.size >= PAGE_SIZE
                     )
                 },
                 onFailure = { error ->
@@ -174,11 +183,46 @@ class GroupTagManagementViewModel @Inject constructor(
         dismissDeleteTagDialog()
         deleteTag(pendingTag.id, groupId)
     }
+
+    fun loadMoreTags(groupId: String) {
+        val state = _uiState.value
+        if (state.isLoading || state.isLoadingMore || !state.hasMore) {
+            return
+        }
+
+        val nextPage = state.currentPage + 1
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true, error = null)
+
+            groupTagRepository.getGroupTagList(groupId, page = nextPage, size = PAGE_SIZE).fold(
+                onSuccess = { newTags ->
+                    val latestState = _uiState.value
+                    if (latestState.currentPage != nextPage - 1) {
+                        _uiState.value = latestState.copy(isLoadingMore = false)
+                        return@fold
+                    }
+                    _uiState.value = latestState.copy(
+                        tags = (latestState.tags + newTags).distinctBy { it.id },
+                        isLoadingMore = false,
+                        currentPage = nextPage,
+                        hasMore = newTags.size >= PAGE_SIZE
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingMore = false,
+                        error = error.message
+                    )
+                }
+            )
+        }
+    }
 }
 
 data class GroupTagManagementUiState(
     val tags: List<GroupTag> = emptyList(),
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
     val pendingDeleteTag: GroupTag? = null,
     val showCreateDialog: Boolean = false,
@@ -187,6 +231,8 @@ data class GroupTagManagementUiState(
     val editingTagColor: String = "#2196F3",
     val editingTagDesc: String = "",
     val isSaving: Boolean = false,
-    val saveError: String? = null
+    val saveError: String? = null,
+    val hasMore: Boolean = true,
+    val currentPage: Int = 1
 )
 

@@ -39,6 +39,8 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.chat.ChatActivity
+import com.yhchat.canary.ui.settings.SettingsCustomItem
+import com.yhchat.canary.ui.settings.SettingsGroup
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -56,7 +58,7 @@ class AppInfoActivity : BaseActivity() {
         const val DEVELOPER_URL_1 = "https://github.com/Kauid323/"
         const val DEVELOPER_URL_2 = "yunhu://chat-add?id=8516939&type=user"
         const val GITHUB_REPO_URL = "https://github.com/Kauid323/Yhchat_md3"
-        const val DEFAULT_VERSION_TAG = "v0.0.21-4"
+        const val DEFAULT_VERSION_TAG = "v0.0.21-5"
         const val IS_LATEST_BUILD_PREVIEW = false
 
         fun start(context: Context) {
@@ -136,6 +138,10 @@ private fun AppInfoScreen(
     
     val updateState by updateViewModel.updateState.collectAsState()
     
+    LaunchedEffect(Unit) {
+        updateViewModel.syncCurrentVersion(AppInfoActivity.DEFAULT_VERSION_TAG)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
@@ -163,7 +169,7 @@ private fun AppInfoScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(top = 24.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AsyncImage(
@@ -208,66 +214,72 @@ private fun AppInfoScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            AppInfoItem(
-                icon = Icons.Default.Person,
-                title = "开发者",
-                content = {
-                    DeveloperText(
-                        developer1 = AppInfoActivity.DEVELOPER_NAME_1,
-                        developer2 = AppInfoActivity.DEVELOPER_NAME_2,
-                        onDeveloper1Click = { onDeveloperClick(AppInfoActivity.DEVELOPER_URL_1) },
-                        onDeveloper2Click = { onDeveloperClick(AppInfoActivity.DEVELOPER_URL_2) }
+            val appInfoItems = listOf<@Composable () -> Unit>(
+                {
+                    AppInfoItem(
+                        icon = Icons.Default.Person,
+                        title = "开发者",
+                        content = {
+                            DeveloperText(
+                                developer1 = AppInfoActivity.DEVELOPER_NAME_1,
+                                developer2 = AppInfoActivity.DEVELOPER_NAME_2,
+                                onDeveloper1Click = { onDeveloperClick(AppInfoActivity.DEVELOPER_URL_1) },
+                                onDeveloper2Click = { onDeveloperClick(AppInfoActivity.DEVELOPER_URL_2) }
+                            )
+                        }
                     )
-                }
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // 检查更新
-            AppInfoItem(
-                icon = Icons.Default.SystemUpdate,
-                title = if (isLatestBuildPreview) "检查更新 " else "检查更新",
-                content = if (isLatestBuildPreview) {
-                    {
-                        Text(
-                            text = "你用的是最新预览版",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                } else null,
-                onClick = {
-                    if (isLatestBuildPreview) {
-                        android.widget.Toast.makeText(context, "你现在是最新版本了", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        updateViewModel.checkForUpdate(isLatestBuildPreview)
-                    }
                 },
-                showArrow = true,
-                isLoading = updateState.isLoading
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            AppInfoItem(
-                icon = Icons.Default.Code,
-                title = "GitHub 源代码",
-                onClick = onGithubClick,
-                showArrow = true
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AppInfoItem(
-                icon = Icons.Default.Description,
-                title = "许可证",
-                content = {
-                    Text(
-                        text = "GPL v3",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                {
+                    AppInfoItem(
+                        icon = Icons.Default.SystemUpdate,
+                        title = if (isLatestBuildPreview) "检查更新 " else "检查更新",
+                        content = if (isLatestBuildPreview) {
+                            {
+                                Text(
+                                    text = "你用的是最新预览版",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        } else null,
+                        onClick = {
+                            if (isLatestBuildPreview) {
+                                android.widget.Toast.makeText(context, "你现在是最新版本了", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                updateViewModel.checkForUpdate(isLatestBuildPreview)
+                            }
+                        },
+                        showArrow = true,
+                        isLoading = updateState.isLoading
+                    )
+                },
+                {
+                    AppInfoItem(
+                        icon = Icons.Default.Code,
+                        title = "GitHub 源代码",
+                        onClick = onGithubClick,
+                        showArrow = true
+                    )
+                },
+                {
+                    AppInfoItem(
+                        icon = Icons.Default.Description,
+                        title = "许可证",
+                        content = {
+                            Text(
+                                text = "GPL v3",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     )
                 }
+            )
+
+            SettingsGroup(
+                title = "应用信息",
+                items = appInfoItems,
+                modifier = Modifier.fillMaxWidth()
             )
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -455,54 +467,49 @@ private fun AppInfoItem(
     showArrow: Boolean = false,
     isLoading: Boolean = false
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(
-            modifier = Modifier.weight(1f)
+    SettingsCustomItem(onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
             )
             
-            if (content != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                content()
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                if (content != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    content()
+                }
             }
-        }
-        
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp
-            )
-        } else if (showArrow) {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else if (showArrow) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

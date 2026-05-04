@@ -49,6 +49,13 @@ class UpdateViewModel @Inject constructor(
 
     
     /**
+     * 把当前应用版本写入本地，避免比较时总是落后
+     */
+    fun syncCurrentVersion(version: String) {
+        updateRepository.setCurrentVersion(version)
+    }
+    
+    /**
      * 清除错误
      */
     fun clearError() {

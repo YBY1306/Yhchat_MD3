@@ -2,6 +2,11 @@ name: Release release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: '自定义发布 tag（留空则默认使用 build-<commit_hash>）'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -146,7 +151,16 @@ jobs:
         id: release_meta
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          TAG_NAME="build-${{ steps.commit.outputs.hash }}"
+          INPUT_TAG="${{ github.event.inputs.release_tag }}"
+          VAR_TAG="${{ vars.RELEASE_TAG }}"
+
+          if [ -n "$INPUT_TAG" ]; then
+            TAG_NAME="$INPUT_TAG"
+          elif [ -n "$VAR_TAG" ]; then
+            TAG_NAME="$VAR_TAG"
+          else
+            TAG_NAME="build-${{ steps.commit.outputs.hash }}"
+          fi
           STANDARD_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-standard-release.apk"
           WITH_PLAYER_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withPlayer-release.apk"
           WITH_LIVE_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withLive-release.apk"

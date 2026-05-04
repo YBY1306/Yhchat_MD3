@@ -1236,7 +1236,9 @@ fun ChatScreen(
                             },
                             memberPermission = memberPermission,
                             groupOwnerId = groupOwnerId,
-                            groupAdminIds = groupAdminIds
+                            groupAdminIds = groupAdminIds,
+                            isCollapsed = viewModel.isMessageCollapsed(message.msgId),
+                            onToggleCollapse = { viewModel.toggleMessageCollapse(message.msgId) }
                         )
                     }
 

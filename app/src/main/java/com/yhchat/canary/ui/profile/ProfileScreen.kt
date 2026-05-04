@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillParentMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -266,7 +265,7 @@ fun ProfileScreen(
                 uiState.isLoading -> {
                     item("profile_loading") {
                         Box(
-                            modifier = Modifier.fillParentMaxSize(),
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
@@ -278,7 +277,7 @@ fun ProfileScreen(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
-                                .fillParentMaxSize()
+                                .fillMaxSize()
                                 .padding(horizontal = 16.dp)
                         ) {
                             Text(
@@ -340,7 +339,7 @@ fun ProfileScreen(
                     item("profile_empty") {
                         Box(
                             modifier = Modifier
-                                .fillParentMaxSize()
+                                .fillMaxSize()
                                 .padding(horizontal = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -355,7 +354,6 @@ fun ProfileScreen(
             }
         }
     }
-    } // PullToRefreshBox
     }
     
     // 修改邀请码弹窗

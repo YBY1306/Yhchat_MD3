@@ -114,7 +114,9 @@ fun MessageItem(
     onQuoteMessageClick: (String) -> Unit = {},
     memberPermission: Int? = null,
     groupOwnerId: String? = null,
-    groupAdminIds: List<String> = emptyList()
+    groupAdminIds: List<String> = emptyList(),
+    isCollapsed: Boolean = false,
+    onToggleCollapse: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -229,27 +231,53 @@ fun MessageItem(
                 color = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                 tonalElevation = if (isMyMessage) 0.dp else 2.dp
             ) {
-                MessageContentView(
-                    message = message,
-                    content = message.content,
-                    contentType = message.contentType,
-                    isMyMessage = isMyMessage,
-                    conversationChatType = conversationChatType,
-                    modifier = Modifier.padding(12.dp),
-                    onImageClick = { imageUrl -> onImageClick(imageUrl) },
-                    onLongClick = {
-                        if (!isMultiSelectMode) {
-                            showContextMenuDialog = true
+                if (isCollapsed && onToggleCollapse != null) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = (message.content.text ?: "").take(200) + "...",
+                            color = if (isMyMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 3
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "消息过长（${message.content.text?.length ?: 0}字），已自动折叠",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            TextButton(onClick = onToggleCollapse) {
+                                Text("显示原文", style = MaterialTheme.typography.labelMedium)
+                            }
                         }
-                    },
-                    onQuoteMessageClick = onQuoteMessageClick,
-                    onQuote = onQuote,
-                    onEdit = onEdit,
-                    onRecall = onRecall,
-                    onPlusOne = onPlusOne,
-                    onForward = onForward,
-                    onMultiSelect = onMultiSelect
-                )
+                    }
+                } else {
+                    MessageContentView(
+                        message = message,
+                        content = message.content,
+                        contentType = message.contentType,
+                        isMyMessage = isMyMessage,
+                        conversationChatType = conversationChatType,
+                        modifier = Modifier.padding(12.dp),
+                        onImageClick = { imageUrl -> onImageClick(imageUrl) },
+                        onLongClick = {
+                            if (!isMultiSelectMode) {
+                                showContextMenuDialog = true
+                            }
+                        },
+                        onQuoteMessageClick = onQuoteMessageClick,
+                        onQuote = onQuote,
+                        onEdit = onEdit,
+                        onRecall = onRecall,
+                        onPlusOne = onPlusOne,
+                        onForward = onForward,
+                        onMultiSelect = onMultiSelect
+                    )
+                }
             }
 
             Row(
@@ -694,7 +722,9 @@ fun AnimatedMessageItem(
     onQuoteMessageClick: (String) -> Unit = {},
     memberPermission: Int? = null,
     groupOwnerId: String? = null,
-    groupAdminIds: List<String> = emptyList()
+    groupAdminIds: List<String> = emptyList(),
+    isCollapsed: Boolean = false,
+    onToggleCollapse: (() -> Unit)? = null
 ) {
     val isNewMessage = remember(message.msgId) {
         val currentTime = System.currentTimeMillis()
@@ -751,7 +781,9 @@ fun AnimatedMessageItem(
                     onQuoteMessageClick = onQuoteMessageClick,
                     memberPermission = memberPermission,
                     groupOwnerId = groupOwnerId,
-                    groupAdminIds = groupAdminIds
+                    groupAdminIds = groupAdminIds,
+                    isCollapsed = isCollapsed,
+                    onToggleCollapse = onToggleCollapse
                 )
             }
         }
@@ -807,7 +839,9 @@ fun AnimatedMessageItem(
                     onQuoteMessageClick = onQuoteMessageClick,
                     memberPermission = memberPermission,
                     groupOwnerId = groupOwnerId,
-                    groupAdminIds = groupAdminIds
+                    groupAdminIds = groupAdminIds,
+                    isCollapsed = isCollapsed,
+                    onToggleCollapse = onToggleCollapse
                 )
             }
         }

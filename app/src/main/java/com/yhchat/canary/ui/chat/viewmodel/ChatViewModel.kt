@@ -96,6 +96,19 @@ class ChatViewModel @Inject constructor(
     private val _messages = mutableStateListOf<ChatMessage>()
     val messages: List<ChatMessage> = _messages
     
+    // 长消息折叠状态
+    private val collapsedMessageIds = mutableStateListOf<String>()
+    
+    fun isMessageCollapsed(msgId: String): Boolean = collapsedMessageIds.contains(msgId)
+    
+    fun toggleMessageCollapse(msgId: String) {
+        if (collapsedMessageIds.contains(msgId)) {
+            collapsedMessageIds.remove(msgId)
+        } else {
+            collapsedMessageIds.add(msgId)
+        }
+    }
+    
     // 流式消息缓存：msgId -> 累积的content
     private val streamingMessages = mutableMapOf<String, String>()
     
@@ -159,6 +172,7 @@ class ChatViewModel @Inject constructor(
         
         // 清空之前的消息
         _messages.clear()
+        collapsedMessageIds.clear()
         hasMoreMessages = true
         oldestMsgSeq = 0
         oldestMsgId = null
@@ -400,6 +414,14 @@ class ChatViewModel @Inject constructor(
                 val insertIndex = _messages.indexOfLast { it.sendTime <= normalizedMessage.sendTime } + 1
                 _messages.add(insertIndex, normalizedMessage)
                 Log.d(tag, "Inserted new real-time message at index $insertIndex: ${normalizedMessage.msgId}")
+                
+                // 自动折叠长消息（>=800字）
+                val text = normalizedMessage.content.text
+                if (text != null && text.length >= 800 && normalizedMessage.contentType in listOf(1, 3, 8)) {
+                    if (!collapsedMessageIds.contains(normalizedMessage.msgId)) {
+                        collapsedMessageIds.add(normalizedMessage.msgId)
+                    }
+                }
                 
                 // 标记收到新消息，触发UI更新
                 _uiState.value = _uiState.value.copy(newMessageReceived = true)
@@ -1326,11 +1348,22 @@ class ChatViewModel @Inject constructor(
                         if (refresh) {
                             // 刷新时替换所有消息
                             _messages.clear()
+                            collapsedMessageIds.clear()
                             _messages.addAll(filteredMessages.sortedBy { it.sendTime })
                         } else {
                             // 加载更多时添加到现有消息前面
                             val sortedNewMessages = filteredMessages.sortedBy { it.sendTime }
                             _messages.addAll(0, sortedNewMessages)
+                        }
+                        
+                        // 自动折叠长消息（>=800字）
+                        for (msg in filteredMessages) {
+                            val text = msg.content.text
+                            if (text != null && text.length >= 800 && msg.contentType in listOf(1, 3, 8)) {
+                                if (!collapsedMessageIds.contains(msg.msgId)) {
+                                    collapsedMessageIds.add(msg.msgId)
+                                }
+                            }
                         }
 
                         // 更新最旧消息的序列号和ID

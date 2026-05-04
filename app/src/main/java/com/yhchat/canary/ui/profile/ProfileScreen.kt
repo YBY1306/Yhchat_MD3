@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -759,6 +761,53 @@ private fun UserProfileContent(
     }
 }
 
+@Composable
+private fun ProfileSettingsInfoRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    SettingsCustomItem(onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (!subtitle.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (trailingContent != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, content = trailingContent)
+            }
+        }
+    }
+}
+
 /**
  * 金币菜单底部弹窗（MD3风格）
  */
@@ -1238,6 +1287,9 @@ private fun UserDataEditBottomSheet(
                     Text("保存")
                 }
             }
+        }
+    }
+}
 
 /**
  * 修改邀请码弹窗
@@ -1255,7 +1307,7 @@ private fun ChangeInviteCodeDialog(
     // 成功后自动关闭弹窗
     LaunchedEffect(changeInviteCodeState.isSuccess) {
         if (changeInviteCodeState.isSuccess) {
-            kotlinx.coroutines.delay(1500) // 显示成功提示1.5秒
+            delay(1500) // 显示成功提示1.5秒
             onDismiss()
         }
     }
@@ -1356,7 +1408,7 @@ private fun ChangeNicknameDialog(
     // 成功后自动关闭弹窗
     LaunchedEffect(changeNicknameState.isSuccess) {
         if (changeNicknameState.isSuccess) {
-            kotlinx.coroutines.delay(1500) // 显示成功提示1.5秒
+            delay(1500) // 显示成功提示1.5秒
             onDismiss()
         }
     }

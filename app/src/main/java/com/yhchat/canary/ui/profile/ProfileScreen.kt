@@ -410,16 +410,18 @@ private fun UserProfileContent(
     val showInviteCode by rememberBooleanPreference("layout_settings", "profile_show_invite_code", true)
     
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 头像和姓名部分
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            tonalElevation = 0.dp,
-            color = androidx.compose.ui.graphics.Color.Transparent
+            tonalElevation = 4.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(
                 modifier = Modifier

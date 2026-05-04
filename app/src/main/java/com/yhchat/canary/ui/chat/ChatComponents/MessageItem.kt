@@ -233,26 +233,33 @@ fun MessageItem(
             ) {
                 if (isCollapsed && onToggleCollapse != null) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = (message.content.text ?: "").take(200) + "...",
-                            color = if (isMyMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 3
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "消息过长（${message.content.text?.length ?: 0}字），已自动折叠",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                            TextButton(onClick = onToggleCollapse) {
-                                Text("显示原文", style = MaterialTheme.typography.labelMedium)
+                        val textColor = if (isMyMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        message.content.text?.let { previewText ->
+                            SelectionContainer {
+                                Text(
+                                    text = previewText.take(200) + if (previewText.length > 200) "..." else "",
+                                    color = textColor,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 3,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        Text(
+                            text = "消息过长（${message.content.text?.length ?: 0}字），已自动折叠",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = onToggleCollapse,
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("显示原文", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 } else {

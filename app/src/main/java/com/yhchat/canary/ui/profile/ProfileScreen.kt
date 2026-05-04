@@ -1,13 +1,37 @@
 package com.yhchat.canary.ui.profile
 
+import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.text.TextUtils
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
@@ -19,32 +43,79 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.*
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
-import com.yhchat.canary.data.model.SaveUserDataRequest
-import com.yhchat.canary.data.repository.UserRepository
-import com.yhchat.canary.data.repository.NavigationRepository
-import com.yhchat.canary.ui.settings.SettingsActivity
-import com.yhchat.canary.ui.settings.NavigationSettingsActivity
+import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.data.model.BetaInfo
+import com.yhchat.canary.data.model.SaveUserDataRequest
+import com.yhchat.canary.data.model.UserProfile
+import com.yhchat.canary.data.repository.NavigationRepository
+import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.ui.base.SystemBarUtils
+import com.yhchat.canary.ui.coin.CoinDetailActivity
+import com.yhchat.canary.ui.coin.CoinRecordActivity
+import com.yhchat.canary.ui.coin.CoinShopActivity
+import com.yhchat.canary.ui.components.ImageViewer
+import com.yhchat.canary.ui.components.ScrollAwareNavigationState
+import com.yhchat.canary.ui.components.observeScrollForNavigation
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.settings.NavigationSettingsActivity
+import com.yhchat.canary.ui.settings.SettingsActivity
+import com.yhchat.canary.ui.settings.SettingsCustomItem
+import com.yhchat.canary.ui.settings.SettingsGroup
+import com.yhchat.canary.ui.stats.UserStatsActivity
 import com.yhchat.canary.ui.webview.WebViewActivity
-import android.text.TextUtils
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalConfiguration
 
 /**
  * 我的界面
@@ -54,13 +125,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     userRepository: UserRepository? = null,
-    tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
+    tokenRepository: TokenRepository? = null,
     navigationRepository: NavigationRepository? = null,
-    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
+    navigationState: ScrollAwareNavigationState? = null
 ) {
     val context = LocalContext.current
     val viewModel = remember {
-        val repo = userRepository ?: com.yhchat.canary.data.repository.UserRepository(com.yhchat.canary.data.api.ApiClient.apiService, null, context)
+        val repo = userRepository ?: UserRepository(ApiClient.apiService, null, context)
         if (tokenRepository != null) {
             repo.setTokenRepository(tokenRepository)
         }
@@ -84,9 +155,9 @@ fun ProfileScreen(
     var showUserDataDialog by remember { mutableStateOf(false) }
     
     // 图片选择器
-    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         uri?.let { 
             viewModel.changeAvatar(context, it)
         }
@@ -113,21 +184,21 @@ fun ProfileScreen(
     // 监听头像修改状态
     LaunchedEffect(changeAvatarState.isSuccess) {
         if (changeAvatarState.isSuccess) {
-            android.widget.Toast.makeText(context, "头像修改成功", android.widget.Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "头像修改成功", Toast.LENGTH_SHORT).show()
             viewModel.resetChangeAvatarState()
         }
     }
     
     LaunchedEffect(changeAvatarState.error) {
         changeAvatarState.error?.let { error ->
-            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
             viewModel.resetChangeAvatarState()
         }
     }
 
     LaunchedEffect(saveUserDataState.isSuccess) {
         if (saveUserDataState.isSuccess) {
-            android.widget.Toast.makeText(context, "保存成功", android.widget.Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
             showUserDataDialog = false
             viewModel.resetSaveUserDataState()
         }
@@ -135,7 +206,7 @@ fun ProfileScreen(
 
     LaunchedEffect(saveUserDataState.error) {
         saveUserDataState.error?.let { error ->
-            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
             viewModel.resetSaveUserDataState()
         }
     }
@@ -169,7 +240,7 @@ fun ProfileScreen(
         
         // 监听滚动状态，自动隐藏/显示导航栏
         if (navigationState != null) {
-            com.yhchat.canary.ui.components.observeScrollForNavigation(scrollState, navigationState)
+            observeScrollForNavigation(scrollState, navigationState)
         }
 
         PullToRefreshBox(
@@ -306,9 +377,9 @@ fun ProfileScreen(
 }
 @Composable
 private fun UserProfileContent(
-    userProfile: com.yhchat.canary.data.model.UserProfile,
+    userProfile: UserProfile,
     navigationRepository: NavigationRepository? = null,
-    tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
+    tokenRepository: TokenRepository? = null,
     viewModel: ProfileViewModel,
     userDataState: UserDataState,
     saveUserDataState: SaveUserDataState,
@@ -318,7 +389,7 @@ private fun UserProfileContent(
     onSaveUserData: (SaveUserDataRequest) -> Unit,
     onShowChangeInviteCodeDialog: () -> Unit = {},
     onShowChangeNicknameDialog: () -> Unit = {},
-    imagePickerLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+    imagePickerLauncher: ActivityResultLauncher<String>,
     changeAvatarState: ChangeAvatarState,
     betaState: BetaState,
     changeInviteCodeState: ChangeInviteCodeState,
@@ -327,25 +398,26 @@ private fun UserProfileContent(
     val context = LocalContext.current
     
     // 读取布局设置
-    val showUserId by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_user_id", true)
-    val showVipBadge by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_vip_badge", true)
-    val showBetaBadge by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_beta_badge", true)
-    val showPersonalInfo by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_personal_info", true)
-    val showPhone by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_phone", true)
-    val showEmail by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_email", true)
-    val showCoin by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_coin", true)
-    val showVipExpire by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_vip_expire", true)
-    val showInviteCode by com.yhchat.canary.ui.components.rememberBooleanPreference("layout_settings", "profile_show_invite_code", true)
+    val showUserId by rememberBooleanPreference("layout_settings", "profile_show_user_id", true)
+    val showVipBadge by rememberBooleanPreference("layout_settings", "profile_show_vip_badge", true)
+    val showBetaBadge by rememberBooleanPreference("layout_settings", "profile_show_beta_badge", true)
+    val showPersonalInfo by rememberBooleanPreference("layout_settings", "profile_show_personal_info", true)
+    val showPhone by rememberBooleanPreference("layout_settings", "profile_show_phone", true)
+    val showEmail by rememberBooleanPreference("layout_settings", "profile_show_email", true)
+    val showCoin by rememberBooleanPreference("layout_settings", "profile_show_coin", true)
+    val showVipExpire by rememberBooleanPreference("layout_settings", "profile_show_vip_expire", true)
+    val showInviteCode by rememberBooleanPreference("layout_settings", "profile_show_invite_code", true)
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 头像和姓名部分
-        Card(
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 4.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(
                 modifier = Modifier
@@ -451,10 +523,10 @@ private fun UserProfileContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.clickable {
-                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val clip = android.content.ClipData.newPlainText("userId", userProfile.userId)
+                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("userId", userProfile.userId)
                             clipboardManager.setPrimaryClip(clip)
-                            android.widget.Toast.makeText(context, "已复制用户ID", android.widget.Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "已复制用户ID", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
@@ -532,145 +604,154 @@ private fun UserProfileContent(
             }
         }
         
-        // 详细信息部分
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-        Text(
-                    text = "详细信息",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 12.dp)
+        val detailItems = mutableListOf<@Composable () -> Unit>()
+
+        if (showPersonalInfo) {
+            detailItems += {
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Person,
+                    title = "个人信息",
+                    subtitle = "完善资料，体现自己个性",
+                    trailingContent = {
+                        TextButton(onClick = onShowUserDataDialog) {
+                            Text("编辑")
+                        }
+                    }
                 )
-
-                if (showPersonalInfo) {
-                    ProfileInfoItemWithButton(
-                        icon = Icons.Default.Person,
-                        label = "个人信息",
-                        value = "个人信息",
-                        buttonText = "编辑",
-                        onButtonClick = {
-                            onShowUserDataDialog()
-                        }
-                    )
-                }
-
-                if (showUserDataDialog) {
-                    UserDataEditBottomSheet(
-                        userDataState = userDataState,
-                        saveUserDataState = saveUserDataState,
-                        onDismiss = {
-                            onDismissUserDataDialog()
-                        },
-                        onSave = { req ->
-                            onSaveUserData(req)
-                        }
-                    )
-                }
-                
-                // 手机号（带显示/隐藏切换）
-                if (showPhone && !TextUtils.isEmpty(userProfile.phone)) {
-                    var showFullPhone by remember { mutableStateOf(false) }
-                    
-                    ProfileInfoItemWithToggle(
-                        icon = Icons.Default.Phone,
-                        label = "手机号",
-                        value = userProfile.phone!!,
-                        isVisible = showFullPhone,
-                        onToggleVisibility = { showFullPhone = !showFullPhone }
-                    )
-                }
-
-                // 邮箱
-                if (showEmail) {
-                    if (!TextUtils.isEmpty(userProfile.email)) {
-                        ProfileInfoItemWithButton(
-                            icon = Icons.Default.Email,
-                            label = "邮箱",
-                            value = userProfile.email!!,
-                            buttonText = "修改",
-                            onButtonClick = {
-                                val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailModificationActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                        )
-                    } else {
-                        ProfileInfoItemWithButton(
-                            icon = Icons.Default.Email,
-                            label = "邮箱",
-                            value = "未绑定",
-                            buttonText = "去绑定",
-                            onButtonClick = {
-                                val intent = android.content.Intent(context, com.yhchat.canary.ui.profile.EmailBindingActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
-                }
-
-                // 云湖币（可点击）
-                if (showCoin && userProfile.coin != null) {
-                    var showCoinMenu by remember { mutableStateOf(false) }
-                    
-                    ProfileInfoItemClickable(
-                        icon = Icons.Default.Star, // 使用更合适的金币图标
-                        label = "金币",
-                        value = "%.2f".format(userProfile.coin),
-                        onClick = {
-                            showCoinMenu = true
-                        }
-                    )
-                    
-                    if (showCoinMenu) {
-                        CoinMenuBottomSheet(
-                            tokenRepository = tokenRepository,
-                            onDismiss = { showCoinMenu = false }
-                        )
-                    }
-                }
-
-                // VIP到期时间
-                if (showVipExpire && userProfile.isVip == 1 && userProfile.vipExpiredTime != null && userProfile.vipExpiredTime > 0) {
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val expiredDate = Date(userProfile.vipExpiredTime * 1000) // 假设是秒级时间戳
-                    ProfileInfoItem(
-                        icon = Icons.Default.Star,
-                        label = "VIP到期时间",
-                        value = dateFormat.format(expiredDate)
-                    )
-                }
-
-                // 邀请码
-                if (showInviteCode && !TextUtils.isEmpty(userProfile.invitationCode)) {
-                    var showInviteCodeMenu by remember { mutableStateOf(false) }
-                    
-                    ProfileInfoItemClickable(
-                        icon = Icons.Default.Person,
-                        label = "邀请码",
-                        value = userProfile.invitationCode!!,
-                        onClick = {
-                            showInviteCodeMenu = true
-                        }
-                    )
-                    
-                    if (showInviteCodeMenu) {
-                        InviteCodeMenuBottomSheet(
-                            currentInviteCode = userProfile.invitationCode!!,
-                            changeInviteCodeState = changeInviteCodeState,
-                            viewModel = viewModel,
-                            onDismiss = { showInviteCodeMenu = false },
-                            onShowChangeInviteCodeDialog = onShowChangeInviteCodeDialog
-                        )
-                    }
-                }
             }
+        }
+
+        // 手机号（带显示/隐藏切换）
+        if (showPhone && !TextUtils.isEmpty(userProfile.phone)) {
+            detailItems += {
+                var showFullPhone by remember { mutableStateOf(false) }
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Phone,
+                    title = "手机号",
+                    subtitle = if (showFullPhone) userProfile.phone!! else formatPhoneNumber(userProfile.phone!!),
+                    trailingContent = {
+                        IconButton(onClick = { showFullPhone = !showFullPhone }) {
+                            Icon(
+                                imageVector = if (showFullPhone) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showFullPhone) "隐藏手机号" else "显示手机号",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        // 邮箱
+        if (showEmail) {
+            detailItems += {
+                val hasEmail = !userProfile.email.isNullOrEmpty()
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Email,
+                    title = "邮箱",
+                    subtitle = userProfile.email ?: "未绑定",
+                    trailingContent = {
+                        TextButton(
+                            onClick = {
+                                val clazz = if (hasEmail) {
+                                    EmailModificationActivity::class.java
+                                } else {
+                                    EmailBindingActivity::class.java
+                                }
+                                context.startActivity(Intent(context, clazz))
+                            }
+                        ) {
+                            Text(if (hasEmail) "修改" else "去绑定")
+                        }
+                    }
+                )
+            }
+        }
+
+        // 云湖币（可点击）
+        if (showCoin && userProfile.coin != null) {
+            var showCoinMenu by remember { mutableStateOf(false) }
+            detailItems += {
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Star,
+                    title = "金币",
+                    subtitle = "%.2f".format(userProfile.coin),
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { showCoinMenu = true }
+                )
+            }
+
+            if (showCoinMenu) {
+                CoinMenuBottomSheet(
+                    tokenRepository = tokenRepository,
+                    onDismiss = { showCoinMenu = false }
+                )
+            }
+        }
+
+        // VIP到期时间
+        if (showVipExpire && userProfile.isVip == 1 && userProfile.vipExpiredTime != null && userProfile.vipExpiredTime > 0) {
+            detailItems += {
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val expiredDate = Date(userProfile.vipExpiredTime * 1000)
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Star,
+                    title = "VIP到期时间",
+                    subtitle = dateFormat.format(expiredDate)
+                )
+            }
+        }
+
+        // 邀请码
+        if (showInviteCode && !TextUtils.isEmpty(userProfile.invitationCode)) {
+            var showInviteCodeMenu by remember { mutableStateOf(false) }
+            detailItems += {
+                ProfileSettingsInfoRow(
+                    icon = Icons.Default.Person,
+                    title = "邀请码",
+                    subtitle = userProfile.invitationCode!!,
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { showInviteCodeMenu = true }
+                )
+            }
+
+            if (showInviteCodeMenu) {
+                InviteCodeMenuBottomSheet(
+                    currentInviteCode = userProfile.invitationCode!!,
+                    changeInviteCodeState = changeInviteCodeState,
+                    viewModel = viewModel,
+                    onDismiss = { showInviteCodeMenu = false },
+                    onShowChangeInviteCodeDialog = onShowChangeInviteCodeDialog
+                )
+            }
+        }
+
+        if (detailItems.isNotEmpty()) {
+            SettingsGroup(
+                title = "详细信息",
+                items = detailItems
+            )
+        }
+
+        if (showUserDataDialog) {
+            UserDataEditBottomSheet(
+                userDataState = userDataState,
+                saveUserDataState = saveUserDataState,
+                onDismiss = { onDismissUserDataDialog() },
+                onSave = onSaveUserData
+            )
         }
         
         // 添加底部间距，确保内容不会贴底
@@ -684,7 +765,7 @@ private fun UserProfileContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoinMenuBottomSheet(
-    tokenRepository: com.yhchat.canary.data.repository.TokenRepository? = null,
+    tokenRepository: TokenRepository? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -695,11 +776,11 @@ private fun CoinMenuBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
-        val activity = context as? android.app.Activity
+        val activity = context as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface
         val darkIcons = sheetColor.luminance() > 0.5f
         if (activity != null) {
-            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+            SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
         }
         Column(
             modifier = Modifier
@@ -718,7 +799,7 @@ private fun CoinMenuBottomSheet(
                 icon = Icons.Default.Star,
                 label = "金币商城",
                 onClick = {
-                    val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinShopActivity::class.java)
+                    val intent = Intent(context, CoinShopActivity::class.java)
                     context.startActivity(intent)
                     onDismiss()
                 }
@@ -729,7 +810,7 @@ private fun CoinMenuBottomSheet(
                 icon = Icons.Default.AccountCircle,
                 label = "任务中心",
                 onClick = {
-                    val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinDetailActivity::class.java)
+                    val intent = Intent(context, CoinDetailActivity::class.java)
                     context.startActivity(intent)
                     onDismiss()
                 }
@@ -740,7 +821,7 @@ private fun CoinMenuBottomSheet(
                 icon = Icons.AutoMirrored.Filled.ArrowForward,
                 label = "金币明细",
                 onClick = {
-                    val intent = android.content.Intent(context, com.yhchat.canary.ui.coin.CoinRecordActivity::class.java)
+                    val intent = Intent(context, CoinRecordActivity::class.java)
                     context.startActivity(intent)
                     onDismiss()
                 }
@@ -828,12 +909,12 @@ private fun UserDataEditBottomSheet(
             gender = (data.gender ?: 3).toString()
             val birthdaySec = data.birthday ?: 0L
             if (birthdaySec > 0) {
-                val cal = java.util.Calendar.getInstance().apply {
+                val cal = Calendar.getInstance().apply {
                     timeInMillis = birthdaySec * 1000L
                 }
-                selectedYear = cal.get(java.util.Calendar.YEAR)
-                selectedMonth = cal.get(java.util.Calendar.MONTH) + 1
-                selectedDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                selectedYear = cal.get(Calendar.YEAR)
+                selectedMonth = cal.get(Calendar.MONTH) + 1
+                selectedDay = cal.get(Calendar.DAY_OF_MONTH)
             } else {
                 selectedYear = null
                 selectedMonth = null
@@ -854,11 +935,11 @@ private fun UserDataEditBottomSheet(
         },
         sheetState = sheetState
     ) {
-        val activity = LocalContext.current as? android.app.Activity
+        val activity = LocalContext.current as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface
         val darkIcons = sheetColor.luminance() > 0.5f
         if (activity != null) {
-            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+            SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
         }
         val scrollState = rememberScrollState()
         val maxSheetHeight = (configuration.screenHeightDp.dp * 0.95f)
@@ -961,8 +1042,8 @@ private fun UserDataEditBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            val nowCal = remember { java.util.Calendar.getInstance() }
-            val currentYear = nowCal.get(java.util.Calendar.YEAR)
+            val nowCal = remember { Calendar.getInstance() }
+            val currentYear = nowCal.get(Calendar.YEAR)
             val yearOptions = remember(currentYear) { (1900..currentYear).toList().reversed() }
             val monthOptions = remember { (1..12).toList() }
             var yearExpanded by remember { mutableStateOf(false) }
@@ -972,10 +1053,10 @@ private fun UserDataEditBottomSheet(
             val maxDayInMonth = remember(selectedYear, selectedMonth) {
                 val year = selectedYear ?: 2000
                 val month = selectedMonth ?: 1
-                java.util.Calendar.getInstance().apply {
-                    set(java.util.Calendar.YEAR, year)
-                    set(java.util.Calendar.MONTH, month - 1)
-                }.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+                Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month - 1)
+                }.getActualMaximum(Calendar.DAY_OF_MONTH)
             }
             val dayOptions = remember(maxDayInMonth) { (1..maxDayInMonth).toList() }
 
@@ -1125,13 +1206,13 @@ private fun UserDataEditBottomSheet(
                 onClick = {
                     if (saveUserDataState.isLoading) return@Button
                     val birthday = if (selectedYear != null && selectedMonth != null && selectedDay != null) {
-                        java.util.Calendar.getInstance().apply {
-                            set(java.util.Calendar.YEAR, selectedYear!!)
-                            set(java.util.Calendar.MONTH, selectedMonth!! - 1)
-                            set(java.util.Calendar.DAY_OF_MONTH, selectedDay!!)
-                            set(java.util.Calendar.HOUR_OF_DAY, 0)
-                            set(java.util.Calendar.MINUTE, 0)
-                            set(java.util.Calendar.SECOND, 0)
+                        Calendar.getInstance().apply {
+                            set(Calendar.YEAR, selectedYear!!)
+                            set(Calendar.MONTH, selectedMonth!! - 1)
+                            set(Calendar.DAY_OF_MONTH, selectedDay!!)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
                         }.timeInMillis / 1000L
                     } else {
                         0L
@@ -1157,221 +1238,6 @@ private fun UserDataEditBottomSheet(
                     Text("保存")
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-}
-
-/**
- * 可点击的资料项（带右箭头）
- */
-@Composable
-private fun ProfileInfoItemClickable(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "查看详情",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 32.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    )
-}
-
-@Composable
-private fun ProfileInfoItem(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProfileSettingItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "前往",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProfileInfoItemWithButton(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    buttonText: String,
-    onButtonClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        
-        OutlinedButton(
-            onClick = onButtonClick,
-            modifier = Modifier.padding(start = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = buttonText,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = buttonText,
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-    }
-}
 
 /**
  * 修改邀请码弹窗
@@ -1581,7 +1447,7 @@ private fun ChangeNicknameDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BetaInfoDialog(
-    betaInfo: com.yhchat.canary.data.model.BetaInfo,
+    betaInfo: BetaInfo,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -1651,66 +1517,6 @@ private fun formatPhoneNumber(phone: String): String {
 }
 
 /**
- * 带显示/隐藏切换的资料项（用于手机号）
- */
-@Composable
-private fun ProfileInfoItemWithToggle(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    isVisible: Boolean,
-    onToggleVisibility: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = if (isVisible) value else formatPhoneNumber(value),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        
-        IconButton(
-            onClick = onToggleVisibility,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                imageVector = if (isVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                contentDescription = if (isVisible) "隐藏手机号" else "显示手机号",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 32.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    )
-}
-
-/**
  * 邀请码菜单底部弹窗
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1729,11 +1535,11 @@ private fun InviteCodeMenuBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
-        val activity = context as? android.app.Activity
+        val activity = context as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface
         val darkIcons = sheetColor.luminance() > 0.5f
         if (activity != null) {
-            com.yhchat.canary.ui.base.SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
+            SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
         }
         Column(
             modifier = Modifier
@@ -1762,7 +1568,7 @@ private fun InviteCodeMenuBottomSheet(
                 icon = Icons.Default.Person,
                 label = "查看云湖总用户",
                 onClick = {
-                    val intent = android.content.Intent(context, com.yhchat.canary.ui.stats.UserStatsActivity::class.java)
+                    val intent = Intent(context, UserStatsActivity::class.java)
                     context.startActivity(intent)
                     onDismiss()
                 }

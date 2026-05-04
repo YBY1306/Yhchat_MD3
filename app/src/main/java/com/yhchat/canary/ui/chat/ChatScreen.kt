@@ -203,6 +203,7 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val liveRoomsState by liveRoomsViewModel.uiState.collectAsStateWithLifecycle()
     val messages = viewModel.messages
+    val collapsedMessageIds = viewModel.collapsedMessageIds
     val reversedMessages by remember {
         derivedStateOf { messages.asReversed().toList() }
     }
@@ -1237,7 +1238,7 @@ fun ChatScreen(
                             memberPermission = memberPermission,
                             groupOwnerId = groupOwnerId,
                             groupAdminIds = groupAdminIds,
-                            isCollapsed = viewModel.isMessageCollapsed(message.msgId),
+                            isCollapsed = collapsedMessageIds.contains(message.msgId),
                             onToggleCollapse = { viewModel.toggleMessageCollapse(message.msgId) }
                         )
                     }

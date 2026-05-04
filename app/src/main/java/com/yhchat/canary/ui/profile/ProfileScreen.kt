@@ -411,14 +411,15 @@ private fun UserProfileContent(
     
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 头像和姓名部分
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(24.dp),
             tonalElevation = 4.dp,
             color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -746,7 +747,9 @@ private fun UserProfileContent(
             SettingsGroup(
                 title = "详细信息",
                 items = detailItems,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             )
         }
 

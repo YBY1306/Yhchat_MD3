@@ -422,6 +422,7 @@ class MainActivity : BaseActivity() {
                                                                 chatType = splitChatType,
                                                                 chatName = splitChatName,
                                                                 userId = userId,
+                                                                isLargeScreen = true,
                                                                 onBackClick = {
                                                                     // 大屏模式：关闭右侧面板
                                                                     splitChatId = ""

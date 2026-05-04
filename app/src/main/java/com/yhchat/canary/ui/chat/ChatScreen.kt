@@ -189,7 +189,8 @@ fun ChatScreen(
     onVideoSent: () -> Unit = {},  // 视频发送完成回调
     // 搜索跳转参数
     searchTargetMsgId: String? = null,  // 搜索目标消息ID
-    searchTargetMsgSeq: Long? = null  // 搜索目标消息序列号
+    searchTargetMsgSeq: Long? = null,  // 搜索目标消息序列号
+    isLargeScreen: Boolean = false  // 大屏模式，跳过imePadding避免悬浮键盘跳动
 ) {
     val context = LocalContext.current
     val liveRoomsViewModel: LiveRoomsViewModel = hiltViewModel()
@@ -722,7 +723,7 @@ fun ChatScreen(
         Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding()  // 自动响应软键盘，推动内容上移
+                    .then(if (!isLargeScreen) Modifier.imePadding() else Modifier)  // 大屏悬浮键盘不推动界面
         ) {
         // 顶部应用栏（受布局设置控制）
         if (!hideTopAppBar) {

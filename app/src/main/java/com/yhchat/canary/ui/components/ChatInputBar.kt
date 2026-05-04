@@ -102,6 +102,20 @@ fun ChatInputBar(
     val showExpressionButton by rememberBooleanPreference("layout_settings", "input_show_expression_button", true)
 
     var showAttachMenu by remember { mutableStateOf(false) }
+
+private fun insertMentionPlaceholder(text: String, userName: String): String {
+    val lastAtIndex = text.lastIndexOf('@')
+    if (lastAtIndex == -1) {
+        val prefix = if (text.isEmpty() || text.endsWith(" ")) text else "$text "
+        return "${prefix}@${userName} "
+    }
+
+    val beforeAt = text.substring(0, lastAtIndex + 1)
+    val afterAt = text.substring(lastAtIndex + 1)
+    val firstWhitespaceIndex = afterAt.indexOfFirst { it.isWhitespace() }
+    val tail = if (firstWhitespaceIndex >= 0) afterAt.substring(firstWhitespaceIndex) else ""
+    return "${beforeAt}${userName} ${tail}".replace("  ", " ")
+}
     var showExpressionPicker by remember { mutableStateOf(false) }
     var showInstructionPicker by remember { mutableStateOf(false) }
     var isVoiceMode by remember { mutableStateOf(false) }
@@ -183,6 +197,23 @@ fun ChatInputBar(
     }
     val coroutineScope = rememberCoroutineScope()
 
+    val mentionKeyword by remember(text) {
+        derivedStateOf {
+            val lastAtIndex = text.lastIndexOf('@')
+            if (lastAtIndex == -1) {
+                null
+            } else {
+                val afterAt = text.substring(lastAtIndex + 1)
+                if (afterAt.any { it.isWhitespace() }) {
+                    null
+                } else {
+                    afterAt
+                }
+            }
+        }
+    }
+    val showMentionPicker = groupId != null && mentionKeyword != null
+
     val chatPrefs = remember {
         ctx.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
     }
@@ -230,6 +261,23 @@ fun ChatInputBar(
     val currentLongPressSendMarkdownSeconds by rememberUpdatedState(longPressSendMarkdownSeconds)
 
     Column {
+        if (showMentionPicker) {
+            GroupMemberMentionPicker(
+                groupId = groupId.orEmpty(),
+                keyword = mentionKeyword.orEmpty(),
+                selectedIds = mentionedUsers.keys,
+                onMemberSelected = { member ->
+                    if (mentionedUsers.containsKey(member.userId)) return@GroupMemberMentionPicker
+                    onAddMentionUser?.invoke(member.userId, member.name)
+                    val newText = insertMentionPlaceholder(text, member.name)
+                    onTextChange(newText)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+
         // 表情选择器（显示在输入框上方，贴输入区而不是贴屏幕底部）
         if (showExpressionPicker && onExpressionClick != null) {
             ExpressionPicker(

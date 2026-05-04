@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.chat
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -110,6 +111,37 @@ class ChatViewModel @Inject constructor(
             _collapsedMessageIds.add(msgId)
         }
     }
+
+    private val collapsibleContentTypes = setOf(1, 3, 8)
+
+    private val chatPrefs = context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
+    private var autoCollapseLongMessages = chatPrefs.getBoolean("auto_collapse_long_messages", true)
+    private val chatPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == "auto_collapse_long_messages") {
+            autoCollapseLongMessages = prefs.getBoolean(key, true)
+            if (autoCollapseLongMessages) {
+                handleAutoCollapseForMessages(_messages)
+            } else {
+                _collapsedMessageIds.clear()
+            }
+        }
+    }
+
+    private fun shouldAutoCollapseMessage(message: ChatMessage): Boolean {
+        if (!autoCollapseLongMessages) return false
+        val text = message.content.text ?: return false
+        if (text.length < 800) return false
+        return collapsibleContentTypes.contains(message.contentType)
+    }
+
+    private fun handleAutoCollapseForMessages(messages: List<ChatMessage>) {
+        if (!autoCollapseLongMessages) return
+        for (msg in messages) {
+            if (shouldAutoCollapseMessage(msg) && !_collapsedMessageIds.contains(msg.msgId)) {
+                _collapsedMessageIds.add(msg.msgId)
+            }
+        }
+    }
     
     // 流式消息缓存：msgId -> 累积的content
     private val streamingMessages = mutableMapOf<String, String>()
@@ -122,6 +154,7 @@ class ChatViewModel @Inject constructor(
     private var lastDraftSentTime = 0L
     
     init {
+        chatPrefs.registerOnSharedPreferenceChangeListener(chatPrefsListener)
         // 监听多端草稿同步
         viewModelScope.launch {
             webSocketManager.getDraftUpdates().collect { draftUpdate ->
@@ -417,13 +450,7 @@ class ChatViewModel @Inject constructor(
                 _messages.add(insertIndex, normalizedMessage)
                 Log.d(tag, "Inserted new real-time message at index $insertIndex: ${normalizedMessage.msgId}")
                 
-                // 自动折叠长消息（>=800字）
-                val text = normalizedMessage.content.text
-                if (text != null && text.length >= 800 && normalizedMessage.contentType in listOf(1, 3, 8)) {
-                    if (!_collapsedMessageIds.contains(normalizedMessage.msgId)) {
-                        _collapsedMessageIds.add(normalizedMessage.msgId)
-                    }
-                }
+                handleAutoCollapseForMessages(listOf(normalizedMessage))
                 
                 // 标记收到新消息，触发UI更新
                 _uiState.value = _uiState.value.copy(newMessageReceived = true)
@@ -1351,21 +1378,14 @@ class ChatViewModel @Inject constructor(
                             // 刷新时替换所有消息
                             _messages.clear()
                             _collapsedMessageIds.clear()
-                            _messages.addAll(filteredMessages.sortedBy { it.sendTime })
+                            val sortedMessages = filteredMessages.sortedBy { it.sendTime }
+                            _messages.addAll(sortedMessages)
+                            handleAutoCollapseForMessages(sortedMessages)
                         } else {
                             // 加载更多时添加到现有消息前面
                             val sortedNewMessages = filteredMessages.sortedBy { it.sendTime }
                             _messages.addAll(0, sortedNewMessages)
-                        }
-                        
-                        // 自动折叠长消息（>=800字）
-                        for (msg in filteredMessages) {
-                            val text = msg.content.text
-                            if (text != null && text.length >= 800 && msg.contentType in listOf(1, 3, 8)) {
-                                if (!_collapsedMessageIds.contains(msg.msgId)) {
-                                    _collapsedMessageIds.add(msg.msgId)
-                                }
-                            }
+                            handleAutoCollapseForMessages(sortedNewMessages)
                         }
 
                         // 更新最旧消息的序列号和ID
@@ -2512,6 +2532,7 @@ class ChatViewModel @Inject constructor(
      * ViewModel被清理时保存读取位置
      */
     override fun onCleared() {
+        chatPrefs.unregisterOnSharedPreferenceChangeListener(chatPrefsListener)
         super.onCleared()
         // 保存当前读取位置，防止用户从后台直接结束应用
         saveCurrentReadPosition()

@@ -568,7 +568,8 @@ private fun DisplaySettingsGroup(
             { WebPQualitySettingItem(context = context) },
             { HtmlRawTextSettingItem(context = context) },
             { MarkdownRawTextSettingItem(context = context) },
-            { A2UiRawTextSettingItem(context = context) }
+            { A2UiRawTextSettingItem(context = context) },
+            { LongMessageAutoCollapseSettingItem(context = context) }
         )
     )
 }
@@ -1854,6 +1855,31 @@ private fun MarkdownRawTextSettingItem(
             prefs.edit().putBoolean("show_markdown_raw_text", checked).apply()
         },
         isError = false
+    )
+}
+
+@Composable
+private fun LongMessageAutoCollapseSettingItem(
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val prefs = remember {
+        context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
+    }
+
+    var autoCollapse by remember {
+        mutableStateOf(prefs.getBoolean("auto_collapse_long_messages", true))
+    }
+
+    SettingsSwitchItem(
+        icon = Icons.Default.UnfoldLess,
+        title = "长文自动折叠",
+        subtitle = if (autoCollapse) "消息超过800字时自动折叠为一行预览" else "总是直接展开显示长消息",
+        checked = autoCollapse,
+        onCheckedChange = { checked ->
+            autoCollapse = checked
+            prefs.edit().putBoolean("auto_collapse_long_messages", checked).apply()
+        }
     )
 }
 

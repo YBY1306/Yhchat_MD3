@@ -197,7 +197,8 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
     }
     val coroutineScope = rememberCoroutineScope()
 
-    val mentionKeyword by remember(text) {
+    data class MentionContext(val startIndex: Int, val keyword: String)
+    val mentionContext by remember(text) {
         derivedStateOf {
             val lastAtIndex = text.lastIndexOf('@')
             if (lastAtIndex == -1) {
@@ -207,12 +208,18 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                 if (afterAt.any { it.isWhitespace() }) {
                     null
                 } else {
-                    afterAt
+                    MentionContext(lastAtIndex, afterAt)
                 }
             }
         }
     }
-    val showMentionPicker = groupId != null && mentionKeyword != null
+    var lastDismissedMentionIndex by remember { mutableStateOf(-1) }
+    LaunchedEffect(mentionContext?.startIndex) {
+        if (mentionContext == null) {
+            lastDismissedMentionIndex = -1
+        }
+    }
+    val showMentionPicker = groupId != null && mentionContext != null && mentionContext?.startIndex != lastDismissedMentionIndex
 
     val chatPrefs = remember {
         ctx.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
@@ -262,15 +269,21 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
 
     Column {
         if (showMentionPicker) {
+            val currentMentionContext = mentionContext
             GroupMemberMentionPicker(
                 groupId = groupId.orEmpty(),
-                keyword = mentionKeyword.orEmpty(),
+                keyword = currentMentionContext?.keyword.orEmpty(),
                 selectedIds = mentionedUsers.keys,
                 onMemberSelected = { member ->
                     if (mentionedUsers.containsKey(member.userId)) return@GroupMemberMentionPicker
                     onAddMentionUser?.invoke(member.userId, member.name)
                     val newText = insertMentionPlaceholder(text, member.name)
                     onTextChange(newText)
+                },
+                onDismiss = {
+                    currentMentionContext?.let { ctx ->
+                        lastDismissedMentionIndex = ctx.startIndex
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

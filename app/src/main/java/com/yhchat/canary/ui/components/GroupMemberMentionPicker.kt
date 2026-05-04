@@ -11,11 +11,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +54,7 @@ fun GroupMemberMentionPicker(
     keyword: String,
     selectedIds: Set<String>,
     onMemberSelected: (GroupMemberInfo) -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -57,14 +63,21 @@ fun GroupMemberMentionPicker(
     var members by remember { mutableStateOf<List<GroupMemberInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var currentPage by remember { mutableStateOf(1) }
+    var hasMore by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+
+    BackHandler { onDismiss() }
 
     LaunchedEffect(groupId, searchText) {
         isLoading = true
         errorText = null
+        currentPage = 1
         delay(200)
-        groupRepository.getGroupMembers(groupId = groupId, keywords = searchText).fold(
+        groupRepository.getGroupMembers(groupId = groupId, keywords = searchText, page = 1).fold(
             onSuccess = { list ->
                 members = list
+                hasMore = list.size >= 50
                 isLoading = false
             },
             onFailure = { error ->
@@ -82,6 +95,24 @@ fun GroupMemberMentionPicker(
         tonalElevation = 2.dp
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "关闭")
+                }
+                Text("选择群成员", style = MaterialTheme.typography.titleSmall)
+                Button(onClick = onDismiss) {
+                    Text("确定")
+                }
+            }
+
+            HorizontalDivider()
+
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },

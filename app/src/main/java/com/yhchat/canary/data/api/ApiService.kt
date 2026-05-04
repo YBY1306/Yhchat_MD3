@@ -170,7 +170,7 @@ interface ApiService {
     /**
      * 获取消息列表 - 使用protobuf
      */
-    @POST("v1/msg/list-message")
+    @POST("v1/msg/list-message-by-seq")
     suspend fun listMessage(
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody
@@ -179,7 +179,7 @@ interface ApiService {
     /**
      * 按消息ID列出消息（包含消息id指定的消息）- 使用protobuf
      */
-    @POST("v1/msg/list-message-by-mid-seq")
+    @POST("v1/msg/list-message")
     suspend fun listMessageByMidSeq(
         @Header("token") token: String,
         @Body request: okhttp3.RequestBody

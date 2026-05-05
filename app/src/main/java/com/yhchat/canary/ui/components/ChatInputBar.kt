@@ -219,9 +219,9 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
     var keepMentionPickerVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(mentionContext?.startIndex) {
-        if (mentionContext != null) {
-            lastMentionTriggerIndex = mentionContext.startIndex
-            mentionPickerKeyword = mentionContext.keyword
+        mentionContext?.let { context ->
+            lastMentionTriggerIndex = context.startIndex
+            mentionPickerKeyword = context.keyword
             keepMentionPickerVisible = true
         }
     }

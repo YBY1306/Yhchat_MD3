@@ -270,6 +270,54 @@ class BotLlmSettingsViewModel : ViewModel() {
     }
 
     private fun findModelEntry(modelId: Int): Pair<BotLlmGroup, BotLlmModel>? = findModelEntry(modelId, _uiState.value.llmGroups)
+
+    private fun syncParamVariables(list: List<ParamVariableUi>) {
+        val json = gson.toJson(list.map { it.toDto() })
+        _uiState.update {
+            it.copy(
+                paramVariables = list,
+                paramJson = json
+            )
+        }
+    }
+
+    private fun parseParamJson(json: String): List<ParamVariableUi> {
+        if (json.isBlank()) return emptyList()
+        return runCatching {
+            val type = object : TypeToken<List<ParamVariableDto>>() {}.type
+            gson.fromJson<List<ParamVariableDto>>(json, type)
+                ?.map { it.toUi() }
+                ?.filter { it.id.isNotBlank() }
+                ?: emptyList()
+        }.getOrElse { emptyList() }
+    }
+
+    private fun formatKeyForStorage(input: String): String {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return ""
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return trimmed
+        }
+        val map = mapOf("API Key" to trimmed)
+        return gson.toJson(map)
+    }
+
+    private fun extractKeyInput(stored: String): String {
+        val trimmed = stored.trim()
+        if (trimmed.isBlank()) return ""
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return runCatching {
+                val type = object : TypeToken<Map<String, String>>() {}.type
+                val map: Map<String, String> = gson.fromJson(trimmed, type)
+                if (map.size == 1) {
+                    map.values.firstOrNull().orEmpty()
+                } else {
+                    trimmed
+                }
+            }.getOrElse { trimmed }
+        }
+        return stored
+    }
 }
 
 data class BotLlmSettingsUiState(
@@ -344,50 +392,3 @@ private fun ParamVariableUi.toDto(): ParamVariableDto {
     )
 }
 
-private fun BotLlmSettingsViewModel.syncParamVariables(list: List<ParamVariableUi>) {
-    val json = gson.toJson(list.map { it.toDto() })
-    _uiState.update {
-        it.copy(
-            paramVariables = list,
-            paramJson = json
-        )
-    }
-}
-
-private fun BotLlmSettingsViewModel.parseParamJson(json: String): List<ParamVariableUi> {
-    if (json.isBlank()) return emptyList()
-    return runCatching {
-        val type = object : TypeToken<List<ParamVariableDto>>() {}.type
-        gson.fromJson<List<ParamVariableDto>>(json, type)
-            ?.map { it.toUi() }
-            ?.filter { it.id.isNotBlank() }
-            ?: emptyList()
-    }.getOrElse { emptyList() }
-}
-
-private fun BotLlmSettingsViewModel.formatKeyForStorage(input: String): String {
-    val trimmed = input.trim()
-    if (trimmed.isEmpty()) return ""
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-        return trimmed
-    }
-    val map = mapOf("API Key" to trimmed)
-    return gson.toJson(map)
-}
-
-private fun BotLlmSettingsViewModel.extractKeyInput(stored: String): String {
-    val trimmed = stored.trim()
-    if (trimmed.isBlank()) return ""
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-        return runCatching {
-            val type = object : TypeToken<Map<String, String>>() {}.type
-            val map: Map<String, String> = gson.fromJson(trimmed, type)
-            if (map.size == 1) {
-                map.values.firstOrNull().orEmpty()
-            } else {
-                trimmed
-            }
-        }.getOrElse { trimmed }
-    }
-    return stored
-}

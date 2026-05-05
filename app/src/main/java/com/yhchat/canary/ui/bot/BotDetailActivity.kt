@@ -138,6 +138,7 @@ private fun BotDetailScreen(
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showClearContextDialog by remember { mutableStateOf(false) }
     var showMoreSheet by remember { mutableStateOf(false) }
     var showBotInfoDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -348,6 +349,17 @@ private fun BotDetailScreen(
                 }
 
                 SheetActionItem(
+                    icon = Icons.Default.DeleteSweep,
+                    title = "清空上下文",
+                    enabled = !uiState.isClearingContext,
+                    isDestructive = true,
+                    onClick = {
+                        showMoreSheet = false
+                        showClearContextDialog = true
+                    }
+                )
+
+                SheetActionItem(
                     icon = Icons.Default.Report,
                     title = "举报",
                     onClick = {
@@ -445,6 +457,48 @@ private fun BotDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showClearContextDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!uiState.isClearingContext) {
+                    showClearContextDialog = false
+                }
+            },
+            title = {
+                Text(
+                    text = "清空上下文",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("确定要清空机器人「$botName」的上下文吗？此操作会移除历史对话上下文。")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearBotContext(botId)
+                        showClearContextDialog = false
+                    },
+                    enabled = !uiState.isClearingContext
+                ) {
+                    if (uiState.isClearingContext) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("清空")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { if (!uiState.isClearingContext) showClearContextDialog = false }
+                ) {
                     Text("取消")
                 }
             }

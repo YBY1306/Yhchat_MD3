@@ -317,6 +317,27 @@ class BotRepository @Inject constructor(
         }
     }
 
+    suspend fun cleanBotContext(botId: String): Result<Unit> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val response = apiService.cleanBotContext(token, BotIdRequest(botId))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.code == 1) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body?.message ?: "清空上下文失败"))
+                }
+            } else {
+                Result.failure(Exception("清空上下文失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * 编辑机器人信息
      */

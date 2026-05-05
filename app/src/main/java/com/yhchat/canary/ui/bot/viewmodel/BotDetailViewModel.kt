@@ -235,6 +235,32 @@ class BotDetailViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun clearBotContext(botId: String) {
+        viewModelScope.launch {
+            if (_uiState.value.isClearingContext) return@launch
+            _uiState.update { it.copy(isClearingContext = true) }
+
+            botRepository.cleanBotContext(botId).fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isClearingContext = false,
+                            actionMessage = "已清空机器人上下文"
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isClearingContext = false,
+                            actionMessage = "清空上下文失败：${error.message ?: "未知错误"}"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
     fun consumeActionMessage() {
         _uiState.update { it.copy(actionMessage = null) }
     }
@@ -260,5 +286,6 @@ data class BotDetailUiState(
     val isNoNotify: Boolean = false,
     val isSettingNoNotify: Boolean = false,
     val actionMessage: String? = null,
-    val deleteSuccess: Boolean = false
+    val deleteSuccess: Boolean = false,
+    val isClearingContext: Boolean = false
 )

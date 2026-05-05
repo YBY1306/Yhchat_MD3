@@ -283,6 +283,15 @@ interface ApiService {
     ): Response<BaseResponse>
 
     /**
+     * 清空机器人 LLM 上下文
+     */
+    @POST("v1/bot/llm/clean-content")
+    suspend fun cleanBotContext(
+        @Header("token") token: String,
+        @Body request: BotIdRequest
+    ): Response<BaseResponse>
+
+    /**
      * 获取机器人看板 - 使用protobuf
      */
     @POST("v1/bot/board")

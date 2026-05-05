@@ -204,6 +204,29 @@ private fun BotManagementScreen(
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
+                    // 机器人设置
+                    ManagementOption(
+                        icon = Icons.Default.Settings,
+                        title = "机器人设置",
+                        subtitle = "配置机器人参数",
+                        onClick = {
+                            BotSettingsActivity.start(context, botId, botName, uiState.currentBotToken)
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    ManagementOption(
+                        icon = Icons.Default.Memory,
+                        title = "大模型设置",
+                        subtitle = "配置机器人使用的 LLM",
+                        onClick = {
+                            BotLlmSettingsActivity.start(context, botId, botName)
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    
                     // 进入聊天
                     ManagementOption(
                         icon = Icons.Default.Chat,
@@ -220,7 +243,7 @@ private fun BotManagementScreen(
                     )
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
+
                     // 编辑机器人
                     ManagementOption(
                         icon = Icons.Default.Edit,
@@ -228,18 +251,6 @@ private fun BotManagementScreen(
                         subtitle = "修改机器人信息",
                         onClick = {
                             BotEditActivity.start(context, botId, botName)
-                        }
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // 机器人设置
-                    ManagementOption(
-                        icon = Icons.Default.Settings,
-                        title = "机器人设置",
-                        subtitle = "配置机器人参数",
-                        onClick = {
-                            BotSettingsActivity.start(context, botId, botName, uiState.currentBotToken)
                         }
                     )
                 }

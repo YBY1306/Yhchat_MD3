@@ -324,6 +324,12 @@
             android:theme="@style/Theme.YhchatCanary" />
 
         <activity
+            android:name=".ui.bot.BotLlmSettingsActivity"
+            android:exported="false"
+            android:label="大模型设置"
+            android:theme="@style/Theme.YhchatCanary" />
+
+        <activity
             android:name=".ui.bot.BotEditActivity"
             android:exported="false"
             android:label="编辑机器人"

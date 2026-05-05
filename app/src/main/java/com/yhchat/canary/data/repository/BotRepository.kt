@@ -4,7 +4,11 @@ import android.util.Log
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.WebApiService
 import com.yhchat.canary.data.model.BaseResponse
+import com.yhchat.canary.data.model.BotIdRequest
 import com.yhchat.canary.data.model.BotInfo
+import com.yhchat.canary.data.model.BotLlmGroup
+import com.yhchat.canary.data.model.BotLlmSaveRequest
+import com.yhchat.canary.data.model.BotLlmSettingData
 import yh_bot.Bot
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -246,6 +250,69 @@ class BotRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取机器人列表异常", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBotLlmModelList(): Result<List<BotLlmGroup>> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val response = apiService.getBotLlmModelList(token)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.code == 1) {
+                    Result.success(body.data?.list ?: emptyList())
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取模型列表失败"))
+                }
+            } else {
+                Result.failure(Exception("获取模型列表失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBotLlmSettings(botId: String): Result<BotLlmSettingData> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val response = apiService.getBotLlmSettings(token, BotIdRequest(botId))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.code == 1 && body.data != null) {
+                    Result.success(body.data)
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取大模型配置失败"))
+                }
+            } else {
+                Result.failure(Exception("获取大模型配置失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun saveBotLlmSettings(request: BotLlmSaveRequest): Result<Unit> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val response = apiService.saveBotLlmSettings(token, request)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.code == 1) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body?.message ?: "保存失败"))
+                }
+            } else {
+                Result.failure(Exception("保存失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

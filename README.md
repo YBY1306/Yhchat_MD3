@@ -1,8 +1,16 @@
 # Experimental
-更激进的修改
+在canary分支上进行更激进的修改
 
 # 声明
 此项目（Yhchat_MD3）是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Kotlin-2.2.21-7F52FF?logo=kotlin" alt="Kotlin"/>
+  <img src="https://img.shields.io/badge/Jetpack%20Compose-1.9.0-4285F4?logo=android" alt="Compose"/>
+  <img src="https://img.shields.io/badge/Material%20You-3.0-757575?logo=material-design" alt="Material You"/>
+  <img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License"/>
+  <img src="https://img.shields.io/github/stars/Kauid323/Yhchat_md3?style=social" alt="Stars"/>
+</p>
 
 ![image](https://github.com/user-attachments/assets/96b2dc98-0368-443c-bcb6-aa64f6eafe4f)
 

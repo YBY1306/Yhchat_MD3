@@ -257,6 +257,32 @@ interface ApiService {
     ): Response<okhttp3.ResponseBody>
     
     /**
+     * 获取可用的大模型列表
+     */
+    @POST("v1/bot/llm/llm-setting-list")
+    suspend fun getBotLlmModelList(
+        @Header("token") token: String
+    ): Response<BotLlmSettingListResponse>
+
+    /**
+     * 获取机器人当前的大模型配置
+     */
+    @POST("v1/bot/llm/llm-setting-ref-info")
+    suspend fun getBotLlmSettings(
+        @Header("token") token: String,
+        @Body request: BotIdRequest
+    ): Response<BotLlmSettingRefResponse>
+
+    /**
+     * 保存机器人 LLM 设置
+     */
+    @POST("v1/bot/llm/llm-save")
+    suspend fun saveBotLlmSettings(
+        @Header("token") token: String,
+        @Body request: BotLlmSaveRequest
+    ): Response<BaseResponse>
+
+    /**
      * 获取机器人看板 - 使用protobuf
      */
     @POST("v1/bot/board")

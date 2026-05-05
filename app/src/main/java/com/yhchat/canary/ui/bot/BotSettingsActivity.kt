@@ -434,7 +434,7 @@ private fun BotSettingsScreen(
                             }
                         } else if (uiState.instructions.isEmpty()) {
                             Text(
-                                text = "暂无指令，点击右上角管理",
+                                text = "暂无指令，点击右边按钮进入管理",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

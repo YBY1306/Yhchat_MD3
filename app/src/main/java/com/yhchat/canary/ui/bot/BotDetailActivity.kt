@@ -332,6 +332,21 @@ private fun BotDetailScreen(
                     }
                 )
 
+                if (!uiState.isCheckingAddressBook && uiState.isInAddressBook) {
+                    SheetActionItem(
+                        icon = Icons.Default.Settings,
+                        title = "机器人设置",
+                        onClick = {
+                            showMoreSheet = false
+                            BotManagementActivity.start(
+                                context,
+                                botId,
+                                uiState.botInfo?.data?.name ?: botName
+                            )
+                        }
+                    )
+                }
+
                 SheetActionItem(
                     icon = Icons.Default.Report,
                     title = "举报",

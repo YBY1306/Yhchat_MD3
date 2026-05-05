@@ -145,6 +145,7 @@ class ChatViewModel @Inject constructor(
     
     // 流式消息缓存：msgId -> 累积的content
     private val streamingMessages = mutableMapOf<String, String>()
+    private val streamingMessageSenders = mutableMapOf<String, com.yhchat.canary.data.model.MessageSender>()
     
     // 远程草稿输入（多端同步）
     private val _remoteDraftInput = MutableStateFlow<String?>(null)
@@ -458,6 +459,7 @@ class ChatViewModel @Inject constructor(
                 // 初始化流式消息缓存（如果是机器人消息，准备接收stream_message）
                 if (normalizedMessage.sender.chatType == 3) {
                     streamingMessages[normalizedMessage.msgId] = normalizedMessage.content.text ?: ""
+                    streamingMessageSenders[normalizedMessage.msgId] = normalizedMessage.sender
                     Log.d(tag, "Initialized streaming cache for bot message: ${normalizedMessage.msgId}")
                 }
             }
@@ -1035,6 +1037,7 @@ class ChatViewModel @Inject constructor(
             val mergedMessage = existingMessage.mergeEditedMessage(normalizedMessage)
             _messages[existingIndex] = mergedMessage
             streamingMessages.remove(normalizedMessage.msgId)
+            streamingMessageSenders.remove(normalizedMessage.msgId)
             Log.d(
                 tag,
                 "Updated edited message in current list: msgId=${normalizedMessage.msgId}, " +
@@ -1070,6 +1073,8 @@ class ChatViewModel @Inject constructor(
             _messages.removeAt(existingIndex)
             Log.d(tag, "Removed deleted message: $messageId")
         }
+        streamingMessages.remove(messageId)
+        streamingMessageSenders.remove(messageId)
     }
     
     /**
@@ -1086,18 +1091,22 @@ class ChatViewModel @Inject constructor(
         // 查找是否已有此消息
         val existingIndex = _messages.indexOfFirst { it.msgId == event.msgId }
         
+        val senderOverride = streamingMessageSenders[event.msgId]
+
         if (existingIndex == -1) {
             // 消息不存在，先创建基础消息（push_message的作用）
+            val latestKnownSender = _messages.asReversed().firstOrNull {
+                it.sender.chatType == 3 && it.chatId == event.chatId
+            }?.sender
+
+            val baseSender = senderOverride
+                ?: latestKnownSender
+                ?: resolveGroupBotSender(event.recvId)
+                ?: buildDefaultBotSender(event.recvId, event.chatId)
+
             val baseMessage = ChatMessage(
                 msgId = event.msgId,
-                sender = com.yhchat.canary.data.model.MessageSender(
-                    chatId = event.chatId,
-                    chatType = 3,
-                    name = "机器人",
-                    avatarUrl = "",
-                    tagOld = emptyList(),
-                    tag = emptyList()
-                ),
+                sender = baseSender,
                 direction = "left",
                 contentType = 1,
                 content = com.yhchat.canary.data.model.MessageContent(
@@ -1117,6 +1126,7 @@ class ChatViewModel @Inject constructor(
             val insertIndex = _messages.indexOfLast { it.sendTime <= baseMessage.sendTime } + 1
             _messages.add(insertIndex, baseMessage)
             streamingMessages[event.msgId] = event.content
+            streamingMessageSenders[event.msgId] = baseSender
             Log.d(tag, "Created base message for stream at index $insertIndex")
         } else {
             // 消息已存在，追加内容
@@ -1130,6 +1140,36 @@ class ChatViewModel @Inject constructor(
             _messages[existingIndex] = updatedMessage
             Log.d(tag, "Updated stream message at index $existingIndex")
         }
+    }
+
+    private fun resolveGroupBotSender(botId: String?): com.yhchat.canary.data.model.MessageSender? {
+        if (botId.isNullOrBlank()) return null
+        val bot = uiState.value.groupBots.firstOrNull { it.botId == botId }
+        return bot?.let {
+            com.yhchat.canary.data.model.MessageSender(
+                chatId = it.botId,
+                chatType = 3,
+                name = it.name.ifBlank { "机器人" },
+                avatarUrl = it.avatarUrl,
+                tagOld = emptyList(),
+                tag = emptyList()
+            )
+        }
+    }
+
+    private fun buildDefaultBotSender(recvId: String?, chatId: String): com.yhchat.canary.data.model.MessageSender {
+        val botInfo = uiState.value.botInfo?.data
+        val resolvedName = botInfo?.name?.takeIf { it.isNotBlank() } ?: "机器人"
+        val resolvedAvatar = botInfo?.avatarUrl.orEmpty()
+        val resolvedChatId = recvId?.takeIf { it.isNotBlank() } ?: chatId
+        return com.yhchat.canary.data.model.MessageSender(
+            chatId = resolvedChatId,
+            chatType = 3,
+            name = resolvedName,
+            avatarUrl = resolvedAvatar,
+            tagOld = emptyList(),
+            tag = emptyList()
+        )
     }
 
     /**

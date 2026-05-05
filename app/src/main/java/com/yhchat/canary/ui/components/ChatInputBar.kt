@@ -214,12 +214,27 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
         }
     }
     var lastDismissedMentionIndex by remember { mutableStateOf(-1) }
+    var lastMentionTriggerIndex by remember { mutableStateOf(-1) }
+    var mentionPickerKeyword by remember { mutableStateOf("") }
+    var keepMentionPickerVisible by remember { mutableStateOf(false) }
+
     LaunchedEffect(mentionContext?.startIndex) {
-        if (mentionContext == null) {
+        if (mentionContext != null) {
+            lastMentionTriggerIndex = mentionContext.startIndex
+            mentionPickerKeyword = mentionContext.keyword
+            keepMentionPickerVisible = true
+        }
+    }
+
+    LaunchedEffect(text) {
+        if (!text.contains('@')) {
+            keepMentionPickerVisible = false
             lastDismissedMentionIndex = -1
         }
     }
-    val showMentionPicker = groupId != null && mentionContext != null && mentionContext?.startIndex != lastDismissedMentionIndex
+
+    val showMentionPicker = groupId != null && keepMentionPickerVisible &&
+        (mentionContext?.startIndex != lastDismissedMentionIndex || mentionContext == null)
 
     val chatPrefs = remember {
         ctx.getSharedPreferences("chat_settings", android.content.Context.MODE_PRIVATE)
@@ -270,9 +285,10 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
     Column {
         if (showMentionPicker) {
             val currentMentionContext = mentionContext
+            val resolvedKeyword = currentMentionContext?.keyword ?: mentionPickerKeyword
             GroupMemberMentionPicker(
                 groupId = groupId.orEmpty(),
-                keyword = currentMentionContext?.keyword.orEmpty(),
+                keyword = resolvedKeyword,
                 selectedIds = mentionedUsers.keys,
                 onMemberSelected = { member ->
                     if (mentionedUsers.containsKey(member.userId)) return@GroupMemberMentionPicker
@@ -281,8 +297,10 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                     onTextChange(newText)
                 },
                 onDismiss = {
-                    currentMentionContext?.let { ctx ->
-                        lastDismissedMentionIndex = ctx.startIndex
+                    keepMentionPickerVisible = false
+                    val dismissIndex = currentMentionContext?.startIndex ?: lastMentionTriggerIndex
+                    if (dismissIndex >= 0) {
+                        lastDismissedMentionIndex = dismissIndex
                     }
                 },
                 modifier = Modifier

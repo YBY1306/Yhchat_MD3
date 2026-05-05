@@ -44,6 +44,13 @@
   - 分区管理/查看管理分区的关注列表
   - 新建分区/管理分区/删除分区
        
+# Todo：
+- 机器人变量显示
+- 发送消息带机器人变量（有机器人变量时才会有）
+- 修生成聊天记录功能
+- 更强壮的html解析器
+- 查找引用消息
+
 # 特别感谢
 ### [yhchatAPI](https://github.com/yh-Tpdev/yhchatAPI)
 ### [FlymeLive](https://github.com/wsu2059q/FlymeLive)

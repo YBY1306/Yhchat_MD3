@@ -22,7 +22,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -41,6 +45,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,13 +57,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.bot.viewmodel.BotLlmSettingsViewModel
+import com.yhchat.canary.ui.bot.viewmodel.ParamVariableType
+import com.yhchat.canary.ui.bot.viewmodel.ParamVariableUi
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class BotLlmSettingsActivity : BaseActivity() {
@@ -94,6 +106,197 @@ class BotLlmSettingsActivity : BaseActivity() {
     }
 }
 
+@Composable
+private fun ParamVariableRow(
+    variable: ParamVariableUi,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = variable.label.ifBlank { variable.name.ifBlank { variable.id } },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "ID: ${variable.id}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(imageVector = Icons.Default.Edit, contentDescription = "编辑变量")
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "删除变量")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "类型: ${if (variable.type == ParamVariableType.Input) "输入" else "下拉"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "名称(name): ${variable.name.ifBlank { "(自动)" }}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (variable.type == ParamVariableType.Select) {
+                Text(
+                    text = "选项: ${variable.options.ifBlank { "未配置" }}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JsonPreviewCard(
+    title: String,
+    json: String,
+    onCopy: (() -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                if (onCopy != null) {
+                    IconButton(onClick = onCopy) {
+                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "复制 JSON")
+                    }
+                }
+            }
+            Text(
+                text = json.ifBlank { "[]" },
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ParamVariableDialog(
+    initial: ParamVariableUi,
+    onDismiss: () -> Unit,
+    onConfirm: (ParamVariableUi) -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    var id by remember { mutableStateOf(initial.id) }
+    var name by remember { mutableStateOf(initial.name) }
+    var label by remember { mutableStateOf(initial.label) }
+    var type by remember { mutableStateOf(initial.type) }
+    var options by remember { mutableStateOf(initial.options) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = if (initial.id.isBlank()) "新增变量" else "编辑变量", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = id,
+                    onValueChange = { id = it.trim() },
+                    label = { Text("变量 ID (唯一)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("变量名称 (name)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text("展示文案 (label)") },
+                    singleLine = true
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ParamVariableType.values().forEach { option ->
+                        FilterChip(
+                            selected = type == option,
+                            onClick = { type = option },
+                            label = { Text(if (option == ParamVariableType.Input) "文本输入" else "下拉选择") }
+                        )
+                    }
+                }
+
+                if (type == ParamVariableType.Select) {
+                    OutlinedTextField(
+                        value = options,
+                        onValueChange = { options = it },
+                        label = { Text("下拉选项 (# 分隔)") },
+                        supportingText = { Text("示例: 选项A#选项B#选项C") }
+                    )
+                }
+
+                error?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (id.isBlank()) {
+                        error = "变量 ID 不能为空"
+                        return@TextButton
+                    }
+                    val variable = ParamVariableUi(
+                        id = id,
+                        name = name.ifBlank { id },
+                        label = label.ifBlank { name.ifBlank { id } },
+                        type = type,
+                        options = if (type == ParamVariableType.Select) options else ""
+                    )
+                    onConfirm(variable)
+                }
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BotLlmSettingsScreen(
@@ -104,6 +307,10 @@ private fun BotLlmSettingsScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val clipboardManager = LocalClipboardManager.current
+
+    var isParamDialogVisible by remember { mutableStateOf(false) }
+    var editingParam by remember { mutableStateOf<ParamVariableUi?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -255,13 +462,13 @@ private fun BotLlmSettingsScreen(
 
             CardSection(title = "鉴权 & Prompt") {
                 OutlinedTextField(
-                    value = uiState.key,
-                    onValueChange = viewModel::updateKey,
+                    value = uiState.keyInput,
+                    onValueChange = viewModel::updateKeyInput,
                     modifier = Modifier
                         .fillMaxWidth(),
-                    label = { Text("API Key JSON (key)") },
-                    supportingText = { Text("示例: {\"API Key\":\"sk-***\"}") },
-                    minLines = 3
+                    label = { Text("API Key") },
+                    supportingText = { Text("直接粘贴 Key 或完整 JSON，系统会自动格式化为 JSON") },
+                    minLines = 1
                 )
 
                 OutlinedTextField(
@@ -273,15 +480,67 @@ private fun BotLlmSettingsScreen(
                 )
             }
 
-            CardSection(title = "高级配置 JSON") {
-                OutlinedTextField(
-                    value = uiState.paramJson,
-                    onValueChange = viewModel::updateParamJson,
+            CardSection(title = "参数变量") {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("参数定义 (paramJson)") },
-                    minLines = 4
-                )
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "通过变量向模型传递输入或选项",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "支持文本输入 (input) 与下拉选择 (select) 两种类型",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            editingParam = ParamVariableUi()
+                            isParamDialogVisible = true
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "新增变量")
+                    }
+                }
 
+                if (uiState.paramVariables.isEmpty()) {
+                    Text(
+                        text = "暂无变量，点击右上角 + 添加。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                        uiState.paramVariables.forEach { variable ->
+                            ParamVariableRow(
+                                variable = variable,
+                                onEdit = {
+                                    editingParam = variable
+                                    isParamDialogVisible = true
+                                },
+                                onDelete = { viewModel.deleteParamVariable(variable.id) }
+                            )
+                        }
+                    }
+                }
+
+                JsonPreviewCard(
+                    title = "paramJson 预览",
+                    json = uiState.paramJson,
+                    onCopy = {
+                        clipboardManager.setText(AnnotatedString(uiState.paramJson))
+                        Toast.makeText(context, "paramJson 已复制", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            CardSection(title = "MCP 配置") {
                 OutlinedTextField(
                     value = uiState.mcpJson,
                     onValueChange = viewModel::updateMcpJson,
@@ -289,8 +548,41 @@ private fun BotLlmSettingsScreen(
                     label = { Text("MCP 定义 (mcpJson)") },
                     minLines = 4
                 )
+
+                JsonPreviewCard(
+                    title = "mcpJson 预览",
+                    json = uiState.mcpJson,
+                    onCopy = {
+                        clipboardManager.setText(AnnotatedString(uiState.mcpJson))
+                        Toast.makeText(context, "mcpJson 已复制", Toast.LENGTH_SHORT).show()
+                    }
+                )
             }
         }
+    }
+
+    if (isParamDialogVisible && editingParam != null) {
+        val current = editingParam!!
+        val isExisting = current.id.isNotBlank() && uiState.paramVariables.any { it.id == current.id }
+        ParamVariableDialog(
+            initial = current,
+            onDismiss = {
+                isParamDialogVisible = false
+                editingParam = null
+            },
+            onConfirm = { variable ->
+                viewModel.upsertParamVariable(variable)
+                isParamDialogVisible = false
+                editingParam = null
+            },
+            onDelete = if (isExisting) {
+                {
+                    viewModel.deleteParamVariable(current.id)
+                    isParamDialogVisible = false
+                    editingParam = null
+                }
+            } else null
+        )
     }
 }
 

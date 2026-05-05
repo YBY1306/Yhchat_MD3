@@ -3,6 +3,8 @@ package com.yhchat.canary.ui.bot.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotLlmGroup
 import com.yhchat.canary.data.model.BotLlmModel
@@ -13,9 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
 class BotLlmSettingsViewModel : ViewModel() {
     private lateinit var botRepository: BotRepository
+    private val gson = Gson()
 
     private val _uiState = MutableStateFlow(BotLlmSettingsUiState())
     val uiState: StateFlow<BotLlmSettingsUiState> = _uiState.asStateFlow()
@@ -106,12 +108,36 @@ class BotLlmSettingsViewModel : ViewModel() {
         _uiState.update { it.copy(llmBaseUrl = value) }
     }
 
-    fun updateKey(value: String) {
-        _uiState.update { it.copy(key = value) }
+    fun updateKeyInput(value: String) {
+        val formatted = formatKeyForStorage(value)
+        _uiState.update { it.copy(keyInput = value, key = formatted) }
     }
 
     fun updateParamJson(value: String) {
-        _uiState.update { it.copy(paramJson = value) }
+        val parsed = parseParamJson(value)
+        _uiState.update {
+            it.copy(
+                paramJson = value,
+                paramVariables = parsed
+            )
+        }
+    }
+
+    fun upsertParamVariable(variable: ParamVariableUi) {
+        val current = _uiState.value.paramVariables.toMutableList()
+        val index = current.indexOfFirst { it.id == variable.id }
+        if (index >= 0) {
+            current[index] = variable
+        } else {
+            current.add(variable)
+        }
+        syncParamVariables(current)
+    }
+
+    fun deleteParamVariable(id: String) {
+        if (id.isBlank()) return
+        val current = _uiState.value.paramVariables.filterNot { it.id == id }
+        syncParamVariables(current)
     }
 
     fun updateMcpJson(value: String) {
@@ -187,11 +213,13 @@ class BotLlmSettingsViewModel : ViewModel() {
                             isBigModel = data.isBigModel == 1,
                             isNeedReply = data.isNeedReply == 1,
                             key = data.key,
+                            keyInput = extractKeyInput(data.key),
                             llmBaseUrl = data.llmBaseUrl,
                             llmId = data.llmId,
                             llmName = data.llmName,
                             llmModelName = data.llmModelName,
                             paramJson = data.paramJson.ifBlank { "[]" },
+                            paramVariables = parseParamJson(data.paramJson),
                             mcpJson = data.mcpJson.ifBlank { "[]" },
                             prompt = data.prompt,
                             historyCountInput = data.historyCount.toString()
@@ -261,8 +289,105 @@ data class BotLlmSettingsUiState(
     val llmModelName: String = "",
     val llmBaseUrl: String = "",
     val key: String = "",
+    val keyInput: String = "",
     val paramJson: String = "[]",
     val mcpJson: String = "[]",
     val prompt: String = "",
-    val historyCountInput: String = "0"
+    val historyCountInput: String = "0",
+    val paramVariables: List<ParamVariableUi> = emptyList()
 )
+
+data class ParamVariableUi(
+    val id: String = "",
+    val name: String = "",
+    val label: String = "",
+    val type: ParamVariableType = ParamVariableType.Input,
+    val options: String = ""
+)
+
+enum class ParamVariableType(val serverValue: String) {
+    Input("input"),
+    Select("select");
+
+    companion object {
+        fun fromServer(value: String?): ParamVariableType {
+            return values().firstOrNull { it.serverValue.equals(value, true) } ?: Input
+        }
+    }
+}
+
+private data class ParamVariableDto(
+    val id: String = "",
+    val name: String = "",
+    val label: String = "",
+    val type: String = ParamVariableType.Input.serverValue,
+    val options: String = ""
+)
+
+private fun ParamVariableDto.toUi(): ParamVariableUi {
+    return ParamVariableUi(
+        id = id,
+        name = name,
+        label = label,
+        type = ParamVariableType.fromServer(type),
+        options = options
+    )
+}
+
+private fun ParamVariableUi.toDto(): ParamVariableDto {
+    return ParamVariableDto(
+        id = id,
+        name = name,
+        label = label,
+        type = type.serverValue,
+        options = options
+    )
+}
+
+private fun BotLlmSettingsViewModel.syncParamVariables(list: List<ParamVariableUi>) {
+    val json = gson.toJson(list.map { it.toDto() })
+    _uiState.update {
+        it.copy(
+            paramVariables = list,
+            paramJson = json
+        )
+    }
+}
+
+private fun BotLlmSettingsViewModel.parseParamJson(json: String): List<ParamVariableUi> {
+    if (json.isBlank()) return emptyList()
+    return runCatching {
+        val type = object : TypeToken<List<ParamVariableDto>>() {}.type
+        gson.fromJson<List<ParamVariableDto>>(json, type)
+            ?.map { it.toUi() }
+            ?.filter { it.id.isNotBlank() }
+            ?: emptyList()
+    }.getOrElse { emptyList() }
+}
+
+private fun BotLlmSettingsViewModel.formatKeyForStorage(input: String): String {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return ""
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        return trimmed
+    }
+    val map = mapOf("API Key" to trimmed)
+    return gson.toJson(map)
+}
+
+private fun BotLlmSettingsViewModel.extractKeyInput(stored: String): String {
+    val trimmed = stored.trim()
+    if (trimmed.isBlank()) return ""
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        return runCatching {
+            val type = object : TypeToken<Map<String, String>>() {}.type
+            val map: Map<String, String> = gson.fromJson(trimmed, type)
+            if (map.size == 1) {
+                map.values.firstOrNull().orEmpty()
+            } else {
+                trimmed
+            }
+        }.getOrElse { trimmed }
+    }
+    return stored
+}

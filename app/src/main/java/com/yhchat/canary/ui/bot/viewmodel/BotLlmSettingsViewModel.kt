@@ -284,11 +284,15 @@ class BotLlmSettingsViewModel : ViewModel() {
     private fun parseParamJson(json: String): List<ParamVariableUi> {
         if (json.isBlank()) return emptyList()
         return runCatching {
-            val type = object : TypeToken<List<ParamVariableDto>>() {}.type
-            gson.fromJson<List<ParamVariableDto>>(json, type)
-                ?.map { it.toUi() }
-                ?.filter { it.id.isNotBlank() }
-                ?: emptyList()
+            val mapType = object : TypeToken<List<Map<String, Any?>>>() {}.type
+            val rawList = gson.fromJson<List<Map<String, Any?>>>(json, mapType).orEmpty()
+            buildParamVariablesFromRaw(rawList)
+                .ifEmpty {
+                    val dtoType = object : TypeToken<List<ParamVariableDto>>() {}.type
+                    gson.fromJson<List<ParamVariableDto>>(json, dtoType)
+                        ?.mapIndexed { index, dto -> dto.toUi(index) }
+                        .orEmpty()
+                }
         }.getOrElse { emptyList() }
     }
 
@@ -317,6 +321,44 @@ class BotLlmSettingsViewModel : ViewModel() {
             }.getOrElse { trimmed }
         }
         return stored
+    }
+
+    private fun buildParamVariablesFromRaw(rawList: List<Map<String, Any?>>): List<ParamVariableUi> {
+        if (rawList.isEmpty()) return emptyList()
+        val usedIds = mutableMapOf<String, Int>()
+        return rawList.mapIndexed { index, item ->
+            val rawId = item.stringValue("id", "varId", "key")
+            val rawName = item.stringValue("name", "variable", "param")
+            val rawLabel = item.stringValue("label", "title", "displayName")
+            val rawType = item.stringValue("type", "component", "inputType")
+            val rawOptions = item.stringValue("options", "option", "values", "selectOptions")
+
+            val baseId = rawId.ifBlank { rawName.ifBlank { "param_${index + 1}" } }
+            val finalId = makeUniqueId(baseId, usedIds)
+            val finalName = rawName.ifBlank { finalId }
+            val finalLabel = rawLabel.ifBlank { finalName }
+
+            ParamVariableUi(
+                id = finalId,
+                name = finalName,
+                label = finalLabel,
+                type = ParamVariableType.fromServer(rawType),
+                options = rawOptions
+            )
+        }
+    }
+
+    private fun makeUniqueId(base: String, usedIds: MutableMap<String, Int>): String {
+        val key = base.ifBlank { "param" }
+        val count = usedIds[key]
+        return if (count == null) {
+            usedIds[key] = 1
+            key
+        } else {
+            val next = count + 1
+            usedIds[key] = next
+            "${key}_$next"
+        }
     }
 }
 
@@ -372,11 +414,26 @@ private data class ParamVariableDto(
     val options: String = ""
 )
 
-private fun ParamVariableDto.toUi(): ParamVariableUi {
+private fun Map<String, Any?>.stringValue(vararg keys: String): String {
+    for (key in keys) {
+        val value = this[key]
+        val text = when (value) {
+            null -> ""
+            is String -> value.trim()
+            else -> value.toString().trim()
+        }
+        if (text.isNotBlank()) return text
+    }
+    return ""
+}
+
+private fun ParamVariableDto.toUi(index: Int): ParamVariableUi {
+    val resolvedId = id.ifBlank { name.ifBlank { "param_${index + 1}" } }
+    val resolvedName = name.ifBlank { resolvedId }
     return ParamVariableUi(
-        id = id,
-        name = name,
-        label = label,
+        id = resolvedId,
+        name = resolvedName,
+        label = label.ifBlank { resolvedName },
         type = ParamVariableType.fromServer(type),
         options = options
     )

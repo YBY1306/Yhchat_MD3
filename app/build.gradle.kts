@@ -124,6 +124,7 @@ protobuf {
 }
 
 dependencies {
+    implementation(libs.compose.material3)
     add("withPlayerImplementation", project(":player"))
     add("withLiveImplementation", project(":live"))
 

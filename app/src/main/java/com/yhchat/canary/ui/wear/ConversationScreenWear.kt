@@ -25,6 +25,7 @@ import androidx.wear.compose.material.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
+import androidx.wear.compose.material3.AppScaffold
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.conversation.ConversationViewModel
@@ -76,10 +77,9 @@ fun ConversationScreenWear(
 
     val listState = rememberScalingLazyListState()
 
-    Scaffold(
+    AppScaffold(
         modifier = modifier.fillMaxSize(),
         timeText = { TimeText() },
-        vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) }
     ) {
         when {
             uiState.isLoading && conversations.isEmpty() -> {

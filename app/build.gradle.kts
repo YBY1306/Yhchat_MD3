@@ -36,7 +36,7 @@ android {
 
     defaultConfig {
         applicationId = "com.yhchat.canary"
-        minSdk = 21
+        minSdk = 25
         targetSdk = 36
         versionCode = 1
         versionName = resolvedVersionName

@@ -1,15 +1,26 @@
 package com.yhchat.canary
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.yhchat.canary.ui.base.BaseActivity
-import com.yhchat.canary.ui.chat.ChatActivity
+import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.ui.wear.ChatScreenWear
 import com.yhchat.canary.ui.wear.ConversationScreenWear
+import com.yhchat.canary.ui.wear.MessageDetailScreenWear
 import dagger.hilt.android.AndroidEntryPoint
+
+private sealed class WearScreen {
+    data object Conversations : WearScreen()
+    data class Chat(
+        val chatId: String,
+        val chatType: Int,
+        val chatName: String
+    ) : WearScreen()
+    data class MessageDetail(val message: ChatMessage) : WearScreen()
+}
 
 @AndroidEntryPoint
 class MainActivityWear : ComponentActivity() {
@@ -18,26 +29,54 @@ class MainActivityWear : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ConversationScreenWear(
-                token = ""/*TODO*/,
-                userId = ""/*TODO*/,
-                onConversationClick = { chatId, chatType, chatName ->
-                    launchChatActivity(chatId, chatType, chatName)
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            var backStack by remember {
+                mutableStateOf(listOf<WearScreen>(WearScreen.Conversations))
+            }
+            val currentScreen = backStack.last()
+
+            when (currentScreen) {
+                is WearScreen.Conversations -> {
+                    ConversationScreenWear(
+                        token = ""/*TODO*/,
+                        userId = ""/*TODO*/,
+                        onConversationClick = { chatId, chatType, chatName ->
+                            backStack = backStack + WearScreen.Chat(
+                                chatId = chatId,
+                                chatType = chatType,
+                                chatName = chatName
+                            )
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                is WearScreen.Chat -> {
+                    val chatScreen = currentScreen
+                    ChatScreenWear(
+                        chatId = chatScreen.chatId,
+                        chatType = chatScreen.chatType,
+                        chatName = chatScreen.chatName,
+                        userId = ""/*TODO*/,
+                        onBackClick = {
+                            backStack = backStack.dropLast(1)
+                        },
+                        onSpecialMessageClick = { message ->
+                            backStack = backStack + WearScreen.MessageDetail(message)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                is WearScreen.MessageDetail -> {
+                    MessageDetailScreenWear(
+                        message = (currentScreen as WearScreen.MessageDetail).message,
+                        onBackClick = {
+                            backStack = backStack.dropLast(1)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
         }
     }
-    /**
-     * 启动聊天Activity（辅助方法）
-     */
-    private fun launchChatActivity(chatId: String, chatType: Int, chatName: String) {
-        startActivity(Intent(this, ChatActivity::class.java).apply {
-            putExtra("chatId", chatId)
-            putExtra("chatType", chatType)
-            putExtra("chatName", chatName)
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        })
-    }
-
 }

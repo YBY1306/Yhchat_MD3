@@ -30,14 +30,11 @@ import com.yhchat.canary.ui.chat.ChatViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-private const val TYPE_TEXT = 1
 private const val TYPE_IMAGE = 2
-private const val TYPE_MARKDOWN = 3
 private const val TYPE_FILE = 4
 private const val TYPE_FORM = 5
 private const val TYPE_POST = 6
 private const val TYPE_STICKER = 7
-private const val TYPE_HTML = 8
 private const val TYPE_TIP = 9
 private const val TYPE_VIDEO = 10
 private const val TYPE_AUDIO = 11
@@ -69,62 +66,64 @@ fun ChatScreenWear(
         viewModel.initChat(chatId, chatType, userId)
     }
 
-    AppScaffold(
-        modifier = modifier.fillMaxSize(),
-        timeText = { TimeText() },
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ChatWearTopBar(
-                title = chatName,
-                onBackClick = onBackClick
-            )
+    WearSwipeBackWrapper(onBack = onBackClick) {
+        AppScaffold(
+            modifier = modifier.fillMaxSize(),
+            timeText = { TimeText() },
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                ChatWearTopBar(
+                    title = chatName,
+                    onBackClick = onBackClick
+                )
 
-            when {
-                uiState.isLoading && messages.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            strokeWidth = 3.dp
-                        )
+                when {
+                    uiState.isLoading && messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
-                }
 
-                messages.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "暂无消息",
-                            color = MaterialTheme.colors.onSurfaceVariant
-                        )
+                    messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无消息",
+                                color = MaterialTheme.colors.onSurfaceVariant
+                            )
+                        }
                     }
-                }
 
-                else -> {
-                    ScalingLazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 8.dp, end = 8.dp,
-                            top = 4.dp, bottom = 16.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        reverseLayout = true
-                    ) {
-                        items(
-                            items = messages.reversed(),
-                            key = { "wear_msg_${it.msgId}" }
-                        ) { message ->
-                            if (message.msgDeleteTime == null && message.contentType != TYPE_TIP) {
-                                WearMessageItem(
-                                    message = message,
-                                    isMyMessage = viewModel.isMyMessage(message),
-                                    onSpecialClick = { onSpecialMessageClick(message) }
-                                )
+                    else -> {
+                        ScalingLazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 8.dp, end = 8.dp,
+                                top = 4.dp, bottom = 16.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            reverseLayout = true
+                        ) {
+                            items(
+                                items = messages.reversed(),
+                                key = { "wear_msg_${it.msgId}" }
+                            ) { message ->
+                                if (message.msgDeleteTime == null && message.contentType != TYPE_TIP) {
+                                    WearMessageItem(
+                                        message = message,
+                                        isMyMessage = viewModel.isMyMessage(message),
+                                        onSpecialClick = { onSpecialMessageClick(message) }
+                                    )
+                                }
                             }
                         }
                     }

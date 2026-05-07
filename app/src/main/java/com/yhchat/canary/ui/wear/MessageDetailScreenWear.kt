@@ -35,35 +35,37 @@ fun MessageDetailScreenWear(
 ) {
     val scrollState = rememberScrollState()
 
-    AppScaffold(
-        modifier = modifier.fillMaxSize(),
-        timeText = { TimeText() },
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            MessageDetailTopBar(
-                message = message,
-                onBackClick = onBackClick
-            )
+    WearSwipeBackWrapper(onBack = onBackClick) {
+        AppScaffold(
+            modifier = modifier.fillMaxSize(),
+            timeText = { TimeText() },
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                MessageDetailTopBar(
+                    message = message,
+                    onBackClick = onBackClick
+                )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                MessageInfoSection(message)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MessageInfoSection(message)
 
-                when (message.contentType) {
-                    2 -> ImageContentView(message.content)
-                    4 -> FileContentView(message.content)
-                    5 -> FormContentView(message.content)
-                    6 -> PostContentView(message.content)
-                    7 -> StickerContentView(message.content)
-                    10 -> VideoContentView(message.content)
-                    11 -> AudioContentView(message.content)
-                    14 -> A2UiContentView(message.content)
-                    else -> TextContentView(message.content)
+                    when (message.contentType) {
+                        2 -> ImageContentView(message.content)
+                        4 -> FileContentView(message.content)
+                        5 -> FormContentView(message.content)
+                        6 -> PostContentView(message.content)
+                        7 -> StickerContentView(message.content)
+                        10 -> VideoContentView(message.content)
+                        11 -> AudioContentView(message.content)
+                        14 -> A2UiContentView(message.content)
+                        else -> TextContentView(message.content)
+                    }
                 }
             }
         }

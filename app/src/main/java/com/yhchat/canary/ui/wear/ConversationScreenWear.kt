@@ -1,17 +1,10 @@
 package com.yhchat.canary.ui.wear
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,11 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
@@ -36,7 +32,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreenWear(
     token: String,
@@ -77,85 +72,67 @@ fun ConversationScreenWear(
         }
     }
 
-    val listState = rememberLazyListState()
+    val listState = rememberScalingLazyListState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when {
-                uiState.isLoading && conversations.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            strokeWidth = 3.dp
-                        )
-                    }
-                }
-
-                conversations.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "暂无会话",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 8.dp, end = 8.dp,
-                            top = 4.dp, bottom = 8.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(
-                            items = conversations,
-                            key = { "wear_conv_${it.chatId}" }
-                        ) { conversation ->
-                            WearConversationItem(
-                                conversation = conversation,
-                                onClick = {
-                                    viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
-                                    onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
-                                },
-                                onLongClick = {
-                                    selectedConversation = conversation
-                                    coroutineScope.launch {
-                                        isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
-                                        showConversationMenu = true
-                                    }
-                                }
-                            )
-                        }
-                    }
+        timeText = { TimeText() },
+        vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) }
+    ) {
+        when {
+            uiState.isLoading && conversations.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 3.dp
+                    )
                 }
             }
 
-            uiState.error?.let { error ->
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(8.dp),
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+            conversations.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(text = error, fontSize = 12.sp)
+                    Text(
+                        text = "暂无会话",
+                        color = MaterialTheme.colors.onSurfaceVariant
+                    )
+                }
+            }
+
+            else -> {
+                ScalingLazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 8.dp, end = 8.dp,
+                        top = 4.dp, bottom = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(
+                        items = conversations,
+                        key = { "wear_conv_${it.chatId}" }
+                    ) { conversation ->
+                        WearConversationItem(
+                            conversation = conversation,
+                            onClick = {
+                                viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
+                                onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
+                            },
+                            onLongClick = {
+                                selectedConversation = conversation
+                                coroutineScope.launch {
+                                    isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
+                                    showConversationMenu = true
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -170,14 +147,10 @@ fun ConversationScreenWear(
                 selectedConversation = null
             },
             onToggleSticky = {
-                selectedConversation?.let { conversation ->
-                    viewModel.toggleStickyConversation(conversation)
-                }
+                selectedConversation?.let { viewModel.toggleStickyConversation(it) }
             },
             onDelete = {
-                selectedConversation?.let { conversation ->
-                    viewModel.deleteConversation(conversation.chatId)
-                }
+                selectedConversation?.let { viewModel.deleteConversation(it.chatId) }
             }
         )
     }
@@ -206,22 +179,20 @@ private fun WearConversationItem(
         sdf.format(Date(conversation.timestampMs))
     }
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colors.surface)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+            )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box {
@@ -238,7 +209,7 @@ private fun WearConversationItem(
                     model = avatarModel,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(36.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
@@ -247,16 +218,15 @@ private fun WearConversationItem(
                     Box(
                         modifier = Modifier
                             .size(14.dp)
-                            .background(MaterialTheme.colorScheme.error, CircleShape)
+                            .background(MaterialTheme.colors.error, CircleShape)
                             .align(Alignment.TopEnd),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (conversation.unreadMessage > 99) "!" else minOf(conversation.unreadMessage, 99).toString(),
-                            color = MaterialTheme.colorScheme.onError,
+                            text = if (conversation.unreadMessage > 99) "*" else minOf(conversation.unreadMessage, 99).toString(),
+                            color = MaterialTheme.colors.onError,
                             fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -268,7 +238,6 @@ private fun WearConversationItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = conversation.name,
-                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -296,37 +265,26 @@ private fun WearConversationItem(
                             )
                         }
                     }
-                    if (conversation.doNotDisturb == 1) {
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val displayContent = remember(conversation.chatContent, conversation.at) {
-                        if (conversation.at > 0) "@${conversation.chatContent}"
-                        else conversation.chatContent
-                    }
-                    Text(
-                        text = displayContent,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (conversation.at > 0) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = timeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colors.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.height(2.dp))
+                val displayContent = remember(conversation.chatContent, conversation.at) {
+                    if (conversation.at > 0) "@${conversation.chatContent}"
+                    else conversation.chatContent
+                }
+                Text(
+                    text = displayContent,
+                    fontSize = 11.sp,
+                    color = if (conversation.at > 0) MaterialTheme.colors.primary
+                    else MaterialTheme.colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

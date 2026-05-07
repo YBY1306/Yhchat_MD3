@@ -139,6 +139,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material:material:1.6.8")
 
+    // Wear Compose
+    implementation("androidx.wear.compose:compose-material:1.4.1")
+    implementation("androidx.wear.compose:compose-foundation:1.4.1")
+
     implementation(libs.reorderable)
 
     implementation("androidx.documentfile:documentfile:1.0.1")

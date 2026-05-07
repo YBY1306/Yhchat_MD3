@@ -18,8 +18,8 @@ class MainActivityWear : BaseActivity() {
 
         setContent {
             ConversationScreenWear(
-                token = "",
-                userId = "",
+                token = ""/*TODO*/,
+                userId = ""/*TODO*/,
                 onConversationClick = { chatId, chatType, chatName ->
                     launchChatActivity(chatId, chatType, chatName)
                 },

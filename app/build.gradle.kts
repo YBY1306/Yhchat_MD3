@@ -2,16 +2,16 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+//    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    id("com.google.protobuf") version "0.9.5"
+    id("com.google.protobuf") version "0.10.0"
 }
 
 android {
     namespace = "com.yhchat.canary"
-    compileSdk = 36
+    compileSdk = 37
     val baseVersionName = "21.6"
     val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
         ?.trim()
@@ -35,9 +35,9 @@ android {
     val hasReleaseSigning = releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
 
     defaultConfig {
-        applicationId = "com.yhchat.canary"
-        minSdk = 21
-        targetSdk = 36
+        applicationId = "com.yhchat.canary.wear"
+        minSdk = 25
+        targetSdk = 99
         versionCode = 1
         versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -87,7 +87,7 @@ android {
             buildConfigField("boolean", "WITH_LIVE", "true")
         }
     }
-
+    useLibrary("wear-sdk")
     buildFeatures {
         compose = true
         buildConfig = true
@@ -124,25 +124,33 @@ protobuf {
 }
 
 dependencies {
+    implementation(libs.compose.material3)
     add("withPlayerImplementation", project(":player"))
     add("withLiveImplementation", project(":live"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.material:material:1.6.8")
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.material)
+
+    // Wear Compose
+    implementation(libs.compose.material)
+    implementation(libs.androidx.compose.foundation.v141)
 
     implementation(libs.reorderable)
 
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    
+    implementation(libs.androidx.documentfile)
+
+
+    implementation(libs.core.splashscreen)
+
     // 网络请求
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
@@ -153,12 +161,12 @@ dependencies {
     // 图片加载
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
-    implementation("io.coil-kt:coil-svg:2.5.0") // SVG支持
+    implementation(libs.coil.svg) // SVG支持
 
     implementation("androidx.media:media:1.7.0")
     
     // 权限处理
-    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    implementation(libs.accompanist.permissions)
     
     // WebDAV 客户端
     implementation("com.github.thegrizzlylabs:sardine-android:0.8") {
@@ -174,11 +182,11 @@ dependencies {
     implementation(libs.ksoup.html)
     
     // HTML 文本渲染支持
-    implementation("androidx.compose.ui:ui-text-google-fonts")
+    implementation(libs.androidx.compose.ui.text.google.fonts)
     
     // Protobuf - 只使用Lite版本避免冲突
-    implementation("com.google.protobuf:protobuf-javalite:4.28.3")
-    implementation("com.google.protobuf:protobuf-kotlin-lite:4.28.3")
+    implementation(libs.protobuf.javalite)
+    implementation(libs.protobuf.kotlin.lite)
     
     // 导航
     implementation(libs.androidx.navigation.compose)
@@ -188,14 +196,14 @@ dependencies {
     ksp(libs.room.compiler)
     
     // Security - 使用Android官方的安全存储方案
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.androidx.security.crypto)
     
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     // Hilt Navigation for Compose (needed for hiltViewModel)
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // QR Code Scanning
     implementation(libs.zxing.android.embedded)
@@ -208,4 +216,27 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+
+
+
+    //
+    implementation(libs.play.services.wearable)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.ui)
+    implementation(libs.ui.graphics)
+    implementation(libs.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.ui.tooling)
+    implementation(libs.wear.tooling.preview)
+    implementation(libs.activity.compose)
+    implementation(libs.core.splashscreen)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.ui.test.junit4)
+    debugImplementation(libs.ui.tooling)
+    debugImplementation(libs.ui.test.manifest)
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+
 }

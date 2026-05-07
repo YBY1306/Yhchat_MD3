@@ -44,7 +44,7 @@ dependencyResolutionManagement {
 
 }
 
-rootProject.name = "Yhchat Canary"
+rootProject.name = "Yhchat Canary Wear"
 
 include(":app")
 include(":player")

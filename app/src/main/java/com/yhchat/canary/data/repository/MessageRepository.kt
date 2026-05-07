@@ -401,7 +401,7 @@ class MessageRepository @Inject constructor(
             payload.mentionedIds?.takeIf { it.isNotEmpty() }?.let(contentBuilder::addAllMentionedId)
 
             if (!hasPrimaryContent) {
-                return Result.failure(Exception("发送内容为空"))
+//                return Result.failure(Exception("发送内容为空"))
             }
 
             val requestBuilder = send_message_send.newBuilder()

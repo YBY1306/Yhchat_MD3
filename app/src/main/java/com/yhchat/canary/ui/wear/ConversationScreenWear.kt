@@ -49,8 +49,9 @@ fun ConversationScreenWear(
     var isSelectedConversationSticky by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    val context = LocalContext.current
     val isWebSocketDisabledValue = remember {
-        LocalContext.current
+        context
             .getSharedPreferences("display_settings", 0)
             .getBoolean("disable_websocket", false)
     }

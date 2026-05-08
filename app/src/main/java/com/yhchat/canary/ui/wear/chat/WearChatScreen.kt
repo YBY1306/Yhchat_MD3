@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.wear
+package com.yhchat.canary.ui.wear.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +25,7 @@ import androidx.wear.compose.material.*
 import androidx.wear.compose.material3.AppScaffold
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.yhchat.canary.R
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.chat.ChatViewModel
 import java.text.SimpleDateFormat
@@ -205,7 +206,7 @@ private fun WearMessageItem(
                         .size(24.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
+                    error = painterResource(id = R.drawable.ic_person)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(

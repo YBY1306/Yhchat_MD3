@@ -7,11 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.yhchat.canary.ui.wear.ConversationScreenWear
-import com.yhchat.canary.ui.wear.WearChatActivity
+import com.yhchat.canary.ui.wear.chat.WearChatActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivityWear : ComponentActivity() {
+class WearMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

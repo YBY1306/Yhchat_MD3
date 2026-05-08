@@ -1,13 +1,11 @@
-package com.yhchat.canary.ui.wear
+package com.yhchat.canary.ui.wear.chat
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import com.google.gson.Gson
-import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.ui.wear.WearMessageDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

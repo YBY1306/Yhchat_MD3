@@ -35,12 +35,11 @@ fun MessageDetailScreenWear(
 ) {
     val scrollState = rememberScrollState()
 
-    WearSwipeBackWrapper(onBack = onBackClick) {
-        AppScaffold(
-            modifier = modifier.fillMaxSize(),
-            timeText = { TimeText() },
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+    AppScaffold(
+        modifier = modifier.fillMaxSize(),
+        timeText = { TimeText() },
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
                 MessageDetailTopBar(
                     message = message,
                     onBackClick = onBackClick
@@ -69,7 +68,6 @@ fun MessageDetailScreenWear(
                 }
             }
         }
-    }
 }
 
 @Composable

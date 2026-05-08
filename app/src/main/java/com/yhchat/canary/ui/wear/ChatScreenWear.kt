@@ -66,12 +66,11 @@ fun ChatScreenWear(
         viewModel.initChat(chatId, chatType, userId)
     }
 
-    WearSwipeBackWrapper(onBack = onBackClick) {
-        AppScaffold(
-            modifier = modifier.fillMaxSize(),
-            timeText = { TimeText() },
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+    AppScaffold(
+        modifier = modifier.fillMaxSize(),
+        timeText = { TimeText() },
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
                 ChatWearTopBar(
                     title = chatName,
                     onBackClick = onBackClick
@@ -128,7 +127,6 @@ fun ChatScreenWear(
                         }
                     }
                 }
-            }
         }
     }
 

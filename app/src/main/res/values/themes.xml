@@ -13,4 +13,8 @@
         <!-- 启用边到边显示 -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+    <style name="Theme.YhchatCanary.Wear" parent="Theme.YhchatCanary">
+        <item name="android:enableOnBackInvokedCallback">true</item>
+    </style>
 </resources>

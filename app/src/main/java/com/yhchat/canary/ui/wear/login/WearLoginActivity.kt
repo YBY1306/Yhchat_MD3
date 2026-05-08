@@ -1,5 +1,5 @@
 
-package com.yhchat.canary.ui.wear
+package com.yhchat.canary.ui.wear.login
 
 import android.content.Context
 import android.os.Bundle
@@ -104,7 +104,5 @@ fun WearAppLogin(
                 }
             }
         }
-
-
     }
 }

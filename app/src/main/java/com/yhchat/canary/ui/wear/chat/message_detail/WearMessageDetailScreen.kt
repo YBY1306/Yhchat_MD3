@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.wear
+package com.yhchat.canary.ui.wear.chat.message_detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

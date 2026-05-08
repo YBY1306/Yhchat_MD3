@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.wear
+package com.yhchat.canary.ui.wear.chat.message_detail
 
 import android.content.Context
 import android.content.Intent

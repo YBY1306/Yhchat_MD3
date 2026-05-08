@@ -16,5 +16,6 @@
 
     <style name="Theme.YhchatCanary.Wear" parent="Theme.YhchatCanary">
         <item name="android:enableOnBackInvokedCallback">true</item>
+        <item name="android:windowSwipeToDismiss">true</item>
     </style>
 </resources>

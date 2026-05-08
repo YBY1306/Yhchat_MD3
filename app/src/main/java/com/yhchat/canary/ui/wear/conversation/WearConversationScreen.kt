@@ -63,14 +63,14 @@ fun WearConversationScreen(
     }
 
     LaunchedEffect(token, userId, isWebSocketDisabledValue) {
-        if (token.isNotEmpty() && userId.isNotEmpty() && !isWebSocketDisabledValue) {
+        if (token.isNotEmpty() && userId.isNotEmpty() && !isWebSocketDisabledValue) {//TODO
             viewModel.startWebSocket(userId)
         }
     }
 
     LaunchedEffect(token) {
-        if (token.isNotEmpty()) {
-            viewModel.loadConversations(token)
+        if (token.isNotEmpty()||true) {//TODO
+            viewModel.loadConversations(token)//参数未使用
             viewModel.loadStickyConversations()
         }
     }

@@ -147,7 +147,10 @@ dependencies {
     implementation(libs.reorderable)
 
     implementation("androidx.documentfile:documentfile:1.0.1")
-    
+
+
+    implementation(libs.core.splashscreen)
+
     // 网络请求
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)

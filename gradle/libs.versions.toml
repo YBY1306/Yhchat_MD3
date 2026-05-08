@@ -26,6 +26,8 @@ reorderable = "0.9.6"
 ksoupHtml = "0.6.0"
 jetbrainsMarkdown = "0.7.3"
 composeMaterial3 = "1.6.1"
+coreSplashscreen = "1.2.0"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -68,6 +70,7 @@ reorderable = { group = "org.burnoutcrew.composereorderable", name = "reorderabl
 ksoup-html = { group = "com.mohamedrejeb.ksoup", name = "ksoup-html", version.ref = "ksoupHtml" }
 jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
 compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "composeMaterial3" }
+core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

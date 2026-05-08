@@ -33,76 +33,7 @@ class WearLoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            WearAppLogin(loginViewModel, this, this)
-        }
-    }
-}
-
-@Composable
-fun KeyButton(text: String, onClick: () -> Unit) {
-    Button(onClick = onClick) { Text(text) }
-}
-
-@Composable
-fun WearAppLogin(
-    loginViewModel: LoginViewModel = viewModel(),
-    loginActivity: WearLoginActivity? = null,
-    context: Context
-) {
-    val tokenRepository = RepositoryFactory.getTokenRepository(context)
-//    val accountRepository = RepositoryFactory.getAccountRepository(context)
-//    val userRepository = RepositoryFactory.getUserRepository(context)
-    // Set repositories for ViewModel
-    loginViewModel.setTokenRepository(tokenRepository)
-
-    var tokenInput by remember { mutableStateOf("") }
-    fun onClickInput(c: String) {
-        tokenInput += c
-        if (tokenInput.length == 8 || tokenInput.length == 13 || tokenInput.length == 18 || tokenInput.length == 23) tokenInput += "-"
-        if (tokenInput.length == 36) {
-            loginViewModel.loginWithToken(tokenInput)
-            loginActivity?.finish()
-        }
-    }
-
-    AppScaffold {
-        Column(
-            Modifier.fillMaxSize(),
-            Arrangement.SpaceEvenly
-        ) {
-            var keys = listOf(
-                listOf("1", "2", "3", "4"),
-                listOf("5", "6", "7", "8"),
-            )
-            keys.forEach {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    Arrangement.SpaceEvenly
-                ) {
-                    it.forEach { KeyButton(it, { onClickInput(it) }) }
-                }
-            }
-
-            Button(
-                {}, Modifier.fillMaxWidth(), colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-            ) { Text(tokenInput) }
-
-            keys = listOf(
-                listOf("9", "A", "B", "C"),
-                listOf("D", "E", "F", "0"),
-            )
-            keys.forEach {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    Arrangement.SpaceEvenly
-                ) {
-                    it.forEach { KeyButton(it, { onClickInput(it) }) }
-                }
-            }
+            WearAppLoginScreen(loginViewModel, this, this)
         }
     }
 }

@@ -155,7 +155,7 @@
             android:theme="@style/Theme.YhchatCanary.Wear" />
 
         <activity
-            android:name=".ui.wear.WearLoginActivity"
+            android:name=".ui.wear.login.WearLoginActivity"
             android:exported="true"
             android:theme="@style/Theme.YhchatCanary.Wear" />
 

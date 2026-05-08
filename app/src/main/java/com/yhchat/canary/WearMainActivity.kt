@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.wear.WearConversationScreen
 import com.yhchat.canary.ui.wear.chat.WearChatActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -16,6 +17,10 @@ class WearMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val tokenRepository = RepositoryFactory.getTokenRepository(this)//TODO
+//        val conversationViewModel: ConversationViewModel = viewModel()//TODO
+//        conversationViewModel.setTokenRepository(tokenRepository)//TODO
+
         setContent {
             WearConversationScreen(
                 token = ""/*TODO*/,
@@ -23,7 +28,9 @@ class WearMainActivity : ComponentActivity() {
                 onConversationClick = { chatId, chatType, chatName ->
                     launchChatActivity(chatId, chatType, chatName)
                 },
-                modifier = Modifier.fillMaxSize()
+                tokenRepository = tokenRepository,//TODO
+//                viewModel = conversationViewModel,//TODO
+                modifier = Modifier.fillMaxSize() ,
             )
         }
     }

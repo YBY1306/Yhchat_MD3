@@ -39,7 +39,7 @@ class WearMessageDetailActivity : ComponentActivity() {
         }
 
         setContent {
-            MessageDetailScreenWear(
+            WearMessageDetailScreen(
                 message = message,
                 onBackClick = { finish() },
                 modifier = Modifier.fillMaxSize()

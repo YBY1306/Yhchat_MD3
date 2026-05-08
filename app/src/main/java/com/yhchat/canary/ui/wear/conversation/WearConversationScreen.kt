@@ -35,7 +35,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun ConversationScreenWear(
+fun WearConversationScreen(
     token: String,
     userId: String,
     onConversationClick: (String, Int, String) -> Unit,

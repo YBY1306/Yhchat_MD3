@@ -49,7 +49,7 @@ private val specialContentTypes = setOf(
 private fun isSpecialType(contentType: Int): Boolean = contentType in specialContentTypes
 
 @Composable
-fun ChatScreenWear(
+fun WearChatScreen(
     chatId: String,
     chatType: Int,
     chatName: String,

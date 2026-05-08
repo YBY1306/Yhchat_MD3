@@ -28,7 +28,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun MessageDetailScreenWear(
+fun WearMessageDetailScreen(
     message: ChatMessage,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier

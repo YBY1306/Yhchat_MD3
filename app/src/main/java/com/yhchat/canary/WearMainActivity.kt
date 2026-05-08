@@ -6,7 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import com.yhchat.canary.ui.wear.ConversationScreenWear
+import com.yhchat.canary.ui.wear.WearConversationScreen
 import com.yhchat.canary.ui.wear.chat.WearChatActivity
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -17,7 +17,7 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ConversationScreenWear(
+            WearConversationScreen(
                 token = ""/*TODO*/,
                 userId = ""/*TODO*/,
                 onConversationClick = { chatId, chatType, chatName ->

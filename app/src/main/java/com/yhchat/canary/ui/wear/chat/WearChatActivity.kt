@@ -25,7 +25,7 @@ class WearChatActivity : ComponentActivity() {
         val chatName = intent.getStringExtra(EXTRA_CHAT_NAME) ?: ""
 
         setContent {
-            ChatScreenWear(
+            WearChatScreen(
                 chatId = chatId,
                 chatType = chatType,
                 chatName = chatName,

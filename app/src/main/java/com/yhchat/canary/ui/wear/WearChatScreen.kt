@@ -1292,6 +1292,7 @@ fun WearChatScreen(
                     }
 
                     // "回到最新消息"浮动按钮
+                    if(false)
                     androidx.compose.animation.AnimatedVisibility(
                         visible = showScrollToBottomButton,
                         enter = slideInVertically { it } + fadeIn(),

@@ -1376,7 +1376,7 @@ fun WearChatScreen(
                 // 底部栏 (Wear版)：滑到底部再下滑时显示输入栏
                 if (showInputBar) {
                     // 底部输入栏
-                    ChatInputBar(
+                    WearChatInputBar(
                         text = inputText,
                         onTextChange = { inputText = it },
                         onSendMessage = {

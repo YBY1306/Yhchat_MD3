@@ -686,12 +686,12 @@ fun ChatScreen(
 
     // 处理系统返回键/手势返回
     BackHandler (enabled = isMultiSelectMode){
-        if (isMultiSelectMode) {
+//        if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedMessageIds = emptySet()
-        } else {
-            onBackClick()
-        }
+//        } else {
+//            onBackClick()
+//        }
     }
 
     // 下拉刷新状态（刷新最新消息）

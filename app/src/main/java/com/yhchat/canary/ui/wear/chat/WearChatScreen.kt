@@ -309,7 +309,7 @@ fun WearChatScreen(
                 val newOffset = (currentOffset + available.y * 0.35f * resistance)
                     .coerceIn(-maxListOverscrollPx, maxListOverscrollPx)
 
-                // 在底部继续下滑时触发显示输入栏
+                // 在底部继续上滑时触发显示输入栏
                 if (!showInputBar
                     && listState.firstVisibleItemIndex == 0
                     && listState.firstVisibleItemScrollOffset <= 100

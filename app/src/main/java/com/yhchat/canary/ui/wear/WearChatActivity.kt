@@ -30,8 +30,7 @@ import com.yhchat.canary.ui.user.UserDetailActivity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.FileProvider
-import com.yhchat.canary.ui.chat.ChatActivity
-import com.yhchat.canary.ui.chat.ChatScreen
+import com.yhchat.canary.ui.chat.WearChatScreen
 import java.io.File
 
 @AndroidEntryPoint
@@ -145,7 +144,7 @@ class WearChatActivity : BaseActivity() {
                             )
                         }
                     } else {
-                        ChatScreen(
+                        WearChatScreen(
                             chatId = chatId,
                             chatType = chatType,
                             chatName = chatName,
@@ -261,7 +260,7 @@ class WearChatActivity : BaseActivity() {
             targetMsgId: String,
             targetMsgSeq: Long? = null
         ) {
-            val intent = Intent(context, ChatActivity::class.java).apply {
+            val intent = Intent(context, WearChatActivity::class.java).apply {
                 putExtra("chatId", chatId)
                 putExtra("chatType", chatType)
                 putExtra("chatName", chatName)

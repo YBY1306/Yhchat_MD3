@@ -111,6 +111,7 @@ import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
+import com.yhchat.canary.ui.components.ChatInputBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.ExpressionText
@@ -1374,7 +1375,8 @@ fun WearChatScreen(
 
                 // 底部栏 (Wear版)：滑到底部再下滑时显示输入栏
                 if (showInputBar) {
-                    WearChatInputBar(
+                    // 底部输入栏
+                    ChatInputBar(
                         text = inputText,
                         onTextChange = { inputText = it },
                         onSendMessage = {
@@ -1439,7 +1441,7 @@ fun WearChatScreen(
                         onVoiceMessageSend = { fileKey, fileHash, fileSize, audioDuration ->
                             android.util.Log.w(
                                 "ChatScreen",
-                                "voice message sent: chatId=$chatId chatType=$chatType key=$fileKey hash=$fileHash size=$fileSize duration=$audioDuration"
+                                "🎤 voice message sent: chatId=$chatId chatType=$chatType key=$fileKey hash=$fileHash size=$fileSize duration=$audioDuration"
                             )
                         },
                         onDraftChange = { draftText -> viewModel.sendDraftInput(draftText) },
@@ -1457,10 +1459,93 @@ fun WearChatScreen(
                             quotedVideoUrl = null
                             quotedVideoTime = null
                         },
+                        onExpressionClick = { expression ->
+                            viewModel.sendExpressionMessage(
+                                expression = expression,
+                                quoteMsgId = quotedMessageId,
+                                quoteMsgText = quotedMessageText,
+                                quoteImageUrl = quotedImageUrl,
+                                quoteImageName = quotedImageName,
+                                quoteVideoUrl = quotedVideoUrl,
+                                quoteVideoTime = quotedVideoTime
+                            )
+                            quotedMessageId = null
+                            quotedMessageText = null
+                            quotedImageUrl = null
+                            quotedImageName = null
+                            quotedVideoUrl = null
+                            quotedVideoTime = null
+                        },
+                        onStickerClick = { stickerItem ->
+                            viewModel.sendStickerMessage(
+                                stickerItem = stickerItem,
+                                quoteMsgId = quotedMessageId,
+                                quoteMsgText = quotedMessageText,
+                                quoteImageUrl = quotedImageUrl,
+                                quoteImageName = quotedImageName,
+                                quoteVideoUrl = quotedVideoUrl,
+                                quoteVideoTime = quotedVideoTime
+                            )
+                            quotedMessageId = null
+                            quotedMessageText = null
+                            quotedImageUrl = null
+                            quotedImageName = null
+                            quotedVideoUrl = null
+                            quotedVideoTime = null
+                        },
+                        onInstructionClick = { instruction ->
+                            android.util.Log.d("ChatScreen", "🎯 用户点击指令: /${instruction.name} (id=${instruction.id}, type=${instruction.type})")
+
+                            when (instruction.type) {
+                                1 -> {
+                                    selectedInstruction = instruction
+                                    if (instruction.defaultText.isNotEmpty() && inputText.isBlank()) {
+                                        inputText = instruction.defaultText
+                                    }
+                                }
+                                2 -> {
+                                    val textToSend = "/${instruction.name}"
+                                    selectedInstruction = instruction
+                                    viewModel.sendMessage(
+                                        text = textToSend,
+                                        contentType = selectedMessageType,
+                                        quoteMsgId = quotedMessageId,
+                                        quoteMsgText = quotedMessageText,
+                                        quoteImageUrl = quotedImageUrl,
+                                        quoteImageName = quotedImageName,
+                                        quoteVideoUrl = quotedVideoUrl,
+                                        quoteVideoTime = quotedVideoTime,
+                                        commandId = instruction.id
+                                    )
+                                    inputText = ""
+                                    selectedInstruction = null
+                                    quotedMessageId = null
+                                    quotedMessageText = null
+                                    quotedImageUrl = null
+                                    quotedImageName = null
+                                    quotedVideoUrl = null
+                                    quotedVideoTime = null
+                                }
+                                5 -> {
+                                    com.yhchat.canary.ui.bot.InstructionFormActivity.start(
+                                        context = context,
+                                        instruction = instruction,
+                                        chatId = chatId,
+                                        chatType = chatType,
+                                        chatName = chatName
+                                    )
+                                }
+                                else -> {
+                                    selectedInstruction = instruction
+                                }
+                            }
+                        },
                         groupId = if (chatType == 2) chatId else null,
                         botId = if (chatType == 3) chatId else null,
                         selectedInstruction = selectedInstruction,
                         onClearInstruction = { selectedInstruction = null },
+                        focusRequester = inputFocusRequester,
+                        shouldShowKeyboard = shouldShowKeyboard,
                         chatId = chatId,
                         chatType = chatType.toLong(),
                         voiceViewModel = voiceMessageViewModel,

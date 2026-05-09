@@ -148,6 +148,11 @@
             android:theme="@style/Theme.YhchatCanary.Wear" />
 
         <activity
+            android:name=".ui.wear.WearChatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YhchatCanary.Wear" />
+
+        <activity
             android:name=".ui.community.RecommendPostsActivity"
             android:exported="false"
             android:label="推荐文章"

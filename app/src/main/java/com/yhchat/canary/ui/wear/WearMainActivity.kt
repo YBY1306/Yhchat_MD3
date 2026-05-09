@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.wear
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,6 +31,12 @@ class WearMainActivity : ComponentActivity() {
     }
 
     private fun launchChatActivity(chatId: String, chatType: Int, chatName: String) {
-        //TODO
+        val intent = Intent(this, WearChatActivity::class.java).apply {
+            putExtra("chatId", chatId)
+            putExtra("chatType", chatType)
+            putExtra("chatName", chatName)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        startActivity(intent)
     }
 }

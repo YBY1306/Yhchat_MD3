@@ -72,62 +72,63 @@ fun WearChatScreen(
         timeText = { TimeText() },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-                ChatWearTopBar(
-                    title = chatName,
-                    onBackClick = onBackClick
-                )
+            ChatWearTopBar(
+                title = chatName,
+                onBackClick = onBackClick
+            )
 
-                when {
-                    uiState.isLoading && messages.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                strokeWidth = 3.dp
-                            )
-                        }
+            when {
+                uiState.isLoading && messages.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 3.dp
+                        )
                     }
+                }
 
-                    messages.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无消息",
-                                color = MaterialTheme.colors.onSurfaceVariant
-                            )
-                        }
+                messages.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "暂无消息",
+                            color = MaterialTheme.colors.onSurfaceVariant
+                        )
                     }
+                }
 
-                    else -> {
-                        ScalingLazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 8.dp, end = 8.dp,
-                                top = 4.dp, bottom = 16.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            reverseLayout = true
-                        ) {
-                            items(
-                                items = messages.reversed(),
-                                key = { "wear_msg_${it.msgId}" }
-                            ) { message ->
-                                if (message.msgDeleteTime == null && message.contentType != TYPE_TIP) {
-                                    WearMessageItem(
-                                        message = message,
-                                        isMyMessage = viewModel.isMyMessage(message),
-                                        onSpecialClick = { onSpecialMessageClick(message) }
-                                    )
-                                }
+                else -> {
+                    ScalingLazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 4.dp, end = 4.dp,
+                            top = 4.dp, bottom = 16.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        reverseLayout = true
+                    ) {
+                        items(
+                            items = messages.reversed(),
+                            key = { "wear_msg_${it.msgId}" }
+                        ) { message ->
+                            if (message.msgDeleteTime == null && message.contentType != TYPE_TIP) {
+                                WearMessageItem(
+                                    message = message,
+                                    isMyMessage = viewModel.isMyMessage(message),
+                                    chatType = chatType,
+                                    onSpecialClick = { onSpecialMessageClick(message) }
+                                )
                             }
                         }
                     }
                 }
+            }
         }
     }
 
@@ -172,6 +173,7 @@ private fun ChatWearTopBar(
 private fun WearMessageItem(
     message: ChatMessage,
     isMyMessage: Boolean,
+    chatType: Int,
     onSpecialClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -180,82 +182,92 @@ private fun WearMessageItem(
         sdf.format(Date(message.sendTime))
     }
 
-    Column(
+    val showSenderName = !isMyMessage && chatType != 1
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 2.dp),
+        horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
     ) {
         if (!isMyMessage) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val avatarModel = remember(message.sender.avatarUrl) {
-                    val url = message.sender.avatarUrl
-                    if (url.isNullOrBlank()) null
-                    else ImageRequest.Builder(context)
-                        .data(url)
-                        .addHeader("Referer", "https://myapp.jwznb.com")
-                        .crossfade(true)
-                        .build()
-                }
-                AsyncImage(
-                    model = avatarModel,
-                    contentDescription = message.sender.name,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.ic_person)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
+            val avatarModel = remember(message.sender.avatarUrl) {
+                val url = message.sender.avatarUrl
+                if (url.isNullOrBlank()) null
+                else ImageRequest.Builder(context)
+                    .data(url)
+                    .addHeader("Referer", "https://myapp.jwznb.com")
+                    .crossfade(true)
+                    .build()
+            }
+            AsyncImage(
+                model = avatarModel,
+                contentDescription = message.sender.name,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+                error = painterResource(id = R.drawable.ic_person)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+
+        Column(
+            modifier = Modifier
+                .widthIn(max = if (isMyMessage) 200.dp else 180.dp),
+            horizontalAlignment = if (isMyMessage) Alignment.End else Alignment.Start
+        ) {
+            if (showSenderName) {
                 Text(
                     text = message.sender.name,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colors.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = timeText,
-                    fontSize = 9.sp,
-                    color = MaterialTheme.colors.onSurfaceVariant
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
-        }
 
-        val bubbleColor = if (isMyMessage) {
-            MaterialTheme.colors.primary
-        } else {
-            MaterialTheme.colors.surface
-        }
-        val textColor = if (isMyMessage) {
-            MaterialTheme.colors.onPrimary
-        } else {
-            MaterialTheme.colors.onSurface
-        }
+            val bubbleColor = if (isMyMessage) {
+                MaterialTheme.colors.primary
+            } else {
+                MaterialTheme.colors.surface
+            }
+            val textColor = if (isMyMessage) {
+                MaterialTheme.colors.onPrimary
+            } else {
+                MaterialTheme.colors.onSurface
+            }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = if (isMyMessage) 32.dp else 0.dp)
-        ) {
+            val bubbleShape = RoundedCornerShape(
+                topStart = if (isMyMessage) 12.dp else 4.dp,
+                topEnd = if (isMyMessage) 4.dp else 12.dp,
+                bottomStart = 12.dp,
+                bottomEnd = 12.dp
+            )
+
             if (isSpecialType(message.contentType)) {
-                SpecialMessageButton(
-                    message = message,
-                    onClick = onSpecialClick,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(bubbleShape)
+                        .background(bubbleColor)
+                        .clickable(onClick = onSpecialClick)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SpecialMessageLabel(
+                        message = message,
+                        isMyMessage = isMyMessage
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(bubbleShape)
                         .background(bubbleColor)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = message.content.text ?: "",
@@ -266,44 +278,79 @@ private fun WearMessageItem(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(1.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = timeText,
+                    fontSize = 8.sp,
+                    color = MaterialTheme.colors.onSurfaceVariant
+                )
+                if (isMyMessage) {
+                    Text(
+                        text = "✓",
+                        fontSize = 8.sp,
+                        color = MaterialTheme.colors.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SpecialMessageButton(
+private fun SpecialMessageLabel(
     message: ChatMessage,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    isMyMessage: Boolean
 ) {
-    val label = remember(message.contentType) {
-        when (message.contentType) {
-            TYPE_IMAGE -> "\uD83D\uDCF7 图片"
-            TYPE_FILE -> "\uD83D\uDCC1 文件: ${message.content.fileName ?: "未知"}"
-            TYPE_FORM -> "\uD83D\uDCCB 表单"
-            TYPE_POST -> "\uD83D\uDCC4 文章: ${message.content.postTitle ?: "未知"}"
-            TYPE_STICKER -> "\uD83D\uDE00 表情"
-            TYPE_VIDEO -> "\uD83C\uDFAC 视频"
-            TYPE_AUDIO -> "\uD83C\uDFA4 语音"
-            TYPE_A2UI -> "\uD83D\uDCF1 交互消息"
-            else -> "\uD83D\uDCCE 特殊消息"
+    val parts = remember(message.contentType, message.content.fileName, message.content.postTitle) {
+        val emoji = when (message.contentType) {
+            TYPE_IMAGE -> "\uD83D\uDCF7"
+            TYPE_FILE -> "\uD83D\uDCC1"
+            TYPE_FORM -> "\uD83D\uDCCB"
+            TYPE_POST -> "\uD83D\uDCC4"
+            TYPE_STICKER -> "\uD83D\uDE00"
+            TYPE_VIDEO -> "\uD83C\uDFAC"
+            TYPE_AUDIO -> "\uD83C\uDFA4"
+            TYPE_A2UI -> "\uD83D\uDCF1"
+            else -> "\uD83D\uDCCE"
         }
+        val name = when (message.contentType) {
+            TYPE_IMAGE -> "图片"
+            TYPE_FILE -> message.content.fileName ?: "文件"
+            TYPE_FORM -> "表单"
+            TYPE_POST -> message.content.postTitle ?: "文章"
+            TYPE_STICKER -> "表情"
+            TYPE_VIDEO -> "视频"
+            TYPE_AUDIO -> "语音"
+            TYPE_A2UI -> "交互消息"
+            else -> "特殊消息"
+        }
+        "$emoji $name"
     }
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colors.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Text(
-            text = label,
-            color = MaterialTheme.colors.primary,
+            text = parts,
+            color = if (isMyMessage) MaterialTheme.colors.onPrimary else MaterialTheme.colors.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = " >",
+            color = if (isMyMessage) MaterialTheme.colors.onPrimary.copy(alpha = 0.6f) else MaterialTheme.colors.primary.copy(alpha = 0.6f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }

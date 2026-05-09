@@ -93,7 +93,9 @@ fun WearChatInputBar(
     onVoiceMessageSend: ((String, String, Long, Long) -> Unit)? = null, // 语音消息发送回调 (fileKey, fileHash, fileSize, audioDuration)
     chatId: String? = null, // 聊天ID
     chatType: Long = 1L, // 聊天类型：1-用户，2-群聊，3-机器人
-    voiceViewModel: VoiceMessageViewModel? = null // 语音消息 ViewModel
+    voiceViewModel: VoiceMessageViewModel? = null,// 语音消息 ViewModel
+
+    onHideInputBar: (() -> Unit)? = null,//TODO
 ) {
     val ctx = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current

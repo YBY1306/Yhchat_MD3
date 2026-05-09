@@ -1556,7 +1556,8 @@ fun WearChatScreen(
                                 end = 0.dp,
                                 top = 1.dp,
                                 bottom = 0.dp
-                            )
+                            ),
+                        onHideInputBar={showInputBar=false}//TODO
                     )
                 }
             }  // 闭合Column

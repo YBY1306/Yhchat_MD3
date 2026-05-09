@@ -312,7 +312,7 @@ fun WearChatScreen(
                 if (!showInputBar
                     && listState.firstVisibleItemIndex == 0
                     && listState.firstVisibleItemScrollOffset <= 100
-                    && newOffset > maxListOverscrollPx * 0.5f
+                    && newOffset < - maxListOverscrollPx * 0.5f
                 ) {
                     coroutineScope.launch {
                         showInputBar = true

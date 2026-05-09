@@ -293,6 +293,7 @@ fun WearChatInputBar(
     val currentLongPressSendMarkdownEnabled by rememberUpdatedState(longPressSendMarkdownEnabled)
     val currentLongPressSendMarkdownSeconds by rememberUpdatedState(longPressSendMarkdownSeconds)
 
+    if(false)
     Column {
         if (showMentionPicker) {
             val currentMentionContext = mentionContext

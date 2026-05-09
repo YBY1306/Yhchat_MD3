@@ -1420,8 +1420,8 @@ fun ChatScreen(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSendMessage = {
-                    if (inputText.isNotBlank()) {
-                        val messageText = inputText.trim()
+                    if (inputText.isNotBlank()||true) {
+                        val messageText = inputText
                         
                         // 解析@用户，提取用户ID列表
                         val mentionedIdsList = mutableListOf<String>()
@@ -1482,7 +1482,7 @@ fun ChatScreen(
                                 // 发送失败，保留输入框内容
                                 android.util.Log.e("ChatScreen", "发送消息失败: $error")
                                 // 可以选择显示Toast提示
-                                // android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
+                                 android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         )
                     }

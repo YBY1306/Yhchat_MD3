@@ -1379,8 +1379,8 @@ fun WearChatScreen(
                         text = inputText,
                         onTextChange = { inputText = it },
                         onSendMessage = {
-                            if (inputText.isNotBlank()) {
-                                val messageText = inputText.trim()
+                            if (inputText.isNotBlank()||true) {
+                                val messageText = inputText
 
                                 val mentionedIdsList = mutableListOf<String>()
                                 val mentionRegex = Regex("@([^\\s@]+)")

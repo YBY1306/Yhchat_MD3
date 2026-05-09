@@ -700,6 +700,7 @@ fun WearChatScreen(
     }
 
     // 处理系统返回键/手势返回
+    if(false)
     BackHandler {
         if (showInputBar) {
             showInputBar = false

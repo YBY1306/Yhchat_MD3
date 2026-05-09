@@ -46,6 +46,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import com.yhchat.canary.data.model.Expression
 import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.model.StickerItem
@@ -129,6 +136,7 @@ fun WearChatInputBar(
         val tail = if (firstWhitespaceIndex >= 0) afterAt.substring(firstWhitespaceIndex) else ""
         return "${beforeAt}${userName} ${tail}".replace("  ", " ")
     }
+
     var showExpressionPicker by remember { mutableStateOf(false) }
     var showInstructionPicker by remember { mutableStateOf(false) }
     var isVoiceMode by remember { mutableStateOf(false) }
@@ -167,7 +175,10 @@ fun WearChatInputBar(
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
                 } catch (e: Exception) {
-                    Log.d("ChatInputBar", "takePersistableUriPermission failed (may be temporary): ${e.message}")
+                    Log.d(
+                        "ChatInputBar",
+                        "takePersistableUriPermission failed (may be temporary): ${e.message}"
+                    )
                 }
                 voiceViewModel.selectAudioFromStorage(
                     context = ctx,
@@ -211,6 +222,7 @@ fun WearChatInputBar(
     val coroutineScope = rememberCoroutineScope()
 
     data class MentionContext(val startIndex: Int, val keyword: String)
+
     val mentionContext by remember(text) {
         derivedStateOf {
             val lastAtIndex = text.lastIndexOf('@')
@@ -272,11 +284,15 @@ fun WearChatInputBar(
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
                 "long_press_send_markdown_enabled" -> {
-                    longPressSendMarkdownEnabled = chatPrefs.getBoolean("long_press_send_markdown_enabled", false)
+                    longPressSendMarkdownEnabled =
+                        chatPrefs.getBoolean("long_press_send_markdown_enabled", false)
                 }
+
                 "long_press_send_markdown_seconds" -> {
-                    longPressSendMarkdownSeconds = chatPrefs.getInt("long_press_send_markdown_seconds", 3).coerceAtLeast(1)
+                    longPressSendMarkdownSeconds =
+                        chatPrefs.getInt("long_press_send_markdown_seconds", 3).coerceAtLeast(1)
                 }
+
                 "default_send_message_type" -> {
                     defaultSendMessageType = chatPrefs.getInt("default_send_message_type", 1)
                         .let { if (it == 3 || it == 8 || it == 1 || it == 14) it else 1 }
@@ -295,411 +311,718 @@ fun WearChatInputBar(
     val currentLongPressSendMarkdownEnabled by rememberUpdatedState(longPressSendMarkdownEnabled)
     val currentLongPressSendMarkdownSeconds by rememberUpdatedState(longPressSendMarkdownSeconds)
 
-    if(false)
-    Column {
-        if (showMentionPicker) {
-            val currentMentionContext = mentionContext
-            val resolvedKeyword = currentMentionContext?.keyword ?: mentionPickerKeyword
-            GroupMemberMentionPicker(
-                groupId = groupId.orEmpty(),
-                keyword = resolvedKeyword,
-                selectedIds = mentionedUsers.keys,
-                onMemberSelected = { member ->
-                    if (mentionedUsers.containsKey(member.userId)) return@GroupMemberMentionPicker
-                    onAddMentionUser?.invoke(member.userId, member.name)
-                    val newText = insertMentionPlaceholder(text, member.name)
-                    onTextChange(newText)
-                },
-                onDismiss = {
-                    keepMentionPickerVisible = false
-                    val dismissIndex = currentMentionContext?.startIndex ?: lastMentionTriggerIndex
-                    if (dismissIndex >= 0) {
-                        lastDismissedMentionIndex = dismissIndex
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-        }
-
-        // 表情选择器（显示在输入框上方，贴输入区而不是贴屏幕底部）
-        if (showExpressionPicker && onExpressionClick != null) {
-            ExpressionPicker(
-                onExpressionClick = { expression ->
-                    onExpressionClick.invoke(expression)
-                    showExpressionPicker = false
-                },
-                onStickerClick = { stickerItem ->
-                    onStickerClick?.invoke(stickerItem)
-                    showExpressionPicker = false
-                },
-                onDefaultExpressionClick = { expressionName ->
-                    onTextChange(text + expressionName)
-                },
-                onDismiss = { showExpressionPicker = false },
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
-
-        // 指令选择器（显示在输入框上方）
-        if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null)) {
-            InstructionPicker(
-                groupId = groupId,
-                botId = botId,
-                onInstructionClick = { instruction ->
-                    onInstructionClick.invoke(instruction)
-                    showInstructionPicker = false
-                },
-                onDismiss = { showInstructionPicker = false }
-            )
-        }
-
-        // 主输入栏容器
-        Column(
-            modifier = modifier.fillMaxWidth()
-        ) {
-            // 引用消息显示框
-            if (quotedMessageText != null) {
-                QuotedMessageBar(
-                    quotedText = quotedMessageText,
-                    onClearQuote = { onClearQuote?.invoke() }
-                )
-            }
-
-            // 指令显示框
-            if (selectedInstruction != null) {
-                InstructionBar(
-                    instruction = selectedInstruction,
-                    onClearInstruction = { onClearInstruction?.invoke() }
-                )
-            }
-
-            // 整体输入框背景 - 圆角矩形，包含所有按钮和输入框
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(24.dp),  // 大圆角
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),  // 半透明背景
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
-            ) {
-                Row(
+    val _my_new_wear = true
+    if (!_my_new_wear)
+        Column {
+            if (showMentionPicker) {
+                val currentMentionContext = mentionContext
+                val resolvedKeyword = currentMentionContext?.keyword ?: mentionPickerKeyword
+                GroupMemberMentionPicker(
+                    groupId = groupId.orEmpty(),
+                    keyword = resolvedKeyword,
+                    selectedIds = mentionedUsers.keys,
+                    onMemberSelected = { member ->
+                        if (mentionedUsers.containsKey(member.userId)) return@GroupMemberMentionPicker
+                        onAddMentionUser?.invoke(member.userId, member.name)
+                        val newText = insertMentionPlaceholder(text, member.name)
+                        onTextChange(newText)
+                    },
+                    onDismiss = {
+                        keepMentionPickerVisible = false
+                        val dismissIndex =
+                            currentMentionContext?.startIndex ?: lastMentionTriggerIndex
+                        if (dismissIndex >= 0) {
+                            lastDismissedMentionIndex = dismissIndex
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            // 表情选择器（显示在输入框上方，贴输入区而不是贴屏幕底部）
+            if (showExpressionPicker && onExpressionClick != null) {
+                ExpressionPicker(
+                    onExpressionClick = { expression ->
+                        onExpressionClick.invoke(expression)
+                        showExpressionPicker = false
+                    },
+                    onStickerClick = { stickerItem ->
+                        onStickerClick?.invoke(stickerItem)
+                        showExpressionPicker = false
+                    },
+                    onDefaultExpressionClick = { expressionName ->
+                        onTextChange(text + expressionName)
+                    },
+                    onDismiss = { showExpressionPicker = false },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+
+            // 指令选择器（显示在输入框上方）
+            if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null)) {
+                InstructionPicker(
+                    groupId = groupId,
+                    botId = botId,
+                    onInstructionClick = { instruction ->
+                        onInstructionClick.invoke(instruction)
+                        showInstructionPicker = false
+                    },
+                    onDismiss = { showInstructionPicker = false }
+                )
+            }
+
+            // 主输入栏容器
+            Column(
+                modifier = modifier.fillMaxWidth()
+            ) {
+                // 引用消息显示框
+                if (quotedMessageText != null) {
+                    QuotedMessageBar(
+                        quotedText = quotedMessageText,
+                        onClearQuote = { onClearQuote?.invoke() }
+                    )
+                }
+
+                // 指令显示框
+                if (selectedInstruction != null) {
+                    InstructionBar(
+                        instruction = selectedInstruction,
+                        onClearInstruction = { onClearInstruction?.invoke() }
+                    )
+                }
+
+                // 整体输入框背景 - 圆角矩形，包含所有按钮和输入框
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(24.dp),  // 大圆角
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),  // 半透明背景
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
                 ) {
-                    // 加号按钮
-                    if (showAddButton) {
-                        IconButton(
-                            onClick = {
-                                showAttachMenu = !showAttachMenu
-                                showExpressionPicker = false
-                                showInstructionPicker = false
-                                isVoiceMode = false
-                                if (showAttachMenu) {
-                                    keyboardController?.hide()
-                                }
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "附件",
-                                tint = if (showAttachMenu)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // 加号按钮
+                        if (showAddButton) {
+                            IconButton(
+                                onClick = {
+                                    showAttachMenu = !showAttachMenu
+                                    showExpressionPicker = false
+                                    showInstructionPicker = false
+                                    isVoiceMode = false
+                                    if (showAttachMenu) {
+                                        keyboardController?.hide()
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "附件",
+                                    tint = if (showAttachMenu)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
-                    }
 
-                    // 麦克风按钮
-                    if (showMicButton) {
-                        IconButton(
-                            onClick = {
-                                isVoiceMode = !isVoiceMode
-                                showAttachMenu = false
-                                showExpressionPicker = false
-                                showInstructionPicker = false
-                                if (isVoiceMode) {
-                                    keyboardController?.hide()
-                                }
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isVoiceMode) Icons.Default.MicOff else Icons.Default.Mic,
-                                contentDescription = if (isVoiceMode) "关闭语音" else "语音",
-                                tint = if (isVoiceMode)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
+                        // 麦克风按钮
+                        if (showMicButton) {
+                            IconButton(
+                                onClick = {
+                                    isVoiceMode = !isVoiceMode
+                                    showAttachMenu = false
+                                    showExpressionPicker = false
+                                    showInstructionPicker = false
+                                    if (isVoiceMode) {
+                                        keyboardController?.hide()
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isVoiceMode) Icons.Default.MicOff else Icons.Default.Mic,
+                                    contentDescription = if (isVoiceMode) "关闭语音" else "语音",
+                                    tint = if (isVoiceMode)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
-                    }
 
-                    // 输入框或语音按钮区域
-                    if (isVoiceMode) {
-                        // 语音模式：显示"长按说话"和"从存储选取"按钮
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 长按说话按钮
-                            Surface(
+                        // 输入框或语音按钮区域
+                        if (isVoiceMode) {
+                            // 语音模式：显示"长按说话"和"从存储选取"按钮
+                            Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp)
-                                    .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading) {
-                                        detectTapGestures(
-                                            onPress = {
-                                                Log.d("ChatInputBar", "voice press down")
-
-                                                if (isProcessing || isUploading) {
-                                                    Log.d("ChatInputBar", "voice press ignored: isProcessing=$isProcessing isUploading=$isUploading")
-                                                    return@detectTapGestures
-                                                }
-
-                                                if (voiceViewModel == null || chatId == null) {
-                                                    Log.w(
-                                                        "ChatInputBar",
-                                                        "press ignored: voiceViewModel=${voiceViewModel != null} chatId=$chatId chatType=$chatType groupId=$groupId botId=$botId isVoiceMode=$isVoiceMode",
-                                                        Throwable("ChatInputBar missing voice params")
-                                                    )
-                                                    Toast.makeText(ctx, "语音功能参数缺失", Toast.LENGTH_SHORT).show()
-                                                    return@detectTapGestures
-                                                }
-
-                                                val hasPermission = ContextCompat.checkSelfPermission(
-                                                    ctx,
-                                                    Manifest.permission.RECORD_AUDIO
-                                                ) == PackageManager.PERMISSION_GRANTED
-
-                                                if (!hasPermission) {
-                                                    Log.d("ChatInputBar", "request RECORD_AUDIO permission")
-                                                    Toast.makeText(ctx, "请授予麦克风权限", Toast.LENGTH_SHORT).show()
-                                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                                    return@detectTapGestures
-                                                }
-
-                                                Log.d("ChatInputBar", "startRecording")
-                                                voiceViewModel.startRecording(ctx)
-
-                                                val released = tryAwaitRelease()
-                                                if (released) {
-                                                    Log.d("ChatInputBar", "voice released, show dialog")
-                                                    // 停止录音但不上传，等待用户选择
-                                                    voiceViewModel.stopRecordingOnly(ctx) { file ->
-                                                        if (file != null) {
-                                                            pendingVoiceFile = file
-                                                            showVoiceToTextDialog = true
-                                                        } else {
-                                                            Toast.makeText(ctx, "录音失败", Toast.LENGTH_SHORT).show()
-                                                        }
-                                                    }
-                                                } else {
-                                                    Log.d("ChatInputBar", "cancelRecording")
-                                                    voiceViewModel.cancelRecording()
-                                                }
-                                            }
-                                        )
-                                    },
-                                color = Color.Transparent,
-                                shape = RoundedCornerShape(18.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
-                                )
+                                    .padding(horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                // 长按说话按钮
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(36.dp)
+                                        .pointerInput(
+                                            voiceViewModel,
+                                            chatId,
+                                            chatType,
+                                            isProcessing,
+                                            isUploading
+                                        ) {
+                                            detectTapGestures(
+                                                onPress = {
+                                                    Log.d("ChatInputBar", "voice press down")
+
+                                                    if (isProcessing || isUploading) {
+                                                        Log.d(
+                                                            "ChatInputBar",
+                                                            "voice press ignored: isProcessing=$isProcessing isUploading=$isUploading"
+                                                        )
+                                                        return@detectTapGestures
+                                                    }
+
+                                                    if (voiceViewModel == null || chatId == null) {
+                                                        Log.w(
+                                                            "ChatInputBar",
+                                                            "press ignored: voiceViewModel=${voiceViewModel != null} chatId=$chatId chatType=$chatType groupId=$groupId botId=$botId isVoiceMode=$isVoiceMode",
+                                                            Throwable("ChatInputBar missing voice params")
+                                                        )
+                                                        Toast.makeText(
+                                                            ctx,
+                                                            "语音功能参数缺失",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                        return@detectTapGestures
+                                                    }
+
+                                                    val hasPermission =
+                                                        ContextCompat.checkSelfPermission(
+                                                            ctx,
+                                                            Manifest.permission.RECORD_AUDIO
+                                                        ) == PackageManager.PERMISSION_GRANTED
+
+                                                    if (!hasPermission) {
+                                                        Log.d(
+                                                            "ChatInputBar",
+                                                            "request RECORD_AUDIO permission"
+                                                        )
+                                                        Toast.makeText(
+                                                            ctx,
+                                                            "请授予麦克风权限",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                        return@detectTapGestures
+                                                    }
+
+                                                    Log.d("ChatInputBar", "startRecording")
+                                                    voiceViewModel.startRecording(ctx)
+
+                                                    val released = tryAwaitRelease()
+                                                    if (released) {
+                                                        Log.d(
+                                                            "ChatInputBar",
+                                                            "voice released, show dialog"
+                                                        )
+                                                        // 停止录音但不上传，等待用户选择
+                                                        voiceViewModel.stopRecordingOnly(ctx) { file ->
+                                                            if (file != null) {
+                                                                pendingVoiceFile = file
+                                                                showVoiceToTextDialog = true
+                                                            } else {
+                                                                Toast.makeText(
+                                                                    ctx,
+                                                                    "录音失败",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                            }
+                                                        }
+                                                    } else {
+                                                        Log.d("ChatInputBar", "cancelRecording")
+                                                        voiceViewModel.cancelRecording()
+                                                    }
+                                                }
+                                            )
+                                        },
+                                    color = Color.Transparent,
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = when {
+                                                    isRecording -> "正在录制..."
+                                                    isUploading -> "上传中..."
+                                                    isProcessing -> "处理中..."
+                                                    else -> "长按说话"
+                                                },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = when {
+                                                    isRecording -> MaterialTheme.colorScheme.error
+                                                    isUploading || isProcessing -> MaterialTheme.colorScheme.primary
+                                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // 从存储选取按钮
+                                Button(
+                                    onClick = {
+                                        audioPickerLauncher.launch(arrayOf("audio/*"))
+                                    },
+                                    enabled = !isProcessing && !isUploading && !isRecording,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(36.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                    ),
+                                    shape = RoundedCornerShape(18.dp)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                                            imageVector = Icons.Default.Folder,
                                             contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                            modifier = Modifier.size(16.dp)
                                         )
                                         Text(
-                                            text = when {
-                                                isRecording -> "正在录制..."
-                                                isUploading -> "上传中..."
-                                                isProcessing -> "处理中..."
-                                                else -> "长按说话"
-                                            },
+                                            text = if (isProcessing || isUploading) "处理中..." else "从存储选取",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = when {
-                                                isRecording -> MaterialTheme.colorScheme.error
-                                                isUploading || isProcessing -> MaterialTheme.colorScheme.primary
-                                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                            }
+                                            color = if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             }
-
-                            // 从存储选取按钮
-                            Button(
-                                onClick = {
-                                    audioPickerLauncher.launch(arrayOf("audio/*"))
+                        } else {
+                            // 文本模式：显示输入框
+                            BasicTextField(
+                                value = text,
+                                onValueChange = { newText: String ->
+                                    onTextChange(newText)
+                                    onDraftChange?.invoke(newText)
                                 },
-                                enabled = !isProcessing && !isUploading && !isRecording,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    .heightIn(min = 36.dp, max = 90.dp)
+                                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                                    .pointerInput(Unit) {
+                                        // 针对大屏/悬浮键盘模式的修复：
+                                        // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
+                                        // 显式监听点击事件，强制请求焦点并弹出键盘。
+                                        detectTapGestures {
+                                            focusRequester?.requestFocus()
+                                            keyboardController?.show()
+                                        }
+                                    }
+                                    .onFocusChanged { state ->
+                                        if (state.isFocused) {
+                                            showExpressionPicker = false
+                                        }
+                                    }
+                                    .let { modifier ->
+                                        if (focusRequester != null) {
+                                            modifier.focusRequester(focusRequester)
+                                        } else {
+                                            modifier
+                                        }
+                                    },
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
                                 ),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                ),
-                                shape = RoundedCornerShape(18.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Folder,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = if (isProcessing || isUploading) "处理中..." else "从存储选取",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                maxLines = 3,
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (text.isEmpty()) {
+                                            val effectivePlaceholder = when {
+                                                selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
+                                                    selectedInstruction.hintText
+
+                                                else -> placeholder
+                                            }
+                                            Text(
+                                                text = effectivePlaceholder,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                    alpha = 0.5f
+                                                )
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
                                 }
-                            }
+                            )
                         }
-                    } else {
-                        // 文本模式：显示输入框
-                        BasicTextField(
-                            value = text,
-                            onValueChange = { newText: String ->
-                                onTextChange(newText)
-                                onDraftChange?.invoke(newText)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 36.dp, max = 90.dp)
-                                .padding(horizontal = 8.dp, vertical = 8.dp)
-                                .pointerInput(Unit) {
-                                    // 针对大屏/悬浮键盘模式的修复：
-                                    // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
-                                    // 显式监听点击事件，强制请求焦点并弹出键盘。
-                                    detectTapGestures {
-                                        focusRequester?.requestFocus()
-                                        keyboardController?.show()
-                                    }
-                                }
-                                .onFocusChanged { state ->
-                                    if (state.isFocused) {
-                                        showExpressionPicker = false
-                                    }
-                                }
-                                .let { modifier ->
-                                    if (focusRequester != null) {
-                                        modifier.focusRequester(focusRequester)
-                                    } else {
-                                        modifier
+
+                        // 指令按钮 - 群聊 或 机器人私聊
+                        if (showInstructionButton && onInstructionClick != null && (groupId != null || botId != null)) {
+                            IconButton(
+                                onClick = {
+                                    showInstructionPicker = !showInstructionPicker
+                                    showAttachMenu = false
+                                    showExpressionPicker = false
+                                    if (showInstructionPicker) {
+                                        keyboardController?.hide()
                                     }
                                 },
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            maxLines = 3,
-                            decorationBox = { innerTextField ->
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (text.isEmpty()) {
-                                        val effectivePlaceholder = when {
-                                            selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
-                                                selectedInstruction.hintText
-                                            else -> placeholder
-                                        }
-                                        Text(
-                                            text = effectivePlaceholder,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Code,
+                                    contentDescription = "指令",
+                                    tint = if (showInstructionPicker)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // 表情按钮
+                        if (showExpressionButton) {
+                            IconButton(
+                                onClick = {
+                                    showExpressionPicker = !showExpressionPicker
+                                    showAttachMenu = false
+                                    showInstructionPicker = false
+                                    if (showExpressionPicker) {
+                                        keyboardController?.hide()
                                     }
-                                    innerTextField()
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.EmojiEmotions,
+                                    contentDescription = "表情",
+                                    tint = if (showExpressionPicker)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // 发送按钮 - 圆形背景
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(
+                                    if (text.isNotEmpty())
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    CircleShape
+                                )
+                                .clip(CircleShape)
+                                .pointerInput(
+                                    currentLongPressSendMarkdownEnabled,
+                                    currentLongPressSendMarkdownSeconds
+                                ) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            if (currentText.isNotEmpty() || true) {
+                                                Log.d("ChatInputBar", "Send button tapped")
+                                                currentOnSendMessage()
+                                            }
+                                        },
+                                        onLongPress = {
+                                            val mtc = currentMtc
+                                            if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                                Log.d(
+                                                    "ChatInputBar",
+                                                    "Send button long pressed -> Markdown"
+                                                )
+                                                val previousType = currentSelectedMessageType
+                                                coroutineScope.launch {
+                                                    if (previousType != 3) {
+                                                        mtc.invoke(3)
+                                                    }
+                                                    currentOnSendMessage()
+                                                    if (previousType != 3) {
+                                                        mtc.invoke(previousType)
+                                                    }
+                                                }
+                                            } else if (currentText.isNotEmpty()) {
+                                                // 如果没开启长按发送 Markdown，则长按也作为普通发送
+                                                Log.d(
+                                                    "ChatInputBar",
+                                                    "Send button long pressed (normal send)"
+                                                )
+                                                currentOnSendMessage()
+                                            }
+                                        }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "发送",
+                                tint = if (text.isNotEmpty())
+                                    MaterialTheme.colorScheme.onPrimary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // 附件菜单 DropdownMenu
+                AttachmentMenu(
+                    expanded = showAttachMenu,
+                    onDismissRequest = { showAttachMenu = false },
+                    onImageClick = {
+                        onImageClick?.invoke()
+                        showAttachMenu = false
+                    },
+                    onFileClick = {
+                        onFileClick?.invoke()
+                        showAttachMenu = false
+                    },
+                    onCameraClick = {
+                        onCameraClick?.invoke()
+                        showAttachMenu = false
+                    },
+                    onVideoClick = {
+                        onVideoClick?.invoke()
+                        showAttachMenu = false
+                    },
+                    onTextClick = if (onMessageTypeChange != null) {
+                        {
+                            onMessageTypeChange.invoke(1)
+                            showAttachMenu = false
+                        }
+                    } else null,
+                    onHtmlClick = if (onMessageTypeChange != null) {
+                        {
+                            onMessageTypeChange.invoke(8)
+                            showAttachMenu = false
+                        }
+                    } else null,
+                    onMarkdownClick = if (onMessageTypeChange != null) {
+                        {
+                            onMessageTypeChange.invoke(3)
+                            showAttachMenu = false
+                        }
+                    } else null,
+                    onA2UiClick = if (onMessageTypeChange != null) {
+                        {
+                            onMessageTypeChange.invoke(14)
+                            showAttachMenu = false
+                        }
+                    } else null,
+                    defaultMessageType = defaultSendMessageType,
+                    onDefaultMessageTypeChange = { newDefaultType ->
+                        defaultSendMessageType = newDefaultType
+                        chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
+                    },
+                    selectedMessageType = selectedMessageType
+                )
+            }  // 关闭主输入栏容器Column
+
+            // 语音转文字选择对话框
+            if (showVoiceToTextDialog && pendingVoiceFile != null) {
+                VoiceToTextChoiceDialog(
+                    isConverting = isConvertingToText,
+                    progress = voiceToTextProgress,
+                    onDirectSend = {
+                        // 直接发送语音
+                        showVoiceToTextDialog = false
+                        val file = pendingVoiceFile
+                        pendingVoiceFile = null
+                        if (file != null && voiceViewModel != null && chatId != null) {
+                            voiceViewModel.uploadVoiceFile(
+                                context = ctx,
+                                file = file,
+                                chatId = chatId,
+                                chatType = chatType,
+                                onSuccess = { fileKey, fileHash, fileSize, duration ->
+                                    onVoiceMessageSend?.invoke(
+                                        fileKey,
+                                        fileHash,
+                                        fileSize,
+                                        duration
+                                    )
+                                    isVoiceMode = false
+                                }
+                            )
+                        }
+                    },
+                    onConvertToText = {
+                        // 转文字
+                        isConvertingToText = true
+                        voiceToTextProgress = "正在识别语音..."
+                        val file = pendingVoiceFile
+                        if (file != null) {
+                            coroutineScope.launch {
+                                STTUtils.speechToTextFromFile(
+                                    context = ctx,
+                                    audioFile = file,
+                                    onProgress = { progress -> voiceToTextProgress = progress }
+                                ).fold(
+                                    onSuccess = { text ->
+                                        // 插入到输入框
+                                        onTextChange(if (text.isNotBlank()) "$text " else text)
+                                        showVoiceToTextDialog = false
+                                        pendingVoiceFile = null
+                                        isConvertingToText = false
+                                        voiceToTextProgress = ""
+                                        isVoiceMode = false
+                                        // 删除临时文件
+                                        file.delete()
+                                    },
+                                    onFailure = { error ->
+                                        voiceToTextProgress = "识别失败: ${error.message}"
+                                        isConvertingToText = false
+                                        Toast.makeText(
+                                            ctx,
+                                            "语音转文字失败: ${error.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    onCancel = {
+                        showVoiceToTextDialog = false
+                        pendingVoiceFile?.delete()
+                        pendingVoiceFile = null
+                        isConvertingToText = false
+                        voiceToTextProgress = ""
+                    }
+                )
+            }
+        }
+
+
+//    val listState = rememberTransformingLazyColumnState()
+//    val transformationSpec = rememberTransformationSpec()
+//    if (false)
+    if (_my_new_wear)
+        ScreenScaffold(
+//            scrollState = listState,
+        ) { contentPadding -> // ScreenScaffold provides default padding; adjust as needed
+            TransformingLazyColumn(
+                contentPadding = contentPadding,
+//                state = listState,
+            ) {
+                item {
+                    Button(
+                        onClick = { onHideInputBar?.invoke() }
+                    ) { }
+                }
+                // 文本模式：显示输入框
+                item {
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { newText: String ->
+                            onTextChange(newText)
+                            onDraftChange?.invoke(newText)
+                        },
+                        modifier = Modifier
+//                          .weight(1f)
+                            .heightIn(min = 36.dp, max = 90.dp)
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .pointerInput(Unit) {
+                                // 针对大屏/悬浮键盘模式的修复：
+                                // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
+                                // 显式监听点击事件，强制请求焦点并弹出键盘。
+                                detectTapGestures {
+                                    focusRequester?.requestFocus()
+                                    keyboardController?.show()
                                 }
                             }
-                        )
-                    }
-
-                    // 指令按钮 - 群聊 或 机器人私聊
-                    if (showInstructionButton && onInstructionClick != null && (groupId != null || botId != null)) {
-                        IconButton(
-                            onClick = {
-                                showInstructionPicker = !showInstructionPicker
-                                showAttachMenu = false
-                                showExpressionPicker = false
-                                if (showInstructionPicker) {
-                                    keyboardController?.hide()
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    showExpressionPicker = false
+                                }
+                            }
+                            .let { modifier ->
+                                if (focusRequester != null) {
+                                    modifier.focusRequester(focusRequester)
+                                } else {
+                                    modifier
                                 }
                             },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Code,
-                                contentDescription = "指令",
-                                tint = if (showInstructionPicker)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        maxLines = 3,
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (text.isEmpty()) {
+                                    val effectivePlaceholder = when {
+                                        selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
+                                            selectedInstruction.hintText
 
-                    // 表情按钮
-                    if (showExpressionButton) {
-                        IconButton(
-                            onClick = {
-                                showExpressionPicker = !showExpressionPicker
-                                showAttachMenu = false
-                                showInstructionPicker = false
-                                if (showExpressionPicker) {
-                                    keyboardController?.hide()
+                                        else -> placeholder
+                                    }
+                                    Text(
+                                        text = effectivePlaceholder,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.5f
+                                        )
+                                    )
                                 }
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.EmojiEmotions,
-                                contentDescription = "表情",
-                                tint = if (showExpressionPicker)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
+                                innerTextField()
+                            }
                         }
-                    }
-
-                    // 发送按钮 - 圆形背景
+                    )
+                }
+                // 发送按钮 - 圆形背景
+                item {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -711,18 +1034,25 @@ fun WearChatInputBar(
                                 CircleShape
                             )
                             .clip(CircleShape)
-                            .pointerInput(currentLongPressSendMarkdownEnabled, currentLongPressSendMarkdownSeconds) {
+                            .pointerInput(
+                                currentLongPressSendMarkdownEnabled,
+                                currentLongPressSendMarkdownSeconds
+                            ) {
                                 detectTapGestures(
                                     onTap = {
-                                        if (currentText.isNotEmpty()||true) {
+                                        if (currentText.isNotEmpty() || true) {
                                             Log.d("ChatInputBar", "Send button tapped")
                                             currentOnSendMessage()
                                         }
+                                        onHideInputBar?.invoke()
                                     },
                                     onLongPress = {
                                         val mtc = currentMtc
                                         if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
-                                            Log.d("ChatInputBar", "Send button long pressed -> Markdown")
+                                            Log.d(
+                                                "ChatInputBar",
+                                                "Send button long pressed -> Markdown"
+                                            )
                                             val previousType = currentSelectedMessageType
                                             coroutineScope.launch {
                                                 if (previousType != 3) {
@@ -735,9 +1065,13 @@ fun WearChatInputBar(
                                             }
                                         } else if (currentText.isNotEmpty()) {
                                             // 如果没开启长按发送 Markdown，则长按也作为普通发送
-                                            Log.d("ChatInputBar", "Send button long pressed (normal send)")
+                                            Log.d(
+                                                "ChatInputBar",
+                                                "Send button long pressed (normal send)"
+                                            )
                                             currentOnSendMessage()
                                         }
+                                        onHideInputBar?.invoke()
                                     }
                                 )
                             },
@@ -754,126 +1088,14 @@ fun WearChatInputBar(
                         )
                     }
                 }
+
             }
-
-            // 附件菜单 DropdownMenu
-            AttachmentMenu(
-                expanded = showAttachMenu,
-                onDismissRequest = { showAttachMenu = false },
-                onImageClick = {
-                    onImageClick?.invoke()
-                    showAttachMenu = false
-                },
-                onFileClick = {
-                    onFileClick?.invoke()
-                    showAttachMenu = false
-                },
-                onCameraClick = {
-                    onCameraClick?.invoke()
-                    showAttachMenu = false
-                },
-                onVideoClick = {
-                    onVideoClick?.invoke()
-                    showAttachMenu = false
-                },
-                onTextClick = if (onMessageTypeChange != null) {
-                    {
-                        onMessageTypeChange.invoke(1)
-                        showAttachMenu = false
-                    }
-                } else null,
-                onHtmlClick = if (onMessageTypeChange != null) {
-                    {
-                        onMessageTypeChange.invoke(8)
-                        showAttachMenu = false
-                    }
-                } else null,
-                onMarkdownClick = if (onMessageTypeChange != null) {
-                    {
-                        onMessageTypeChange.invoke(3)
-                        showAttachMenu = false
-                    }
-                } else null,
-                onA2UiClick = if (onMessageTypeChange != null) {
-                    {
-                        onMessageTypeChange.invoke(14)
-                        showAttachMenu = false
-                    }
-                } else null,
-                defaultMessageType = defaultSendMessageType,
-                onDefaultMessageTypeChange = { newDefaultType ->
-                    defaultSendMessageType = newDefaultType
-                    chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
-                },
-                selectedMessageType = selectedMessageType
-            )
-        }  // 关闭主输入栏容器Column
-
-        // 语音转文字选择对话框
-        if (showVoiceToTextDialog && pendingVoiceFile != null) {
-            VoiceToTextChoiceDialog(
-                isConverting = isConvertingToText,
-                progress = voiceToTextProgress,
-                onDirectSend = {
-                    // 直接发送语音
-                    showVoiceToTextDialog = false
-                    val file = pendingVoiceFile
-                    pendingVoiceFile = null
-                    if (file != null && voiceViewModel != null && chatId != null) {
-                        voiceViewModel.uploadVoiceFile(
-                            context = ctx,
-                            file = file,
-                            chatId = chatId,
-                            chatType = chatType,
-                            onSuccess = { fileKey, fileHash, fileSize, duration ->
-                                onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
-                                isVoiceMode = false
-                            }
-                        )
-                    }
-                },
-                onConvertToText = {
-                    // 转文字
-                    isConvertingToText = true
-                    voiceToTextProgress = "正在识别语音..."
-                    val file = pendingVoiceFile
-                    if (file != null) {
-                        coroutineScope.launch {
-                            STTUtils.speechToTextFromFile(
-                                context = ctx,
-                                audioFile = file,
-                                onProgress = { progress -> voiceToTextProgress = progress }
-                            ).fold(
-                                onSuccess = { text ->
-                                    // 插入到输入框
-                                    onTextChange(if (text.isNotBlank()) "$text " else text)
-                                    showVoiceToTextDialog = false
-                                    pendingVoiceFile = null
-                                    isConvertingToText = false
-                                    voiceToTextProgress = ""
-                                    isVoiceMode = false
-                                    // 删除临时文件
-                                    file.delete()
-                                },
-                                onFailure = { error ->
-                                    voiceToTextProgress = "识别失败: ${error.message}"
-                                    isConvertingToText = false
-                                    Toast.makeText(ctx, "语音转文字失败: ${error.message}", Toast.LENGTH_LONG).show()
-                                }
-                            )
-                        }
-                    }
-                },
-                onCancel = {
-                    showVoiceToTextDialog = false
-                    pendingVoiceFile?.delete()
-                    pendingVoiceFile = null
-                    isConvertingToText = false
-                    voiceToTextProgress = ""
-                }
-            )
         }
+    BackHandler(enabled = true) {
+        onHideInputBar?.invoke()
     }
+
+
 }
 
 /**

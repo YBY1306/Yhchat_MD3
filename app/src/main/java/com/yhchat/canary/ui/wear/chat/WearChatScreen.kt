@@ -157,6 +157,7 @@ import com.yhchat.canary.ui.live.LiveRoomsBottomSheet
 import com.yhchat.canary.ui.live.LiveRoomsViewModel
 import com.yhchat.canary.ui.community.SendToChatBottomSheet
 import com.yhchat.canary.data.model.MsgForwardReceive
+import com.yhchat.canary.ui.chat.ChatViewModel
 
 /**
  * 聊天界面

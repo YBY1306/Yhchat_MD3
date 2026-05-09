@@ -30,7 +30,6 @@ import com.yhchat.canary.ui.user.UserDetailActivity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.FileProvider
-import com.yhchat.canary.ui.chat.WearChatScreen
 import java.io.File
 
 @AndroidEntryPoint

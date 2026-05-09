@@ -6,6 +6,7 @@ on:
       - canary
       - main
       - experimental
+      - wear
   workflow_dispatch:
 
 jobs:
@@ -25,10 +26,6 @@ jobs:
             gradle_task: assembleWithPlayerRelease
             artifact_name: apk-withPlayer
             asset_name: app-withPlayer-release.apk
-          - flavor: withLive
-            gradle_task: assembleWithLiveRelease
-            artifact_name: apk-withLive
-            asset_name: app-withLive-release.apk
 
     steps:
       - name: Checkout code

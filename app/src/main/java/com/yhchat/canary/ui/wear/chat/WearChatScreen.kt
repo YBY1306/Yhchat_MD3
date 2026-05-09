@@ -410,38 +410,38 @@ fun WearChatScreen(
     var isGeneratingImage by remember { mutableStateOf(false) }
 
     if(false)
-    if (showForwardSheet) {
-        val target = forwardTargetMessage
-        if (target != null) {
-            SendToChatBottomSheet(
-                onDismiss = {
-                    showForwardSheet = false
-                    forwardTargetMessage = null
-                },
-                title = "转发至",
-                sendButtonText = { count -> "发送($count)" },
-                onSend = { selected ->
-                    coroutineScope.launch {
-                        val receive = selected.map { contact ->
-                            MsgForwardReceive(chatId = contact.id, chatType = contact.type)
-                        }
-                        viewModel.forwardMessage(
-                            msgId = target.msgId,
-                            sourceChatType = chatType,
-                            receive = receive
-                        ).fold(
-                            onSuccess = {
-                                Toast.makeText(context, "转发成功", Toast.LENGTH_SHORT).show()
-                            },
-                            onFailure = { err ->
-                                Toast.makeText(context, "转发失败: ${err.message}", Toast.LENGTH_SHORT).show()
+        if (showForwardSheet) {
+            val target = forwardTargetMessage
+            if (target != null) {
+                SendToChatBottomSheet(
+                    onDismiss = {
+                        showForwardSheet = false
+                        forwardTargetMessage = null
+                    },
+                    title = "转发至",
+                    sendButtonText = { count -> "发送($count)" },
+                    onSend = { selected ->
+                        coroutineScope.launch {
+                            val receive = selected.map { contact ->
+                                MsgForwardReceive(chatId = contact.id, chatType = contact.type)
                             }
-                        )
+                            viewModel.forwardMessage(
+                                msgId = target.msgId,
+                                sourceChatType = chatType,
+                                receive = receive
+                            ).fold(
+                                onSuccess = {
+                                    Toast.makeText(context, "转发成功", Toast.LENGTH_SHORT).show()
+                                },
+                                onFailure = { err ->
+                                    Toast.makeText(context, "转发失败: ${err.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-    }
 
     // 读取布局设置：TTS按钮和TopAppBar显隐
     val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
@@ -702,16 +702,16 @@ fun WearChatScreen(
 
     // 处理系统返回键/手势返回
     if(false)
-    BackHandler {
-        if (showInputBar) {
-            showInputBar = false
-        } else if (isMultiSelectMode) {
-            isMultiSelectMode = false
-            selectedMessageIds = emptySet()
-        } else {
-            onBackClick()
+        BackHandler {
+            if (showInputBar) {
+                showInputBar = false
+            } else if (isMultiSelectMode) {
+                isMultiSelectMode = false
+                selectedMessageIds = emptySet()
+            } else {
+                onBackClick()
+            }
         }
-    }
 
     // 下拉刷新状态（刷新最新消息）
     val pullToRefreshState = rememberPullToRefreshState()
@@ -746,59 +746,58 @@ fun WearChatScreen(
             ) {
                 // 顶部应用栏（受布局设置控制）
                 if (false)
-                if (!hideTopAppBar) {
-                    ChatTopAppBar(
-                        chatId = chatId,
-                        chatType = chatType,
-                        chatName = chatName,
-                        uiState = uiState,
-                        showTtsButton = showTtsButton,
-                        showRefreshButton = showRefreshButton,
-                        showLiveButton = liveEnabled && liveRoomsState.rooms.isNotEmpty(),
-                        onBackClick = onBackClick,
-                        onRefreshClick = { viewModel.refreshLatestMessages() },
-                        onTtsClick = { showFloatingTtsWindow = true },
-                        onLiveClick = {
-                            showLiveRoomsSheet = true
-                            liveRoomsViewModel.refresh(groupId = chatId)
-                        },
-                        modifier = Modifier.zIndex(3f)
-                    )
-                }
+                    if (!hideTopAppBar) {
+                        ChatTopAppBar(
+                            chatId = chatId,
+                            chatType = chatType,
+                            chatName = chatName,
+                            uiState = uiState,
+                            showTtsButton = showTtsButton,
+                            showRefreshButton = showRefreshButton,
+                            showLiveButton = liveEnabled && liveRoomsState.rooms.isNotEmpty(),
+                            onBackClick = onBackClick,
+                            onRefreshClick = { viewModel.refreshLatestMessages() },
+                            onTtsClick = { showFloatingTtsWindow = true },
+                            onLiveClick = {
+                                showLiveRoomsSheet = true
+                                liveRoomsViewModel.refresh(groupId = chatId)
+                            },
+                            modifier = Modifier.zIndex(3f)
+                        )
+                    }
 
 
                 // 单个机器人看板区域
                 if(false)
-                SingleBotBoardSection(
-                    chatType = chatType,
-                    uiState = uiState,
-                    modifier = Modifier.zIndex(2f),
-                    onImageClick = { url ->
-                        currentImageUrl = url
-                        currentImageGallery = listOf(url)
-                        currentImageIndex = 0
-                        showImageViewer = true
-                    }
-                )
+                    SingleBotBoardSection(
+                        chatType = chatType,
+                        uiState = uiState,
+                        modifier = Modifier.zIndex(2f),
+                        onImageClick = { url ->
+                            currentImageUrl = url
+                            currentImageGallery = listOf(url)
+                            currentImageIndex = 0
+                            showImageViewer = true
+                        }
+                    )
 
                 // 群聊中的机器人看板列表
                 if(false)
-                GroupBotBoardsSection(
-                    chatType = chatType,
-                    groupBots = uiState.groupBots,
-                    groupBotBoards = uiState.groupBotBoards,
-                    modifier = Modifier.zIndex(2f),
-                    onImageClick = { url ->
-                        currentImageUrl = url
-                        currentImageGallery = listOf(url)
-                        currentImageIndex = 0
-                        showImageViewer = true
-                    }
-                )
+                    GroupBotBoardsSection(
+                        chatType = chatType,
+                        groupBots = uiState.groupBots,
+                        groupBotBoards = uiState.groupBotBoards,
+                        modifier = Modifier.zIndex(2f),
+                        onImageClick = { url ->
+                            currentImageUrl = url
+                            currentImageGallery = listOf(url)
+                            currentImageIndex = 0
+                            showImageViewer = true
+                        }
+                    )
 
-                if (!showInputBar) {
-                    // 错误信息
-                    uiState.error?.let { error ->
+                // 错误信息
+                uiState.error?.let { error ->
                     Card(
                         modifier = Modifier
                             .zIndex(2f)
@@ -1312,68 +1311,67 @@ fun WearChatScreen(
 
                     // "回到最新消息"浮动按钮
                     if(false)
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showScrollToBottomButton,
-                        enter = slideInVertically { it } + fadeIn(),
-                        exit = slideOutVertically { it } + fadeOut(),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp)
-                    ) {
-                        FloatingActionButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    shouldStickToBottom = true
-                                    pendingAutoScrollToBottom = false
-                                    // 滚动到最新消息（索引0，因为是 reverseLayout）
-                                    listState.animateScrollToItem(0)
-                                }
-                            },
-                            modifier = Modifier.size(48.dp),
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showScrollToBottomButton,
+                            enter = slideInVertically { it } + fadeIn(),
+                            exit = slideOutVertically { it } + fadeOut(),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "回到最新消息"
-                            )
+                            FloatingActionButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        shouldStickToBottom = true
+                                        pendingAutoScrollToBottom = false
+                                        // 滚动到最新消息（索引0，因为是 reverseLayout）
+                                        listState.animateScrollToItem(0)
+                                    }
+                                },
+                                modifier = Modifier.size(48.dp),
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "回到最新消息"
+                                )
+                            }
                         }
-                    }
-                }
                 }
 
                 // 菜单按钮栏（仅群聊显示，且设置允许）
                 val showMenuButtons by rememberBooleanPreference("chat_settings", "show_menu_buttons", true)
                 if (false)
-                if (chatType == 2 && uiState.menuButtons.isNotEmpty() && showMenuButtons) {
-                    com.yhchat.canary.ui.components.MenuButtonBar(
-                        menuButtons = uiState.menuButtons,
-                        onButtonClick = { button ->
-                            val buttonValue = button.content
+                    if (chatType == 2 && uiState.menuButtons.isNotEmpty() && showMenuButtons) {
+                        com.yhchat.canary.ui.components.MenuButtonBar(
+                            menuButtons = uiState.menuButtons,
+                            onButtonClick = { button ->
+                                val buttonValue = button.content
 
-                            // 检查按钮值是否是可处理的链接
-                            when {
-                                com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(buttonValue) -> {
-                                    // 使用 UnifiedLinkHandler 处理 yunhu://, yhfx 分享链接, yhchat.com 文章链接
-                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, buttonValue)
-                                }
-                                (buttonValue as String).startsWith("http://") || (buttonValue as String).startsWith("https://") -> {
-                                    // 其他 HTTP/HTTPS 链接，使用系统浏览器打开
-                                    try {
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(buttonValue))
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()
+                                // 检查按钮值是否是可处理的链接
+                                when {
+                                    com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(buttonValue) -> {
+                                        // 使用 UnifiedLinkHandler 处理 yunhu://, yhfx 分享链接, yhchat.com 文章链接
+                                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, buttonValue)
+                                    }
+                                    (buttonValue as String).startsWith("http://") || (buttonValue as String).startsWith("https://") -> {
+                                        // 其他 HTTP/HTTPS 链接，使用系统浏览器打开
+                                        try {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(buttonValue))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "无法打开链接", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    else -> {
+                                        // 不是链接，发送按钮请求
+                                        viewModel.clickMenuButton(button)
                                     }
                                 }
-                                else -> {
-                                    // 不是链接，发送按钮请求
-                                    viewModel.clickMenuButton(button)
-                                }
                             }
-                        }
-                    )
-                }
+                        )
+                    }
 
                 // 底部栏 (Wear版)：滑到底部再下滑时显示输入栏
                 if (showInputBar) {
@@ -1552,8 +1550,13 @@ fun WearChatScreen(
                         chatType = chatType.toLong(),
                         voiceViewModel = voiceMessageViewModel,
                         modifier = Modifier
-                            .weight(1f)
                             .navigationBarsPadding()
+                            .padding(
+                                start = 0.dp,
+                                end = 0.dp,
+                                top = 1.dp,
+                                bottom = 0.dp
+                            )
                     )
                 }
             }  // 闭合Column
@@ -1675,47 +1678,47 @@ fun WearChatScreen(
     }
 
     if (false)
-    if (showLiveRoomsSheet && liveEnabled) {
-        LiveRoomsBottomSheet(
-            rooms = liveRoomsState.rooms,
-            isLoading = liveRoomsState.isLoading,
-            joiningRoomId = liveRoomsState.joiningRoomId,
-            error = liveRoomsState.error,
-            onDismiss = { showLiveRoomsSheet = false },
-            onRetry = {
-                liveRoomsViewModel.clearError()
-                liveRoomsViewModel.refresh(groupId = chatId)
-            },
-            onJoin = { room ->
-                liveRoomsViewModel.join(room)
-            }
-        )
-    }
+        if (showLiveRoomsSheet && liveEnabled) {
+            LiveRoomsBottomSheet(
+                rooms = liveRoomsState.rooms,
+                isLoading = liveRoomsState.isLoading,
+                joiningRoomId = liveRoomsState.joiningRoomId,
+                error = liveRoomsState.error,
+                onDismiss = { showLiveRoomsSheet = false },
+                onRetry = {
+                    liveRoomsViewModel.clearError()
+                    liveRoomsViewModel.refresh(groupId = chatId)
+                },
+                onJoin = { room ->
+                    liveRoomsViewModel.join(room)
+                }
+            )
+        }
 
 
     // 浮动TTS窗口
     if (false)
-    TtsFloatingWindow(
-        visible = showFloatingTtsWindow,
-        chatId = chatId,
-        chatType = chatType,
-        quotedMessageId = quotedMessageId,
-        quotedMessageText = quotedMessageText,
-        quotedImageUrl = quotedImageUrl,
-        quotedImageName = quotedImageName,
-        quotedVideoUrl = quotedVideoUrl,
-        quotedVideoTime = quotedVideoTime,
-        viewModel = viewModel,
-        onClose = { showFloatingTtsWindow = false },
-        onQuoteClear = {
-            quotedMessageId = null
-            quotedMessageText = null
-            quotedImageUrl = null
-            quotedImageName = null
-            quotedVideoUrl = null
-            quotedVideoTime = null
-        }
-    )
+        TtsFloatingWindow(
+            visible = showFloatingTtsWindow,
+            chatId = chatId,
+            chatType = chatType,
+            quotedMessageId = quotedMessageId,
+            quotedMessageText = quotedMessageText,
+            quotedImageUrl = quotedImageUrl,
+            quotedImageName = quotedImageName,
+            quotedVideoUrl = quotedVideoUrl,
+            quotedVideoTime = quotedVideoTime,
+            viewModel = viewModel,
+            onClose = { showFloatingTtsWindow = false },
+            onQuoteClear = {
+                quotedMessageId = null
+                quotedMessageText = null
+                quotedImageUrl = null
+                quotedImageName = null
+                quotedVideoUrl = null
+                quotedVideoTime = null
+            }
+        )
 
 
 }

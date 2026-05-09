@@ -685,7 +685,7 @@ fun ChatScreen(
     }
 
     // 处理系统返回键/手势返回
-    BackHandler {
+    BackHandler (enabled = isMultiSelectMode){
         if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedMessageIds = emptySet()

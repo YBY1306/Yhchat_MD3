@@ -265,6 +265,7 @@ fun WearChatScreen(
     // WS 新消息到来且用户不在底部时，保持当前可视锚点，避免列表自己跳动
     var pendingPreserveVisibleAnchor by remember { mutableStateOf<WearListAnchorSnapshot?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    var showInputBar by remember { mutableStateOf(false) }
     val maxListOverscrollPx = with(LocalDensity.current) { 72.dp.toPx() }
     val listOverscrollOffset = remember { Animatable(0f) }
     val listOverscrollConnection = remember(maxListOverscrollPx, coroutineScope) {
@@ -306,6 +307,19 @@ fun WearChatScreen(
                     .coerceIn(0.25f, 1f)
                 val newOffset = (currentOffset + available.y * 0.35f * resistance)
                     .coerceIn(-maxListOverscrollPx, maxListOverscrollPx)
+
+                // 在底部继续下滑时触发显示输入栏
+                if (!showInputBar
+                    && listState.firstVisibleItemIndex == 0
+                    && listState.firstVisibleItemScrollOffset <= 100
+                    && newOffset > maxListOverscrollPx * 0.5f
+                ) {
+                    coroutineScope.launch {
+                        showInputBar = true
+                        listOverscrollOffset.snapTo(0f)
+                    }
+                    return Offset(0f, available.y)
+                }
 
                 coroutineScope.launch {
                     listOverscrollOffset.stop()
@@ -687,7 +701,9 @@ fun WearChatScreen(
 
     // 处理系统返回键/手势返回
     BackHandler {
-        if (isMultiSelectMode) {
+        if (showInputBar) {
+            showInputBar = false
+        } else if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedMessageIds = emptySet()
         } else {
@@ -1355,73 +1371,8 @@ fun WearChatScreen(
                     )
                 }
 
-                // 底部栏：多选模式 vs 输入模式
-                if (false)//TODO
-                if (isMultiSelectMode) {
-                    // 多选模式底部操作栏（带上浮动画）
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(300)
-                        ) + fadeIn(animationSpec = tween(300)),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it },
-                            animationSpec = tween(200)
-                        ) + fadeOut(animationSpec = tween(200))
-                    ) {
-                        MultiSelectBottomBar(
-                            selectedCount = selectedMessageIds.size,
-                            onForward = {
-                                // 批量转发
-                                if (selectedMessageIds.isNotEmpty()) {
-                                    val selectedMessages = messages.filter { selectedMessageIds.contains(it.msgId) }
-                                    showSendToChatBottomSheet = true
-                                    messagesToForward = selectedMessages
-                                }
-                            },
-                            onGenerateImage = {
-                                // 生成图片
-                                if (selectedMessageIds.isNotEmpty()) {
-                                    isGeneratingImage = true
-                                    coroutineScope.launch {
-                                        try {
-                                            val selectedMessages = messages
-                                                .filter { selectedMessageIds.contains(it.msgId) }
-                                                .sortedBy { it.sendTime }
-                                            val bitmap = generateMessagesImage(
-                                                context = context,
-                                                messages = selectedMessages,
-                                                chatName = chatName
-                                            )
-                                            generatedImageBitmap = bitmap
-                                            showImagePreviewDialog = true
-                                        } catch (e: Exception) {
-                                            android.util.Log.e("ChatScreen", "生成图片失败", e)
-                                            Toast.makeText(context, "生成图片失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        } finally {
-                                            isGeneratingImage = false
-                                        }
-                                    }
-                                }
-                            },
-                            onRecall = {
-                                // 批量撤回
-                                if (selectedMessageIds.isNotEmpty()) {
-                                    viewModel.recallMessagesBatch(selectedMessageIds.toList())
-                                    Toast.makeText(context, "正在撤回 ${selectedMessageIds.size} 条消息...", Toast.LENGTH_SHORT).show()
-                                    isMultiSelectMode = false
-                                    selectedMessageIds = emptySet()
-                                }
-                            },
-                            onClose = {
-                                isMultiSelectMode = false
-                                selectedMessageIds = emptySet()
-                            },
-                            modifier = Modifier.navigationBarsPadding()
-                        )
-                    }
-                } else {
+                // 底部栏 (Wear版)：滑到底部再下滑时显示输入栏
+                if (showInputBar) {
                     // 底部输入栏
                     ChatInputBar(
                         text = inputText,
@@ -1430,12 +1381,10 @@ fun WearChatScreen(
                             if (inputText.isNotBlank()) {
                                 val messageText = inputText.trim()
 
-                                // 解析@用户，提取用户ID列表
                                 val mentionedIdsList = mutableListOf<String>()
                                 val mentionRegex = Regex("@([^\\s@]+)")
                                 mentionRegex.findAll(messageText).forEach { matchResult ->
                                     val userName = matchResult.groupValues[1]
-                                    // 从 mentionedUsers 映射中找到对应的 userId
                                     mentionedUsers.entries.find { it.value == userName }?.let { entry ->
                                         mentionedIdsList.add(entry.key)
                                     }
@@ -1449,7 +1398,6 @@ fun WearChatScreen(
                                     )
                                 }
 
-                                // 根据选择的消息类型发送消息，带上引用信息、指令ID和@用户列表
                                 viewModel.sendMessage(
                                     text = messageText,
                                     contentType = selectedMessageType,
@@ -1459,69 +1407,45 @@ fun WearChatScreen(
                                     quoteImageName = quotedImageName,
                                     quoteVideoUrl = quotedVideoUrl,
                                     quoteVideoTime = quotedVideoTime,
-                                    commandId = selectedInstruction?.id,  // 传递指令ID
-                                    mentionedIds = if (mentionedIdsList.isNotEmpty()) mentionedIdsList else null,  // 传递@用户ID列表
+                                    commandId = selectedInstruction?.id,
+                                    mentionedIds = if (mentionedIdsList.isNotEmpty()) mentionedIdsList else null,
                                     onSuccess = {
                                         inputText = ""
-                                        // 清除@用户映射
                                         mentionedUsers = emptyMap()
-                                        // 发送后重置为默认类型
                                         selectedMessageType = defaultSendMessageType
-                                        // 清除引用状态
                                         quotedMessageId = null
                                         quotedMessageText = null
                                         quotedImageUrl = null
                                         quotedImageName = null
                                         quotedVideoUrl = null
                                         quotedVideoTime = null
-                                        // 清除选中的指令
                                         selectedInstruction = null
-                                        // 发送消息后自动滚动到最新消息
                                         coroutineScope.launch {
                                             shouldStickToBottom = true
                                             pendingAutoScrollToBottom = false
                                             listState.animateScrollToItem(0)
                                         }
-                                        // 发送成功后清除草稿
                                         viewModel.clearDraft()
                                     },
                                     onError = { error ->
-                                        // 发送失败，保留输入框内容
                                         android.util.Log.e("ChatScreen", "发送消息失败: $error")
-                                        // 可以选择显示Toast提示
-                                        // android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
                                     }
                                 )
                             }
                         },
-                        onImageClick = {
-                            // 使用从ChatActivity传递的回调
-                            onImagePickerClick()
-                        },
-                        onFileClick = {
-                            // 使用从ChatActivity传递的回调
-                            onFilePickerClick()
-                        },
-                        onVideoClick = {
-                            // 使用从ChatActivity传递的回调
-                            onVideoPickerClick()
-                        },
+                        onImageClick = { onImagePickerClick() },
+                        onFileClick = { onFilePickerClick() },
+                        onVideoClick = { onVideoPickerClick() },
                         onVoiceMessageSend = { fileKey, fileHash, fileSize, audioDuration ->
                             android.util.Log.w(
                                 "ChatScreen",
                                 "🎤 voice message sent: chatId=$chatId chatType=$chatType key=$fileKey hash=$fileHash size=$fileSize duration=$audioDuration"
                             )
                         },
-                        onDraftChange = { draftText ->
-                            viewModel.sendDraftInput(draftText)
-                        },
-                        onCameraClick = {
-                            // 使用从ChatActivity传递的回调
-                            onCameraClick()
-                        },
+                        onDraftChange = { draftText -> viewModel.sendDraftInput(draftText) },
+                        onCameraClick = { onCameraClick() },
                         selectedMessageType = selectedMessageType,
                         onMessageTypeChange = { newType ->
-                            // 只能选择一个类型，点击已选中的类型则取消（回到文本）
                             selectedMessageType = if (selectedMessageType == newType) 1 else newType
                         },
                         quotedMessageText = quotedMessageText,
@@ -1534,7 +1458,6 @@ fun WearChatScreen(
                             quotedVideoTime = null
                         },
                         onExpressionClick = { expression ->
-                            // 发送表情消息（contentType=7）
                             viewModel.sendExpressionMessage(
                                 expression = expression,
                                 quoteMsgId = quotedMessageId,
@@ -1544,7 +1467,6 @@ fun WearChatScreen(
                                 quoteVideoUrl = quotedVideoUrl,
                                 quoteVideoTime = quotedVideoTime
                             )
-                            // 清除引用状态
                             quotedMessageId = null
                             quotedMessageText = null
                             quotedImageUrl = null
@@ -1553,7 +1475,6 @@ fun WearChatScreen(
                             quotedVideoTime = null
                         },
                         onStickerClick = { stickerItem ->
-                            // 发送表情包贴纸消息（contentType=7）
                             viewModel.sendStickerMessage(
                                 stickerItem = stickerItem,
                                 quoteMsgId = quotedMessageId,
@@ -1563,7 +1484,6 @@ fun WearChatScreen(
                                 quoteVideoUrl = quotedVideoUrl,
                                 quoteVideoTime = quotedVideoTime
                             )
-                            // 清除引用状态
                             quotedMessageId = null
                             quotedMessageText = null
                             quotedImageUrl = null
@@ -1574,23 +1494,15 @@ fun WearChatScreen(
                         onInstructionClick = { instruction ->
                             android.util.Log.d("ChatScreen", "🎯 用户点击指令: /${instruction.name} (id=${instruction.id}, type=${instruction.type})")
 
-                            // 根据指令类型处理
                             when (instruction.type) {
                                 1 -> {
-                                    android.util.Log.d("ChatScreen", "📝 普通指令，应用默认文本: ${instruction.defaultText}")
-                                    // 普通指令：应用默认文本（如果有）
                                     selectedInstruction = instruction
                                     if (instruction.defaultText.isNotEmpty() && inputText.isBlank()) {
                                         inputText = instruction.defaultText
                                     }
                                 }
                                 2 -> {
-                                    android.util.Log.d("ChatScreen", "⚡ 直发指令，立即发送消息")
-                                    // 直发指令：发送 "/{指令名称}"
                                     val textToSend = "/${instruction.name}"
-                                    android.util.Log.d("ChatScreen", "📤 直发指令发送文本: '$textToSend'")
-
-                                    // 立即发送消息
                                     selectedInstruction = instruction
                                     viewModel.sendMessage(
                                         text = textToSend,
@@ -1613,8 +1525,6 @@ fun WearChatScreen(
                                     quotedVideoTime = null
                                 }
                                 5 -> {
-                                    android.util.Log.d("ChatScreen", "📋 表单指令，打开表单填写界面")
-                                    // 表单指令：打开表单填写Activity
                                     com.yhchat.canary.ui.bot.InstructionFormActivity.start(
                                         context = context,
                                         instruction = instruction,
@@ -1624,33 +1534,29 @@ fun WearChatScreen(
                                     )
                                 }
                                 else -> {
-                                    android.util.Log.w("ChatScreen", "⚠️ 未知指令类型: ${instruction.type}")
-                                    // 其他类型指令暂不处理
                                     selectedInstruction = instruction
                                 }
                             }
                         },
-                        groupId = if (chatType == 2) chatId else null,  // 只在群聊中传递groupId
-                        botId = if (chatType == 3) chatId else null,  // 机器人私聊传递botId
-                        selectedInstruction = selectedInstruction,  // 传递选中的指令
-                        onClearInstruction = {
-                            selectedInstruction = null
-                        },
-                        focusRequester = inputFocusRequester,  // 传递焦点请求器
-                        shouldShowKeyboard = shouldShowKeyboard,  // 传递键盘显示状态
+                        groupId = if (chatType == 2) chatId else null,
+                        botId = if (chatType == 3) chatId else null,
+                        selectedInstruction = selectedInstruction,
+                        onClearInstruction = { selectedInstruction = null },
+                        focusRequester = inputFocusRequester,
+                        shouldShowKeyboard = shouldShowKeyboard,
                         chatId = chatId,
                         chatType = chatType.toLong(),
                         voiceViewModel = voiceMessageViewModel,
                         modifier = Modifier
-                            .navigationBarsPadding()  // 自适应导航栏
+                            .navigationBarsPadding()
                             .padding(
-                                start = 0.dp,  // 去掉左右padding让输入框占满宽度
+                                start = 0.dp,
                                 end = 0.dp,
                                 top = 1.dp,
-                                bottom = 0.dp  // 导航栏padding已处理
+                                bottom = 0.dp
                             )
                     )
-                }  // 闭合else（输入模式）
+                }
             }  // 闭合Column
         }  // 闭合Surface
     }  // 闭合Box（聊天背景容器）

@@ -394,6 +394,7 @@ fun WearChatScreen(
     var generatedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isGeneratingImage by remember { mutableStateOf(false) }
 
+    if(false)
     if (showForwardSheet) {
         val target = forwardTargetMessage
         if (target != null) {
@@ -726,6 +727,7 @@ fun WearChatScreen(
                     .then(if (!isLargeScreen) Modifier.imePadding() else Modifier)  // 大屏悬浮键盘不推动界面
             ) {
                 // 顶部应用栏（受布局设置控制）
+                if (false)
                 if (!hideTopAppBar) {
                     ChatTopAppBar(
                         chatId = chatId,
@@ -748,6 +750,7 @@ fun WearChatScreen(
 
 
                 // 单个机器人看板区域
+                if(false)
                 SingleBotBoardSection(
                     chatType = chatType,
                     uiState = uiState,
@@ -761,6 +764,7 @@ fun WearChatScreen(
                 )
 
                 // 群聊中的机器人看板列表
+                if(false)
                 GroupBotBoardsSection(
                     chatType = chatType,
                     groupBots = uiState.groupBots,
@@ -1319,6 +1323,7 @@ fun WearChatScreen(
 
                 // 菜单按钮栏（仅群聊显示，且设置允许）
                 val showMenuButtons by rememberBooleanPreference("chat_settings", "show_menu_buttons", true)
+                if (false)
                 if (chatType == 2 && uiState.menuButtons.isNotEmpty() && showMenuButtons) {
                     com.yhchat.canary.ui.components.MenuButtonBar(
                         menuButtons = uiState.menuButtons,
@@ -1350,6 +1355,7 @@ fun WearChatScreen(
                 }
 
                 // 底部栏：多选模式 vs 输入模式
+                if (false)//TODO
                 if (isMultiSelectMode) {
                     // 多选模式底部操作栏（带上浮动画）
                     AnimatedVisibility(
@@ -1762,6 +1768,7 @@ fun WearChatScreen(
         )
     }
 
+    if (false)
     if (showLiveRoomsSheet && liveEnabled) {
         LiveRoomsBottomSheet(
             rooms = liveRoomsState.rooms,
@@ -1781,6 +1788,7 @@ fun WearChatScreen(
 
 
     // 浮动TTS窗口
+    if (false)
     TtsFloatingWindow(
         visible = showFloatingTtsWindow,
         chatId = chatId,

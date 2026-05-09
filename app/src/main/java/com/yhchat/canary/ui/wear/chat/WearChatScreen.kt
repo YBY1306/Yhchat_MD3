@@ -796,8 +796,9 @@ fun WearChatScreen(
                     }
                 )
 
-                // 错误信息
-                uiState.error?.let { error ->
+                if (!showInputBar) {
+                    // 错误信息
+                    uiState.error?.let { error ->
                     Card(
                         modifier = Modifier
                             .zIndex(2f)
@@ -1339,6 +1340,7 @@ fun WearChatScreen(
                         }
                     }
                 }
+                }
 
                 // 菜单按钮栏（仅群聊显示，且设置允许）
                 val showMenuButtons by rememberBooleanPreference("chat_settings", "show_menu_buttons", true)
@@ -1550,13 +1552,8 @@ fun WearChatScreen(
                         chatType = chatType.toLong(),
                         voiceViewModel = voiceMessageViewModel,
                         modifier = Modifier
+                            .weight(1f)
                             .navigationBarsPadding()
-                            .padding(
-                                start = 0.dp,
-                                end = 0.dp,
-                                top = 1.dp,
-                                bottom = 0.dp
-                            )
                     )
                 }
             }  // 闭合Column

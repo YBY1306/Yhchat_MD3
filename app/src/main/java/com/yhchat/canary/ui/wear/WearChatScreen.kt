@@ -672,16 +672,16 @@ fun WearChatScreen(
         }
 
         val anchorSnapshot = pendingPreserveVisibleAnchor
-//        if (anchorSnapshot != null && messageListIdentity != anchorSnapshot.listIdentity) {
-//            val restoredIndex = messageItemKeys.indexOf(anchorSnapshot.messageKey)
-//            if (restoredIndex >= 0) {
-//                listState.scrollToItem(
-//                    index = restoredIndex,
-//                    scrollOffset = anchorSnapshot.scrollOffset
-//                )
-//            }
-//            pendingPreserveVisibleAnchor = null
-//        }
+        if (anchorSnapshot != null && messageListIdentity != anchorSnapshot.listIdentity) {
+            val restoredIndex = messageItemKeys.indexOf(anchorSnapshot.messageKey)
+            if (restoredIndex >= 0) {
+                listState.scrollToItem(
+                    index = restoredIndex,
+                    scrollOffset = anchorSnapshot.scrollOffset
+                )
+            }
+            pendingPreserveVisibleAnchor = null
+        }
     }
 
     // 处理系统返回键/手势返回

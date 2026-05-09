@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.chat
+package com.yhchat.canary.ui.wear.chat
 
 import android.content.Intent
 import android.net.Uri

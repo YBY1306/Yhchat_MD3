@@ -700,7 +700,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                         .pointerInput(currentLongPressSendMarkdownEnabled, currentLongPressSendMarkdownSeconds) {
                             detectTapGestures(
                                 onTap = {
-                                    if (currentText.isNotEmpty()) {
+                                    if (currentText.isNotEmpty()||true) {
                                         Log.d("ChatInputBar", "Send button tapped")
                                         currentOnSendMessage()
                                     }

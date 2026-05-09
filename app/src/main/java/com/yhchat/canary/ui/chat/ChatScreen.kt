@@ -1420,7 +1420,7 @@ fun ChatScreen(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSendMessage = {
-                    if (inputText.isNotBlank()) {
+                    if (inputText.isNotBlank()||true) {
                         val messageText = inputText
                         
                         // 解析@用户，提取用户ID列表

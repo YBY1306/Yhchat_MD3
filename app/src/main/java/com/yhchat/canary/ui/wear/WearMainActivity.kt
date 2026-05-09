@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.ui.wear.chat.WearChatActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -35,11 +34,6 @@ class WearMainActivity : ComponentActivity() {
     }
 
     private fun launchChatActivity(chatId: String, chatType: Int, chatName: String) {
-        startActivity(Intent(this, WearChatActivity::class.java).apply {
-            putExtra(WearChatActivity.EXTRA_CHAT_ID, chatId)
-            putExtra(WearChatActivity.EXTRA_CHAT_TYPE, chatType)
-            putExtra(WearChatActivity.EXTRA_CHAT_NAME, chatName)
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        })
+       //TODO
     }
 }

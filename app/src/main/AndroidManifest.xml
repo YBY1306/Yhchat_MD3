@@ -143,18 +143,6 @@
         </activity>
 
         <activity
-            android:name=".ui.wear.chat.WearChatActivity"
-            android:exported="false"
-            android:label="聊天"
-            android:theme="@style/Theme.YhchatCanary.Wear" />
-
-        <activity
-            android:name=".ui.wear.chat.message_detail.WearMessageDetailActivity"
-            android:exported="false"
-            android:label="消息详情"
-            android:theme="@style/Theme.YhchatCanary.Wear" />
-
-        <activity
             android:name=".ui.wear.login.WearLoginActivity"
             android:exported="true"
             android:theme="@style/Theme.YhchatCanary.Wear" />

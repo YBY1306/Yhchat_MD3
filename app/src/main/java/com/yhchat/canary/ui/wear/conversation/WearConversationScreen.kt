@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.wear
 
+import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.wear.compose.material3.AppScaffold
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.conversation.ConversationViewModel
 import com.yhchat.canary.ui.components.ConversationMenuDialog
 import kotlinx.coroutines.launch
@@ -43,8 +45,11 @@ fun WearConversationScreen(
     onConversationClick: (String, Int, String) -> Unit,
     tokenRepository: TokenRepository? = null,
     viewModel: ConversationViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    _to_loginfun_xxxx:(()->Unit)?=null,
 ) {
+    val ctx = LocalContext.current
+
     val uiState by viewModel.uiState.collectAsState()
     val conversations by viewModel.conversations.collectAsState()
 
@@ -103,10 +108,10 @@ fun WearConversationScreen(
                         .pointerInput(null) {
                             detectTapGestures(
                                 onTap = {
-                                    val i = 0
                                 },
                                 onLongPress = {
-                                    val i = 0
+
+                                    _to_loginfun_xxxx?.invoke()
                                 }
                             )
                         },
@@ -136,13 +141,21 @@ fun WearConversationScreen(
                         WearConversationItem(
                             conversation = conversation,
                             onClick = {
-                                viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
-                                onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
+                                viewModel.markConversationAsRead(
+                                    conversation.chatId,
+                                    conversation.chatType
+                                )
+                                onConversationClick(
+                                    conversation.chatId,
+                                    conversation.chatType,
+                                    conversation.name
+                                )
                             },
                             onLongClick = {
                                 selectedConversation = conversation
                                 coroutineScope.launch {
-                                    isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
+                                    isSelectedConversationSticky =
+                                        viewModel.isConversationSticky(conversation.chatId)
                                     showConversationMenu = true
                                 }
                             }
@@ -238,7 +251,10 @@ private fun WearConversationItem(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (conversation.unreadMessage > 99) "*" else minOf(conversation.unreadMessage, 99).toString(),
+                            text = if (conversation.unreadMessage > 99) "*" else minOf(
+                                conversation.unreadMessage,
+                                99
+                            ).toString(),
                             color = MaterialTheme.colors.onError,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold

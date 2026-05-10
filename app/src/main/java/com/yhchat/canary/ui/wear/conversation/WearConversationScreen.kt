@@ -69,7 +69,7 @@ fun WearConversationScreen(
     }
 
     LaunchedEffect(token) {
-        if (token.isNotEmpty()||true) {//TODO
+        if (token.isNotEmpty() || true) {//TODO
             viewModel.loadConversations(token)//参数未使用
             viewModel.loadStickyConversations()
         }

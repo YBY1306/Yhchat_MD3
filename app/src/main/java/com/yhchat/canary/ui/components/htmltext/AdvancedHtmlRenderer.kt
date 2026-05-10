@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -106,7 +105,11 @@ private fun HtmlFlexNode(
             if (textNodes.isNotEmpty()) {
                 val (annotated, style) = buildInlineAnnotated(textNodes, inheritedText)
                 if (annotated.text.isNotBlank()) {
-                    ClickableText(text = annotated, style = style)
+                    ClickableText(
+                        text = annotated,
+                        style = style,
+                        onClick = {}
+                    )
                 }
             }
 
@@ -114,7 +117,7 @@ private fun HtmlFlexNode(
                 val childFlexGrow = child.style.flexGrow ?: child.style.flex ?: 0f
                 val childModifier = Modifier
                     .then(if (index > 0 && horizontalArrangement == Arrangement.Start) Modifier.padding(start = gap) else Modifier)
-                    .then(if (childFlexGrow > 0f) Modifier.weight(childFlexGrow, fill = (child.style.flexShrink ?: 1f) > 0f) else Modifier)
+                    .then(if (childFlexGrow > 0f) Modifier.fillMaxWidth() else Modifier)
                 Box(modifier = childModifier) {
                     RenderHtmlNode(child, child.style.mergeText(inheritedText), onImageClick, onLinkClick)
                 }
@@ -530,7 +533,7 @@ private fun HtmlDetailsNode(
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
                 contentDescription = if (expanded) "收起" else "展开",
-                color = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 6.dp)
             )
             Box(modifier = Modifier.fillMaxWidth()) {

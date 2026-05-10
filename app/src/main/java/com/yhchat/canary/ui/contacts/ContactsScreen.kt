@@ -68,7 +68,6 @@ fun ContactsScreen(
             TopAppBar(
                 title = { Text("通讯录") },
                 actions = {
-                    // 搜索按钮
                     IconButton(onClick = {
                         val intent = Intent(context, SearchActivity::class.java)
                         context.startActivity(intent)
@@ -83,27 +82,24 @@ fun ContactsScreen(
         }
     ) { paddingValues ->
         Box(
-        modifier = modifier
+            modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
             when {
                 uiState.isLoading -> {
-                    // 加载中
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+
                 uiState.error != null -> {
-                    // 错误提示
                     Column(
                         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
                             text = uiState.error ?: "加载失败",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyLarge
@@ -114,166 +110,159 @@ fun ContactsScreen(
                         }
                     }
                 }
+
                 else -> {
-                    // 显示通讯录列表
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        // 申请/邀请列表分组
                         if (showRequests) {
-                        item(key = "header_requests") {
-                            ContactGroupHeader(
-                                title = "申请/邀请列表",
-                                count = uiState.friendRequestTotal,
-                                isExpanded = uiState.friendRequestsExpanded,
-                                onToggle = { viewModel.toggleFriendRequestsExpanded() },
-                                modifier = Modifier.animateItem()
-                            )
-                        }
+                            item(key = "header_requests") {
+                                ContactGroupHeader(
+                                    title = "申请/邀请列表",
+                                    count = uiState.friendRequestTotal,
+                                    isExpanded = uiState.friendRequestsExpanded,
+                                    onToggle = { viewModel.toggleFriendRequestsExpanded() },
+                                    modifier = Modifier.animateItem()
+                                )
+                            }
 
-                        if (uiState.friendRequestsExpanded) {
-                            if (uiState.friendRequestsLoading) {
-                                item(key = "requests_loading") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            if (uiState.friendRequestsExpanded) {
+                                if (uiState.friendRequestsLoading) {
+                                    item(key = "requests_loading") {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                } else {
+                                    items(
+                                        items = uiState.friendRequests,
+                                        key = { "request_${it.requestId}" }
+                                    ) { requestItem ->
+                                        FriendRequestRow(
+                                            item = requestItem,
+                                            onClick = { viewModel.selectFriendRequest(requestItem) },
+                                            modifier = Modifier.animateItem()
+                                        )
                                     }
                                 }
-                            } else {
+                            }
+                        }
+
+                        if (showFriends) {
+                            item(key = "header_friends") {
+                                ContactGroupHeader(
+                                    title = "好友",
+                                    count = uiState.friends.size,
+                                    isExpanded = uiState.friendsExpanded,
+                                    onToggle = { viewModel.toggleFriendsExpanded() },
+                                    modifier = Modifier.animateItem()
+                                )
+                            }
+
+                            if (uiState.friendsExpanded) {
                                 items(
-                                    items = uiState.friendRequests,
-                                    key = { "request_${it.requestId}" }
-                                ) { requestItem ->
-                                    FriendRequestRow(
-                                        item = requestItem,
-                                        onClick = { viewModel.selectFriendRequest(requestItem) },
+                                    items = uiState.friends,
+                                    key = { "friend_${it.chatId}" }
+                                ) { contact ->
+                                    ContactItem(
+                                        contact = contact,
+                                        onClick = {
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("chatId", contact.chatId)
+                                                putExtra("chatType", 1)
+                                                putExtra("chatName", contact.name)
+                                            }
+                                            context.startActivity(intent)
+                                        },
                                         modifier = Modifier.animateItem()
                                     )
                                 }
                             }
                         }
 
-                        // 好友分组
-                        if (showFriends) {
-                        item(key = "header_friends") {
-                            ContactGroupHeader(
-                                title = "好友",
-                                count = uiState.friends.size,
-                                isExpanded = uiState.friendsExpanded,
-                                onToggle = { viewModel.toggleFriendsExpanded() },
-                                modifier = Modifier.animateItem()
-                            )
-                        }
-                        
-                        if (uiState.friendsExpanded) {
-                            items(
-                                items = uiState.friends,
-                                key = { "friend_${it.chatId}" }
-                            ) { contact ->
-                                ContactItem(
-                                    contact = contact,
-                                    onClick = {
-                                        // 打开聊天界面（用户类型为1）
-                                        val intent = Intent(context, ChatActivity::class.java).apply {
-                                            putExtra("chatId", contact.chatId)
-                                            putExtra("chatType", 1)
-                                            putExtra("chatName", contact.name)
-                                        }
-                                        context.startActivity(intent)
-                                    },
-                                    modifier = Modifier.animateItem()
-                                )
-                                }
-                            }
-                        }
-                        
-                        // 群聊分组
                         if (showGroups) {
-                        item(key = "header_groups") {
-                            ContactGroupHeader(
-                                title = "我加入的群聊",
-                                count = uiState.groups.size,
-                                isExpanded = uiState.groupsExpanded,
-                                onToggle = { viewModel.toggleGroupsExpanded() },
-                                modifier = Modifier.animateItem()
-                            )
-                        }
-                        
-                        if (uiState.groupsExpanded) {
-                            items(
-                                items = uiState.groups,
-                                key = { "group_${it.chatId}" }
-                            ) { contact ->
-                                ContactItem(
-                                    contact = contact,
-                                    onClick = {
-                                        // 打开聊天界面（群聊类型为2）
-                                        val intent = Intent(context, ChatActivity::class.java).apply {
-                                            putExtra("chatId", contact.chatId)
-                                            putExtra("chatType", 2)
-                                            putExtra("chatName", contact.name)
-                                        }
-                                        context.startActivity(intent)
-                                    },
+                            item(key = "header_groups") {
+                                ContactGroupHeader(
+                                    title = "我加入的群聊",
+                                    count = uiState.groups.size,
+                                    isExpanded = uiState.groupsExpanded,
+                                    onToggle = { viewModel.toggleGroupsExpanded() },
                                     modifier = Modifier.animateItem()
                                 )
+                            }
+
+                            if (uiState.groupsExpanded) {
+                                items(
+                                    items = uiState.groups,
+                                    key = { "group_${it.chatId}" }
+                                ) { contact ->
+                                    ContactItem(
+                                        contact = contact,
+                                        onClick = {
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("chatId", contact.chatId)
+                                                putExtra("chatType", 2)
+                                                putExtra("chatName", contact.name)
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                        modifier = Modifier.animateItem()
+                                    )
                                 }
                             }
                         }
-                        
-                        // 机器人分组
+
                         if (showBots) {
-                        item(key = "header_bots") {
-                            ContactGroupHeader(
-                                title = "机器人",
-                                count = uiState.bots.size,
-                                isExpanded = uiState.botsExpanded,
-                                onToggle = { viewModel.toggleBotsExpanded() },
-                                modifier = Modifier.animateItem()
-                            )
-                        }
-                        
-                        if (uiState.botsExpanded) {
-                            items(
-                                items = uiState.bots,
-                                key = { "bot_${it.chatId}" }
-                            ) { contact ->
-                                ContactItem(
-                                    contact = contact,
-                                    onClick = {
-                                        // 打开聊天界面（机器人类型为3）
-                                        val intent = Intent(context, ChatActivity::class.java).apply {
-                                            putExtra("chatId", contact.chatId)
-                                            putExtra("chatType", 3)
-                                            putExtra("chatName", contact.name)
-                                        }
-                                        context.startActivity(intent)
-                                    },
+                            item(key = "header_bots") {
+                                ContactGroupHeader(
+                                    title = "机器人",
+                                    count = uiState.bots.size,
+                                    isExpanded = uiState.botsExpanded,
+                                    onToggle = { viewModel.toggleBotsExpanded() },
                                     modifier = Modifier.animateItem()
                                 )
+                            }
+
+                            if (uiState.botsExpanded) {
+                                items(
+                                    items = uiState.bots,
+                                    key = { "bot_${it.chatId}" }
+                                ) { contact ->
+                                    ContactItem(
+                                        contact = contact,
+                                        onClick = {
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("chatId", contact.chatId)
+                                                putExtra("chatType", 3)
+                                                putExtra("chatName", contact.name)
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                        modifier = Modifier.animateItem()
+                                    )
                                 }
                             }
                         }
-                        
-                        // 我创建的机器人分组
+
                         if (showMyBots) {
-                        item(key = "header_my_bots") {
-                            ContactGroupHeader(
-                                title = "我创建的机器人",
-                                count = uiState.myBots.size,
-                                isExpanded = uiState.myBotsExpanded,
-                                onToggle = { viewModel.toggleMyBotsExpanded() },
-                                modifier = Modifier.animateItem()
-                            )
+                            item(key = "header_my_bots") {
+                                ContactGroupHeader(
+                                    title = "我创建的机器人",
+                                    count = uiState.myBots.size,
+                                    isExpanded = uiState.myBotsExpanded,
+                                    onToggle = { viewModel.toggleMyBotsExpanded() },
+                                    modifier = Modifier.animateItem()
+                                )
                             }
                         }
-                        
+
                         if (showMyBots && uiState.myBotsExpanded) {
                             items(
                                 items = uiState.myBots,
@@ -282,7 +271,6 @@ fun ContactsScreen(
                                 ContactItem(
                                     contact = contact,
                                     onClick = {
-                                        // 打开机器人管理界面
                                         val intent = Intent(context, com.yhchat.canary.ui.bot.BotManagementActivity::class.java).apply {
                                             putExtra("botId", contact.chatId)
                                             putExtra("botName", contact.name)

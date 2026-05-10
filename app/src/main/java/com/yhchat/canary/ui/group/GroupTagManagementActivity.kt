@@ -185,9 +185,9 @@ fun GroupTagManagementScreen(
                     )
                 }
                 else -> {
-                    if (uiState.sortError != null) {
+                    uiState.sortError?.let { sortError ->
                         Text(
-                            text = uiState.sortError,
+                            text = sortError,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),

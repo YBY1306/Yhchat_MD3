@@ -36,6 +36,9 @@ class PostDetailViewModel @Inject constructor(
     private val _commentListState = MutableStateFlow(CommentListState())
     val commentListState: StateFlow<CommentListState> = _commentListState.asStateFlow()
 
+    private val _followingBoardListState = MutableStateFlow(BoardListState())
+    val followingBoardListState: StateFlow<BoardListState> = _followingBoardListState.asStateFlow()
+
     private val _communityReportState = MutableStateFlow(CommunityReportState())
     val communityReportState: StateFlow<CommunityReportState> = _communityReportState.asStateFlow()
     
@@ -405,6 +408,119 @@ class PostDetailViewModel @Inject constructor(
     fun clearError() {
         _postDetailState.value = _postDetailState.value.copy(error = null)
         _commentListState.value = _commentListState.value.copy(error = null)
+        _followingBoardListState.value = _followingBoardListState.value.copy(error = null)
+    }
+
+    fun loadFollowingBoardsWithToken() {
+        viewModelScope.launch {
+            _followingBoardListState.value = _followingBoardListState.value.copy(isLoading = true, error = null)
+            try {
+                val token = tokenRepository.getTokenSync()
+                if (token.isNullOrBlank()) {
+                    _followingBoardListState.value = _followingBoardListState.value.copy(
+                        isLoading = false,
+                        error = "未登录"
+                    )
+                    return@launch
+                }
+
+                communityRepository.getFollowingBoardList(
+                    token = token,
+                    typ = 1,
+                    size = 1000,
+                    page = 1
+                ).fold(
+                    onSuccess = { response ->
+                        _followingBoardListState.value = _followingBoardListState.value.copy(
+                            isLoading = false,
+                            boards = response.data.boards,
+                            total = response.data.total,
+                            currentPage = 1,
+                            hasMore = false,
+                            error = null
+                        )
+                    },
+                    onFailure = { error ->
+                        _followingBoardListState.value = _followingBoardListState.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "加载关注分区失败"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _followingBoardListState.value = _followingBoardListState.value.copy(
+                    isLoading = false,
+                    error = "获取登录信息失败: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun movePostWithToken(
+        postId: Int,
+        targetBaId: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val token = tokenRepository.getTokenSync()
+                if (token.isNullOrBlank()) {
+                    onError("未登录")
+                    return@launch
+                }
+
+                communityRepository.movePost(token, postId, targetBaId).fold(
+                    onSuccess = {
+                        loadPostDetail(token, postId, isRefresh = true)
+                        onSuccess()
+                    },
+                    onFailure = { error ->
+                        val msg = error.message ?: "移动文章失败"
+                        _postDetailState.value = _postDetailState.value.copy(error = msg)
+                        onError(msg)
+                    }
+                )
+            } catch (e: Exception) {
+                onError("移动文章失败: ${e.message}")
+            }
+        }
+    }
+
+    fun togglePostStickyWithToken(
+        postId: Int,
+        sticky: Boolean,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val token = tokenRepository.getTokenSync()
+                if (token.isNullOrBlank()) {
+                    onError("未登录")
+                    return@launch
+                }
+
+                communityRepository.setPostSticky(token, postId).fold(
+                    onSuccess = {
+                        _postDetailState.value = _postDetailState.value.copy(
+                            post = _postDetailState.value.post?.copy(
+                                isSticky = if (sticky) 1 else 0
+                            )
+                        )
+                        loadPostDetail(token, postId, isRefresh = true)
+                        onSuccess()
+                    },
+                    onFailure = { error ->
+                        val msg = error.message ?: if (sticky) "置顶文章失败" else "取消置顶失败"
+                        _postDetailState.value = _postDetailState.value.copy(error = msg)
+                        onError(msg)
+                    }
+                )
+            } catch (e: Exception) {
+                onError((if (sticky) "置顶文章失败" else "取消置顶失败") + ": ${e.message}")
+            }
+        }
     }
 
     fun clearCommunityReportState() {

@@ -209,6 +209,24 @@ fun PostItem(
                 }
                 
                 Spacer(modifier = Modifier.weight(1f))
+
+                if (post.isSticky != 0) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = "置顶",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+
+                if (post.isSticky != 0 && post.isVip == 1) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
                 
                 // VIP标识
                 if (post.isVip == 1) {

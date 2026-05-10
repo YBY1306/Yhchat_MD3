@@ -7,6 +7,14 @@ on:
         description: '自定义发布 tag（留空则默认使用 build-<commit_hash>）'
         required: false
         default: ''
+      last_tag:
+        description: '更新日志起始 tag/ref（可选，例如 v0.0.21-5）'
+        required: false
+        default: ''
+      latest_tag:
+        description: '更新日志结束 tag/ref（可选，例如 experimental）'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -152,6 +160,8 @@ jobs:
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           INPUT_TAG="${{ github.event.inputs.release_tag }}"
+          LAST_TAG_INPUT="${{ github.event.inputs.last_tag }}"
+          LATEST_TAG_INPUT="${{ github.event.inputs.latest_tag }}"
           VAR_TAG="${{ vars.RELEASE_TAG }}"
 
           if [ -n "$INPUT_TAG" ]; then
@@ -166,8 +176,13 @@ jobs:
           WITH_LIVE_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withLive-release.apk"
           BEFORE_SHA="${{ github.event.before }}"
           EMPTY_BEFORE="0000000000000000000000000000000000000000"
+          FULL_CHANGELOG_LINE=""
 
-          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "$EMPTY_BEFORE" ]; then
+          if [ -n "$LAST_TAG_INPUT" ] && [ -n "$LATEST_TAG_INPUT" ]; then
+            CHANGELOG=$(git log --format='- %s' "${LAST_TAG_INPUT}..${LATEST_TAG_INPUT}")
+            COMMIT_LIST=$(git log --format='- `%h` %s (%an)' "${LAST_TAG_INPUT}..${LATEST_TAG_INPUT}")
+            FULL_CHANGELOG_LINE="**Full Changelog**: https://github.com/${{ github.repository }}/compare/${LAST_TAG_INPUT}...${LATEST_TAG_INPUT}"
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "$EMPTY_BEFORE" ]; then
             CHANGELOG=$(git log --format='- %s' "${BEFORE_SHA}..HEAD")
             COMMIT_LIST=$(git log --format='- `%h` %s (%an)' "${BEFORE_SHA}..HEAD")
           else
@@ -202,6 +217,8 @@ jobs:
 
           ## Commit List
           ${COMMIT_LIST}
+
+          ${FULL_CHANGELOG_LINE}
           EOF
 
       - name: Create Release

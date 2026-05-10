@@ -874,6 +874,18 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: DeletePostRequest
     ): Response<ApiStatus>
+
+    @POST("v1/community/posts/post-move")
+    suspend fun movePost(
+        @Header("token") token: String,
+        @Body request: MovePostRequest
+    ): Response<ApiStatus>
+
+    @POST("v1/community/posts/edit-sticky")
+    suspend fun editPostSticky(
+        @Header("token") token: String,
+        @Body request: PostStickyRequest
+    ): Response<ApiStatus>
     
     @POST("v1/community/search")
     suspend fun searchCommunity(
@@ -1763,6 +1775,18 @@ data class EditPostRequest(
  * 删除文章请求
  */
 data class DeletePostRequest(
+    @SerializedName("postId")
+    val postId: Int
+)
+
+data class MovePostRequest(
+    @SerializedName("baId")
+    val baId: Int,
+    @SerializedName("id")
+    val id: Int
+)
+
+data class PostStickyRequest(
     @SerializedName("postId")
     val postId: Int
 )

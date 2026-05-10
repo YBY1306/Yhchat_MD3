@@ -122,6 +122,9 @@ data class CommunityPost(
     @SerializedName("isReward")
     val isReward: Int,
     
+    @SerializedName("isSticky")
+    val isSticky: Int = 0,
+    
     @SerializedName("score")
     val score: Double? = null,
     

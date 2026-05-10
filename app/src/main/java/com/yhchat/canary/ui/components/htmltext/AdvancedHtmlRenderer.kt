@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +69,16 @@ fun AdvancedHtmlRenderer(
             )
         }
     }
+}
+
+private fun normalizeTextColorForTheme(
+    color: Color?,
+    defaultColor: Color,
+    isDarkTheme: Boolean
+): Color? {
+    if (color == null) return null
+    if (!isDarkTheme) return color
+    return if (color.luminance() < 0.18f) defaultColor else color
 }
 
 @Composable
@@ -149,21 +160,31 @@ private fun RenderHtmlNode(
     onImageClick: ((String) -> Unit)?,
     onLinkClick: ((String) -> Unit)?
 ) {
+    val defaultTextColor = MaterialTheme.colorScheme.onSurface
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val normalizedInheritedText = inheritedText.copy(
+        color = normalizeTextColorForTheme(
+            color = inheritedText.color,
+            defaultColor = defaultTextColor,
+            isDarkTheme = isDarkTheme
+        )
+    )
+
     when (node) {
         is HtmlNode.Text -> {
             Text(
-                text = normalizeHtmlText(node.text, inheritedText.whiteSpace),
-                style = inheritedText.toComposeTextStyle()
+                text = normalizeHtmlText(node.text, normalizedInheritedText.whiteSpace),
+                style = normalizedInheritedText.toComposeTextStyle()
             )
         }
         is HtmlNode.Element -> {
             when (node.tag) {
                 "img" -> HtmlImageNode(node, onImageClick)
-                "details" -> HtmlDetailsNode(node, inheritedText, onImageClick, onLinkClick)
-                "blockquote" -> HtmlBlockquoteNode(node, inheritedText, onImageClick, onLinkClick)
-                "ul", "ol" -> HtmlListNode(node, inheritedText, onImageClick, onLinkClick)
-                "table" -> HtmlTableNode(node, inheritedText, onImageClick, onLinkClick)
-                else -> HtmlGenericNode(node, inheritedText, onImageClick, onLinkClick)
+                "details" -> HtmlDetailsNode(node, normalizedInheritedText, onImageClick, onLinkClick)
+                "blockquote" -> HtmlBlockquoteNode(node, normalizedInheritedText, onImageClick, onLinkClick)
+                "ul", "ol" -> HtmlListNode(node, normalizedInheritedText, onImageClick, onLinkClick)
+                "table" -> HtmlTableNode(node, normalizedInheritedText, onImageClick, onLinkClick)
+                else -> HtmlGenericNode(node, normalizedInheritedText, onImageClick, onLinkClick)
             }
         }
     }
@@ -328,7 +349,12 @@ private fun buildInlineAnnotated(
     nodes: List<HtmlNode>,
     inheritedText: CssStyle
 ): Pair<AnnotatedString, TextStyle> {
-    val baseStyle = inheritedText.toComposeTextStyle()
+    val defaultTextColor = MaterialTheme.colorScheme.onSurface
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val normalizedInheritedText = inheritedText.copy(
+        color = normalizeTextColorForTheme(inheritedText.color, defaultTextColor, isDarkTheme)
+    )
+    val baseStyle = normalizedInheritedText.toComposeTextStyle()
     val linkColor = MaterialTheme.colorScheme.primary
 
     val annotated = buildAnnotatedString {
@@ -336,7 +362,10 @@ private fun buildInlineAnnotated(
             when (node) {
                 is HtmlNode.Text -> append(normalizeHtmlText(node.text, parentStyle.whiteSpace))
                 is HtmlNode.Element -> {
-                    val merged = node.style.mergeText(parentStyle)
+                    val mergedRaw = node.style.mergeText(parentStyle)
+                    val merged = mergedRaw.copy(
+                        color = normalizeTextColorForTheme(mergedRaw.color, defaultTextColor, isDarkTheme)
+                    )
                     when (node.tag) {
                         "strong", "b" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                             node.children.forEach { appendNode(it, merged.copy(fontWeight = FontWeight.Bold)) }
@@ -383,7 +412,7 @@ private fun buildInlineAnnotated(
             }
         }
 
-        nodes.forEach { appendNode(it, inheritedText) }
+        nodes.forEach { appendNode(it, normalizedInheritedText) }
     }
 
     return annotated to baseStyle
@@ -399,7 +428,12 @@ private fun buildInlineAnnotatedWithLink(
     inheritedText: CssStyle,
     href: String
 ): Pair<AnnotatedString, TextStyle> {
-    val baseStyle = inheritedText.toComposeTextStyle()
+    val defaultTextColor = MaterialTheme.colorScheme.onSurface
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val normalizedInheritedText = inheritedText.copy(
+        color = normalizeTextColorForTheme(inheritedText.color, defaultTextColor, isDarkTheme)
+    )
+    val baseStyle = normalizedInheritedText.toComposeTextStyle()
     val linkColor = MaterialTheme.colorScheme.primary
 
     val annotated = buildAnnotatedString {
@@ -407,7 +441,10 @@ private fun buildInlineAnnotatedWithLink(
             when (node) {
                 is HtmlNode.Text -> append(normalizeHtmlText(node.text, parentStyle.whiteSpace))
                 is HtmlNode.Element -> {
-                    val merged = node.style.mergeText(parentStyle)
+                    val mergedRaw = node.style.mergeText(parentStyle)
+                    val merged = mergedRaw.copy(
+                        color = normalizeTextColorForTheme(mergedRaw.color, defaultTextColor, isDarkTheme)
+                    )
                     when (node.tag) {
                         "strong", "b" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                             node.children.forEach { appendNode(it, merged.copy(fontWeight = FontWeight.Bold)) }
@@ -459,11 +496,16 @@ private fun buildInlineAnnotatedWithLink(
         pushStringAnnotation(tag = "URL", annotation = href)
         withStyle(
             SpanStyle(
-                color = inheritedText.color ?: linkColor,
-                textDecoration = inheritedText.textDecoration ?: TextDecoration.Underline
+                color = normalizedInheritedText.color ?: linkColor,
+                textDecoration = normalizedInheritedText.textDecoration ?: TextDecoration.Underline
             )
         ) {
-            nodes.forEach { appendNode(it, inheritedText.copy(color = inheritedText.color ?: linkColor)) }
+            nodes.forEach {
+                appendNode(
+                    it,
+                    normalizedInheritedText.copy(color = normalizedInheritedText.color ?: linkColor)
+                )
+            }
         }
         pop()
     }

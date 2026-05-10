@@ -1,9 +1,6 @@
 # Experimental
 在canary分支上进行更激进的修改
 
-# 声明
-此项目（Yhchat_MD3）是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。
-
 <p align="center">
   <img src="https://img.shields.io/badge/Kotlin-2.2.21-7F52FF?logo=kotlin" alt="Kotlin"/>
   <img src="https://img.shields.io/badge/Jetpack%20Compose-1.9.0-4285F4?logo=android" alt="Compose"/>
@@ -13,6 +10,7 @@
 </p>
 
 ![image](https://github.com/user-attachments/assets/96b2dc98-0368-443c-bcb6-aa64f6eafe4f)
+
 
 # 已经实现的功能：
 - [x] 手机号/邮箱/用户Token登录
@@ -63,6 +61,8 @@
 - 更强壮的html解析器
 - 查找引用消息
 
+> 最新构建请看[Actions](https://github.com/Kauid323/Yhchat_MD3/actions)，点击[Release](https://github.com/Kauid323/Yhchat_MD3/releases)下载，或[加入云湖群聊](https://yhfx.jwznb.com/share?key=csahOdGjPUYX&ts=1778391867)，使用高速下载通道
+
 # 特别感谢
 ### [yhchatAPI](https://github.com/yh-Tpdev/yhchatAPI)
 ### [FlymeLive](https://github.com/wsu2059q/FlymeLive)
@@ -74,3 +74,5 @@
 
 以及项目里用到的所有库
 
+# 声明
+此项目（Yhchat_MD3）是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。

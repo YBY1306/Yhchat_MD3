@@ -683,6 +683,53 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    suspend fun movePost(
+        token: String,
+        postId: Int,
+        targetBaId: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = MovePostRequest(baId = targetBaId, id = postId)
+            val response = apiService.movePost(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setPostSticky(
+        token: String,
+        postId: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = PostStickyRequest(postId = postId)
+            val response = apiService.editPostSticky(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * 获取草稿列表
      * 草稿数据混在 my-post-list 里，按 isDraft=1 过滤

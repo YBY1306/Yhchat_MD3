@@ -30,11 +30,11 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.*
@@ -1009,6 +1009,7 @@ fun PostDetailScreen(
     // 获取状态
     val postDetailState by viewModel.postDetailState.collectAsState()
     val commentListState by viewModel.commentListState.collectAsState()
+    val followingBoardListState by viewModel.followingBoardListState.collectAsState()
     val communityReportState by viewModel.communityReportState.collectAsState()
     
     // 评论输入状态
@@ -1022,17 +1023,27 @@ fun PostDetailScreen(
     var showShareDialog by remember { mutableStateOf(false) }
     // 分享给好友BottomSheet状态
     var showShareToFriendSheet by remember { mutableStateOf(false) }
+    var showMoveBoardDialog by remember { mutableStateOf(false) }
+    var pendingMoveBoard by remember { mutableStateOf<CommunityBoard?>(null) }
+    var topMenuExpanded by remember { mutableStateOf(false) }
     
     // Token状态
     var currentToken by remember { mutableStateOf("") }
     var isTokenLoaded by remember { mutableStateOf(false) }
     var reportTarget by remember { mutableStateOf<CommunityReportTarget?>(null) }
     
-    // 上下文菜单状态
-    var showContextMenu by remember { mutableStateOf(false) }
     // 删除确认对话框状态
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    val canManagePost = postDetailState.post != null &&
+            (postDetailState.post?.senderId == postDetailState.currentUserId || postDetailState.isAdmin == 1)
+
+    LaunchedEffect(showMoveBoardDialog) {
+        if (showMoveBoardDialog) {
+            viewModel.loadFollowingBoardsWithToken()
+        }
+    }
     
     // 加载数据
     LaunchedEffect(postId) {
@@ -1121,20 +1132,87 @@ fun PostDetailScreen(
                     }
                 },
                 actions = {
-                    // 仅当是作者或管理员时显示编辑按钮
-                    if (postDetailState.post != null && (postDetailState.post?.senderId == postDetailState.currentUserId || postDetailState.isAdmin == 1)) {
-                        IconButton(onClick = { showContextMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "管理文章"
+                    IconButton(onClick = { topMenuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多操作"
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = topMenuExpanded,
+                        onDismissRequest = { topMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("分享") },
+                            onClick = {
+                                topMenuExpanded = false
+                                showShareDialog = true
+                            }
+                        )
+                        if (canManagePost) {
+                            DropdownMenuItem(
+                                text = { Text("修改") },
+                                onClick = {
+                                    topMenuExpanded = false
+                                    postDetailState.post?.let { post ->
+                                        val intent = Intent(context, EditPostActivity::class.java).apply {
+                                            putExtra("post_id", post.id)
+                                            putExtra("token", if (isTokenLoaded) currentToken else "")
+                                            putExtra("original_title", post.title)
+                                            putExtra("original_content", post.content)
+                                            putExtra("content_type", post.contentType)
+                                            putExtra("board_id", post.baId)
+                                            putExtra("board_name", postDetailState.board?.name ?: "")
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("移动文章") },
+                                onClick = {
+                                    topMenuExpanded = false
+                                    showMoveBoardDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if ((postDetailState.post?.isSticky ?: 0) == 1) {
+                                            "取消置顶"
+                                        } else {
+                                            "置顶文章"
+                                        }
+                                    )
+                                },
+                                onClick = {
+                                    topMenuExpanded = false
+                                    val post = postDetailState.post ?: return@DropdownMenuItem
+                                    val sticky = post.isSticky != 1
+                                    viewModel.togglePostStickyWithToken(
+                                        postId = post.id,
+                                        sticky = sticky,
+                                        onSuccess = {
+                                            Toast.makeText(
+                                                context,
+                                                if (sticky) "置顶成功" else "已取消置顶",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        },
+                                        onError = { msg ->
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("删除文章", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    topMenuExpanded = false
+                                    showDeleteDialog = true
+                                }
                             )
                         }
-                    }
-                    IconButton(onClick = { showShareDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "分享"
-                        )
                     }
                 }
             )
@@ -1350,29 +1428,92 @@ fun PostDetailScreen(
                 }
             }
             
-            // 上下文菜单
-            if (showContextMenu) {
-                PostContextMenu(
-                    onDismiss = { showContextMenu = false },
-                    onEdit = {
-                        showContextMenu = false
-                        // 跳转到编辑文章Activity
-                        postDetailState.post?.let { post ->
-                            val intent = Intent(context, EditPostActivity::class.java).apply {
-                                putExtra("post_id", post.id)
-                                putExtra("token", if (isTokenLoaded) currentToken else "")
-                                putExtra("original_title", post.title)
-                                putExtra("original_content", post.content)
-                                putExtra("content_type", post.contentType)
-                                putExtra("board_id", post.baId)
-                                putExtra("board_name", postDetailState.board?.name ?: "")
+            if (showMoveBoardDialog) {
+                AlertDialog(
+                    onDismissRequest = { showMoveBoardDialog = false },
+                    title = { Text("移动文章") },
+                    text = {
+                        when {
+                            followingBoardListState.isLoading -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
                             }
-                            context.startActivity(intent)
+
+                            followingBoardListState.error != null -> {
+                                Text(
+                                    text = followingBoardListState.error ?: "加载关注分区失败",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+
+                            followingBoardListState.boards.isEmpty() -> {
+                                Text("暂无已关注分区")
+                            }
+
+                            else -> {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 320.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(followingBoardListState.boards) { board ->
+                                        Text(
+                                            text = board.name,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { pendingMoveBoard = board }
+                                                .padding(vertical = 10.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     },
-                    onDelete = {
-                        showContextMenu = false
-                        showDeleteDialog = true
+                    confirmButton = {
+                        TextButton(onClick = { showMoveBoardDialog = false }) {
+                            Text("关闭")
+                        }
+                    }
+                )
+            }
+
+            pendingMoveBoard?.let { board ->
+                AlertDialog(
+                    onDismissRequest = { pendingMoveBoard = null },
+                    title = { Text("确认移动") },
+                    text = { Text("确认将文章移动到「${board.name}」吗？") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                pendingMoveBoard = null
+                                viewModel.movePostWithToken(
+                                    postId = postId,
+                                    targetBaId = board.id,
+                                    onSuccess = {
+                                        showMoveBoardDialog = false
+                                        Toast.makeText(context, "移动成功", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { msg ->
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        ) {
+                            Text("确认")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingMoveBoard = null }) {
+                            Text("取消")
+                        }
                     }
                 )
             }

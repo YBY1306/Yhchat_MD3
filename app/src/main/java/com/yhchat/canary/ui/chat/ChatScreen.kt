@@ -1333,8 +1333,8 @@ fun ChatScreen(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSendMessage = {
-                    if (inputText.isNotBlank()) {
-                        val messageText = inputText.trim()
+                    if (inputText.isNotEmpty()) {
+                        val messageText = inputText
                         
                         // 解析@用户，提取用户ID列表
                         val mentionedIdsList = mutableListOf<String>()

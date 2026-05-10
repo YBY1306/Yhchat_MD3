@@ -872,6 +872,22 @@ private fun HtmlCollapsedPreview(
     onImageClick: (String) -> Unit,
     onLinkClick: (String) -> Unit
 ) {
+    val plainTextLength = remember(html) {
+        html.replace(Regex("<[^>]+>"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .length
+    }
+    val showBottomFade = remember(html, plainTextLength) {
+        plainTextLength > 80 ||
+            html.contains("<img", ignoreCase = true) ||
+            html.contains("<table", ignoreCase = true) ||
+            html.contains("<ul", ignoreCase = true) ||
+            html.contains("<ol", ignoreCase = true) ||
+            html.contains("<blockquote", ignoreCase = true) ||
+            html.contains("<br", ignoreCase = true)
+    }
+
     Box(
         modifier = modifier
             .heightIn(max = 200.dp)
@@ -882,22 +898,24 @@ private fun HtmlCollapsedPreview(
             html = html,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
+                .padding(bottom = if (showBottomFade) 8.dp else 0.dp),
             onImageClick = onImageClick,
             onLinkClick = onLinkClick
         )
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, bubbleColor.copy(alpha = 0.95f))
+        if (showBottomFade) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, bubbleColor.copy(alpha = 0.95f))
+                        )
                     )
-                )
-        )
+            )
+        }
     }
 }
 

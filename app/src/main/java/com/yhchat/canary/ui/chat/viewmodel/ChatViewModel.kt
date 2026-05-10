@@ -1278,10 +1278,12 @@ class ChatViewModel @Inject constructor(
             Log.d(tag, "Created base message for stream at index $insertIndex")
         } else {
             // 消息已存在，追加内容
-            val accumulatedContent = streamingMessages.getOrDefault(event.msgId, "") + event.content
-            streamingMessages[event.msgId] = accumulatedContent
-            
             val existingMessage = _messages[existingIndex]
+            val baseContent = streamingMessages[event.msgId] ?: existingMessage.content.text.orEmpty()
+            val accumulatedContent = baseContent + event.content
+            streamingMessages[event.msgId] = accumulatedContent
+            streamingMessageSenders.putIfAbsent(event.msgId, existingMessage.sender)
+
             val updatedMessage = existingMessage.copy(
                 content = existingMessage.content.copy(text = accumulatedContent)
             )
@@ -1690,7 +1692,7 @@ class ChatViewModel @Inject constructor(
             onError("Chat not initialized")
             return
         }
-        if (text.isBlank() && commandId == null) {
+        if (text.isEmpty() && commandId == null) {
             Log.w(tag, "Cannot send empty message without command")
             onError("Cannot send empty message")
             return

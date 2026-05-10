@@ -76,8 +76,14 @@ private fun normalizeTextColorForTheme(
     isDarkTheme: Boolean
 ): Color? {
     if (color == null) return null
-    if (!isDarkTheme) return color
-    return if (color.luminance() < 0.18f) defaultColor else color
+    if (color.alpha < 0.2f) return defaultColor
+
+    val luminance = color.luminance()
+    return if (isDarkTheme) {
+        if (luminance < 0.18f) defaultColor else color
+    } else {
+        if (luminance > 0.90f) defaultColor else color
+    }
 }
 
 @Composable

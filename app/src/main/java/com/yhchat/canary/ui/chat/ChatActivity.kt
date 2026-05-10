@@ -200,7 +200,8 @@ class ChatActivity : BaseActivity() {
                                 videoUriToSend = null
                             },
                             searchTargetMsgId = searchTargetMsgId,
-                            searchTargetMsgSeq = searchTargetMsgSeq
+                            searchTargetMsgSeq = searchTargetMsgSeq,
+                            isInChatActivity=true,
                         )
                     }
                 }

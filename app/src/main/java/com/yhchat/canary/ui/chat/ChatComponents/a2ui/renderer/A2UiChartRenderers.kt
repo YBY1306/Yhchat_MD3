@@ -43,8 +43,8 @@ import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiChartPoint
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiPaintElement
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiPieChartSlice
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiHexColor
-import kotlin.math.sqrt
 import java.util.Locale
+import kotlin.math.sqrt
 
 @Composable
 internal fun A2UiLineChart(

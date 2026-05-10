@@ -1,14 +1,13 @@
 package com.yhchat.canary.ui.components
 
 import android.os.Build
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.JavascriptInterface
-import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,8 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.viewinterop.AndroidView
 import com.yhchat.canary.utils.UnifiedLinkHandler
 

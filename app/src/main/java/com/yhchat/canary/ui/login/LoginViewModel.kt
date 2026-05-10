@@ -6,8 +6,8 @@ import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.CaptchaData
 import com.yhchat.canary.data.model.LoginData
 import com.yhchat.canary.data.repository.AccountRepository
-import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

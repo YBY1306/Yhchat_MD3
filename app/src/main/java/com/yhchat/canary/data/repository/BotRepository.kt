@@ -3,17 +3,16 @@ package com.yhchat.canary.data.repository
 import android.util.Log
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.WebApiService
-import com.yhchat.canary.data.model.BaseResponse
 import com.yhchat.canary.data.model.BotIdRequest
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.BotLlmGroup
 import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingData
-import com.yhchat.canary.data.model.ChatRequest
-import yh_bot.Bot
+import com.yhchat.canary.data.model.StickyOperationRequest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import yh_bot.Bot
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -305,7 +304,7 @@ class BotRepository @Inject constructor(
 
             val response = apiService.getBotLlmRefParams(
                 token = token,
-                request = ChatRequest(chatId = chatId, chatType = chatType)
+                request = StickyOperationRequest(chatId = chatId, chatType = chatType)
             )
             if (response.isSuccessful) {
                 val body = response.body()

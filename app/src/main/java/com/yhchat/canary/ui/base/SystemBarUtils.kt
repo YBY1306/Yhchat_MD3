@@ -5,12 +5,12 @@ import android.graphics.Color
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 /**
  * 系统导航栏工具类

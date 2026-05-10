@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.model.CommunityGroup
 import com.yhchat.canary.data.repository.CommunityRepository
-import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.ConversationRepository
+import com.yhchat.canary.data.repository.FriendRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

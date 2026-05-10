@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.SearchData
-import com.yhchat.canary.data.repository.UserRepository
-import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.ConversationRepository
+import com.yhchat.canary.data.repository.FriendRepository
+import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -2,17 +2,17 @@ package com.yhchat.canary.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.os.Environment
 import android.net.Uri
-import android.content.ContentValues
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.provider.MediaStore
 import android.util.Log
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -23,15 +23,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import android.provider.MediaStore
-import android.webkit.MimeTypeMap
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 /**
  * 文件下载服务

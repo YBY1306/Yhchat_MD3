@@ -7,7 +7,10 @@ import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.local.CachedDiscoverData
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.RecommendBot
+import com.yhchat.canary.data.model.RecommendCategoryRequest
+import com.yhchat.canary.data.model.RecommendGroup
+import com.yhchat.canary.data.model.RecommendGroupListRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -6,10 +6,11 @@ import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.WebApiService
 import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.UserHomepageInfo
-import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.TokenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 

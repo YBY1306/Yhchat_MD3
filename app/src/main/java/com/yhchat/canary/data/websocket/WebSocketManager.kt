@@ -4,8 +4,13 @@ import android.util.Log
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.repository.ConversationRepository
 import com.yhchat.canary.data.repository.MessageRepository
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 

@@ -8,17 +8,14 @@ import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.local.CachedProfileData
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
-import yh_user.User as ProtoUser
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Response
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import yh_user.User as ProtoUser
 
 /**
  * 用户数据仓库

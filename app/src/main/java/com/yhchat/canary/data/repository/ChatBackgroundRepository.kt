@@ -1,6 +1,5 @@
 package com.yhchat.canary.data.repository
 
-import android.util.Log
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.ChatBackground
 import com.yhchat.canary.data.model.SetChatBackgroundRequest

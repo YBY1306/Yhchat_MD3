@@ -1,7 +1,6 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import androidx.compose.animation.*
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -18,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.BotLlmParamValue
-import yh_bot.Bot
 import com.yhchat.canary.proto.group.Bot_data
-import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.chat.BotBoardContent
+import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import yh_bot.Bot
 import com.yhchat.canary.ui.chat.GroupBotBoardsSection as GroupBotBoardsSectionOriginal
 
 /**

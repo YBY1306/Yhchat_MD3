@@ -2,6 +2,8 @@ package com.yhchat.canary.ui.community
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.model.*
@@ -14,8 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import javax.inject.Inject
 
 /**

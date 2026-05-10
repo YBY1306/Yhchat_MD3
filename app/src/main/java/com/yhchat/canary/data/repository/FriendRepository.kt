@@ -1,13 +1,11 @@
 package com.yhchat.canary.data.repository
 
 import android.util.Log
-import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.NoNotifyRequest
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
 import com.yhchat.canary.proto.friend.FriendProto
-import yh_user.User
 import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody

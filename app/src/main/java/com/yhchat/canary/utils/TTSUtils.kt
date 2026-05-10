@@ -1,7 +1,6 @@
 package com.yhchat.canary.utils
 
 import android.content.Context
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
 import android.speech.tts.TextToSpeech
@@ -11,9 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.*
+import java.util.Locale
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * 文字转语音 (TTS) 工具类

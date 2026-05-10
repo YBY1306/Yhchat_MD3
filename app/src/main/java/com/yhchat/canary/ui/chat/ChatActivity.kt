@@ -1,29 +1,28 @@
 package com.yhchat.canary.ui.chat
 
-import android.content.Intent
-import android.os.Bundle
-import android.os.Build
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.core.view.WindowCompat
-import dagger.hilt.android.AndroidEntryPoint
 import android.content.Context
-import androidx.activity.ComponentActivity
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import androidx.activity.compose.setContent
-import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
-import androidx.compose.ui.Alignment
+import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class ChatActivity : BaseActivity() {

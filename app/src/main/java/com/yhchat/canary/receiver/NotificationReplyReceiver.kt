@@ -9,8 +9,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import com.yhchat.canary.R
 import com.yhchat.canary.data.di.RepositoryFactory
-import com.yhchat.canary.data.repository.MessageRepository
-import com.yhchat.canary.data.repository.TokenRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

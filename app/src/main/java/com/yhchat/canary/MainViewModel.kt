@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
-import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

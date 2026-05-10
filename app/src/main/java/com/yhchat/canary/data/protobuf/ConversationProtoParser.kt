@@ -1,8 +1,8 @@
 package com.yhchat.canary.data.protobuf
 
-import com.yhchat.canary.data.model.Conversation as ModelConversation
 import com.yhchat.canary.data.model.AtData
 import yh_conversation.Conversation
+import com.yhchat.canary.data.model.Conversation as ModelConversation
 
 /**
  * Conversation ProtoBuf解析器

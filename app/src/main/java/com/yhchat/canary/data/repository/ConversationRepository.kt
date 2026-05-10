@@ -1,11 +1,11 @@
 package com.yhchat.canary.data.repository
 
+import android.util.Log
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.DismissNotificationRequest
 import com.yhchat.canary.data.model.RemoveConversationRequest
 import com.yhchat.canary.data.protobuf.ConversationProtoParser
-import android.util.Log
 import javax.inject.Inject
 
 /**

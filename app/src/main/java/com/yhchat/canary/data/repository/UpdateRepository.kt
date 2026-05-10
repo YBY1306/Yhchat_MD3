@@ -7,7 +7,8 @@ import com.yhchat.canary.data.model.UpdateInfo
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 

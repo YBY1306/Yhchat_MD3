@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.model.Draft
-import java.util.*
+import java.util.UUID
 
 /**
  * 草稿存储管理类

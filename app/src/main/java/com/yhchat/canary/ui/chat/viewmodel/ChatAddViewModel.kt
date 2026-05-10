@@ -3,9 +3,11 @@ package com.yhchat.canary.ui.chat
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.model.*
-import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.data.model.ChatAddInfo
+import com.yhchat.canary.data.model.ChatAddType
+import com.yhchat.canary.data.model.UserHomepageInfo
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -4,18 +4,20 @@ package com.yhchat.canary.ui.conversation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.local.ReadPositionStore
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.StickyData
-import com.yhchat.canary.data.repository.ConversationRepository
-import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.CacheRepository
-import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.data.repository.ConversationRepository
 import com.yhchat.canary.data.repository.MessageRepository
-import com.yhchat.canary.data.websocket.WebSocketManager
+import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.websocket.MessageEvent
-import com.yhchat.canary.data.local.ReadPositionStore
+import com.yhchat.canary.data.websocket.WebSocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 

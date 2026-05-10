@@ -1,7 +1,5 @@
 package com.yhchat.canary.data.model
 
-import com.google.gson.annotations.SerializedName
-
 /**
  * WebSocket消息包装类
  */

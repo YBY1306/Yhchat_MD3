@@ -9,19 +9,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.local.ReadPositionStore
 import com.yhchat.canary.data.model.BotLlmParamValue
 import com.yhchat.canary.data.model.BotLlmRefParamItem
+import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.data.model.MsgForwardReceive
+import com.yhchat.canary.data.repository.BlocklistRepository
 import com.yhchat.canary.data.repository.GroupRepository
 import com.yhchat.canary.data.repository.MessageRepository
 import com.yhchat.canary.data.repository.SendMessageMedia
 import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.BlocklistRepository
-import com.yhchat.canary.data.websocket.WebSocketManager
 import com.yhchat.canary.data.websocket.MessageEvent
-import com.yhchat.canary.data.local.ReadPositionStore
+import com.yhchat.canary.data.websocket.WebSocketManager
 import com.yhchat.canary.proto.group.Bot_data
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,12 +31,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import kotlinx.coroutines.Job
-import com.yhchat.canary.data.model.GroupDetail
-import com.yhchat.canary.data.model.MsgForwardReceive
 import yh_bot.Bot
 import java.io.File
+import javax.inject.Inject
 
 data class ChatUiState(
     val isLoading: Boolean = false,

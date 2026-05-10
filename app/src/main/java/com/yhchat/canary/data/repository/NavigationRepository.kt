@@ -3,7 +3,6 @@ package com.yhchat.canary.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.model.NavigationConfig
 import com.yhchat.canary.data.model.NavigationItem
 import dagger.hilt.android.qualifiers.ApplicationContext

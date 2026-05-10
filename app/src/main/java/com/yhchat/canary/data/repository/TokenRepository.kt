@@ -4,9 +4,9 @@ import android.content.Context
 import com.yhchat.canary.data.local.SecureTokenStorage
 import com.yhchat.canary.data.local.UserToken
 import com.yhchat.canary.data.local.UserTokenDao
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
 
 /**
  * Token存储仓库 - 使用EncryptedSharedPreferences替代SQLCipher

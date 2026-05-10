@@ -1,25 +1,23 @@
 package com.yhchat.canary.ui.group
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.ChatSearchMessage
-import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.MessageRepository
+import com.yhchat.canary.data.repository.TokenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import javax.inject.Inject
-import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import javax.inject.Inject
 
 data class ChatSearchState(
     val isLoading: Boolean = false,

@@ -1,10 +1,10 @@
 package com.yhchat.canary.ui.base
 
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowCompat
-import android.graphics.Color
 
 /**
  * 基础Activity类

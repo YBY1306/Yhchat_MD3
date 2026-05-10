@@ -4,7 +4,6 @@ import android.content.Context
 import com.yhchat.canary.data.model.DownloadStatus
 import com.yhchat.canary.data.model.WebDAVDownloadTask
 import com.yhchat.canary.data.model.WebDAVFile
-import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * 管理 WebDAV 下载任务的单例

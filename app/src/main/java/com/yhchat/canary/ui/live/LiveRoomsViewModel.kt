@@ -6,7 +6,6 @@ import com.yhchat.canary.data.model.LiveRoomItem
 import com.yhchat.canary.data.model.LiveRoomLaunchPayload
 import com.yhchat.canary.data.repository.LiveRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class LiveRoomsUiState(
     val rooms: List<LiveRoomItem> = emptyList(),

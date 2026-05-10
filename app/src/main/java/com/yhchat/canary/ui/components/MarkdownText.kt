@@ -45,18 +45,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
@@ -66,8 +66,6 @@ import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material3.Material3RichText
 import com.halilibo.richtext.ui.string.RichTextStringStyle
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
-import com.yhchat.canary.utils.*
-import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
@@ -78,7 +76,6 @@ import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CELL
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes.TABLE_SEPARATOR
 import org.intellij.markdown.parser.MarkdownParser
 import java.util.Collections
-import java.util.LinkedHashMap
 
 
 /**

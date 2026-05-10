@@ -2,10 +2,10 @@ package com.yhchat.canary.ui.group
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.repository.GroupTagRepository
-import com.yhchat.canary.data.repository.GroupRepository
-import com.yhchat.canary.data.repository.TagMemberInfo
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.data.repository.GroupRepository
+import com.yhchat.canary.data.repository.GroupTagRepository
+import com.yhchat.canary.data.repository.TagMemberInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

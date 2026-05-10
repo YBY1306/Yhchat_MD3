@@ -2,7 +2,9 @@ package com.yhchat.canary.data.repository
 
 import android.util.Log
 import com.yhchat.canary.data.api.ApiService
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.VipBenefit
+import com.yhchat.canary.data.model.VipProductListData
+import com.yhchat.canary.data.model.VipProductListRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject

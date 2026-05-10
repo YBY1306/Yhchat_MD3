@@ -1,10 +1,9 @@
 package com.yhchat.canary
 
-import android.app.Application
 import android.app.ActivityManager
+import android.app.Application
 import android.content.Context
 import android.os.Process
-import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner

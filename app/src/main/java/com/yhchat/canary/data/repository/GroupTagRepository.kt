@@ -2,7 +2,6 @@ package com.yhchat.canary.data.repository
 
 import android.util.Log
 import com.google.gson.Gson
-import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.*
 import com.yhchat.canary.proto.group.tag_member
 import com.yhchat.canary.proto.group.tag_member_send

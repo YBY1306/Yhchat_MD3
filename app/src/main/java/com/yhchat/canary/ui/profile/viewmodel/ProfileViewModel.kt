@@ -7,12 +7,10 @@ import com.yhchat.canary.data.model.SaveUserDataRequest
 import com.yhchat.canary.data.model.UserData
 import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.UserRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 个人资料界面的ViewModel

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,22 +26,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
-import com.yhchat.canary.data.model.RecommendGroup
 import com.yhchat.canary.data.model.RecommendBot
+import com.yhchat.canary.data.model.RecommendGroup
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.collectLatest
-import com.yhchat.canary.ui.components.rememberBooleanPreference
+import kotlinx.coroutines.launch
 
 /**
  * 发现界面

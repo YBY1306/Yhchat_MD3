@@ -8,10 +8,10 @@ import com.yhchat.canary.data.model.LiveJoinResponse
 import com.yhchat.canary.data.model.LiveRoomInfo
 import com.yhchat.canary.data.model.LiveRoomInfoRequest
 import com.yhchat.canary.data.model.LiveRoomItem
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class LiveRepository @Inject constructor(

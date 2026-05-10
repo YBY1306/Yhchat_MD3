@@ -22,11 +22,9 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
-import android.graphics.drawable.Icon
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
-import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.documentfile.provider.DocumentFile
+import androidx.media.app.NotificationCompat.MediaStyle
 import com.yhchat.canary.MainActivity
 import com.yhchat.canary.R
 import kotlinx.coroutines.*
@@ -34,7 +32,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 
 /**
  * 语音播放服务

@@ -4,15 +4,15 @@ import android.content.Context
 import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.local.CachedConversation
 import com.yhchat.canary.data.local.CachedMessage
-import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.MessageContent
 import com.yhchat.canary.data.model.MessageSender
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * 缓存仓库 - 管理本地加密数据库

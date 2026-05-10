@@ -5,19 +5,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import com.yhchat.canary.ui.base.BaseActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -33,8 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.proto.group.Bot_data
-import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.bot.BotDetailActivity
+import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 

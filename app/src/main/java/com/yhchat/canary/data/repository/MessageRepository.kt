@@ -6,7 +6,6 @@ import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
 import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 import javax.inject.Inject

@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.sticker
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.model.StickerPackDetail
 import com.yhchat.canary.data.model.StickerPackDetailData
 import com.yhchat.canary.data.repository.StickerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

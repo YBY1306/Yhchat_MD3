@@ -19,13 +19,12 @@ import org.intellij.markdown.ast.CompositeASTNode
 import org.intellij.markdown.ast.LeafASTNode
 import org.intellij.markdown.ast.findChildOfType
 import org.intellij.markdown.ast.getTextInNode
-import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.flavours.gfm.GFMElementTypes
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.intellij.markdown.html.entities.Entities
 import org.intellij.markdown.parser.MarkdownParser
 import java.util.Collections
-import java.util.LinkedHashMap
 
 internal data class TableAnnotatorSettings(
     val linkTextSpanStyle: TextLinkStyles,

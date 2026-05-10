@@ -3,14 +3,12 @@ package com.yhchat.canary.utils
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
-import android.text.Spannable
-import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
@@ -21,8 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.yhchat.canary.data.model.ChatAddInfo
 import com.yhchat.canary.data.model.ChatAddType
 import com.yhchat.canary.ui.chat.ChatAddActivity
-import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.community.BoardDetailActivity
+import com.yhchat.canary.ui.community.PostDetailActivity
 import java.util.regex.Pattern
 
 /**

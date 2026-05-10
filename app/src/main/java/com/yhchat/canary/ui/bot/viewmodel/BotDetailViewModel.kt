@@ -9,12 +9,12 @@ import com.yhchat.canary.data.repository.BotRepository
 import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.UserRepository
-import yh_bot.Bot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import yh_bot.Bot
 
 /**
  * 机器人详细信息 ViewModel

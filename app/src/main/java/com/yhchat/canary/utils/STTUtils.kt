@@ -15,7 +15,6 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * 语音转文字 (Speech-to-Text) 工具类

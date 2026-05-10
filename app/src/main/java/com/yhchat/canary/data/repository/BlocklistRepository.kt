@@ -5,7 +5,6 @@ import android.util.Log
 import com.yhchat.canary.data.local.AppDatabase
 import com.yhchat.canary.data.local.BlockedUser
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 

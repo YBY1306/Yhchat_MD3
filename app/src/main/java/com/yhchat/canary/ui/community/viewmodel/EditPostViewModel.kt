@@ -2,12 +2,12 @@ package com.yhchat.canary.ui.community
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.repository.CommunityRepository
+import com.yhchat.canary.data.repository.TokenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.yhchat.canary.data.repository.CommunityRepository
-import com.yhchat.canary.data.repository.TokenRepository
 
 /**
  * 编辑文章ViewModel

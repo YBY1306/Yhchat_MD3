@@ -3,16 +3,15 @@ package com.yhchat.canary.utils
 import android.util.Log
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.data.model.WebDAVFile
-import okhttp3.*
+import okhttp3.Credentials
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.w3c.dom.Document
 import org.w3c.dom.Element
-import org.w3c.dom.Node
-import org.w3c.dom.NodeList
 import java.io.ByteArrayInputStream
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
 /**

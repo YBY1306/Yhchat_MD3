@@ -12,9 +12,9 @@ import com.yhchat.canary.data.model.EmailVerificationRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 /**
  * 邮箱绑定ViewModel

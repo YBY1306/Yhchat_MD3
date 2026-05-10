@@ -2,7 +2,16 @@ package com.yhchat.canary.data.repository
 
 import android.util.Log
 import com.yhchat.canary.data.api.ApiService
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.GoldCoinRecord
+import com.yhchat.canary.data.model.GoldCoinRecordRequest
+import com.yhchat.canary.data.model.MyTaskInfo
+import com.yhchat.canary.data.model.Product
+import com.yhchat.canary.data.model.ProductDetailRequest
+import com.yhchat.canary.data.model.ProductListData
+import com.yhchat.canary.data.model.ProductListRequest
+import com.yhchat.canary.data.model.PurchaseProductRequest
+import com.yhchat.canary.data.model.RewardRecord
+import com.yhchat.canary.data.model.RewardRecordRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject

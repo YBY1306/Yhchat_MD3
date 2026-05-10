@@ -1,8 +1,16 @@
 package com.yhchat.canary.data.api
 
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.BaseResponse
+import com.yhchat.canary.data.model.BotInfoResponse
+import com.yhchat.canary.data.model.GroupInfoResponse
+import com.yhchat.canary.data.model.MyBotListResponse
+import com.yhchat.canary.data.model.UserHomepageResponse
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Query
 
 /**
  * Web API 服务接口 - 用于 chat-web-go.jwzhd.com 域名的API

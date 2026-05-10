@@ -2,7 +2,8 @@ package com.yhchat.canary.ui.community
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.CommunityBoard
+import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.data.repository.CommunityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -2090,6 +2090,9 @@ private fun ContentSettingsGroup(context: Context) {
     // 读取图片上传设置
     val imagePrefs = remember { context.getSharedPreferences("image_settings", Context.MODE_PRIVATE) }
     var uploadOriginalImage by remember { mutableStateOf(imagePrefs.getBoolean("upload_original_image", false)) }
+    // 是否允许发送空文本消息设置 //TODO 英语不好不知道起什么变量名
+    val sendTextPrefs = remember { context.getSharedPreferences("send_text_settings", Context.MODE_PRIVATE) }
+    var is_send_text_allow_empty by remember { mutableStateOf(sendTextPrefs.getBoolean("send_text_allow_empty", false)) }
     
     SettingsGroup(
         title = "内容",
@@ -2125,7 +2128,19 @@ private fun ContentSettingsGroup(context: Context) {
                         SavedAudiosActivity.start(context)
                     }
                 )
-            }
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Send,
+                    title = "允许发送空文本消息",
+                    subtitle = "允许发送空文本消息",
+                    checked = is_send_text_allow_empty,
+                    onCheckedChange = { checked ->
+                        is_send_text_allow_empty = checked
+                        sendTextPrefs.edit().putBoolean("send_text_allow_empty", checked).apply()
+                    }
+                )
+            },
         )
     )
 }

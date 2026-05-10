@@ -3,6 +3,7 @@ package com.yhchat.canary.ui.wear
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -96,8 +98,19 @@ fun WearConversationScreen(
 
             conversations.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(null) {
+                            detectTapGestures(
+                                onTap = {
+                                    val i = 0
+                                },
+                                onLongPress = {
+                                    val i = 0
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "暂无会话",

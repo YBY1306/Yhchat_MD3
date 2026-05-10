@@ -1400,7 +1400,7 @@ fun ChatScreen(
                                 // 发送失败，保留输入框内容
                                 android.util.Log.e("ChatScreen", "发送消息失败: $error")
                                 // 可以选择显示Toast提示
-                                // android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
                             },
                             isSendTextAllowEmptySetting = isSendTextAllowEmptySetting
                         )

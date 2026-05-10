@@ -9,6 +9,8 @@ import com.yhchat.canary.data.model.CreatedBot
 import com.yhchat.canary.data.model.DeleteFriendRequest
 import com.yhchat.canary.data.repository.BotRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.proto.bot.Status
+import com.yhchat.canary.proto.bot.bot_stop_send
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,7 +73,7 @@ class BotManagementViewModel : ViewModel() {
 
             _uiState.update { it.copy(isStoppingBot = true, error = null) }
 
-            val request = yh_bot.Bot.bot_stop_send.newBuilder()
+            val request = bot_stop_send.newBuilder()
                 .setBotId(botId)
                 .setOperation(operation.toLong())
                 .build()
@@ -85,7 +87,7 @@ class BotManagementViewModel : ViewModel() {
                 if (resp.isSuccessful) {
                     val responseBody = resp.body()?.bytes()
                     if (responseBody != null) {
-                        val status = yh_bot.Bot.Status.parseFrom(responseBody)
+                        val status = Status.parseFrom(responseBody)
                         if (status.code == 1) {
                             botRepository.getBotInfo(botId).fold(
                                 onSuccess = { botInfo ->

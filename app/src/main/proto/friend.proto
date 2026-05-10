@@ -4,7 +4,7 @@ package yh_friend;
 
 option java_package = "com.yhchat.canary.proto.friend";
 option java_outer_classname = "FriendProto";
-option java_multiple_files = false;
+option java_multiple_files = true;
 
 // 响应状态
 message Status {

@@ -5,7 +5,9 @@ import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.NoNotifyRequest
 import com.yhchat.canary.data.model.*
 import com.yhchat.canary.proto.*
-import com.yhchat.canary.proto.friend.FriendProto
+import com.yhchat.canary.proto.friend.request_list
+import com.yhchat.canary.proto.user.address_book_list
+import com.yhchat.canary.proto.user.address_book_list_send
 import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -50,7 +52,7 @@ class FriendRepository @Inject constructor(
     /**
      * 获取所有聊天对象（通讯录）
      */
-    suspend fun getAddressBookList(): Result<User.address_book_list> {
+    suspend fun getAddressBookList(): Result<address_book_list> {
         return try {
             val tokenFlow = tokenRepository.getToken()
             val token = tokenFlow.first()?.token
@@ -62,7 +64,7 @@ class FriendRepository @Inject constructor(
             Log.d(tag, "📤 ========== 获取通讯录 ==========")
             
             // 构建protobuf请求
-            val request = User.address_book_list_send.newBuilder()
+            val request = address_book_list_send.newBuilder()
                 .setNumber("通讯录请求")
                 .build()
             
@@ -77,7 +79,7 @@ class FriendRepository @Inject constructor(
             if (response.isSuccessful) {
                 response.body()?.let { responseBody ->
                     val bytes = responseBody.bytes()
-                    val addressBook = User.address_book_list.parseFrom(bytes)
+                    val addressBook = address_book_list.parseFrom(bytes)
                     
                     Log.d(tag, "📥 响应状态码: ${addressBook.status.code}")
                     Log.d(tag, "📥 响应消息: ${addressBook.status.msg}")
@@ -111,7 +113,7 @@ class FriendRepository @Inject constructor(
         }
     }
 
-    suspend fun getFriendRequestList(): Result<FriendProto.request_list> {
+    suspend fun getFriendRequestList(): Result<request_list> {
         return try {
             val token = tokenRepository.getToken().first()?.token
             if (token.isNullOrEmpty()) {
@@ -124,7 +126,7 @@ class FriendRepository @Inject constructor(
             if (response.isSuccessful) {
                 response.body()?.let { responseBody ->
                     val bytes = responseBody.bytes()
-                    val data = FriendProto.request_list.parseFrom(bytes)
+                    val data = request_list.parseFrom(bytes)
                     if (data.status.code == 1) {
                         Result.success(data)
                     } else {

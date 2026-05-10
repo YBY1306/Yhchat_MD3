@@ -24,6 +24,8 @@ import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.websocket.MessageEvent
 import com.yhchat.canary.data.websocket.WebSocketManager
+import com.yhchat.canary.proto.bot.board
+import com.yhchat.canary.proto.bot.bot_info
 import com.yhchat.canary.proto.group.Bot_data
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +33,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import yh_bot.Bot
 import java.io.File
 import javax.inject.Inject
 
@@ -44,10 +45,10 @@ data class ChatUiState(
     val groupInfo: GroupDetail? = null,
     val groupMembers: Map<String, GroupMemberInfo> = emptyMap(),  // 群成员信息：chatId -> GroupMemberInfo
     val groupMemberCount: Int = 0,  // 群成员总数
-    val botInfo: Bot.bot_info? = null,  // 机器人信息
-    val botBoard: Bot.board? = null,  // 机器人看板（单个机器人聊天）
+    val botInfo: bot_info? = null,  // 机器人信息
+    val botBoard: board? = null,  // 机器人看板（单个机器人聊天）
     val groupBots: List<Bot_data> = emptyList(),  // 群聊中的机器人列表
-    val groupBotBoards: Map<String, Bot.board.Board_data> = emptyMap(),  // 群聊机器人看板：botId -> board_data
+    val groupBotBoards: Map<String, board.Board_data> = emptyMap(),  // 群聊机器人看板：botId -> board_data
     val botLlmRefParams: List<BotLlmRefParamItem> = emptyList(),
     val botLlmParamValues: Map<String, List<BotLlmParamValue>> = emptyMap(),
     val chatBackgroundUrl: String? = null,  // 聊天背景图片URL

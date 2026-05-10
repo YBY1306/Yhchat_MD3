@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
-import yh_user.User
+import com.yhchat.canary.proto.user.get_user_send
 
 data class UserDetailUiState(
     val isLoading: Boolean = true,
@@ -282,7 +282,7 @@ class UserDetailViewModel(context: Context) : ViewModel() {
                     }
                 )
 
-                val requestProto = User.get_user_send.newBuilder()
+                val requestProto = get_user_send.newBuilder()
                     .setId(userId)
                     .build()
 

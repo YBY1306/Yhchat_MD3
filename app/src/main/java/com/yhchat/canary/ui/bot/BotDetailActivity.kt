@@ -35,7 +35,8 @@ import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.ReportDialog
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import yh_bot.Bot
+import com.yhchat.canary.proto.bot.board
+import com.yhchat.canary.proto.bot.bot_info
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -535,8 +536,8 @@ private fun SheetActionItem(
 
 @Composable
 private fun BotDetailContent(
-    botInfo: Bot.bot_info,
-    boardInfo: Bot.board?,
+    botInfo: bot_info,
+    boardInfo: board?,
     isBoardLoading: Boolean,
     modifier: Modifier = Modifier,
     listState: androidx.compose.foundation.lazy.LazyListState,
@@ -799,7 +800,7 @@ private fun BotInfoSectionCard(
 
 @Composable
 private fun BotInfoDialog(
-    botInfo: Bot.bot_info,
+    botInfo: bot_info,
     onDismiss: () -> Unit
 ) {
     AlertDialog(

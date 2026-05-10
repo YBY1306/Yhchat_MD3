@@ -17,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.BotLlmParamValue
+import com.yhchat.canary.proto.bot.board
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.chat.BotBoardContent
 import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.components.rememberBooleanPreference
-import yh_bot.Bot
 import com.yhchat.canary.ui.chat.GroupBotBoardsSection as GroupBotBoardsSectionOriginal
 
 /**
@@ -127,7 +127,7 @@ fun SingleBotBoardSection(
 fun GroupBotBoardsSection(
     chatType: Int,
     groupBots: List<Bot_data>,
-    groupBotBoards: Map<String, Bot.board.Board_data>,
+    groupBotBoards: Map<String, board.Board_data>,
     botLlmRefParams: Map<String, String>,
     botLlmParamValues: Map<String, List<BotLlmParamValue>>,
     onOpenBotLlmParams: (String) -> Unit,

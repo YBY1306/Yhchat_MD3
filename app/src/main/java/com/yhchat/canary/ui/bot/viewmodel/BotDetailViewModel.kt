@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import yh_bot.Bot
+import com.yhchat.canary.proto.bot.board
+import com.yhchat.canary.proto.bot.bot_info
 
 /**
  * 机器人详细信息 ViewModel
@@ -275,10 +276,10 @@ class BotDetailViewModel(application: Application) : AndroidViewModel(applicatio
  */
 data class BotDetailUiState(
     val isLoading: Boolean = false,
-    val botInfo: Bot.bot_info? = null,
+    val botInfo: bot_info? = null,
     val error: String? = null,
     val isBoardLoading: Boolean = false,
-    val boardInfo: Bot.board? = null,
+    val boardInfo: board? = null,
     val boardError: String? = null,
     val isInAddressBook: Boolean = false,
     val isCheckingAddressBook: Boolean = true,

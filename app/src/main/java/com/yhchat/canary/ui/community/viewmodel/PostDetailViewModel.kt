@@ -6,15 +6,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yhchat.canary.data.model.*
+import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.data.model.FollowingBoard
 import com.yhchat.canary.data.repository.CommunityRepository
+import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.proto.user.address_book_list
 import com.yhchat.canary.utils.ImageUploadUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -587,7 +590,7 @@ class PostDetailViewModel @Inject constructor(
     /**
      * 获取通讯录列表
      */
-    suspend fun getAddressBookList(): Result<yh_user.User.address_book_list> {
+    suspend fun getAddressBookList(): Result<address_book_list> {
         return friendRepository.getAddressBookList()
     }
     
@@ -595,7 +598,7 @@ class PostDetailViewModel @Inject constructor(
      * 分享文章给好友
      */
     fun sharePostToFriends(
-        contact: yh_user.User.address_book_list.Data.Data_list,
+        contact: address_book_list.Data.Data_list,
         post: CommunityPost,
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}

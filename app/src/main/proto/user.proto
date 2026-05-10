@@ -2,6 +2,9 @@ syntax = "proto3";  // 指定使用proto3语法
 
 package yh_user;    // 定义包名，防止命名冲突
 
+option java_package = "com.yhchat.canary.proto.user";
+option java_outer_classname = "UserProto";
+option java_multiple_files = true;
     
 // 响应状态
 message Status {

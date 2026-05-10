@@ -31,18 +31,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BotLlmParamValue
+import com.yhchat.canary.proto.bot.board
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
-import yh_bot.Bot
 
 /**
  * 机器人看板内容组件（可复用）
  */
 @Composable
 fun BotBoardContent(
-    boardData: Bot.board.Board_data,
+    boardData: board.Board_data,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -189,7 +189,7 @@ fun BotLlmParamsDialog(
 @Composable
 fun GroupBotBoardsSection(
     groupBots: List<Bot_data>,
-    groupBotBoards: Map<String, Bot.board.Board_data>,
+    groupBotBoards: Map<String, board.Board_data>,
     botLlmRefParams: Map<String, String>,
     botLlmParamValues: Map<String, List<BotLlmParamValue>>,
     onOpenBotLlmParams: (String) -> Unit,
@@ -381,7 +381,7 @@ fun GroupBotBoardsSection(
  */
 @Composable
 private fun BotBoardContentScrollable(
-    boardData: Bot.board.Board_data,
+    boardData: board.Board_data,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {

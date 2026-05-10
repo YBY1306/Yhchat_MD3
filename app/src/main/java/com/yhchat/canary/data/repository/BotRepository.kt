@@ -10,9 +10,14 @@ import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingData
 import com.yhchat.canary.data.model.StickyOperationRequest
+import com.yhchat.canary.proto.bot.board
+import com.yhchat.canary.proto.bot.board_send
+import com.yhchat.canary.proto.bot.bot_info
+import com.yhchat.canary.proto.bot.bot_info_send
+import com.yhchat.canary.proto.bot.create_bot
+import com.yhchat.canary.proto.bot.create_bot_send
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import yh_bot.Bot
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -83,7 +88,7 @@ class BotRepository @Inject constructor(
     /**
      * 获取机器人详细信息（使用 Protobuf）
      */
-    suspend fun getBotInfo(botId: String): Result<Bot.bot_info> {
+    suspend fun getBotInfo(botId: String): Result<bot_info> {
         return try {
             Log.d(TAG, "开始获取机器人信息: $botId")
             
@@ -94,7 +99,7 @@ class BotRepository @Inject constructor(
             }
             
             // 构建 protobuf 请求
-            val request = Bot.bot_info_send.newBuilder()
+            val request = bot_info_send.newBuilder()
                 .setId(botId)
                 .build()
             
@@ -122,7 +127,7 @@ class BotRepository @Inject constructor(
             }
             
             // 解析 protobuf 响应
-            val botInfo = Bot.bot_info.parseFrom(responseBody.bytes())
+            val botInfo = bot_info.parseFrom(responseBody.bytes())
             
             Log.d(TAG, "解析成功: status=${botInfo.status.code}, msg=${botInfo.status.msg}")
             
@@ -159,7 +164,7 @@ class BotRepository @Inject constructor(
      * @param chatId 群聊ID或机器人ID
      * @param chatType 对象类型 1-用户 2-群聊 3-机器人
      */
-    suspend fun getBotBoard(chatId: String, chatType: Int): Result<Bot.board> {
+    suspend fun getBotBoard(chatId: String, chatType: Int): Result<board> {
         return try {
             Log.d(TAG, "开始获取看板信息: chatId=$chatId, chatType=$chatType")
             
@@ -171,7 +176,7 @@ class BotRepository @Inject constructor(
             
             // 构建 protobuf 请求
             // 注意：根据API文档，使用id字段（字段序号3）表示群聊/机器人ID
-            val request = Bot.board_send.newBuilder()
+            val request = board_send.newBuilder()
                 .setChatId(chatId)  // proto中字段3是chat_id
                 .setChatType(chatType.toLong())
                 .build()
@@ -201,7 +206,7 @@ class BotRepository @Inject constructor(
             }
             
             // 解析 protobuf 响应
-            val boardResponse = Bot.board.parseFrom(responseBody.bytes())
+            val boardResponse = board.parseFrom(responseBody.bytes())
 
             Log.d(TAG, "解析成功: status=${boardResponse.status.code}, msg=${boardResponse.status.msg},看板数量=${boardResponse.boardCount}")
 
@@ -466,7 +471,7 @@ class BotRepository @Inject constructor(
             }
             
             // 构建ProtoBuf请求
-            val request = yh_bot.Bot.create_bot_send.newBuilder()
+            val request = create_bot_send.newBuilder()
                 .setName(name)
                 .setIntroduction(introduction)
                 .setAvatarUrl(avatarUrl)
@@ -481,7 +486,7 @@ class BotRepository @Inject constructor(
             if (response.isSuccessful) {
                 val responseBody = response.body()?.bytes()
                 if (responseBody != null) {
-                    val createBotResponse = yh_bot.Bot.create_bot.parseFrom(responseBody)
+                    val createBotResponse = create_bot.parseFrom(responseBody)
                     
                     if (createBotResponse.status.code == 1) {
                         val botId = createBotResponse.data.botId

@@ -15,7 +15,13 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
-import yh_user.User as ProtoUser
+import com.yhchat.canary.proto.user.OnlineDevicesResponse
+import com.yhchat.canary.proto.user.edit_avatar
+import com.yhchat.canary.proto.user.edit_avatar_send
+import com.yhchat.canary.proto.user.edit_nickname
+import com.yhchat.canary.proto.user.edit_nickname_send
+import com.yhchat.canary.proto.user.get_user
+import com.yhchat.canary.proto.user.info
 
 /**
  * 用户数据仓库
@@ -201,7 +207,7 @@ class UserRepository @Inject constructor(
                 val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
                 
                 // 使用protobuf解析
-                val userInfoProto = ProtoUser.info.newBuilder().mergeFrom(responseBytes).build()
+                val userInfoProto = info.newBuilder().mergeFrom(responseBytes).build()
                 
                 if (userInfoProto.status.code == 1) {
                     val userData = userInfoProto.data
@@ -500,7 +506,7 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             
             // 构建protobuf请求
-            val request = yh_user.User.edit_nickname_send.newBuilder()
+            val request = edit_nickname_send.newBuilder()
                 .setName(nickname)
                 .build()
             
@@ -513,7 +519,7 @@ class UserRepository @Inject constructor(
                 val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
                 
                 // 解析protobuf响应
-                val editNicknameResponse = yh_user.User.edit_nickname.parseFrom(responseBytes)
+                val editNicknameResponse = edit_nickname.parseFrom(responseBytes)
                 
                 if (editNicknameResponse.status.code == 1) {
                     Result.success(true)
@@ -886,7 +892,7 @@ class UserRepository @Inject constructor(
                 if (responseBody != null) {
                     // 解析 Protobuf 数据
                     val bytes = responseBody.bytes()
-                    val onlineDevicesResponse = ProtoUser.OnlineDevicesResponse.parseFrom(bytes)
+                    val onlineDevicesResponse = OnlineDevicesResponse.parseFrom(bytes)
                     
                     // 检查响应状态
                     if (onlineDevicesResponse.status.code == 1) {
@@ -948,7 +954,7 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("未登录"))
             
             // 构建ProtoBuf请求
-            val requestBuilder = yh_user.User.edit_avatar_send.newBuilder()
+            val requestBuilder = edit_avatar_send.newBuilder()
             requestBuilder.url = avatarUrl
             
             val requestBytes = requestBuilder.build().toByteArray()
@@ -960,7 +966,7 @@ class UserRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
-                val editResponse = yh_user.User.edit_avatar.parseFrom(responseBytes)
+                val editResponse = edit_avatar.parseFrom(responseBytes)
                 
                 if (editResponse.status.code == 1) {
                     Result.success(true)
@@ -985,7 +991,7 @@ class UserRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val responseBytes = response.body()?.bytes() ?: return Result.failure(Exception("响应为空"))
-                val getUserResponse = yh_user.User.get_user.parseFrom(responseBytes)
+                val getUserResponse = get_user.parseFrom(responseBytes)
                 
                 if (getUserResponse.status.code == 1) {
                     val data = getUserResponse.data

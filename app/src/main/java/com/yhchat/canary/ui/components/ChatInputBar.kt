@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.components
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
@@ -115,6 +116,11 @@ fun ChatInputBar(
     val showExpressionButton by rememberBooleanPreference("layout_settings", "input_show_expression_button", true)
 
     var showAttachMenu by remember { mutableStateOf(false) }
+
+
+    // 读取内容设置：是否允许发送空文本消息设置
+    val isSendTextAllowEmptySetting = ctx.getSharedPreferences("send_text_settings", Context.MODE_PRIVATE) .getBoolean("send_text_allow_empty", false)//英语不好不知道起什么变量名
+
 
 fun insertMentionPlaceholder(text: String, userName: String): String {
     val lastAtIndex = text.lastIndexOf('@')
@@ -713,14 +719,14 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                         .pointerInput(currentLongPressSendMarkdownEnabled, currentLongPressSendMarkdownSeconds) {
                             detectTapGestures(
                                 onTap = {
-                                    if (currentText.isNotEmpty()) {
+                                    if (currentText.isNotEmpty()||isSendTextAllowEmptySetting) {
                                         Log.d("ChatInputBar", "Send button tapped")
                                         currentOnSendMessage()
                                     }
                                 },
                                 onLongPress = {
                                     val mtc = currentMtc
-                                    if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                    if ((currentText.isNotEmpty()||isSendTextAllowEmptySetting) && currentLongPressSendMarkdownEnabled && mtc != null) {
                                         Log.d("ChatInputBar", "Send button long pressed -> Markdown")
                                         val previousType = currentSelectedMessageType
                                         coroutineScope.launch {
@@ -732,7 +738,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                                                 mtc.invoke(previousType)
                                             }
                                         }
-                                    } else if (currentText.isNotEmpty()) {
+                                    } else if (currentText.isNotEmpty()||isSendTextAllowEmptySetting) {
                                         // 如果没开启长按发送 Markdown，则长按也作为普通发送
                                         Log.d("ChatInputBar", "Send button long pressed (normal send)")
                                         currentOnSendMessage()

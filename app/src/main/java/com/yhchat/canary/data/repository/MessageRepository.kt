@@ -347,7 +347,8 @@ class MessageRepository @Inject constructor(
                 block()
             }
 
-            payload.text?.takeIf { it.isNotBlank() }?.let { markContent { contentBuilder.text = it } }
+            val is_send_text_allow_empty_setting = true//TODO 不知道这里怎么读取设置
+            payload.text?.takeIf { it.isNotBlank() || is_send_text_allow_empty_setting }?.let { markContent { contentBuilder.text = it } }
 
             val resolvedButtons = when {
                 payload.contentType == CONTENT_TYPE_A2UI && payload.buttons.isNullOrBlank() -> payload.text

@@ -19,6 +19,7 @@ class WearMainActivity : ComponentActivity() {
         val tokenRepository = RepositoryFactory.getTokenRepository(this)//TODO
 
         setContent {
+            //TODO Login
             WearConversationScreen(
                 token = ""/*TODO*/,
                 userId = ""/*TODO*/,

@@ -943,153 +943,140 @@ fun WearChatInputBar(
         }
 
 
-//    val listState = rememberTransformingLazyColumnState()
-//    val transformationSpec = rememberTransformationSpec()
-//    if (false)
     if (_my_new_wear)
-        ScreenScaffold(
-//            scrollState = listState,
-        ) { contentPadding -> // ScreenScaffold provides default padding; adjust as needed
-            TransformingLazyColumn(
-                contentPadding = contentPadding,
-//                state = listState,
-            ) {
-                item {
-                    Button(
-                        onClick = { onHideInputBar?.invoke() }
-                    ) { }
-                }
-                // 文本模式：显示输入框
-                item {
-                    BasicTextField(
-                        value = text,
-                        onValueChange = { newText: String ->
-                            onTextChange(newText)
-                            onDraftChange?.invoke(newText)
-                        },
-                        modifier = Modifier
+        Column(
+            modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
+            horizontalAlignment = Alignment.CenterHorizontally // 水平居中
+        ) {
+            // 文本模式：显示输入框
+            BasicTextField(
+                value = text,
+                onValueChange = { newText: String ->
+                    onTextChange(newText)
+                    onDraftChange?.invoke(newText)
+                },
+                modifier = Modifier
 //                          .weight(1f)
-                            .heightIn(min = 36.dp, max = 90.dp)
-                            .padding(horizontal = 8.dp, vertical = 8.dp)
-                            .pointerInput(Unit) {
-                                // 针对大屏/悬浮键盘模式的修复：
-                                // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
-                                // 显式监听点击事件，强制请求焦点并弹出键盘。
-                                detectTapGestures {
-                                    focusRequester?.requestFocus()
-                                    keyboardController?.show()
-                                }
-                            }
-                            .onFocusChanged { state ->
-                                if (state.isFocused) {
-                                    showExpressionPicker = false
-                                }
-                            }
-                            .let { modifier ->
-                                if (focusRequester != null) {
-                                    modifier.focusRequester(focusRequester)
-                                } else {
-                                    modifier
-                                }
-                            },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        maxLines = 3,
-                        decorationBox = { innerTextField ->
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (text.isEmpty()) {
-                                    val effectivePlaceholder = when {
-                                        selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
-                                            selectedInstruction.hintText
-
-                                        else -> placeholder
-                                    }
-                                    Text(
-                                        text = effectivePlaceholder,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.5f
-                                        )
-                                    )
-                                }
-                                innerTextField()
-                            }
+                    .heightIn(min = 36.dp, max = 90.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .pointerInput(Unit) {
+                        // 针对大屏/悬浮键盘模式的修复：
+                        // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
+                        // 显式监听点击事件，强制请求焦点并弹出键盘。
+                        detectTapGestures {
+                            focusRequester?.requestFocus()
+                            keyboardController?.show()
                         }
-                    )
-                }
-                // 发送按钮 - 圆形背景
-                item {
+                    }
+                    .onFocusChanged { state ->
+                        if (state.isFocused) {
+                            showExpressionPicker = false
+                        }
+                    }
+                    .let { modifier ->
+                        if (focusRequester != null) {
+                            modifier.focusRequester(focusRequester)
+                        } else {
+                            modifier
+                        }
+                    },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                maxLines = 3,
+                decorationBox = { innerTextField ->
                     Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                if (text.isNotEmpty())
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                CircleShape
-                            )
-                            .clip(CircleShape)
-                            .pointerInput(
-                                currentLongPressSendMarkdownEnabled,
-                                currentLongPressSendMarkdownSeconds
-                            ) {
-                                detectTapGestures(
-                                    onTap = {
-                                        if (currentText.isNotEmpty() || true) {
-                                            Log.d("ChatInputBar", "Send button tapped")
-                                            currentOnSendMessage()
-                                        }
-                                        onHideInputBar?.invoke()
-                                    },
-                                    onLongPress = {
-                                        val mtc = currentMtc
-                                        if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
-                                            Log.d(
-                                                "ChatInputBar",
-                                                "Send button long pressed -> Markdown"
-                                            )
-                                            val previousType = currentSelectedMessageType
-                                            coroutineScope.launch {
-                                                if (previousType != 3) {
-                                                    mtc.invoke(3)
-                                                }
-                                                currentOnSendMessage()
-                                                if (previousType != 3) {
-                                                    mtc.invoke(previousType)
-                                                }
-                                            }
-                                        } else if (currentText.isNotEmpty()) {
-                                            // 如果没开启长按发送 Markdown，则长按也作为普通发送
-                                            Log.d(
-                                                "ChatInputBar",
-                                                "Send button long pressed (normal send)"
-                                            )
-                                            currentOnSendMessage()
-                                        }
-                                        onHideInputBar?.invoke()
-                                    }
-                                )
-                            },
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "发送",
-                            tint = if (text.isNotEmpty())
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        if (text.isEmpty()) {
+                            val effectivePlaceholder = when {
+                                selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
+                                    selectedInstruction.hintText
+
+                                else -> placeholder
+                            }
+                            Text(
+                                text = effectivePlaceholder,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.5f
+                                )
+                            )
+                        }
+                        innerTextField()
                     }
                 }
+            )
 
+            // 发送按钮 - 圆形背景
+
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        if (text.isNotEmpty())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        CircleShape
+                    )
+                    .clip(CircleShape)
+                    .pointerInput(
+                        currentLongPressSendMarkdownEnabled,
+                        currentLongPressSendMarkdownSeconds
+                    ) {
+                        detectTapGestures(
+                            onTap = {
+                                if (currentText.isNotEmpty() || true) {
+                                    Log.d("ChatInputBar", "Send button tapped")
+                                    currentOnSendMessage()
+                                }
+                                onHideInputBar?.invoke()
+                            },
+                            onLongPress = {
+                                val mtc = currentMtc
+                                if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                    Log.d(
+                                        "ChatInputBar",
+                                        "Send button long pressed -> Markdown"
+                                    )
+                                    val previousType = currentSelectedMessageType
+                                    coroutineScope.launch {
+                                        if (previousType != 3) {
+                                            mtc.invoke(3)
+                                        }
+                                        currentOnSendMessage()
+                                        if (previousType != 3) {
+                                            mtc.invoke(previousType)
+                                        }
+                                    }
+                                } else if (currentText.isNotEmpty()) {
+                                    // 如果没开启长按发送 Markdown，则长按也作为普通发送
+                                    Log.d(
+                                        "ChatInputBar",
+                                        "Send button long pressed (normal send)"
+                                    )
+                                    currentOnSendMessage()
+                                }
+                                onHideInputBar?.invoke()
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "发送",
+                    tint = if (text.isNotEmpty())
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
             }
+
+
         }
     BackHandler(enabled = true) {
         onHideInputBar?.invoke()

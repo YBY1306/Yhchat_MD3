@@ -1,4 +1,3 @@
-
 package com.yhchat.canary.ui.wear.login
 
 import android.content.Context
@@ -61,7 +60,9 @@ fun WearAppLoginScreen(
             )
             keys.forEach {
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(0.2f),
                     Arrangement.SpaceEvenly
                 ) {
                     it.forEach { _KeyButton(it, { onClickInput(it) }) }
@@ -69,7 +70,11 @@ fun WearAppLoginScreen(
             }
 
             Button(
-                {}, Modifier.fillMaxWidth(), colors =
+                {},
+                Modifier
+                    .fillMaxWidth()
+                    .weight(0.2f),
+                colors =
                     ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -82,7 +87,9 @@ fun WearAppLoginScreen(
             )
             keys.forEach {
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(0.2f),
                     Arrangement.SpaceEvenly
                 ) {
                     it.forEach { _KeyButton(it, { onClickInput(it) }) }

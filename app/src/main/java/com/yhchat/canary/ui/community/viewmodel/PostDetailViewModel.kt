@@ -11,6 +11,7 @@ import com.yhchat.canary.data.model.FollowingBoard
 import com.yhchat.canary.data.repository.CommunityRepository
 import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.TokenRepository
+import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.proto.user.address_book_list
 import com.yhchat.canary.utils.ImageUploadUtil
 import dagger.hilt.android.lifecycle.HiltViewModel

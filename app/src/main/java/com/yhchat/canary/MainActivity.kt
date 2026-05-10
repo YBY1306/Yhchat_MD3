@@ -13,8 +13,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
@@ -253,8 +251,8 @@ class MainActivity : BaseActivity() {
                 )
             }
             else -> {
-                // 主界面，包含底部导航栏和HorizontalPager
-                val pagerState = rememberPagerState { visibleNavItems.size }
+                // 主界面
+                var currentPageItem by rememberSaveable { mutableStateOf(currentScreen) }
                 var isPageFading by remember { mutableStateOf(false) }
                 val pagerAlpha by animateFloatAsState(
                     targetValue = if (isPageFading) 0f else 1f,
@@ -265,40 +263,28 @@ class MainActivity : BaseActivity() {
                 // 滚动感知导航栏状态
                 val navigationState = rememberScrollAwareNavigationState()
 
-                // 获取当前页面对应的导航项ID
-                val currentPageItem = if (visibleNavItems.isNotEmpty() && pagerState.currentPage < visibleNavItems.size) {
-                    visibleNavItems[pagerState.currentPage].id
-                } else {
-                    currentScreen
-                }
-
-                suspend fun switchPageWithFade(targetIndex: Int) {
-                    if (targetIndex !in visibleNavItems.indices || targetIndex == pagerState.currentPage) return
-                    isPageFading = true
-                    delay(90)
-                    pagerState.scrollToPage(targetIndex)
-                    isPageFading = false
-                }
-
-                // 页面同步逻辑
-                LaunchedEffect(currentScreen, visibleNavItems) {
-                    val targetIndex = visibleNavItems.indexOfFirst { it.id == currentScreen }
-                    if (targetIndex >= 0 && targetIndex != pagerState.currentPage && !pagerState.isScrollInProgress) {
-                        switchPageWithFade(targetIndex)
+                // 确保当前页面项始终可用
+                LaunchedEffect(visibleNavItems) {
+                    if (visibleNavItems.isEmpty()) {
+                        currentPageItem = currentScreen
+                    } else if (visibleNavItems.none { it.id == currentPageItem }) {
+                        currentPageItem = visibleNavItems.first().id
                     }
                 }
 
-                LaunchedEffect(pagerState.currentPage, visibleNavItems) {
-                    if (visibleNavItems.isNotEmpty() && pagerState.currentPage < visibleNavItems.size) {
-                        val newScreen = visibleNavItems[pagerState.currentPage].id
-                        if (newScreen != currentScreen && !pagerState.isScrollInProgress) {
-                            currentScreen = newScreen
-                        }
+                // 页面同步逻辑：仅底部导航点击切页，不支持滑动手势切页
+                LaunchedEffect(currentScreen, visibleNavItems) {
+                    val targetItem = visibleNavItems.firstOrNull { it.id == currentScreen }
+                    if (targetItem != null && currentPageItem != targetItem.id) {
+                        isPageFading = true
+                        delay(90)
+                        currentPageItem = targetItem.id
+                        isPageFading = false
                     }
                 }
                 
                 // 切换页面时重置导航栏状态（仅在页面完全切换后显示）
-                LaunchedEffect(pagerState.currentPage) {
+                LaunchedEffect(currentPageItem) {
                     // 切换到新页面时显示导航栏
                     navigationState.show()
                 }
@@ -334,14 +320,12 @@ class MainActivity : BaseActivity() {
                             .fillMaxHeight()
                         ) {
                         if (visibleNavItems.isNotEmpty()) {
-                            HorizontalPager(
-                                state = pagerState,
+                            val navItem = visibleNavItems.firstOrNull { it.id == currentPageItem } ?: visibleNavItems.first()
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .alpha(pagerAlpha),
-                                userScrollEnabled = false
-                            ) { page ->
-                                    val navItem = visibleNavItems[page]
+                                    .alpha(pagerAlpha)
+                            ) {
                                     when (navItem.id) {
                                         "conversation" -> {
                                             // 大屏分屏：会话列表(1) + 聊天界面(2)
@@ -801,14 +785,12 @@ class MainActivity : BaseActivity() {
                                 .padding(bottom = bottomPadding) // 导航栏高度动态调整
                         ) {
                             if (visibleNavItems.isNotEmpty()) {
-                                HorizontalPager(
-                                    state = pagerState,
+                                val navItem = visibleNavItems.firstOrNull { it.id == currentPageItem } ?: visibleNavItems.first()
+                                Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .alpha(pagerAlpha),
-                                    userScrollEnabled = false
-                                ) { page ->
-                                        val navItem = visibleNavItems[page]
+                                        .alpha(pagerAlpha)
+                                ) {
                                         when (navItem.id) {
                                             "conversation" -> {
                                                 ConversationScreen(

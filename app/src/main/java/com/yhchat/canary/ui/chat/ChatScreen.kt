@@ -190,7 +190,8 @@ fun ChatScreen(
     // 搜索跳转参数
     searchTargetMsgId: String? = null,  // 搜索目标消息ID
     searchTargetMsgSeq: Long? = null,  // 搜索目标消息序列号
-    isLargeScreen: Boolean = false  // 大屏模式，跳过imePadding避免悬浮键盘跳动
+    isLargeScreen: Boolean = false,  // 大屏模式，跳过imePadding避免悬浮键盘跳动
+    isInChatActivity:Boolean=false,//用于判断是否开启BackHandler //TODO 英语不好不知道起什么变量名
 ) {
     val context = LocalContext.current
     val liveRoomsViewModel: LiveRoomsViewModel = hiltViewModel()
@@ -685,7 +686,7 @@ fun ChatScreen(
     }
 
     // 处理系统返回键/手势返回
-    BackHandler {
+    BackHandler (enabled = isMultiSelectMode || !isInChatActivity /*当ChatActivity时BackHandler中的onBackClick就是finish()，所以直接关掉BackHandler从而不影响预见式返回动画*/){
         if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedMessageIds = emptySet()

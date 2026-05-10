@@ -22,7 +22,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yhchat.canary.ui.contacts.ContactsViewModel
 import com.yhchat.canary.ui.contacts.Contact
 import kotlinx.coroutines.launch
@@ -70,7 +70,7 @@ fun SendToChatBottomSheet(
     onSend: (Set<SelectedContact>) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val contactsViewModel: ContactsViewModel = viewModel()
+    val contactsViewModel: ContactsViewModel = hiltViewModel()
     val uiState by contactsViewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var selectedContacts by remember { mutableStateOf<Set<SelectedContact>>(emptySet()) }

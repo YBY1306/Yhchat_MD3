@@ -7,7 +7,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.model.BotLlmParamValue
+import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.data.repository.GroupRepository
 import com.yhchat.canary.data.repository.MessageRepository
@@ -45,6 +49,8 @@ data class ChatUiState(
     val botBoard: Bot.board? = null,  // 机器人看板（单个机器人聊天）
     val groupBots: List<Bot_data> = emptyList(),  // 群聊中的机器人列表
     val groupBotBoards: Map<String, Bot.board.Board_data> = emptyMap(),  // 群聊机器人看板：botId -> board_data
+    val botLlmRefParams: List<BotLlmRefParamItem> = emptyList(),
+    val botLlmParamValues: Map<String, List<BotLlmParamValue>> = emptyMap(),
     val chatBackgroundUrl: String? = null,  // 聊天背景图片URL
     val menuButtons: List<com.yhchat.canary.data.model.MenuButton> = emptyList()  // 群聊菜单按钮
 )
@@ -63,6 +69,8 @@ class ChatViewModel @Inject constructor(
 ) : ViewModel() {
     
     private val blocklistRepository = BlocklistRepository(context)
+    private val gson = Gson()
+    private val llmParamsPrefs = context.getSharedPreferences("bot_llm_params_cache", Context.MODE_PRIVATE)
 
     private var currentChatId: String = ""
     private var currentChatType: Int = 1
@@ -155,6 +163,13 @@ class ChatViewModel @Inject constructor(
     private var lastDraftSentTime = 0L
     
     init {
+        messageRepository.setBotLlmParamsProvider { chatId, chatType ->
+            if (chatId == currentChatId && chatType == currentChatType) {
+                getBotLlmParamsForSending()
+            } else {
+                null
+            }
+        }
         chatPrefs.registerOnSharedPreferenceChangeListener(chatPrefsListener)
         // 监听多端草稿同步
         viewModelScope.launch {
@@ -218,6 +233,8 @@ class ChatViewModel @Inject constructor(
         
         // 清除该会话的通知历史
         webSocketManager.clearNotificationHistory(chatId, chatType)
+
+        loadBotLlmRefParams(chatId, chatType)
         
         // 如果是群聊，加载群成员信息、机器人列表和菜单按钮
         if (chatType == 2) { // 群聊
@@ -236,7 +253,138 @@ class ChatViewModel @Inject constructor(
         Log.d(tag, "Loading latest messages")
         loadMessages()
     }
-    
+
+    private fun llmParamsPrefKey(chatId: String, chatType: Int): String = "${chatType}_$chatId"
+
+    private fun loadCachedBotLlmParams(chatId: String, chatType: Int): List<BotLlmParamValue> {
+        val key = llmParamsPrefKey(chatId, chatType)
+        val raw = llmParamsPrefs.getString(key, null) ?: return emptyList()
+        return runCatching {
+            val type = object : TypeToken<List<BotLlmParamValue>>() {}.type
+            gson.fromJson<List<BotLlmParamValue>>(raw, type).orEmpty()
+        }.getOrElse { emptyList() }
+    }
+
+    private fun saveCachedBotLlmParams(chatId: String, chatType: Int, values: List<BotLlmParamValue>) {
+        val key = llmParamsPrefKey(chatId, chatType)
+        llmParamsPrefs.edit().putString(key, gson.toJson(values)).apply()
+    }
+
+    private fun parseBotLlmParamValues(botId: String, paramJson: String): List<BotLlmParamValue> {
+        if (paramJson.isBlank()) return emptyList()
+        return runCatching {
+            val mapType = object : TypeToken<List<Map<String, Any?>>>() {}.type
+            val rawList = gson.fromJson<List<Map<String, Any?>>>(paramJson, mapType).orEmpty()
+            rawList.mapIndexed { index, item ->
+                val id = (item["id"] as? String).orEmpty().ifBlank { "param_$index" }
+                val name = (item["name"] as? String).orEmpty().ifBlank { id }
+                val label = (item["label"] as? String).orEmpty().ifBlank { name }
+                val type = (item["type"] as? String).orEmpty().ifBlank { "input" }
+                val options = (item["options"] as? String).orEmpty()
+                BotLlmParamValue(
+                    id = id,
+                    name = name,
+                    label = label,
+                    type = type,
+                    options = options,
+                    value = null,
+                    selectValue = null,
+                    botId = botId
+                )
+            }
+        }.getOrElse { emptyList() }
+    }
+
+    private fun loadBotLlmRefParams(chatId: String, chatType: Int) {
+        viewModelScope.launch {
+            botRepository.getBotLlmRefParams(chatId, chatType).fold(
+                onSuccess = { list ->
+                    if (list.isEmpty()) {
+                        _uiState.value = _uiState.value.copy(
+                            botLlmRefParams = emptyList(),
+                            botLlmParamValues = emptyMap()
+                        )
+                        return@fold
+                    }
+
+                    val cachedByBot = loadCachedBotLlmParams(chatId, chatType)
+                        .groupBy { it.botId }
+
+                    val merged = list.associate { item ->
+                        val parsed = parseBotLlmParamValues(item.botId, item.paramJson)
+                        val cachedById = cachedByBot[item.botId].orEmpty().associateBy { it.id }
+                        val values = parsed.map { field ->
+                            val cached = cachedById[field.id]
+                            if (field.type.equals("select", ignoreCase = true)) {
+                                field.copy(selectValue = cached?.selectValue)
+                            } else {
+                                field.copy(value = cached?.value)
+                            }
+                        }
+                        item.botId to values
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        botLlmRefParams = list,
+                        botLlmParamValues = merged
+                    )
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(
+                        botLlmRefParams = emptyList(),
+                        botLlmParamValues = emptyMap()
+                    )
+                }
+            )
+        }
+    }
+
+    private fun persistCurrentBotLlmParams() {
+        if (currentChatId.isBlank()) return
+        val flattened = _uiState.value.botLlmParamValues.values.flatten()
+        saveCachedBotLlmParams(currentChatId, currentChatType, flattened)
+    }
+
+    fun updateBotLlmInputValue(botId: String, paramId: String, value: String) {
+        val currentMap = _uiState.value.botLlmParamValues
+        val updated = currentMap[botId].orEmpty().map { item ->
+            if (item.id == paramId) item.copy(value = value) else item
+        }
+        _uiState.value = _uiState.value.copy(
+            botLlmParamValues = currentMap.toMutableMap().apply { put(botId, updated) }
+        )
+        persistCurrentBotLlmParams()
+    }
+
+    fun updateBotLlmSelectValue(botId: String, paramId: String, value: String) {
+        val currentMap = _uiState.value.botLlmParamValues
+        val updated = currentMap[botId].orEmpty().map { item ->
+            if (item.id == paramId) item.copy(selectValue = value) else item
+        }
+        _uiState.value = _uiState.value.copy(
+            botLlmParamValues = currentMap.toMutableMap().apply { put(botId, updated) }
+        )
+        persistCurrentBotLlmParams()
+    }
+
+    private fun getBotLlmParamsForSending(): String? {
+        if (_uiState.value.botLlmRefParams.isEmpty()) return null
+        val filled = _uiState.value.botLlmParamValues.values
+            .flatten()
+            .mapNotNull { item ->
+                if (item.type.equals("select", ignoreCase = true)) {
+                    item.selectValue?.takeIf { it.isNotBlank() }?.let {
+                        item.copy(selectValue = it, value = null)
+                    }
+                } else {
+                    item.value?.takeIf { it.isNotBlank() }?.let {
+                        item.copy(value = it, selectValue = null)
+                    }
+                }
+            }
+        return if (filled.isEmpty()) null else gson.toJson(filled)
+    }
+
     /**
      * 加载群聊基本信息
      */
@@ -923,7 +1071,7 @@ class ChatViewModel @Inject constructor(
                         quoteVideoTime = quoteVideoTime,
                         media = SendMessageMedia(
                             fileKey = uploadResponse.key,
-                            fileType = "video/mp4",
+                            fileType = "audio/m4a",
                             fileHash = uploadResponse.hash,
                             fileSize = uploadResponse.fsize,
                             fileSuffix = audioSuffix

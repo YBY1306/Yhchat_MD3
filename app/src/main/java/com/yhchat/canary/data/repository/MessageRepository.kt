@@ -50,6 +50,7 @@ data class SendMessagePayload(
     val quoteVideoTime: Long? = null,
     val commandId: Long? = null,
     val mentionedIds: List<String>? = null,
+    val botLlmParams: String? = null,
     val media: SendMessageMedia? = null
 )
 
@@ -60,6 +61,11 @@ class MessageRepository @Inject constructor(
     private val cacheRepository: CacheRepository
 ) {
     private val tag = "MessageRepository"
+    private var botLlmParamsProvider: ((chatId: String, chatType: Int) -> String?)? = null
+
+    fun setBotLlmParamsProvider(provider: ((chatId: String, chatType: Int) -> String?)?) {
+        botLlmParamsProvider = provider
+    }
     
     // 常量
     private companion object {
@@ -399,6 +405,11 @@ class MessageRepository @Inject constructor(
             payload.quoteVideoTime?.takeIf { it > 0 }?.let(contentBuilder::setQuoteVideoTime)
 
             payload.mentionedIds?.takeIf { it.isNotEmpty() }?.let(contentBuilder::addAllMentionedId)
+
+            val resolvedBotLlmParams = payload.botLlmParams
+                ?.takeIf { it.isNotBlank() }
+                ?: botLlmParamsProvider?.invoke(chatId, chatType)?.takeIf { it.isNotBlank() }
+            resolvedBotLlmParams?.let(contentBuilder::setBotLlmParams)
 
             if (!hasPrimaryContent) {
                 return Result.failure(Exception("发送内容为空"))

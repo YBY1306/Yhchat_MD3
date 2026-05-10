@@ -7,8 +7,10 @@ import com.yhchat.canary.data.model.BaseResponse
 import com.yhchat.canary.data.model.BotIdRequest
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.BotLlmGroup
+import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingData
+import com.yhchat.canary.data.model.ChatRequest
 import yh_bot.Bot
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -290,6 +292,30 @@ class BotRepository @Inject constructor(
                 }
             } else {
                 Result.failure(Exception("获取大模型配置失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBotLlmRefParams(chatId: String, chatType: Int): Result<List<BotLlmRefParamItem>> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val response = apiService.getBotLlmRefParams(
+                token = token,
+                request = ChatRequest(chatId = chatId, chatType = chatType)
+            )
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.code == 1) {
+                    Result.success(body.data?.list ?: emptyList())
+                } else {
+                    Result.failure(Exception(body?.msg ?: "获取机器人参数失败"))
+                }
+            } else {
+                Result.failure(Exception("获取机器人参数失败: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import coil.compose.AsyncImage
+import com.yhchat.canary.data.model.BotLlmParamValue
 import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
@@ -104,6 +105,85 @@ fun BotBoardContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BotLlmParamsDialog(
+    botName: String,
+    params: List<BotLlmParamValue>,
+    onDismiss: () -> Unit,
+    onInputChange: (paramId: String, value: String) -> Unit,
+    onSelectChange: (paramId: String, value: String) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "${botName.ifBlank { "机器人" }}的大模型参数")
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                params.forEach { item ->
+                    val title = item.label.ifBlank { item.name.ifBlank { item.id } }
+                    if (item.type.equals("select", ignoreCase = true)) {
+                        var expanded by remember(item.id) { mutableStateOf(false) }
+                        val options = remember(item.options) {
+                            item.options.split("#").map { it.trim() }.filter { it.isNotBlank() }
+                        }
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            OutlinedTextField(
+                                value = item.selectValue.orEmpty(),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(title) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                options.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            onSelectChange(item.id, option)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = item.value.orEmpty(),
+                            onValueChange = { onInputChange(item.id, it) },
+                            label = { Text(title) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("完成")
+            }
+        }
+    )
+}
+
 /**
  * 群聊机器人看板区域
  */
@@ -111,6 +191,9 @@ fun BotBoardContent(
 fun GroupBotBoardsSection(
     groupBots: List<Bot_data>,
     groupBotBoards: Map<String, Bot.board.Board_data>,
+    botLlmRefParams: Map<String, String>,
+    botLlmParamValues: Map<String, List<BotLlmParamValue>>,
+    onOpenBotLlmParams: (String) -> Unit,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -123,7 +206,13 @@ fun GroupBotBoardsSection(
         }
     }
 
-    if (botsWithBoards.isEmpty()) {
+    val botsWithLlmParams = remember(groupBots, botLlmRefParams, botLlmParamValues) {
+        groupBots.filter { bot ->
+            botLlmRefParams.containsKey(bot.botId) && botLlmParamValues[bot.botId].orEmpty().isNotEmpty()
+        }
+    }
+
+    if (botsWithBoards.isEmpty() && botsWithLlmParams.isEmpty()) {
         return
     }
 
@@ -198,6 +287,24 @@ fun GroupBotBoardsSection(
                             )
                         }
                     } else null
+                )
+            }
+
+            items(
+                items = botsWithLlmParams,
+                key = { bot -> "group_bot_llm_params_${bot.botId}_${bot.name}" }
+            ) { bot ->
+                AssistChip(
+                    onClick = { onOpenBotLlmParams(bot.botId) },
+                    label = {
+                        val botName = botLlmRefParams[bot.botId].orEmpty().ifBlank { bot.name }
+                        Text(
+                            text = "${botName}的大模型参数",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 )
             }
         }

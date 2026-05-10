@@ -94,10 +94,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * 文章详情Activity
  */
+@AndroidEntryPoint
 class PostDetailActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1464,14 +1466,27 @@ fun PostDetailScreen(
                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     items(followingBoardListState.boards) { board ->
-                                        Text(
-                                            text = board.name,
-                                            style = MaterialTheme.typography.bodyLarge,
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clickable { pendingMoveBoard = board }
-                                                .padding(vertical = 10.dp)
-                                        )
+                                                .padding(vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AsyncImage(
+                                                model = board.avatar,
+                                                contentDescription = board.name,
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(RoundedCornerShape(6.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                text = board.name,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
                                     }
                                 }
                             }

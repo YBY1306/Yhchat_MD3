@@ -113,3 +113,47 @@ data class BotLlmSaveRequest(
     @SerializedName("historyCount")
     val historyCount: Int
 )
+
+data class BotLlmRefParamsResponse(
+    @SerializedName("code")
+    val code: Int,
+    @SerializedName("data")
+    val data: BotLlmRefParamsData?,
+    @SerializedName("msg")
+    val msg: String?
+)
+
+data class BotLlmRefParamsData(
+    @SerializedName("list")
+    val list: List<BotLlmRefParamItem> = emptyList()
+)
+
+data class BotLlmRefParamItem(
+    @SerializedName("botId")
+    val botId: String,
+    @SerializedName("prompt")
+    val prompt: String = "",
+    @SerializedName("paramJson")
+    val paramJson: String = "[]",
+    @SerializedName("botNickname")
+    val botNickname: String = ""
+)
+
+data class BotLlmParamValue(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("name")
+    val name: String,
+    @SerializedName("label")
+    val label: String,
+    @SerializedName("type")
+    val type: String,
+    @SerializedName("options")
+    val options: String = "",
+    @SerializedName("value")
+    val value: String? = null,
+    @SerializedName("selectValue")
+    val selectValue: String? = null,
+    @SerializedName("botId")
+    val botId: String
+)

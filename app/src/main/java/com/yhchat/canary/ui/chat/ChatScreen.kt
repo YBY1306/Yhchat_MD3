@@ -393,6 +393,7 @@ fun ChatScreen(
     var showImagePreviewDialog by remember { mutableStateOf(false) }
     var generatedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isGeneratingImage by remember { mutableStateOf(false) }
+    var editingBotLlmParamsBotId by remember { mutableStateOf<String?>(null) }
 
     if (showForwardSheet) {
         val target = forwardTargetMessage
@@ -685,7 +686,7 @@ fun ChatScreen(
     }
 
     // 处理系统返回键/手势返回
-    BackHandler {
+    BackHandler (enabled = isMultiSelectMode){
         if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedMessageIds = emptySet()
@@ -749,8 +750,10 @@ fun ChatScreen(
         
         // 单个机器人看板区域
         SingleBotBoardSection(
+            chatId = chatId,
             chatType = chatType,
             uiState = uiState,
+            onOpenBotLlmParams = { botId -> editingBotLlmParamsBotId = botId },
             modifier = Modifier.zIndex(2f),
             onImageClick = { url ->
                 currentImageUrl = url
@@ -765,6 +768,9 @@ fun ChatScreen(
             chatType = chatType,
             groupBots = uiState.groupBots,
             groupBotBoards = uiState.groupBotBoards,
+            botLlmRefParams = uiState.botLlmRefParams.associate { it.botId to it.botNickname },
+            botLlmParamValues = uiState.botLlmParamValues,
+            onOpenBotLlmParams = { botId -> editingBotLlmParamsBotId = botId },
             modifier = Modifier.zIndex(2f),
             onImageClick = { url ->
                 currentImageUrl = url
@@ -1690,7 +1696,29 @@ fun ChatScreen(
             }
         )
     }
-    
+
+    val selectedBotLlmId = editingBotLlmParamsBotId
+    if (selectedBotLlmId != null) {
+        val llmValues = uiState.botLlmParamValues[selectedBotLlmId].orEmpty()
+        if (llmValues.isNotEmpty()) {
+            val llmName = uiState.botLlmRefParams
+                .firstOrNull { it.botId == selectedBotLlmId }
+                ?.botNickname
+                .orEmpty()
+            BotLlmParamsDialog(
+                botName = llmName,
+                params = llmValues,
+                onDismiss = { editingBotLlmParamsBotId = null },
+                onInputChange = { paramId, value ->
+                    viewModel.updateBotLlmInputValue(selectedBotLlmId, paramId, value)
+                },
+                onSelectChange = { paramId, value ->
+                    viewModel.updateBotLlmSelectValue(selectedBotLlmId, paramId, value)
+                }
+            )
+        }
+    }
+
     // 语音转文字对话框
     if (showSttDialog) {
         SpeechToTextDialog(

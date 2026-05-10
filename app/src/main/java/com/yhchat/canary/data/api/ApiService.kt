@@ -273,6 +273,12 @@ interface ApiService {
         @Body request: BotIdRequest
     ): Response<BotLlmSettingRefResponse>
 
+    @POST("v1/bot/llm/llm-setting-ref-params")
+    suspend fun getBotLlmRefParams(
+        @Header("token") token: String,
+        @Body request: ChatRequest
+    ): Response<BotLlmRefParamsResponse>
+
     /**
      * 保存机器人 LLM 设置
      */

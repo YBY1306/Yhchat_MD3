@@ -595,6 +595,20 @@ fun PostListItem(
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                         )
+                        if (post.isSticky != 0) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Text(
+                                    text = "置顶",
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
                         if (post.isVip == 1) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Surface(

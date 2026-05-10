@@ -36,7 +36,7 @@ build/
 ./yhapi/
 ./example/
 
-.app/build/
+# .app/build/
 .app/release/
 
 local.properties

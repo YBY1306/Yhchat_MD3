@@ -1,7 +1,7 @@
 package com.yhchat.canary.data.protobuf
 
 import com.yhchat.canary.data.model.AtData
-import yh_conversation.Conversation
+import com.yhchat.canary.proto.conversation.ConversationList
 import com.yhchat.canary.data.model.Conversation as ModelConversation
 
 /**
@@ -14,7 +14,7 @@ object ConversationProtoParser {
      */
     fun parseConversationList(protoBytes: ByteArray): Result<List<ModelConversation>> {
         return try {
-            val conversationList = Conversation.ConversationList.parseFrom(protoBytes)
+            val conversationList = ConversationList.parseFrom(protoBytes)
             
             if (conversationList.status.code == 1) {
                 val conversations = conversationList.dataList.map { protoData ->
@@ -32,7 +32,7 @@ object ConversationProtoParser {
     /**
      * 将ProtoBuf数据转换为Conversation对象
      */
-    private fun convertProtoToConversation(protoData: Conversation.ConversationList.ConversationData): ModelConversation {
+    private fun convertProtoToConversation(protoData: ConversationList.ConversationData): ModelConversation {
         return ModelConversation(
             chatId = protoData.chatId,
             chatType = protoData.chatType,
@@ -53,7 +53,7 @@ object ConversationProtoParser {
     /**
      * 转换@数据
      */
-    private fun convertProtoAtData(protoAtData: Conversation.ConversationList.ConversationData.AtData): AtData {
+    private fun convertProtoAtData(protoAtData: ConversationList.ConversationData.AtData): AtData {
         return AtData(
             unknown = protoAtData.unknown,
             mentionedId = if (protoAtData.mentionedId.isNotEmpty()) protoAtData.mentionedId else null,

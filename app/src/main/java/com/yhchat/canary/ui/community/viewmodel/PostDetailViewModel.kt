@@ -6,8 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yhchat.canary.data.model.CommunityBoard
+import com.yhchat.canary.data.model.CommunityComment
 import com.yhchat.canary.data.model.CommunityPost
-import com.yhchat.canary.data.model.FollowingBoard
 import com.yhchat.canary.data.repository.CommunityRepository
 import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.TokenRepository

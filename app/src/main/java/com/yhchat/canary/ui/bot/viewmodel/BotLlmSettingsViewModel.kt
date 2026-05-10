@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
+
 class BotLlmSettingsViewModel : ViewModel() {
     private lateinit var botRepository: BotRepository
     private val gson = Gson()
@@ -289,9 +291,20 @@ class BotLlmSettingsViewModel : ViewModel() {
             buildParamVariablesFromRaw(rawList)
                 .ifEmpty {
                     val dtoType = object : TypeToken<List<ParamVariableDto>>() {}.type
+                    val usedIds = mutableSetOf<String>()
                     gson.fromJson<List<ParamVariableDto>>(json, dtoType)
-                        ?.mapIndexed { index, dto -> dto.toUi(index) }
                         .orEmpty()
+                        .map { dto ->
+                            val finalId = makeUniqueId(dto.id.ifBlank { dto.name }, usedIds)
+                            val finalName = dto.name.ifBlank { finalId }
+                            ParamVariableUi(
+                                id = finalId,
+                                name = finalName,
+                                label = dto.label.ifBlank { finalName },
+                                type = ParamVariableType.fromServer(dto.type),
+                                options = dto.options
+                            )
+                        }
                 }
         }.getOrElse { emptyList() }
     }
@@ -325,16 +338,15 @@ class BotLlmSettingsViewModel : ViewModel() {
 
     private fun buildParamVariablesFromRaw(rawList: List<Map<String, Any?>>): List<ParamVariableUi> {
         if (rawList.isEmpty()) return emptyList()
-        val usedIds = mutableMapOf<String, Int>()
-        return rawList.mapIndexed { index, item ->
+        val usedIds = mutableSetOf<String>()
+        return rawList.map { item ->
             val rawId = item.stringValue("id", "varId", "key")
             val rawName = item.stringValue("name", "variable", "param")
             val rawLabel = item.stringValue("label", "title", "displayName")
             val rawType = item.stringValue("type", "component", "inputType")
             val rawOptions = item.stringValue("options", "option", "values", "selectOptions")
 
-            val baseId = rawId.ifBlank { rawName.ifBlank { "param_${index + 1}" } }
-            val finalId = makeUniqueId(baseId, usedIds)
+            val finalId = makeUniqueId(rawId.ifBlank { rawName }, usedIds)
             val finalName = rawName.ifBlank { finalId }
             val finalLabel = rawLabel.ifBlank { finalName }
 
@@ -348,16 +360,20 @@ class BotLlmSettingsViewModel : ViewModel() {
         }
     }
 
-    private fun makeUniqueId(base: String, usedIds: MutableMap<String, Int>): String {
-        val key = base.ifBlank { "param" }
-        val count = usedIds[key]
-        return if (count == null) {
-            usedIds[key] = 1
-            key
-        } else {
-            val next = count + 1
-            usedIds[key] = next
-            "${key}_$next"
+    private fun makeUniqueId(base: String, usedIds: MutableSet<String>): String {
+        val candidate = base.trim()
+        if (candidate.isNotBlank() && usedIds.add(candidate)) {
+            return candidate
+        }
+        while (true) {
+            val randomId = buildString(6) {
+                repeat(6) {
+                    append(('a'.code + Random.nextInt(26)).toChar())
+                }
+            }
+            if (usedIds.add(randomId)) {
+                return randomId
+            }
         }
     }
 }
@@ -425,18 +441,6 @@ private fun Map<String, Any?>.stringValue(vararg keys: String): String {
         if (text.isNotBlank()) return text
     }
     return ""
-}
-
-private fun ParamVariableDto.toUi(index: Int): ParamVariableUi {
-    val resolvedId = id.ifBlank { name.ifBlank { "param_${index + 1}" } }
-    val resolvedName = name.ifBlank { resolvedId }
-    return ParamVariableUi(
-        id = resolvedId,
-        name = resolvedName,
-        label = label.ifBlank { resolvedName },
-        type = ParamVariableType.fromServer(type),
-        options = options
-    )
 }
 
 private fun ParamVariableUi.toDto(): ParamVariableDto {

@@ -70,7 +70,7 @@
 ### [HtmlText](https://github.com/ch4rl3x/HtmlText/)
 ### [Reorderable](https://github.com/Calvin-LL/Reorderable)
 ### [KsoupHtml](https://github.com/MohamedRejeb/Ksoup)
-### [轻昼](http://text.kt-network.cn/qingzhou)
+### [轻昼](http://github.com/shijuhao/QingZhouCE)
 
 以及项目里用到的所有库
 

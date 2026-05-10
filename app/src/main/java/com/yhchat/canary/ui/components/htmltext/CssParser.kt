@@ -53,6 +53,8 @@ data class CssStyle(
     val alignItems: String? = null,
     val gap: Dp? = null,
     val flex: Float? = null,
+    val flexGrow: Float? = null,
+    val flexShrink: Float? = null,
     val flexWrap: String? = null,
     val justifyContent: String? = null,
     val objectFit: String? = null,
@@ -60,7 +62,9 @@ data class CssStyle(
     val whiteSpace: String? = null,
     val borderCollapse: String? = null,
     val borderSpacing: Dp? = null,
-    val listStyleType: String? = null
+    val listStyleType: String? = null,
+    val transition: String? = null,
+    val outline: String? = null
 )
 
 /**
@@ -94,6 +98,9 @@ object CssParser {
         val marginBox = parseBoxValues(properties["margin"])
         val paddingBox = parseBoxValues(properties["padding"])
         val parsedLineHeight = properties["line-height"]?.let { parseLineHeight(it) }
+        val flexParts = properties["flex"]?.let { parseFlexShorthand(it) }
+        val listStyleType = properties["list-style-type"]
+            ?: properties["list-style"]?.let { parseListStyleType(it) }
 
         return CssStyle(
             color = properties["color"]?.let { parseColor(it) },
@@ -134,7 +141,9 @@ object CssParser {
             flexDirection = properties["flex-direction"],
             alignItems = properties["align-items"],
             gap = properties["gap"]?.let { parseDimension(it) },
-            flex = properties["flex"]?.toFloatOrNull(),
+            flex = properties["flex"]?.toFloatOrNull() ?: flexParts?.first,
+            flexGrow = properties["flex-grow"]?.toFloatOrNull() ?: flexParts?.first,
+            flexShrink = properties["flex-shrink"]?.toFloatOrNull() ?: flexParts?.second,
             flexWrap = properties["flex-wrap"],
             justifyContent = properties["justify-content"],
             objectFit = properties["object-fit"],
@@ -142,7 +151,9 @@ object CssParser {
             whiteSpace = properties["white-space"],
             borderCollapse = properties["border-collapse"],
             borderSpacing = properties["border-spacing"]?.let { parseSingleDimension(it) },
-            listStyleType = properties["list-style-type"]
+            listStyleType = listStyleType,
+            transition = properties["transition"],
+            outline = properties["outline"]
         )
     }
 
@@ -176,6 +187,38 @@ object CssParser {
                     parseFontSize(trimmed) to null
                 }
             }
+        }
+    }
+
+    private fun parseFlexShorthand(value: String): Pair<Float, Float>? {
+        val normalized = value.trim().lowercase()
+        if (normalized.isEmpty()) return null
+        return when (normalized) {
+            "none" -> 0f to 0f
+            "auto", "initial" -> 1f to 1f
+            else -> {
+                val tokens = normalized.split(Regex("\\s+")).filter { it.isNotBlank() }
+                val grow = tokens.getOrNull(0)?.toFloatOrNull()
+                val shrink = tokens.getOrNull(1)?.toFloatOrNull()
+                when {
+                    grow != null && shrink != null -> grow to shrink
+                    grow != null -> grow to 1f
+                    else -> null
+                }
+            }
+        }
+    }
+
+    private fun parseListStyleType(value: String): String? {
+        val normalized = value.trim().lowercase()
+        if (normalized.isEmpty()) return null
+        return when {
+            normalized.contains("none") -> "none"
+            normalized.contains("disc") -> "disc"
+            normalized.contains("circle") -> "circle"
+            normalized.contains("square") -> "square"
+            normalized.contains("decimal") -> "decimal"
+            else -> null
         }
     }
     

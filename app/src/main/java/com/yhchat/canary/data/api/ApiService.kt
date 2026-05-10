@@ -1142,6 +1142,15 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: DeleteGroupTagRequest
     ): Response<ApiStatus>
+
+    /**
+     * 标签排序
+     */
+    @POST("v1/group-tag/sort")
+    suspend fun sortGroupTag(
+        @Header("token") token: String,
+        @Body request: SortGroupTagRequest
+    ): Response<ApiStatus>
     
     /**
      * 关联用户标签
@@ -2033,6 +2042,28 @@ data class EditGroupTagRequest(
 data class DeleteGroupTagRequest(
     @SerializedName("id")
     val id: Long
+)
+
+/**
+ * 标签排序请求
+ */
+data class SortGroupTagRequest(
+    @SerializedName("sort")
+    val sort: String,
+    @SerializedName("groupId")
+    val groupId: String
+)
+
+/**
+ * 标签排序项
+ */
+data class SortGroupTagItem(
+    @SerializedName("groupId")
+    val groupId: String,
+    @SerializedName("tagId")
+    val tagId: String,
+    @SerializedName("sort")
+    val sort: String
 )
 
 /**

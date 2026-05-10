@@ -1,6 +1,7 @@
 package com.yhchat.canary.data.repository
 
 import android.util.Log
+import com.google.gson.Gson
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.api.*
 import com.yhchat.canary.proto.group.tag_member
@@ -18,6 +19,7 @@ class GroupTagRepository @Inject constructor(
     private val tokenRepository: TokenRepository
 ) {
     private val TAG = "GroupTagRepository"
+    private val gson = Gson()
     
     /**
      * 获取群组标签列表
@@ -61,6 +63,51 @@ class GroupTagRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取群组标签异常", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 标签排序（提交完整排序列表）
+     */
+    suspend fun sortGroupTags(groupId: String, tags: List<GroupTag>): Result<Boolean> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val token = tokenRepository.getTokenSync()
+            if (token.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("未登录"))
+            }
+
+            val sortPayload = tags.mapIndexed { index, tag ->
+                SortGroupTagItem(
+                    groupId = groupId,
+                    tagId = tag.id.toString(),
+                    sort = (tags.size - index).toString()
+                )
+            }
+            val request = SortGroupTagRequest(
+                sort = gson.toJson(sortPayload),
+                groupId = groupId
+            )
+
+            val response = apiService.sortGroupTag(token, request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Log.d(TAG, "标签排序成功: ${tags.size}个标签")
+                    Result.success(true)
+                } else {
+                    val error = body?.message ?: "标签排序失败"
+                    Log.e(TAG, "标签排序失败: $error")
+                    Result.failure(Exception(error))
+                }
+            } else {
+                val error = "标签排序失败: HTTP ${response.code()}"
+                Log.e(TAG, error)
+                Result.failure(Exception(error))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "标签排序异常", e)
             Result.failure(e)
         }
     }

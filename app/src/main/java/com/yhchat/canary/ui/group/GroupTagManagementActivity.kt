@@ -7,12 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.api.GroupTag
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
+import org.burnoutcrew.reorderable.ItemPosition
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 
 @AndroidEntryPoint
 class GroupTagManagementActivity : ComponentActivity() {
@@ -88,27 +94,15 @@ fun GroupTagManagementScreen(
     onTagClick: (GroupTag) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(
+        onMove = { from: ItemPosition, to: ItemPosition ->
+            viewModel.moveTag(from.index, to.index)
+        }
+    )
+    val listState = reorderableState.listState
     
     LaunchedEffect(groupId) {
         viewModel.loadTags(groupId)
-    }
-
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val totalItems = listState.layoutInfo.totalItemsCount
-            if (totalItems == 0) {
-                return@derivedStateOf false
-            }
-            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleIndex >= totalItems - 3
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore, uiState.hasMore, uiState.isLoadingMore, uiState.isLoading) {
-        if (shouldLoadMore && uiState.hasMore && !uiState.isLoadingMore && !uiState.isLoading) {
-            viewModel.loadMoreTags(groupId)
-        }
     }
     
     Scaffold(
@@ -121,6 +115,23 @@ fun GroupTagManagementScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
                         )
+                    }
+                },
+                actions = {
+                    if (uiState.hasPendingSort) {
+                        TextButton(
+                            onClick = { viewModel.submitTagSort(groupId) },
+                            enabled = !uiState.isSorting
+                        ) {
+                            if (uiState.isSorting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("保存排序")
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -174,33 +185,42 @@ fun GroupTagManagementScreen(
                     )
                 }
                 else -> {
+                    if (uiState.sortError != null) {
+                        Text(
+                            text = uiState.sortError,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .reorderable(reorderableState)
+                            .detectReorderAfterLongPress(reorderableState),
                         state = listState,
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.tags, key = { it.id }) { tag ->
-                            TagCard(
-                                tag = tag,
-                                onClick = { onTagClick(tag) },
-                                onEditClick = { viewModel.showEditDialog(tag) },
-                                onDeleteClick = { viewModel.requestDeleteTag(tag) }
-                            )
-                        }
-
-                        if (uiState.isLoadingMore) {
-                            item(key = "loading_more") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                }
+                        itemsIndexed(uiState.tags, key = { _, tag -> tag.id }) { _, tag ->
+                            ReorderableItem(reorderableState, key = tag.id) { isDragging ->
+                                val elevation = animateDpAsState(
+                                    targetValue = if (isDragging) 8.dp else 2.dp,
+                                    label = "tagCardElevation"
+                                )
+                                TagCard(
+                                    tag = tag,
+                                    onClick = { onTagClick(tag) },
+                                    onEditClick = { viewModel.showEditDialog(tag) },
+                                    onDeleteClick = { viewModel.requestDeleteTag(tag) },
+                                    elevation = elevation.value
+                                )
                             }
                         }
+
                     }
                 }
             }
@@ -253,14 +273,15 @@ fun TagCard(
     tag: GroupTag,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    elevation: androidx.compose.ui.unit.Dp = 2.dp
 ) {
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Row(
             modifier = Modifier
@@ -268,6 +289,14 @@ fun TagCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = "拖拽排序",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             // 标签颜色指示器
             Box(
                 modifier = Modifier

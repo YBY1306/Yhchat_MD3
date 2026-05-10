@@ -2,10 +2,15 @@ package com.yhchat.canary.ui.components.htmltext
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -31,6 +36,59 @@ internal fun CssStyle.mergeText(parent: CssStyle): CssStyle = CssStyle(
     wordWrap = wordWrap ?: parent.wordWrap,
     whiteSpace = whiteSpace ?: parent.whiteSpace,
     listStyleType = listStyleType ?: parent.listStyleType
+)
+
+internal fun CssStyle.mergeWith(override: CssStyle): CssStyle = CssStyle(
+    color = override.color ?: color,
+    backgroundColor = override.backgroundColor ?: backgroundColor,
+    fontSize = override.fontSize ?: fontSize,
+    fontWeight = override.fontWeight ?: fontWeight,
+    fontStyle = override.fontStyle ?: fontStyle,
+    textDecoration = override.textDecoration ?: textDecoration,
+    textAlign = override.textAlign ?: textAlign,
+    width = override.width ?: width,
+    maxWidth = override.maxWidth ?: maxWidth,
+    minWidth = override.minWidth ?: minWidth,
+    height = override.height ?: height,
+    minHeight = override.minHeight ?: minHeight,
+    margin = override.margin ?: margin,
+    marginTop = override.marginTop ?: marginTop,
+    marginRight = override.marginRight ?: marginRight,
+    marginBottom = override.marginBottom ?: marginBottom,
+    marginLeft = override.marginLeft ?: marginLeft,
+    padding = override.padding ?: padding,
+    paddingTop = override.paddingTop ?: paddingTop,
+    paddingRight = override.paddingRight ?: paddingRight,
+    paddingBottom = override.paddingBottom ?: paddingBottom,
+    paddingLeft = override.paddingLeft ?: paddingLeft,
+    borderRadius = override.borderRadius ?: borderRadius,
+    border = override.border ?: border,
+    borderTop = override.borderTop ?: borderTop,
+    borderRight = override.borderRight ?: borderRight,
+    borderBottom = override.borderBottom ?: borderBottom,
+    borderLeft = override.borderLeft ?: borderLeft,
+    boxShadow = override.boxShadow ?: boxShadow,
+    lineHeight = override.lineHeight ?: lineHeight,
+    lineHeightMultiplier = override.lineHeightMultiplier ?: lineHeightMultiplier,
+    fontFamily = override.fontFamily ?: fontFamily,
+    backgroundGradient = override.backgroundGradient ?: backgroundGradient,
+    display = override.display ?: display,
+    flexDirection = override.flexDirection ?: flexDirection,
+    alignItems = override.alignItems ?: alignItems,
+    gap = override.gap ?: gap,
+    flex = override.flex ?: flex,
+    flexGrow = override.flexGrow ?: flexGrow,
+    flexShrink = override.flexShrink ?: flexShrink,
+    flexWrap = override.flexWrap ?: flexWrap,
+    justifyContent = override.justifyContent ?: justifyContent,
+    objectFit = override.objectFit ?: objectFit,
+    wordWrap = override.wordWrap ?: wordWrap,
+    whiteSpace = override.whiteSpace ?: whiteSpace,
+    borderCollapse = override.borderCollapse ?: borderCollapse,
+    borderSpacing = override.borderSpacing ?: borderSpacing,
+    listStyleType = override.listStyleType ?: listStyleType,
+    transition = override.transition ?: transition,
+    outline = override.outline ?: outline
 )
 
 internal fun CssStyle.toComposeTextStyle(fallback: TextStyle = TextStyle.Default): TextStyle {
@@ -77,6 +135,27 @@ internal fun Modifier.htmlBoxModel(style: CssStyle): Modifier {
         end = marginEnd
     )
 
+    val shadowElevation = style.boxShadow?.let(::parseShadowElevation)
+    if (shadowElevation != null && shadowElevation > 0.dp) {
+        modifier = modifier.shadow(
+            elevation = shadowElevation,
+            shape = shape ?: RoundedCornerShape(0.dp),
+            clip = false
+        )
+    }
+
+    style.width?.let { modifier = modifier.width(it) }
+    style.height?.let { modifier = modifier.height(it) }
+    if (style.minWidth != null || style.maxWidth != null) {
+        modifier = modifier.widthIn(
+            min = style.minWidth ?: 0.dp,
+            max = style.maxWidth ?: androidx.compose.ui.unit.Dp.Infinity
+        )
+    }
+    if (style.minHeight != null) {
+        modifier = modifier.heightIn(min = style.minHeight)
+    }
+
     if (style.backgroundColor != null && shape != null) {
         modifier = modifier.clip(shape).background(style.backgroundColor)
     } else if (style.backgroundColor != null) {
@@ -107,4 +186,14 @@ internal fun Modifier.htmlBoxModel(style: CssStyle): Modifier {
 internal fun parseBorderColor(border: String): Color {
     val colorPart = border.trim().split(Regex("\\s+")).lastOrNull() ?: "#e0e0e0"
     return CssParser.parseColor(colorPart) ?: Color(0xFFE0E0E0)
+}
+
+private fun parseShadowElevation(boxShadow: String): androidx.compose.ui.unit.Dp {
+    val values = Regex("(-?\\d+(?:\\.\\d+)?)px")
+        .findAll(boxShadow)
+        .mapNotNull { it.groupValues.getOrNull(1)?.toFloatOrNull() }
+        .toList()
+    if (values.isEmpty()) return 0.dp
+    val blur = values.getOrNull(2) ?: values.last()
+    return (blur / 2f).coerceAtLeast(1f).dp
 }

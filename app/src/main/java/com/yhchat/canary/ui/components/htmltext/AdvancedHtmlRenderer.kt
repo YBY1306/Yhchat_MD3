@@ -12,9 +12,15 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,17 +57,87 @@ fun AdvancedHtmlRenderer(
     onLinkClick: ((String) -> Unit)? = null
 ) {
     val root = remember(html) { parseHtmlTree(html) }
+    val defaultTextColor = MaterialTheme.colorScheme.onSurface
     Column(modifier = modifier) {
         root.children.forEach { node ->
+            if (node is HtmlNode.Element && node.tag in NON_CONTENT_TAGS) return@forEach
             RenderHtmlNode(
                 node = node,
-                inheritedText = CssStyle(fontSize = 14.sp),
+                inheritedText = CssStyle(fontSize = 14.sp, color = defaultTextColor),
                 onImageClick = onImageClick,
                 onLinkClick = onLinkClick
             )
         }
     }
 }
+
+@Composable
+private fun HtmlFlexNode(
+    node: HtmlNode.Element,
+    inheritedText: CssStyle,
+    onImageClick: ((String) -> Unit)?,
+    onLinkClick: ((String) -> Unit)?
+) {
+    val isRow = node.style.flexDirection?.equals("column", ignoreCase = true) != true
+    val gap = node.style.gap ?: 0.dp
+    val horizontalArrangement = when (node.style.justifyContent?.lowercase()) {
+        "center" -> Arrangement.Center
+        "end", "flex-end", "right" -> Arrangement.End
+        "space-between" -> Arrangement.SpaceBetween
+        "space-around" -> Arrangement.SpaceAround
+        "space-evenly" -> Arrangement.SpaceEvenly
+        else -> Arrangement.Start
+    }
+    val verticalAlignment = when (node.style.alignItems?.lowercase()) {
+        "center" -> Alignment.CenterVertically
+        "end", "flex-end" -> Alignment.Bottom
+        else -> Alignment.Top
+    }
+
+    if (isRow) {
+        Row(
+            modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style),
+            horizontalArrangement = horizontalArrangement,
+            verticalAlignment = verticalAlignment
+        ) {
+            val elements = node.children.filterIsInstance<HtmlNode.Element>()
+            val textNodes = node.children.filterIsInstance<HtmlNode.Text>()
+
+            if (textNodes.isNotEmpty()) {
+                val (annotated, style) = buildInlineAnnotated(textNodes, inheritedText)
+                if (annotated.text.isNotBlank()) {
+                    ClickableText(text = annotated, style = style)
+                }
+            }
+
+            elements.forEachIndexed { index, child ->
+                val childFlexGrow = child.style.flexGrow ?: child.style.flex ?: 0f
+                val childModifier = Modifier
+                    .then(if (index > 0 && horizontalArrangement == Arrangement.Start) Modifier.padding(start = gap) else Modifier)
+                    .then(if (childFlexGrow > 0f) Modifier.weight(childFlexGrow, fill = (child.style.flexShrink ?: 1f) > 0f) else Modifier)
+                Box(modifier = childModifier) {
+                    RenderHtmlNode(child, child.style.mergeText(inheritedText), onImageClick, onLinkClick)
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style),
+            verticalArrangement = if (gap > 0.dp) Arrangement.spacedBy(gap) else Arrangement.Top,
+            horizontalAlignment = when (node.style.alignItems?.lowercase()) {
+                "center" -> Alignment.CenterHorizontally
+                "end", "flex-end" -> Alignment.End
+                else -> Alignment.Start
+            }
+        ) {
+            node.children.forEach { child ->
+                RenderHtmlNode(child, inheritedText, onImageClick, onLinkClick)
+            }
+        }
+    }
+}
+
+private val NON_CONTENT_TAGS = setOf("html", "head", "meta", "title", "script", "link")
 
 @Composable
 private fun RenderHtmlNode(
@@ -112,6 +188,22 @@ private fun HtmlGenericNode(
     // 检查是否是链接标签（用于处理块级链接的可点击性）
     val isLink = node.tag == "a"
     val href = node.attrs["href"]
+
+    val displayMode = node.style.display?.trim()?.lowercase()
+
+    if (displayMode == "flex") {
+        HtmlFlexNode(node, merged, onImageClick, onLinkClick)
+        return
+    }
+
+    if (displayMode == "inline-block") {
+        Box(
+            modifier = Modifier.htmlBoxModel(node.style)
+        ) {
+            RenderInlineFlow(node.children, merged, onImageClick, onLinkClick)
+        }
+        return
+    }
 
     if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
         // 对于链接标签，使用 clickable 修饰符确保整个块区域可点击
@@ -202,7 +294,7 @@ private fun shouldRenderInline(node: HtmlNode.Element): Boolean {
     if (node.style.display != null) {
         when (node.style.display.lowercase()) {
             "block", "flex", "table", "table-row", "table-cell", "list-item" -> return false
-            "inline-block" -> return false
+            "inline-block" -> return true
         }
     }
     if (isBlockTag(node.tag) && !isInlineTag(node.tag)) return false
@@ -219,7 +311,8 @@ private fun shouldRenderInline(node: HtmlNode.Element): Boolean {
 private fun shouldRenderAsBlockNode(node: HtmlNode.Element): Boolean {
     if (node.style.display != null) {
         when (node.style.display.lowercase()) {
-            "block", "flex", "table", "table-row", "table-cell", "list-item", "inline-block" -> return true
+            "block", "flex", "table", "table-row", "table-cell", "list-item" -> return true
+            "inline-block" -> return false
         }
     }
     return node.children.any { child ->
@@ -416,16 +509,27 @@ private fun HtmlDetailsNode(
     var expanded by remember { mutableStateOf(node.attrs.containsKey("open")) }
     val summary = node.children.firstOrNull { it is HtmlNode.Element && it.tag == "summary" }
     val content = node.children.filterNot { it == summary }
+    val openStateStyle = remember(node.attrs[DETAILS_OPEN_STYLE_ATTR]) {
+        node.attrs[DETAILS_OPEN_STYLE_ATTR]
+            ?.takeIf { it.isNotBlank() }
+            ?.let(CssParser::parseStyle)
+    }
+    val detailsStyle = if (expanded && openStateStyle != null) {
+        node.style.mergeWith(openStateStyle)
+    } else {
+        node.style
+    }
 
-    Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
+    Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(detailsStyle)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (expanded) "▼" else "▶",
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
+                contentDescription = if (expanded) "收起" else "展开",
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 6.dp)
             )
@@ -476,6 +580,7 @@ private fun HtmlListNode(
     val items = node.children.filterIsInstance<HtmlNode.Element>().filter { it.tag == "li" }
     val ordered = node.tag == "ol"
     val start = positiveInt(node.attrs["start"], 1)
+    val hideMarker = node.style.listStyleType?.equals("none", ignoreCase = true) == true
 
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
         if (items.isNotEmpty()) {
@@ -485,11 +590,13 @@ private fun HtmlListNode(
                     modifier = Modifier.fillMaxWidth().htmlBoxModel(item.style),
                     verticalAlignment = Alignment.Top
                 ) {
-                    Text(
-                        text = "$marker ",
-                        style = inheritedText.toComposeTextStyle(),
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
+                    if (!hideMarker) {
+                        Text(
+                            text = "$marker ",
+                            style = inheritedText.toComposeTextStyle(),
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                    }
                     Column(modifier = Modifier.fillMaxWidth()) {
                         RenderInlineFlow(item.children, item.style.mergeText(inheritedText), onImageClick, onLinkClick)
                     }

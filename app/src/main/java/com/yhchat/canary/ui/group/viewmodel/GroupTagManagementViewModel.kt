@@ -17,7 +17,7 @@ class GroupTagManagementViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private const val PAGE_SIZE = 50
+        private const val PAGE_SIZE = 99999
     }
 
     private val _uiState = MutableStateFlow(GroupTagManagementUiState())
@@ -39,7 +39,10 @@ class GroupTagManagementViewModel @Inject constructor(
                         tags = tags,
                         isLoading = false,
                         currentPage = 1,
-                        hasMore = tags.size >= PAGE_SIZE
+                        hasMore = tags.size >= PAGE_SIZE,
+                        hasPendingSort = false,
+                        isSorting = false,
+                        sortError = null
                     )
                 },
                 onFailure = { error ->
@@ -205,13 +208,65 @@ class GroupTagManagementViewModel @Inject constructor(
                         tags = (latestState.tags + newTags).distinctBy { it.id },
                         isLoadingMore = false,
                         currentPage = nextPage,
-                        hasMore = newTags.size >= PAGE_SIZE
+                        hasMore = newTags.size >= PAGE_SIZE,
+                        sortError = null
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoadingMore = false,
                         error = error.message
+                    )
+                }
+            )
+        }
+    }
+
+    fun moveTag(fromIndex: Int, toIndex: Int) {
+        val currentState = _uiState.value
+        if (fromIndex == toIndex || fromIndex !in currentState.tags.indices || toIndex !in currentState.tags.indices) {
+            return
+        }
+
+        val mutableTags = currentState.tags.toMutableList()
+        val movedItem = mutableTags.removeAt(fromIndex)
+        mutableTags.add(toIndex, movedItem)
+
+        _uiState.value = currentState.copy(
+            tags = mutableTags,
+            hasPendingSort = true,
+            sortError = null
+        )
+    }
+
+    fun submitTagSort(groupId: String) {
+        val currentState = _uiState.value
+        if (currentState.isSorting || !currentState.hasPendingSort) {
+            return
+        }
+        if (currentState.hasMore) {
+            _uiState.value = currentState.copy(sortError = "请先加载全部标签后再排序")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isSorting = true,
+                sortError = null
+            )
+
+            groupTagRepository.sortGroupTags(groupId, _uiState.value.tags).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        isSorting = false,
+                        hasPendingSort = false,
+                        sortError = null
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isSorting = false,
+                        sortError = error.message
                     )
                 }
             )
@@ -233,6 +288,9 @@ data class GroupTagManagementUiState(
     val isSaving: Boolean = false,
     val saveError: String? = null,
     val hasMore: Boolean = true,
-    val currentPage: Int = 1
+    val currentPage: Int = 1,
+    val isSorting: Boolean = false,
+    val hasPendingSort: Boolean = false,
+    val sortError: String? = null
 )
 

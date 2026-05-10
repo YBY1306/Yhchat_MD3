@@ -1,9 +1,6 @@
 package com.yhchat.canary.ui.contacts
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +10,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CheckCircle
@@ -137,32 +133,28 @@ fun ContactsScreen(
                             )
                         }
 
-                        item(key = "requests_content") {
-                            AnimatedVisibility(
-                                visible = uiState.friendRequestsExpanded,
-                                enter = expandVertically(),
-                                exit = shrinkVertically()
-                            ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    if (uiState.friendRequestsLoading) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                        }
-                                    } else {
-                                        uiState.friendRequests.forEach { item ->
-                                            FriendRequestRow(
-                                                item = item,
-                                                onClick = { viewModel.selectFriendRequest(item) },
-                                                modifier = Modifier.animateItem()
-                                            )
-                                            }
-                                        }
+                        if (uiState.friendRequestsExpanded) {
+                            if (uiState.friendRequestsLoading) {
+                                item(key = "requests_loading") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                     }
+                                }
+                            } else {
+                                items(
+                                    items = uiState.friendRequests,
+                                    key = { "request_${it.requestId}" }
+                                ) { requestItem ->
+                                    FriendRequestRow(
+                                        item = requestItem,
+                                        onClick = { viewModel.selectFriendRequest(requestItem) },
+                                        modifier = Modifier.animateItem()
+                                    )
                                 }
                             }
                         }

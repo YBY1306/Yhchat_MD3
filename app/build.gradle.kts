@@ -175,8 +175,8 @@ dependencies {
     }
     
     // Compose Rich Text - Markdown 渲染
-    implementation("com.halilibo.compose-richtext:richtext-ui-material3:0.20.0")
-    implementation("com.halilibo.compose-richtext:richtext-commonmark:0.20.0")
+    implementation("com.halilibo.compose-richtext:richtext-ui-material3:0.17.0")
+    implementation("com.halilibo.compose-richtext:richtext-commonmark:0.17.0")
     implementation(libs.jetbrains.markdown)
 
     implementation(libs.ksoup.html)

@@ -6,12 +6,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    id("com.google.protobuf") version "0.9.5"
+    id("com.google.protobuf") version "0.10.0"
 }
 
 android {
     namespace = "com.yhchat.canary"
-    compileSdk = 36
+    compileSdk = 37
     val baseVersionName = "21.6"
     val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
         ?.trim()
@@ -37,7 +37,7 @@ android {
     defaultConfig {
         applicationId = "com.yhchat.canary.wear"
         minSdk = 25
-        targetSdk = 36
+        targetSdk = 99
         versionCode = 1
         versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

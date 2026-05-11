@@ -35,7 +35,7 @@ android {
     val hasReleaseSigning = releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
 
     defaultConfig {
-        applicationId = "com.yhchat.canary"
+        applicationId = "com.yhchat.canary.wear"
         minSdk = 25
         targetSdk = 36
         versionCode = 1
@@ -87,7 +87,7 @@ android {
             buildConfigField("boolean", "WITH_LIVE", "true")
         }
     }
-
+    useLibrary("wear-sdk")
     buildFeatures {
         compose = true
         buildConfig = true

@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -23,10 +24,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.decode.BitmapFactoryDecoder
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
+import java.io.File
 import java.util.regex.Pattern
 
 @Composable
@@ -37,6 +42,11 @@ fun ExpressionText(
     linkColor: Color = MaterialTheme.colorScheme.primary
 ) {
     val context = LocalContext.current
+
+    val isUseExternalFilesDirFengtwEmoji by rememberBooleanPreference("inline_expressions_settings", "show_inline_expressions_but_use_external_files_dir", false)
+    val is_show_inline_expressions_and_allow_online_url by rememberBooleanPreference("inline_expressions_settings", "show_inline_expressions_and_allow_online_url", false)
+
+
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
     val inlineContent = remember { mutableMapOf<String, InlineTextContent>() }
 
@@ -65,7 +75,11 @@ fun ExpressionText(
                     // Expression: [.Name]
                     val name = match.substring(2, match.length - 1)
                     val id = "expression_$start"
-                    
+
+                    val _is_inline_expressions_online_url =
+                        if (is_show_inline_expressions_and_allow_online_url) Pattern.compile("((https?://[^\\s\\u4e00-\\u9fff]+))", Pattern.CASE_INSENSITIVE).matcher(match).find()
+                        else false
+
                     appendInlineContent(id, match)
                     inlineContent[id] = InlineTextContent(
                         Placeholder(
@@ -78,8 +92,20 @@ fun ExpressionText(
                         val mapped = assetFileNameMap[normalizeExpressionAssetFileName(desiredFileName)] ?: desiredFileName
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}")
-                                .decoderFactory(SvgDecoder.Factory())
+                                .data(
+                                    if (_is_inline_expressions_online_url) name
+                                    else
+                                        if (!isUseExternalFilesDirFengtwEmoji) "file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}"
+                                        else "${context.getExternalFilesDir("fengtwemoji")}${File.separatorChar}${desiredFileName}"
+                                )
+                                .decoderFactory(
+                                    if (!_is_inline_expressions_online_url) SvgDecoder.Factory()
+                                    else
+                                        if (name.endsWith(".svg")) SvgDecoder.Factory()
+                                        // else if (name.endsWith(".bmp")) BitmapFactoryDecoder.Factory() // XXX 这个好像不是bmp，不知道干嘛的
+                                        // else if (name.endsWith(".gif")) GifDecoder.Factory() // 好像ImageDecoderDecoder也能解析GIF
+                                        else ImageDecoderDecoder.Factory()
+                                )
                                 .crossfade(true)
                                 .build(),
                             contentDescription = name,

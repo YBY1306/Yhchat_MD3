@@ -29,6 +29,10 @@ jobs:
             gradle_task: assembleWithLiveRelease
             artifact_name: apk-withLive
             asset_name: app-withLive-release.apk
+          - flavor: withAll
+            gradle_task: assembleWithAllRelease
+            artifact_name: apk-withAll
+            asset_name: app-withAll-release.apk
 
     steps:
       - name: Checkout code

@@ -98,14 +98,7 @@ fun ExpressionText(
                                         if (!isUseExternalFilesDirFengtwEmoji) "file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}"
                                         else "${context.getExternalFilesDir("fengtwemoji")}${File.separatorChar}${desiredFileName}"
                                 )
-                                .decoderFactory(
-                                    if (!_is_inline_expressions_online_url) SvgDecoder.Factory()
-                                    else
-                                        if (name.endsWith(".svg")) SvgDecoder.Factory()
-                                        // else if (name.endsWith(".bmp")) BitmapFactoryDecoder.Factory() // XXX 这个好像不是bmp，不知道干嘛的
-                                        // else if (name.endsWith(".gif")) GifDecoder.Factory() // 好像ImageDecoderDecoder也能解析GIF
-                                        else ImageDecoderDecoder.Factory()
-                                )
+                                .decoderFactory(SvgDecoder.Factory())
                                 .crossfade(true)
                                 .build(),
                             contentDescription = name,

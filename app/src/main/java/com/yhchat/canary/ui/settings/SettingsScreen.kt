@@ -520,9 +520,18 @@ private fun DisplaySettingsGroup(
         context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) 
     }
     
+    val inline_expressions_prefs = remember {
+        context.getSharedPreferences("inline_expressions_settings", Context.MODE_PRIVATE)
+    }
+    
     // 内联表情显示开关
     var showInlineExpressions by remember { 
         mutableStateOf(prefs.getBoolean("show_inline_expressions", true)) 
+    }
+
+    // 显示自定义的内联表情图片开关
+    var is_show_inline_expressions_but_use_external_files_dir by remember {
+        mutableStateOf(inline_expressions_prefs.getBoolean("show_inline_expressions_but_use_external_files_dir", false))
     }
 
     // 表情选择器点击后自动收回
@@ -542,6 +551,18 @@ private fun DisplaySettingsGroup(
                     onCheckedChange = { checked ->
                         showInlineExpressions = checked
                         prefs.edit().putBoolean("show_inline_expressions", checked).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.EmojiEmotions,
+                    title = "显示自定义的内联表情图片",
+                    subtitle = if(is_show_inline_expressions_but_use_external_files_dir) "自定义表情只有自己能看见\nExternalFilesDir(\"fengtwemoji\")" else "",
+                    checked = is_show_inline_expressions_but_use_external_files_dir,
+                    onCheckedChange = { checked ->
+                        is_show_inline_expressions_but_use_external_files_dir = checked
+                        inline_expressions_prefs.edit().putBoolean("show_inline_expressions_but_use_external_files_dir", checked).apply()
                     }
                 )
             },

@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -27,6 +28,7 @@ import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
+import java.io.File
 import java.util.regex.Pattern
 
 @Composable
@@ -37,6 +39,10 @@ fun ExpressionText(
     linkColor: Color = MaterialTheme.colorScheme.primary
 ) {
     val context = LocalContext.current
+
+    val isUseExternalFilesDirFengtwEmoji by rememberBooleanPreference("inline_expressions_settings", "show_inline_expressions_but_use_external_files_dir", true)
+
+
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
     val inlineContent = remember { mutableMapOf<String, InlineTextContent>() }
 
@@ -78,7 +84,10 @@ fun ExpressionText(
                         val mapped = assetFileNameMap[normalizeExpressionAssetFileName(desiredFileName)] ?: desiredFileName
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data("file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}")
+                                .data(
+                                    if (!isUseExternalFilesDirFengtwEmoji) "file:///android_asset/fengtwemoji/${android.net.Uri.encode(mapped)}"
+                                    else "${context.getExternalFilesDir("fengtwemoji")}${File.separatorChar}${desiredFileName}"
+                                )
                                 .decoderFactory(SvgDecoder.Factory())
                                 .crossfade(true)
                                 .build(),

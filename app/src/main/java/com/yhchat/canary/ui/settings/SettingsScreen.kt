@@ -533,6 +533,10 @@ private fun DisplaySettingsGroup(
     var is_show_inline_expressions_but_use_external_files_dir by remember {
         mutableStateOf(inline_expressions_prefs.getBoolean("show_inline_expressions_but_use_external_files_dir", false))
     }
+    // 允许在线URL作为内联表情开关
+    var is_show_inline_expressions_and_allow_online_url by remember {
+        mutableStateOf(inline_expressions_prefs.getBoolean("show_inline_expressions_and_allow_online_url", false))
+    }
 
     // 表情选择器点击后自动收回
     var autoDismissExpressionPicker by remember {
@@ -558,11 +562,23 @@ private fun DisplaySettingsGroup(
                 SettingsSwitchItem(
                     icon = Icons.Default.EmojiEmotions,
                     title = "显示自定义的内联表情图片",
-                    subtitle = if(is_show_inline_expressions_but_use_external_files_dir) "自定义表情只有自己能看见\nExternalFilesDir(\"fengtwemoji\")" else "",
+                    subtitle = if(is_show_inline_expressions_but_use_external_files_dir) "自定义表情只有自己能看见\nExternalFilesDir(\"fengtwemoji\")/[.xxx].svg" else "",
                     checked = is_show_inline_expressions_but_use_external_files_dir,
                     onCheckedChange = { checked ->
                         is_show_inline_expressions_but_use_external_files_dir = checked
                         inline_expressions_prefs.edit().putBoolean("show_inline_expressions_but_use_external_files_dir", checked).apply()
+                    }
+                )
+            },
+            {
+                SettingsSwitchItem(
+                    icon = Icons.Default.EmojiEmotions,
+                    title = "允许在线URL作为内联表情", //你无法保证别人不会拿原神安装包当表情
+                    subtitle = if(is_show_inline_expressions_and_allow_online_url) "原神下载中" else "",
+                    checked = is_show_inline_expressions_and_allow_online_url,
+                    onCheckedChange = { checked ->
+                        is_show_inline_expressions_and_allow_online_url = checked
+                        inline_expressions_prefs.edit().putBoolean("show_inline_expressions_and_allow_online_url", checked).apply()
                     }
                 )
             },

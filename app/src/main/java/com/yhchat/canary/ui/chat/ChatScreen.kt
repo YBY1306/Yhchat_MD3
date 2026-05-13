@@ -339,7 +339,10 @@ fun ChatScreen(
     val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
     val showRefreshButton by rememberBooleanPreference("layout_settings", "chat_show_refresh_button", true)
     val hideTopAppBar by rememberBooleanPreference("layout_settings", "chat_hide_top_app_bar", false)
-    
+
+    // 读取内容设置：是否允许发送空文本消息
+    val isSendTextAllowEmptySetting = context.getSharedPreferences("send_text_settings", Context.MODE_PRIVATE) .getBoolean("send_text_allow_empty", false)//英语不好不知道起什么变量名
+
     // 初始化聊天
     LaunchedEffect(chatId, chatType) {
         viewModel.initChat(chatId, chatType, userId)
@@ -967,7 +970,8 @@ fun ChatScreen(
                                         msg.content.text?.let { text ->
                                             viewModel.sendMessage(
                                                 text = text,
-                                                contentType = msg.contentType
+                                                contentType = msg.contentType,
+                                                isSendTextAllowEmptySetting = isSendTextAllowEmptySetting, // +1有必要允许发送空文本消息吗，嗯也许用来+1发送别人发的引用消息吧。嗯似乎引用消息的+1还没做好
                                             )
                                             Toast.makeText(context, "+1 文本消息已发送", Toast.LENGTH_SHORT).show()
                                         } ?: Toast.makeText(context, "消息内容为空", Toast.LENGTH_SHORT).show()
@@ -1333,7 +1337,7 @@ fun ChatScreen(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSendMessage = {
-                    if (inputText.isNotEmpty()) {
+                    if (inputText.isNotEmpty()||isSendTextAllowEmptySetting) {
                         val messageText = inputText
                         
                         // 解析@用户，提取用户ID列表
@@ -1396,7 +1400,8 @@ fun ChatScreen(
                                 android.util.Log.e("ChatScreen", "发送消息失败: $error")
                                 // 可以选择显示Toast提示
                                 // android.widget.Toast.makeText(context, "发送失败: $error", android.widget.Toast.LENGTH_SHORT).show()
-                            }
+                            },
+                            isSendTextAllowEmptySetting = isSendTextAllowEmptySetting
                         )
                     }
                 },
@@ -1507,7 +1512,8 @@ fun ChatScreen(
                                 quoteImageName = quotedImageName,
                                 quoteVideoUrl = quotedVideoUrl,
                                 quoteVideoTime = quotedVideoTime,
-                                commandId = instruction.id
+                                commandId = instruction.id,
+                                isSendTextAllowEmptySetting = isSendTextAllowEmptySetting,// 这里有必要允许发送空文本消息吗，Bot的直发指令应该不能是空文本吧
                             )
                             inputText = ""
                             selectedInstruction = null

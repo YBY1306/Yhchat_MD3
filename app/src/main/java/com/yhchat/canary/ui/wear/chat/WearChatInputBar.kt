@@ -949,6 +949,74 @@ fun WearChatInputBar(
             horizontalAlignment = Alignment.CenterHorizontally // 水平居中
         ) {
 
+
+            // 发送按钮 - 圆形背景
+
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        if (text.isNotEmpty())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        CircleShape
+                    )
+                    .clip(CircleShape)
+                    .pointerInput(
+                        currentLongPressSendMarkdownEnabled,
+                        currentLongPressSendMarkdownSeconds
+                    ) {
+                        detectTapGestures(
+                            onTap = {
+                                if (currentText.isNotEmpty() || true) {
+                                    Log.d("ChatInputBar", "Send button tapped")
+                                    currentOnSendMessage()
+                                }
+                                onHideInputBar?.invoke()
+                            },
+                            onLongPress = {
+                                val mtc = currentMtc
+                                if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
+                                    Log.d(
+                                        "ChatInputBar",
+                                        "Send button long pressed -> Markdown"
+                                    )
+                                    val previousType = currentSelectedMessageType
+                                    coroutineScope.launch {
+                                        if (previousType != 3) {
+                                            mtc.invoke(3)
+                                        }
+                                        currentOnSendMessage()
+                                        if (previousType != 3) {
+                                            mtc.invoke(previousType)
+                                        }
+                                    }
+                                } else if (currentText.isNotEmpty()) {
+                                    // 如果没开启长按发送 Markdown，则长按也作为普通发送
+                                    Log.d(
+                                        "ChatInputBar",
+                                        "Send button long pressed (normal send)"
+                                    )
+                                    currentOnSendMessage()
+                                }
+                                onHideInputBar?.invoke()
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "发送",
+                    tint = if (text.isNotEmpty())
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
             // 引用消息显示框
             if (quotedMessageText != null) {
                 QuotedMessageBar(
@@ -1026,72 +1094,6 @@ fun WearChatInputBar(
                 }
             )
 
-            // 发送按钮 - 圆形背景
-
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(
-                        if (text.isNotEmpty())
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant,
-                        CircleShape
-                    )
-                    .clip(CircleShape)
-                    .pointerInput(
-                        currentLongPressSendMarkdownEnabled,
-                        currentLongPressSendMarkdownSeconds
-                    ) {
-                        detectTapGestures(
-                            onTap = {
-                                if (currentText.isNotEmpty() || true) {
-                                    Log.d("ChatInputBar", "Send button tapped")
-                                    currentOnSendMessage()
-                                }
-                                onHideInputBar?.invoke()
-                            },
-                            onLongPress = {
-                                val mtc = currentMtc
-                                if (currentText.isNotEmpty() && currentLongPressSendMarkdownEnabled && mtc != null) {
-                                    Log.d(
-                                        "ChatInputBar",
-                                        "Send button long pressed -> Markdown"
-                                    )
-                                    val previousType = currentSelectedMessageType
-                                    coroutineScope.launch {
-                                        if (previousType != 3) {
-                                            mtc.invoke(3)
-                                        }
-                                        currentOnSendMessage()
-                                        if (previousType != 3) {
-                                            mtc.invoke(previousType)
-                                        }
-                                    }
-                                } else if (currentText.isNotEmpty()) {
-                                    // 如果没开启长按发送 Markdown，则长按也作为普通发送
-                                    Log.d(
-                                        "ChatInputBar",
-                                        "Send button long pressed (normal send)"
-                                    )
-                                    currentOnSendMessage()
-                                }
-                                onHideInputBar?.invoke()
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "发送",
-                    tint = if (text.isNotEmpty())
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
 
 
         }

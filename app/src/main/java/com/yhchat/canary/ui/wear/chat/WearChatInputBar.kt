@@ -948,6 +948,23 @@ fun WearChatInputBar(
             modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
             horizontalAlignment = Alignment.CenterHorizontally // 水平居中
         ) {
+
+            // 引用消息显示框
+            if (quotedMessageText != null) {
+                QuotedMessageBar(
+                    quotedText = quotedMessageText,
+                    onClearQuote = { onClearQuote?.invoke() }
+                )
+            }
+
+            // 指令显示框
+            if (selectedInstruction != null) {
+                InstructionBar(
+                    instruction = selectedInstruction,
+                    onClearInstruction = { onClearInstruction?.invoke() }
+                )
+            }
+
             // 文本模式：显示输入框
             BasicTextField(
                 value = text,

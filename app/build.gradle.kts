@@ -130,23 +130,23 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.material:material:1.11.1")
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.material)
 
     // Wear Compose
-    implementation("androidx.wear.compose:compose-material:1.6.1")
-    implementation("androidx.wear.compose:compose-foundation:1.4.1")
+    implementation(libs.compose.material)
+    implementation(libs.androidx.compose.foundation.v141)
 
     implementation(libs.reorderable)
 
-    implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation(libs.androidx.documentfile)
 
 
     implementation(libs.core.splashscreen)
@@ -161,12 +161,12 @@ dependencies {
     // 图片加载
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
-    implementation("io.coil-kt:coil-svg:2.7.0") // SVG支持
+    implementation(libs.coil.svg) // SVG支持
 
     implementation("androidx.media:media:1.7.0")
     
     // 权限处理
-    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+    implementation(libs.accompanist.permissions)
     
     // WebDAV 客户端
     implementation("com.github.thegrizzlylabs:sardine-android:0.8") {
@@ -182,11 +182,11 @@ dependencies {
     implementation(libs.ksoup.html)
     
     // HTML 文本渲染支持
-    implementation("androidx.compose.ui:ui-text-google-fonts")
+    implementation(libs.androidx.compose.ui.text.google.fonts)
     
     // Protobuf - 只使用Lite版本避免冲突
-    implementation("com.google.protobuf:protobuf-javalite:4.34.1")
-    implementation("com.google.protobuf:protobuf-kotlin-lite:4.34.1")
+    implementation(libs.protobuf.javalite)
+    implementation(libs.protobuf.kotlin.lite)
     
     // 导航
     implementation(libs.androidx.navigation.compose)
@@ -196,14 +196,14 @@ dependencies {
     ksp(libs.room.compiler)
     
     // Security - 使用Android官方的安全存储方案
-    implementation("androidx.security:security-crypto:1.1.0")
+    implementation(libs.androidx.security.crypto)
     
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     // Hilt Navigation for Compose (needed for hiltViewModel)
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // QR Code Scanning
     implementation(libs.zxing.android.embedded)

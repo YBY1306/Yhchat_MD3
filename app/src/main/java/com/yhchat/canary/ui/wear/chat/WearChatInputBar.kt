@@ -950,6 +950,85 @@ fun WearChatInputBar(
         ) {
 
 
+
+            // 引用消息显示框
+            if (quotedMessageText != null) {
+                QuotedMessageBar(
+                    quotedText = quotedMessageText,
+                    onClearQuote = { onClearQuote?.invoke() }
+                )
+            }
+
+            // 指令显示框
+            if (selectedInstruction != null) {
+                InstructionBar(
+                    instruction = selectedInstruction,
+                    onClearInstruction = { onClearInstruction?.invoke() }
+                )
+            }
+
+            // 文本模式：显示输入框
+            BasicTextField(
+                value = text,
+                onValueChange = { newText: String ->
+                    onTextChange(newText)
+                    onDraftChange?.invoke(newText)
+                },
+                modifier = Modifier
+//                          .weight(1f)
+                    .heightIn(min = 36.dp, max = 90.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .pointerInput(Unit) {
+                        // 针对大屏/悬浮键盘模式的修复：
+                        // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
+                        // 显式监听点击事件，强制请求焦点并弹出键盘。
+                        detectTapGestures {
+                            focusRequester?.requestFocus()
+                            keyboardController?.show()
+                        }
+                    }
+                    .onFocusChanged { state ->
+                        if (state.isFocused) {
+                            showExpressionPicker = false
+                        }
+                    }
+                    .let { modifier ->
+                        if (focusRequester != null) {
+                            modifier.focusRequester(focusRequester)
+                        } else {
+                            modifier
+                        }
+                    },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                maxLines = 3,
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (text.isEmpty()) {
+                            val effectivePlaceholder = when {
+                                selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
+                                    selectedInstruction.hintText
+
+                                else -> placeholder
+                            }
+                            Text(
+                                text = effectivePlaceholder,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.5f
+                                )
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+
+
             // 发送按钮 - 圆形背景
 
             Box(
@@ -1017,85 +1096,7 @@ fun WearChatInputBar(
                 )
             }
 
-            // 文本模式：显示输入框
-            BasicTextField(
-                value = text,
-                onValueChange = { newText: String ->
-                    onTextChange(newText)
-                    onDraftChange?.invoke(newText)
-                },
-                modifier = Modifier
-//                          .weight(1f)
-                    .heightIn(min = 36.dp, max = 90.dp)
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                    .pointerInput(Unit) {
-                        // 针对大屏/悬浮键盘模式的修复：
-                        // 当键盘在悬浮模式下通过点击外部关闭时，输入框可能仍保持焦点。
-                        // 显式监听点击事件，强制请求焦点并弹出键盘。
-                        detectTapGestures {
-                            focusRequester?.requestFocus()
-                            keyboardController?.show()
-                        }
-                    }
-                    .onFocusChanged { state ->
-                        if (state.isFocused) {
-                            showExpressionPicker = false
-                        }
-                    }
-                    .let { modifier ->
-                        if (focusRequester != null) {
-                            modifier.focusRequester(focusRequester)
-                        } else {
-                            modifier
-                        }
-                    },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                maxLines = 3,
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (text.isEmpty()) {
-                            val effectivePlaceholder = when {
-                                selectedInstruction != null && selectedInstruction.hintText.isNotEmpty() ->
-                                    selectedInstruction.hintText
-
-                                else -> placeholder
-                            }
-                            Text(
-                                text = effectivePlaceholder,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                    alpha = 0.5f
-                                )
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
-            )
-
-
-            // 引用消息显示框
-            if (quotedMessageText != null) {
-                QuotedMessageBar(
-                    quotedText = quotedMessageText,
-                    onClearQuote = { onClearQuote?.invoke() }
-                )
-            }
-
-            // 指令显示框
-            if (selectedInstruction != null) {
-                InstructionBar(
-                    instruction = selectedInstruction,
-                    onClearInstruction = { onClearInstruction?.invoke() }
-                )
-            }
-
-
+            
         }
     BackHandler(enabled = true) {
         onHideInputBar?.invoke()

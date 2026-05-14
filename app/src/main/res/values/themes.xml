@@ -12,6 +12,9 @@
         <item name="android:windowLightNavigationBar">true</item>
         <!-- 启用边到边显示 -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+
+        <item name="android:windowSwipeToDismiss">true</item>
+
     </style>
 
     <style name="Theme.YhchatCanary.Wear" parent="Theme.SplashScreen">

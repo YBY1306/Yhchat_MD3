@@ -103,6 +103,11 @@ fun WearChatInputBar(
     voiceViewModel: VoiceMessageViewModel? = null,// 语音消息 ViewModel
 
     onHideInputBar: (() -> Unit)? = null,//TODO
+    _xxx_a1: Boolean =false,
+    _xxx_a2: Boolean =false,
+    _xxx_a3: Boolean =false,
+    _xxx_a4: Boolean =false,
+    _xxx_a5: Boolean =false,
 ) {
     val ctx = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current

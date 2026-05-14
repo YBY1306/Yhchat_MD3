@@ -716,6 +716,16 @@ fun WearChatScreen(
     // 下拉刷新状态（刷新最新消息）
     val pullToRefreshState = rememberPullToRefreshState()
 
+
+
+    var xxxffgdgd by remember { mutableStateOf(false) }
+    var xxxsasd by remember { mutableStateOf(false) }
+    var xxxsasaas by remember { mutableStateOf(false) }
+    var xxxreew by remember { mutableStateOf(false) }
+    var xxchytd by remember { mutableStateOf(false) }
+
+
+
     // 应用聊天背景
     Box(
         modifier = modifier.fillMaxSize()
@@ -744,6 +754,12 @@ fun WearChatScreen(
                     .fillMaxSize()
                     .then(if (!isLargeScreen) Modifier.imePadding() else Modifier)  // 大屏悬浮键盘不推动界面
             ) {
+
+
+                if (showInputBar) {
+
+                }
+
                 // 顶部应用栏（受布局设置控制）
                 if (false)
                     if (!hideTopAppBar) {

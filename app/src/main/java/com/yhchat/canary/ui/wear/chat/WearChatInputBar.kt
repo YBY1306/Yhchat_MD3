@@ -1017,22 +1017,6 @@ fun WearChatInputBar(
                 )
             }
 
-            // 引用消息显示框
-            if (quotedMessageText != null) {
-                QuotedMessageBar(
-                    quotedText = quotedMessageText,
-                    onClearQuote = { onClearQuote?.invoke() }
-                )
-            }
-
-            // 指令显示框
-            if (selectedInstruction != null) {
-                InstructionBar(
-                    instruction = selectedInstruction,
-                    onClearInstruction = { onClearInstruction?.invoke() }
-                )
-            }
-
             // 文本模式：显示输入框
             BasicTextField(
                 value = text,
@@ -1094,6 +1078,22 @@ fun WearChatInputBar(
                 }
             )
 
+
+            // 引用消息显示框
+            if (quotedMessageText != null) {
+                QuotedMessageBar(
+                    quotedText = quotedMessageText,
+                    onClearQuote = { onClearQuote?.invoke() }
+                )
+            }
+
+            // 指令显示框
+            if (selectedInstruction != null) {
+                InstructionBar(
+                    instruction = selectedInstruction,
+                    onClearInstruction = { onClearInstruction?.invoke() }
+                )
+            }
 
 
         }

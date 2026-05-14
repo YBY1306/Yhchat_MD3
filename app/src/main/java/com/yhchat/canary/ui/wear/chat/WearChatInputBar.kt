@@ -1097,9 +1097,32 @@ fun WearChatInputBar(
                 }
 
             else
-            //
+                // 加号按钮 todo
+                if (showAddButton) {
+                    IconButton(
+                        onClick = {
+                            showAttachMenu = !showAttachMenu
+                            showExpressionPicker = false
+                            showInstructionPicker = false
+                            isVoiceMode = false
+                            if (showAttachMenu) {
+                                keyboardController?.hide()
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "附件",
+                            tint = if (showAttachMenu)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
-            {}
 
 
         }

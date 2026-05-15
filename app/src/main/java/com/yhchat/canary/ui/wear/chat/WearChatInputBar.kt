@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.compose.material.icons.filled.Circle
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.EdgeButton
@@ -93,14 +94,13 @@ fun WearChatInputBarTop(
                     CircleShape
                 )
                 .clip(CircleShape)
-                .pointerInput(keys = emptyArray()
-                ) {
+                .pointerInput(keys = emptyArray()) {
                     detectTapGestures(
                         onTap = {
-                            if (!showExpressionPicker && !isVoiceMode) showExpressionPicker=true
+                            if (!showExpressionPicker && !isVoiceMode) showExpressionPicker = true
                             else {
                                 showExpressionPicker = !showExpressionPicker
-                                isVoiceMode=!isVoiceMode
+                                isVoiceMode = !isVoiceMode
                             }
                         },
                     )
@@ -113,10 +113,11 @@ fun WearChatInputBarTop(
                     else if (isVoiceMode)Icons.Default.Mic
                     else Icons.Default.Circle,
                 contentDescription = "",
-                tint = if (showExpressionPicker||isVoiceMode)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
+                tint =
+                    if (showExpressionPicker||isVoiceMode||true)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }

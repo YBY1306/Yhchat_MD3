@@ -155,7 +155,7 @@
 
         <activity
             android:name=".ui.wear.chat.WearChatActivity"
-            android:exported="false"
+            android:exported="true"
             android:theme="@style/Theme.YhchatCanary.Wear" />
 
         <activity

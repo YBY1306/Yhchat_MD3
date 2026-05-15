@@ -66,6 +66,86 @@ import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.utils.STTUtils
 import java.io.File
 
+
+@Composable
+fun WearChatInputBarTop(
+    onA: () -> Unit = {},
+    onExpressionClick: ((Expression) -> Unit)? = { null },  // 表情点击回调
+    onStickerClick: ((StickerItem) -> Unit)? = { null },  // 表情包贴纸点击回调\
+    onTextChange: (String) -> Unit={},
+    ) {
+    var showExpressionPicker by remember { mutableStateOf(false) }
+    var isVoiceMode by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
+        horizontalAlignment = Alignment.CenterHorizontally // 水平居中
+    ) {
+        // 按钮 - 圆形背景
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (showExpressionPicker||isVoiceMode)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    CircleShape
+                )
+                .clip(CircleShape)
+                .pointerInput(keys = emptyArray()
+                ) {
+                    detectTapGestures(
+                        onTap = {
+                            if (!showExpressionPicker && !isVoiceMode) showExpressionPicker=true
+                            else {
+                                showExpressionPicker = !showExpressionPicker
+                                isVoiceMode=!isVoiceMode
+                            }
+                        },
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector =
+                    if (showExpressionPicker)Icons.Default.EmojiEmotions
+                    else if (isVoiceMode)Icons.Default.Mic
+                    else Icons.Default.Circle,
+                contentDescription = "",
+                tint = if (showExpressionPicker||isVoiceMode)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        // 表情选择器
+        if (showExpressionPicker && onExpressionClick != null) {
+            ExpressionPicker(
+                onExpressionClick = { expression ->
+                    onExpressionClick.invoke(expression)
+                    showExpressionPicker = false
+                },
+                onStickerClick = { stickerItem ->
+                    onStickerClick?.invoke(stickerItem)
+                    showExpressionPicker = false
+                },
+                onDefaultExpressionClick = { expressionName ->
+                    onTextChange("text" + expressionName)
+                },
+                onDismiss = { showExpressionPicker = false },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+        if (isVoiceMode){
+            Text("雪王")
+        }
+
+    }
+}
+
 /**
  * 聊天输入栏组件
  */
@@ -103,11 +183,15 @@ fun WearChatInputBar(
     voiceViewModel: VoiceMessageViewModel? = null,// 语音消息 ViewModel
 
     onHideInputBar: (() -> Unit)? = null,//TODO
-    _xxx_a1: Boolean =false,
-    _xxx_a2: Boolean =false,
-    _xxx_a3: Boolean =false,
-    _xxx_a4: Boolean =false,
-    _xxx_a5: Boolean =false,
+    _xxx_a1: Boolean = false,
+    _xxx_a2: Boolean = false,
+    _xxx_a3: Boolean = false,
+    _xxx_a4: Boolean = false,
+    _xxx_a5: Boolean = false,
+    _xxx_is_biaoqing_on: Boolean = false,
+    _xxx_is_yuyin_on: Boolean = false,
+    _xxx_is_biaoqinxxg_on: Boolean = false,
+    _xxx_is_bihjgaoqing_on: Boolean = false,
 ) {
     val ctx = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1102,7 +1186,7 @@ fun WearChatInputBar(
                 }
 
             else
-                // 加号按钮 todo
+            // 加号按钮 todo
                 if (showAddButton) {
                     IconButton(
                         onClick = {

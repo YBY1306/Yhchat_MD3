@@ -725,6 +725,10 @@ fun WearChatScreen(
     var xxchytd by remember { mutableStateOf(false) }
 
 
+    var _xxx_is_biaoqing_on: Boolean = false
+    var _xxx_is_yuyin_on: Boolean = false
+    var _xxx_is_biaoqinxxg_on: Boolean = false
+    var _xxx_is_bihjgaoqing_on: Boolean = false
 
     // 应用聊天背景
     Box(
@@ -757,7 +761,8 @@ fun WearChatScreen(
 
 
                 if (showInputBar) {
-
+                    WearChatInputBarTop(
+                    )
                 }
 
                 // 顶部应用栏（受布局设置控制）

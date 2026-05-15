@@ -47,6 +47,7 @@ import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.EdgeButton
@@ -54,6 +55,8 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
+import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.yhchat.canary.data.model.Expression
 import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.model.StickerItem
@@ -1214,6 +1217,59 @@ fun WearChatInputBar(
                 }
 
 
+            // 附件菜单 DropdownMenu
+            //todo 重做
+            //Bot 指令列表也放这吧
+            AttachmentMenu(
+                expanded = showAttachMenu,
+                onDismissRequest = { showAttachMenu = false },
+                onImageClick = {
+                    onImageClick?.invoke()
+                    showAttachMenu = false
+                },
+                onFileClick = {
+                    onFileClick?.invoke()
+                    showAttachMenu = false
+                },
+                onCameraClick = {
+                    onCameraClick?.invoke()
+                    showAttachMenu = false
+                },
+                onVideoClick = {
+                    onVideoClick?.invoke()
+                    showAttachMenu = false
+                },
+                onTextClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(1)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onHtmlClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(8)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onMarkdownClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(3)
+                        showAttachMenu = false
+                    }
+                } else null,
+                onA2UiClick = if (onMessageTypeChange != null) {
+                    {
+                        onMessageTypeChange.invoke(14)
+                        showAttachMenu = false
+                    }
+                } else null,
+                defaultMessageType = defaultSendMessageType,
+                onDefaultMessageTypeChange = { newDefaultType ->
+                    defaultSendMessageType = newDefaultType
+                    chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
+                },
+                selectedMessageType = selectedMessageType
+            )
 
         }
     BackHandler(enabled = true) {
@@ -1340,3 +1396,26 @@ fun InstructionBar(
         }
     }
 }
+
+
+@WearPreviewDevices
+@WearPreviewFontScales
+@Composable
+fun ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZzz(){
+    var text by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+//            .then(if (!isLargeScreen) Modifier.imePadding() else Modifier)  // 大屏悬浮键盘不推动界面
+    ) {
+
+    WearChatInputBarTop(
+    text = text,
+        onTextChange = { text = it },
+)
+    WearChatInputBar(
+        text=text,
+        onTextChange={text=it},
+        onSendMessage={}
+    )
+}}

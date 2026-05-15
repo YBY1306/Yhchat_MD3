@@ -70,10 +70,10 @@ import java.io.File
 
 @Composable
 fun WearChatInputBarTop(
-    onA: () -> Unit = {},
     onExpressionClick: ((Expression) -> Unit)? = { null },  // 表情点击回调
     onStickerClick: ((StickerItem) -> Unit)? = { null },  // 表情包贴纸点击回调\
     onTextChange: (String) -> Unit={},
+    text: String,
     ) {
     var showExpressionPicker by remember { mutableStateOf(false) }
     var isVoiceMode by remember { mutableStateOf(false) }
@@ -134,7 +134,7 @@ fun WearChatInputBarTop(
                     showExpressionPicker = false
                 },
                 onDefaultExpressionClick = { expressionName ->
-                    onTextChange("text" + expressionName)
+                    onTextChange(text + expressionName)
                 },
                 onDismiss = { showExpressionPicker = false },
                 modifier = Modifier.padding(horizontal = 8.dp)

@@ -762,6 +762,43 @@ fun WearChatScreen(
 
                 if (showInputBar) {
                     WearChatInputBarTop(
+                        onTextChange = { inputText = it },
+                        onExpressionClick = { expression ->
+                            viewModel.sendExpressionMessage(
+                                expression = expression,
+                                quoteMsgId = quotedMessageId,
+                                quoteMsgText = quotedMessageText,
+                                quoteImageUrl = quotedImageUrl,
+                                quoteImageName = quotedImageName,
+                                quoteVideoUrl = quotedVideoUrl,
+                                quoteVideoTime = quotedVideoTime
+                            )
+                            quotedMessageId = null
+                            quotedMessageText = null
+                            quotedImageUrl = null
+                            quotedImageName = null
+                            quotedVideoUrl = null
+                            quotedVideoTime = null
+                        },
+                        onStickerClick = { stickerItem ->
+                            viewModel.sendStickerMessage(
+                                stickerItem = stickerItem,
+                                quoteMsgId = quotedMessageId,
+                                quoteMsgText = quotedMessageText,
+                                quoteImageUrl = quotedImageUrl,
+                                quoteImageName = quotedImageName,
+                                quoteVideoUrl = quotedVideoUrl,
+                                quoteVideoTime = quotedVideoTime
+                            )
+                            quotedMessageId = null
+                            quotedMessageText = null
+                            quotedImageUrl = null
+                            quotedImageName = null
+                            quotedVideoUrl = null
+                            quotedVideoTime = null
+                        },
+                        text = inputText,
+
                     )
                 }
 

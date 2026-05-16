@@ -46,7 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.util.Log
-import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -1220,7 +1220,7 @@ fun WearChatInputBar(
             // 附件菜单 DropdownMenu
             //todo 重做
             //Bot 指令列表也放这吧
-            AttachmentMenu(
+            AttachmentMenuWear(
                 expanded = showAttachMenu,
                 onDismissRequest = { showAttachMenu = false },
                 onImageClick = {
@@ -1419,3 +1419,184 @@ fun ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZzz(){
         onSendMessage={}
     )
 }}
+
+
+/**
+ * 附件菜单 - DropdownMenu 版本
+ */
+@Composable
+fun AttachmentMenuWear(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    onImageClick: (() -> Unit)?,
+    onFileClick: (() -> Unit)?,
+    onCameraClick: (() -> Unit)?,
+    onVideoClick: (() -> Unit)? = null,
+    onTextClick: (() -> Unit)? = null,
+    onHtmlClick: (() -> Unit)? = null,
+    onMarkdownClick: (() -> Unit)? = null,
+    onA2UiClick: (() -> Unit)? = null,
+    defaultMessageType: Int = 1,
+    onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
+    selectedMessageType: Int = 1
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest
+    ) {
+
+
+
+
+        DropdownMenuItem(
+            text = { Text("Send Empty") },
+            onClick = { TODO() },
+            leadingIcon = {
+                Icon(Icons.Default.Send, contentDescription = null)
+            }
+        )
+        DropdownMenuItem(
+            text = { TODO() },
+            onClick = { onImageClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.Code, contentDescription = null)
+            }
+        )
+
+        HorizontalDivider()
+
+        // 附件选项
+        DropdownMenuItem(
+            text = { Text("图片") },
+            onClick = { onImageClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.Image, contentDescription = null)
+            }
+        )
+
+        DropdownMenuItem(
+            text = { Text("拍照") },
+            onClick = { onCameraClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.CameraAlt, contentDescription = null)
+            }
+        )
+
+        DropdownMenuItem(
+            text = { Text("视频") },
+            onClick = { onVideoClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.VideoLibrary, contentDescription = null)
+            }
+        )
+
+        DropdownMenuItem(
+            text = { Text("文件") },
+            onClick = { onFileClick?.invoke() },
+            leadingIcon = {
+                Icon(Icons.Default.AttachFile, contentDescription = null)
+            }
+        )
+
+        // 消息类型选项
+        if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
+            HorizontalDivider()
+
+            DropdownMenuItem(
+                text = { Text("文本") },
+                onClick = { onTextClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 1) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("HTML") },
+                onClick = { onHtmlClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 8) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("Markdown") },
+                onClick = { onMarkdownClick.invoke() },
+                leadingIcon = {
+                    Icon(Icons.Default.Article, contentDescription = null)
+                },
+                trailingIcon = if (selectedMessageType == 3) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            if (onA2UiClick != null) {
+                DropdownMenuItem(
+                    text = { Text("A2UI") },
+                    onClick = { onA2UiClick.invoke() },
+                    leadingIcon = {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                    },
+                    trailingIcon = if (selectedMessageType == 14) {
+                        { Icon(Icons.Default.Check, contentDescription = null) }
+                    } else null
+                )
+            }
+        }
+
+        // 默认消息类型选项
+        if (onDefaultMessageTypeChange != null) {
+            HorizontalDivider()
+
+            DropdownMenuItem(
+                text = { Text("默认文本") },
+                onClick = { onDefaultMessageTypeChange.invoke(1) },
+                leadingIcon = {
+                    Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 1) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认Markdown") },
+                onClick = { onDefaultMessageTypeChange.invoke(3) },
+                leadingIcon = {
+                    Icon(Icons.Default.Article, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 3) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认HTML") },
+                onClick = { onDefaultMessageTypeChange.invoke(8) },
+                leadingIcon = {
+                    Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 8) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+
+            DropdownMenuItem(
+                text = { Text("默认A2UI") },
+                onClick = { onDefaultMessageTypeChange.invoke(14) },
+                leadingIcon = {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                },
+                trailingIcon = if (defaultMessageType == 14) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+        }
+    }
+}
+

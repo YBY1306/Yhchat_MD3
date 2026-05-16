@@ -1456,8 +1456,8 @@ fun AttachmentMenuWear(
             }
         )
         DropdownMenuItem(
-            text = { TODO() },
-            onClick = { onImageClick?.invoke() },
+            text = {  Text("Send Empty")  },
+            onClick = { TODO() },
             leadingIcon = {
                 Icon(Icons.Default.Code, contentDescription = null)
             }

@@ -1456,7 +1456,7 @@ fun AttachmentMenuWear(
             }
         )
         DropdownMenuItem(
-            text = {  Text("Send Empty")  },
+            text = {  Text("Bot Cmd")  },
             onClick = { TODO() },
             leadingIcon = {
                 Icon(Icons.Default.Code, contentDescription = null)

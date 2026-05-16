@@ -1,6 +1,6 @@
 [versions]
 accompanistPermissions = "0.37.3"
-agp = "9.3.0-alpha02"
+agp = "9.3.0-alpha04"
 coilSvg = "2.7.0"
 composeFoundationVersion = "1.4.1"
 composeMaterial = "1.6.1"

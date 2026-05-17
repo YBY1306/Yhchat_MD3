@@ -223,6 +223,32 @@ fun MarkdownText(
                         useAdvancedRenderer = true
                     )
                 }
+
+                is MarkdownSegment.HtmlBlock -> {
+                    HtmlTextMessage(
+                        html = segment.content,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = textColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        onImageClick = { url ->
+                            onImageClick?.invoke(url) ?: run {
+                                previewImageUrl = url
+                            }
+                        },
+                        onUriClick = { url ->
+                            try {
+                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                } else {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    context.startActivity(intent)
+                                }
+                            } catch (_: Exception) {
+                            }
+                        },
+                        useAdvancedRenderer = true
+                    )
+                }
                 
                 is MarkdownSegment.CodeBlock -> {
                     CodeBlockComponent(
@@ -784,6 +810,7 @@ private sealed interface MarkdownSegment {
     data class Image(val url: String, val alt: String?) : MarkdownSegment
     data class Table(val content: String) : MarkdownSegment
     data class HtmlTable(val content: String) : MarkdownSegment
+    data class HtmlBlock(val content: String) : MarkdownSegment
     data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
     data class Details(val summary: String, val content: String) : MarkdownSegment
 }
@@ -910,6 +937,19 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
                 continue
             }
 
+            val htmlDivBlock = extractHtmlDivBlock(lines, i)
+            if (htmlDivBlock != null) {
+                htmlDivBlock.prefix
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { extractImagesFromContent(it, segments) }
+                segments += MarkdownSegment.HtmlBlock(htmlDivBlock.html)
+                htmlDivBlock.suffix
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { extractImagesFromContent(it, segments) }
+                i = htmlDivBlock.nextIndex
+                continue
+            }
+
             val markdownTableBlock = extractMarkdownTableBlock(lines, i)
             if (markdownTableBlock != null) {
                 segments += MarkdownSegment.Table(markdownTableBlock.content)
@@ -922,6 +962,7 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
                    !lines[i].trim().startsWith("```") &&
                    extractDetailsBlock(lines, i) == null &&
                    extractHtmlTableBlock(lines, i) == null &&
+                   extractHtmlDivBlock(lines, i) == null &&
                    extractMarkdownTableBlock(lines, i) == null) {
                 i++
             }
@@ -1113,6 +1154,13 @@ private data class HtmlTableBlock(
     val nextIndex: Int
 )
 
+private data class HtmlDivBlock(
+    val prefix: String?,
+    val html: String,
+    val suffix: String?,
+    val nextIndex: Int
+)
+
 private fun extractMarkdownTableBlock(lines: List<String>, startIndex: Int): MarkdownTableBlock? {
     return extractMarkdownTableBlockFallback(lines, startIndex)
 }
@@ -1144,6 +1192,38 @@ private fun extractHtmlTableBlock(lines: List<String>, startIndex: Int): HtmlTab
         nextIndex = index + 1
     )
 }
+
+private fun extractHtmlDivBlock(lines: List<String>, startIndex: Int): HtmlDivBlock? {
+    val startLine = lines.getOrNull(startIndex) ?: return null
+    val startMatch = htmlDivStartRegex.find(startLine) ?: return null
+    val startPos = startMatch.range.first
+
+    val prefix = startLine.substring(0, startPos)
+    val builder = StringBuilder(startLine.substring(startPos))
+    var index = startIndex
+    var depth = countRegexMatches(builder, htmlDivStartRegex) - countRegexMatches(builder, htmlDivEndRegex)
+
+    while (depth > 0 && index + 1 < lines.size) {
+        index++
+        builder.append('\n').append(lines[index])
+        depth = countRegexMatches(builder, htmlDivStartRegex) - countRegexMatches(builder, htmlDivEndRegex)
+    }
+
+    if (depth > 0) return null
+
+    val htmlContent = builder.toString()
+    val endMatch = htmlDivEndRegex.findAll(htmlContent).lastOrNull() ?: return null
+    val endPos = endMatch.range.last + 1
+
+    return HtmlDivBlock(
+        prefix = prefix,
+        html = htmlContent.substring(0, endPos),
+        suffix = htmlContent.substring(endPos),
+        nextIndex = index + 1
+    )
+}
+
+private fun countRegexMatches(text: CharSequence, regex: Regex): Int = regex.findAll(text).count()
 
 private fun parseMarkdownTableNode(tableMarkdown: String): ASTNode? {
     val rootNode = markdownTableParser.buildMarkdownTreeFromString(tableMarkdown)
@@ -1342,6 +1422,8 @@ private val simpleMarkdownPatterns = listOf<Pair<Regex, (Color) -> SpanStyle>>(
 
 private val htmlTableStartRegex = Regex("<table\\b[^>]*>", setOf(RegexOption.IGNORE_CASE))
 private val htmlTableEndRegex = Regex("</table>", setOf(RegexOption.IGNORE_CASE))
+private val htmlDivStartRegex = Regex("<div\\b[^>]*>", setOf(RegexOption.IGNORE_CASE))
+private val htmlDivEndRegex = Regex("</div>", setOf(RegexOption.IGNORE_CASE))
 
 private fun String.indexOfHtmlTableStart(): Int {
     return htmlTableStartRegex.find(this)?.range?.first ?: -1

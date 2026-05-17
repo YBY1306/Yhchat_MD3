@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -47,14 +48,14 @@ import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
-import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.ScreenScaffold
-import androidx.wear.compose.material3.SurfaceTransformation
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.yhchat.canary.data.model.Expression
@@ -1422,7 +1423,7 @@ fun ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZzz(){
 
 
 /**
- * 附件菜单 - DropdownMenu 版本
+ * 附件菜单 - Wear 优化版 (ScreenScaffold + ScalingLazyColumn)
  */
 @Composable
 fun AttachmentMenuWear(
@@ -1440,163 +1441,294 @@ fun AttachmentMenuWear(
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1
 ) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest
+    if (!expanded) return
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            val listState = rememberScalingLazyListState()
+            ScalingLazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 12.dp, end = 12.dp,
+                    top = 16.dp, bottom = 24.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                item {
+                    ListHeader {
+                        Text(
+                            "Bot",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { TODO() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Send Empty", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { TODO() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Bot Cmd", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
 
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
 
+                item {
+                    ListHeader {
+                        Text(
+                            "附件",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onImageClick?.invoke() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("图片", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCameraClick?.invoke() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("拍照", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onVideoClick?.invoke() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.VideoLibrary, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("视频", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onFileClick?.invoke() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("文件", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
 
+                if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
+                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+                    item {
+                        ListHeader {
+                            Text(
+                                "消息类型",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
 
-        DropdownMenuItem(
-            text = { Text("Send Empty") },
-            onClick = { TODO() },
-            leadingIcon = {
-                Icon(Icons.Default.Send, contentDescription = null)
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onTextClick.invoke() }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("文本", style = MaterialTheme.typography.bodyLarge)
+                            if (selectedMessageType == 1) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onHtmlClick.invoke() }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("HTML", style = MaterialTheme.typography.bodyLarge)
+                            if (selectedMessageType == 8) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onMarkdownClick.invoke() }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Article, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Markdown", style = MaterialTheme.typography.bodyLarge)
+                            if (selectedMessageType == 3) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    if (onA2UiClick != null) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onA2UiClick.invoke() }
+                                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(24.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text("A2UI", style = MaterialTheme.typography.bodyLarge)
+                                if (selectedMessageType == 14) {
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (onDefaultMessageTypeChange != null) {
+                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+                    item {
+                        ListHeader {
+                            Text(
+                                "默认类型",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onDefaultMessageTypeChange.invoke(1) }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("默认文本", style = MaterialTheme.typography.bodyLarge)
+                            if (defaultMessageType == 1) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onDefaultMessageTypeChange.invoke(3) }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Article, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("默认Markdown", style = MaterialTheme.typography.bodyLarge)
+                            if (defaultMessageType == 3) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onDefaultMessageTypeChange.invoke(8) }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("默认HTML", style = MaterialTheme.typography.bodyLarge)
+                            if (defaultMessageType == 8) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onDefaultMessageTypeChange.invoke(14) }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("默认A2UI", style = MaterialTheme.typography.bodyLarge)
+                            if (defaultMessageType == 14) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
             }
-        )
-        DropdownMenuItem(
-            text = {  Text("Bot Cmd")  },
-            onClick = { TODO() },
-            leadingIcon = {
-                Icon(Icons.Default.Code, contentDescription = null)
-            }
-        )
-
-        HorizontalDivider()
-
-        // 附件选项
-        DropdownMenuItem(
-            text = { Text("图片") },
-            onClick = { onImageClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.Image, contentDescription = null)
-            }
-        )
-
-        DropdownMenuItem(
-            text = { Text("拍照") },
-            onClick = { onCameraClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-            }
-        )
-
-        DropdownMenuItem(
-            text = { Text("视频") },
-            onClick = { onVideoClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.VideoLibrary, contentDescription = null)
-            }
-        )
-
-        DropdownMenuItem(
-            text = { Text("文件") },
-            onClick = { onFileClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.AttachFile, contentDescription = null)
-            }
-        )
-
-        // 消息类型选项
-        if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
-            HorizontalDivider()
-
-            DropdownMenuItem(
-                text = { Text("文本") },
-                onClick = { onTextClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 1) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            DropdownMenuItem(
-                text = { Text("HTML") },
-                onClick = { onHtmlClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 8) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            DropdownMenuItem(
-                text = { Text("Markdown") },
-                onClick = { onMarkdownClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.Default.Article, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 3) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            if (onA2UiClick != null) {
-                DropdownMenuItem(
-                    text = { Text("A2UI") },
-                    onClick = { onA2UiClick.invoke() },
-                    leadingIcon = {
-                        Icon(Icons.Default.Settings, contentDescription = null)
-                    },
-                    trailingIcon = if (selectedMessageType == 14) {
-                        { Icon(Icons.Default.Check, contentDescription = null) }
-                    } else null
-                )
-            }
-        }
-
-        // 默认消息类型选项
-        if (onDefaultMessageTypeChange != null) {
-            HorizontalDivider()
-
-            DropdownMenuItem(
-                text = { Text("默认文本") },
-                onClick = { onDefaultMessageTypeChange.invoke(1) },
-                leadingIcon = {
-                    Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 1) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            DropdownMenuItem(
-                text = { Text("默认Markdown") },
-                onClick = { onDefaultMessageTypeChange.invoke(3) },
-                leadingIcon = {
-                    Icon(Icons.Default.Article, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 3) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            DropdownMenuItem(
-                text = { Text("默认HTML") },
-                onClick = { onDefaultMessageTypeChange.invoke(8) },
-                leadingIcon = {
-                    Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 8) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
-
-            DropdownMenuItem(
-                text = { Text("默认A2UI") },
-                onClick = { onDefaultMessageTypeChange.invoke(14) },
-                leadingIcon = {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 14) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
-            )
         }
     }
 }
+
 

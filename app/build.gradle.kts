@@ -12,7 +12,7 @@ plugins {
 android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
-    val baseVersionName = "21.6"
+    val baseVersionName = "21.7"
     val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
         ?.trim()
         ?.takeIf { it.isNotEmpty() }

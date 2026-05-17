@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.components.htmltext
+﻿package com.yhchat.canary.ui.components.htmltext
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -135,7 +135,13 @@ private fun HtmlFlexNode(
                     .then(if (index > 0 && horizontalArrangement == Arrangement.Start) Modifier.padding(start = gap) else Modifier)
                     .then(if (childFlexGrow > 0f) Modifier.fillMaxWidth() else Modifier)
                 Box(modifier = childModifier) {
-                    RenderHtmlNode(child, child.style.mergeText(inheritedText), onImageClick, onLinkClick)
+                    RenderHtmlNode(
+                        node = child,
+                        inheritedText = child.style.mergeText(inheritedText),
+                        onImageClick = onImageClick,
+                        onLinkClick = onLinkClick,
+                        avoidFillMaxWidth = true
+                    )
                 }
             }
         }
@@ -163,7 +169,8 @@ private fun RenderHtmlNode(
     node: HtmlNode,
     inheritedText: CssStyle,
     onImageClick: ((String) -> Unit)?,
-    onLinkClick: ((String) -> Unit)?
+    onLinkClick: ((String) -> Unit)?,
+    avoidFillMaxWidth: Boolean = false
 ) {
     val defaultTextColor = MaterialTheme.colorScheme.onSurface
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -189,7 +196,7 @@ private fun RenderHtmlNode(
                 "blockquote" -> HtmlBlockquoteNode(node, normalizedInheritedText, onImageClick, onLinkClick)
                 "ul", "ol" -> HtmlListNode(node, normalizedInheritedText, onImageClick, onLinkClick)
                 "table" -> HtmlTableNode(node, normalizedInheritedText, onImageClick, onLinkClick)
-                else -> HtmlGenericNode(node, normalizedInheritedText, onImageClick, onLinkClick)
+                else -> HtmlGenericNode(node, normalizedInheritedText, onImageClick, onLinkClick, avoidFillMaxWidth)
             }
         }
     }
@@ -200,7 +207,8 @@ private fun HtmlGenericNode(
     node: HtmlNode.Element,
     inheritedText: CssStyle,
     onImageClick: ((String) -> Unit)?,
-    onLinkClick: ((String) -> Unit)?
+    onLinkClick: ((String) -> Unit)?,
+    avoidFillMaxWidth: Boolean = false
 ) {
     val headingStyle = when (node.tag) {
         "h1" -> CssStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, marginBottom = 8.dp)
@@ -214,7 +222,7 @@ private fun HtmlGenericNode(
     val merged = headingStyle.mergeText(node.style.mergeText(inheritedText))
     val forceBlockLayout = shouldRenderAsBlockNode(node)
     
-    // 检查是否是链接标签（用于处理块级链接的可点击性）
+    // 妫€鏌ユ槸鍚︽槸閾炬帴鏍囩锛堢敤浜庡鐞嗗潡绾ч摼鎺ョ殑鍙偣鍑绘€э級
     val isLink = node.tag == "a"
     val href = node.attrs["href"]
 
@@ -235,30 +243,26 @@ private fun HtmlGenericNode(
     }
 
     if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
-        // 对于链接标签，使用 clickable 修饰符确保整个块区域可点击
-        val clickableModifier = if (isLink && !href.isNullOrBlank()) {
+        // 瀵逛簬閾炬帴鏍囩锛屼娇鐢?clickable 淇グ绗︾‘淇濇暣涓潡鍖哄煙鍙偣鍑?        val clickableModifier = if (isLink && !href.isNullOrBlank()) {
             Modifier.clickable { 
-                // 优先使用 href 属性（用于块级链接）
-                onLinkClick?.invoke(href) 
+                // 浼樺厛浣跨敤 href 灞炴€э紙鐢ㄤ簬鍧楃骇閾炬帴锛?                onLinkClick?.invoke(href) 
             }
         } else {
             Modifier
         }
         
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = (if (avoidFillMaxWidth) Modifier else Modifier.fillMaxWidth())
                 .then(clickableModifier)
                 .htmlBoxModel(node.style)
         ) {
             RenderInlineFlow(node.children, merged, onImageClick, onLinkClick)
         }
     } else {
-        // 对于行内链接，需要正确处理 <a> 标签的 href
+        // 瀵逛簬琛屽唴閾炬帴锛岄渶瑕佹纭鐞?<a> 鏍囩鐨?href
         val rendered = if (isLink && !href.isNullOrBlank()) {
-            // 当 <a> 标签包含文本但没有子元素时，使用 buildInlineAnnotated
-            // 然后通过 URL annotation 来处理点击
-            buildInlineAnnotatedWithLink(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged, href)
+            // 褰?<a> 鏍囩鍖呭惈鏂囨湰浣嗘病鏈夊瓙鍏冪礌鏃讹紝浣跨敤 buildInlineAnnotated
+            // 鐒跺悗閫氳繃 URL annotation 鏉ュ鐞嗙偣鍑?            buildInlineAnnotatedWithLink(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged, href)
         } else {
             buildInlineAnnotated(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged)
         }
@@ -424,8 +428,8 @@ private fun buildInlineAnnotated(
 }
 
 /**
- * 带链接的 AnnotatedString 构建函数
- * 用于处理带有 href 属性的 <a> 标签
+ * 甯﹂摼鎺ョ殑 AnnotatedString 鏋勫缓鍑芥暟
+ * 鐢ㄤ簬澶勭悊甯︽湁 href 灞炴€х殑 <a> 鏍囩
  */
 @Composable
 private fun buildInlineAnnotatedWithLink(
@@ -467,7 +471,7 @@ private fun buildInlineAnnotatedWithLink(
                             node.children.forEach { appendNode(it, merged.copy(fontSize = 12.sp)) }
                         }
                         "a" -> {
-                            // 嵌套的 <a> 标签，使用其自身的 href
+                            // 宓屽鐨?<a> 鏍囩锛屼娇鐢ㄥ叾鑷韩鐨?href
                             val nestedHref = node.attrs["href"].orEmpty()
                             pushStringAnnotation(tag = "URL", annotation = nestedHref)
                             withStyle(
@@ -497,8 +501,7 @@ private fun buildInlineAnnotatedWithLink(
             }
         }
 
-        // 处理链接标签的外层
-        pushStringAnnotation(tag = "URL", annotation = href)
+        // 澶勭悊閾炬帴鏍囩鐨勫灞?        pushStringAnnotation(tag = "URL", annotation = href)
         withStyle(
             SpanStyle(
                 color = normalizedInheritedText.color ?: linkColor,
@@ -535,6 +538,24 @@ private fun HtmlImageNode(
         src
     }
 
+    val width = node.style.width
+    val height = node.style.height
+    val imageScale = when (node.style.objectFit?.lowercase()) {
+        "cover" -> ContentScale.Crop
+        "contain" -> ContentScale.Fit
+        "fill" -> ContentScale.FillBounds
+        "none" -> ContentScale.None
+        "scale-down" -> ContentScale.Inside
+        else -> ContentScale.Fit
+    }
+
+    val imageSizeModifier = when {
+        width != null && height != null -> Modifier.size(width = width, height = height)
+        width != null -> Modifier.width(width)
+        height != null -> Modifier.heightIn(min = height, max = height)
+        else -> Modifier
+    }
+
     AsyncImage(
         model = model,
         contentDescription = node.attrs["alt"] ?: "图片",
@@ -543,9 +564,10 @@ private fun HtmlImageNode(
         } else {
             Modifier
         })
+            .then(imageSizeModifier)
             .defaultMinSize(minWidth = 120.dp, minHeight = 80.dp)
             .heightIn(max = 240.dp),
-        contentScale = ContentScale.Fit
+        contentScale = imageScale
     )
 }
 
@@ -579,7 +601,7 @@ private fun HtmlDetailsNode(
         ) {
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
-                contentDescription = if (expanded) "收起" else "展开",
+                contentDescription = if (expanded) "鏀惰捣" else "灞曞紑",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 6.dp)
             )
@@ -635,7 +657,7 @@ private fun HtmlListNode(
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
         if (items.isNotEmpty()) {
             items.forEachIndexed { index, item ->
-                val marker = if (ordered) "${start + index}." else "•"
+                val marker = if (ordered) "${start + index}." else "鈥?
                 Row(
                     modifier = Modifier.fillMaxWidth().htmlBoxModel(item.style),
                     verticalAlignment = Alignment.Top
@@ -722,9 +744,7 @@ private fun HtmlTableNode(
 
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(table.style)) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            // 某些消息气泡场景会给子树无界宽度，horizontalScroll 不能接收无限宽约束。
-            // 这里强制给一个有限视口宽度（优先父约束，否则退化到屏幕宽度）。
-            val viewportWidth = if (maxWidth < Dp.Infinity && maxWidth > 0.dp) {
+            // 鏌愪簺娑堟伅姘旀场鍦烘櫙浼氱粰瀛愭爲鏃犵晫瀹藉害锛宧orizontalScroll 涓嶈兘鎺ユ敹鏃犻檺瀹界害鏉熴€?            // 杩欓噷寮哄埗缁欎竴涓湁闄愯鍙ｅ搴︼紙浼樺厛鐖剁害鏉燂紝鍚﹀垯閫€鍖栧埌灞忓箷瀹藉害锛夈€?            val viewportWidth = if (maxWidth < Dp.Infinity && maxWidth > 0.dp) {
                 maxWidth
             } else {
                 screenWidth
@@ -775,3 +795,4 @@ private fun HtmlTableNode(
         }
     }
 }
+

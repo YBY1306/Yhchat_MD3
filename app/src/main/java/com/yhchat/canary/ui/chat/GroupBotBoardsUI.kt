@@ -1,10 +1,11 @@
-package com.yhchat.canary.ui.chat
+﻿package com.yhchat.canary.ui.chat
 
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -38,7 +39,7 @@ import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 
 /**
- * 机器人看板内容组件（可复用）
+ * 鏈哄櫒浜虹湅鏉垮唴瀹圭粍浠讹紙鍙鐢級
  */
 @Composable
 fun BotBoardContent(
@@ -46,7 +47,7 @@ fun BotBoardContent(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val safeBoardContent = remember(boardData.content) { boardData.content.ifBlank { "[空内容]" } }
+    val safeBoardContent = remember(boardData.content) { boardData.content.ifBlank { "[绌哄唴瀹筣" } }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -62,7 +63,7 @@ fun BotBoardContent(
                 .padding(12.dp)
         ) {
             when (boardData.contentType) {
-                1 -> { // 文本 - 支持选择复制
+                1 -> { // 鏂囨湰 - 鏀寔閫夋嫨澶嶅埗
                     SelectionContainer {
                         Text(
                             text = safeBoardContent,
@@ -71,26 +72,30 @@ fun BotBoardContent(
                         )
                     }
                 }
-                2 -> { // Markdown - MarkdownText组件内部支持选择
+                2 -> { // Markdown - MarkdownText缁勪欢鍐呴儴鏀寔閫夋嫨
                     MarkdownText(
                         markdown = safeBoardContent,
                         modifier = Modifier.fillMaxWidth(),
                         onImageClick = onImageClick
                     )
                 }
-                3 -> { // HTML - 使用本地 Compose 渲染器，避免 WebView 重建卡顿
+                3 -> { // HTML - local Compose renderer
+                    val htmlVerticalScroll = rememberScrollState()
+                    val htmlHorizontalScroll = rememberScrollState()
                     HtmlTextMessage(
                         html = safeBoardContent,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp),
+                            .heightIn(max = 300.dp)
+                            .horizontalScroll(htmlHorizontalScroll)
+                            .verticalScroll(htmlVerticalScroll),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodyMedium,
                         onImageClick = onImageClick,
                         useAdvancedRenderer = true
                     )
                 }
-                else -> { // 默认按文本处理 - 支持选择复制
+                else -> { // 榛樿鎸夋枃鏈鐞?- 鏀寔閫夋嫨澶嶅埗
                     SelectionContainer {
                         Text(
                             text = safeBoardContent,
@@ -117,7 +122,7 @@ fun BotLlmParamsDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "${botName.ifBlank { "机器人" }}的大模型参数")
+            Text(text = "${botName.ifBlank { "鏈哄櫒浜? }}鐨勫ぇ妯″瀷鍙傛暟")
         },
         text = {
             Column(
@@ -177,15 +182,14 @@ fun BotLlmParamsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("完成")
+                Text("瀹屾垚")
             }
         }
     )
 }
 
 /**
- * 群聊机器人看板区域
- */
+ * 缇よ亰鏈哄櫒浜虹湅鏉垮尯鍩? */
 @Composable
 fun GroupBotBoardsSection(
     groupBots: List<Bot_data>,
@@ -198,7 +202,7 @@ fun GroupBotBoardsSection(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    // 过滤出有看板内容的机器人
+    // 杩囨护鍑烘湁鐪嬫澘鍐呭鐨勬満鍣ㄤ汉
     val botsWithBoards = remember(groupBots, groupBotBoards) {
         groupBots.filter { bot ->
             groupBotBoards[bot.botId]?.content?.isNotBlank() == true
@@ -231,7 +235,7 @@ fun GroupBotBoardsSection(
                 )
             )
     ) {
-        // 机器人选择按钮列表
+        // 鏈哄櫒浜洪€夋嫨鎸夐挳鍒楄〃
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -256,8 +260,7 @@ fun GroupBotBoardsSection(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // 机器人头像
-                            AsyncImage(
+                            // 鏈哄櫒浜哄ご鍍?                            AsyncImage(
                                 model = ImageUtils.createBotImageRequest(
                                     context = context,
                                     url = bot.avatarUrl
@@ -281,7 +284,7 @@ fun GroupBotBoardsSection(
                         {
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = "已选中",
+                                contentDescription = "宸查€変腑",
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -298,7 +301,7 @@ fun GroupBotBoardsSection(
                     label = {
                         val botName = botLlmRefParams[bot.botId].orEmpty().ifBlank { bot.name }
                         Text(
-                            text = "${botName}的大模型参数",
+                            text = "${botName}鐨勫ぇ妯″瀷鍙傛暟",
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -308,7 +311,7 @@ fun GroupBotBoardsSection(
             }
         }
 
-        // 显示选中机器人的看板内容
+        // 鏄剧ず閫変腑鏈哄櫒浜虹殑鐪嬫澘鍐呭
         AnimatedVisibility(
             visible = selectedBoardData != null,
             enter = fadeIn(animationSpec = tween(140)),
@@ -318,9 +321,10 @@ fun GroupBotBoardsSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 500.dp)  // 限制最大高度
+                        .heightIn(max = 500.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    // 看板标题
+                    // 鐪嬫澘鏍囬
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -329,7 +333,7 @@ fun GroupBotBoardsSection(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "${boardData.botName.ifBlank { "机器人" }}的看板",
+                            text = "${boardData.botName.ifBlank { "鏈哄櫒浜? }}鐨勭湅鏉?,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -340,32 +344,32 @@ fun GroupBotBoardsSection(
                             onClick = {
                                 val content = boardData.content.ifBlank { "" }
                                 clipboardManager.setText(AnnotatedString(content))
-                                Toast.makeText(context, "已复制原文", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "宸插鍒跺師鏂?, Toast.LENGTH_SHORT).show()
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "复制原文",
+                                contentDescription = "澶嶅埗鍘熸枃",
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("复制原文")
+                            Text("澶嶅埗鍘熸枃")
                         }
 
-                        // 关闭按钮
+                        // 鍏抽棴鎸夐挳
                         IconButton(
                             onClick = { selectedBotId = null },
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "收起",
+                                contentDescription = "鏀惰捣",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // 看板内容 - 添加滚动支持
+                    // 鐪嬫澘鍐呭 - 娣诲姞婊氬姩鏀寔
                     BotBoardContentScrollable(
                         boardData = boardData,
                         onImageClick = onImageClick
@@ -377,8 +381,7 @@ fun GroupBotBoardsSection(
 }
 
 /**
- * 可滚动的机器人看板内容组件
- */
+ * 鍙粴鍔ㄧ殑鏈哄櫒浜虹湅鏉垮唴瀹圭粍浠? */
 @Composable
 private fun BotBoardContentScrollable(
     boardData: board.Board_data,
@@ -387,12 +390,12 @@ private fun BotBoardContentScrollable(
 ) {
     val scrollState = rememberScrollState()
 
-    // Card已经包含在了BotBoardContent中，这里直接调用
+    // Card宸茬粡鍖呭惈鍦ㄤ簡BotBoardContent涓紝杩欓噷鐩存帴璋冪敤
     Box(modifier = modifier
         .fillMaxWidth()
-        .heightIn(max = 400.dp) // 限制最大高度
-        .verticalScroll(scrollState) // 添加垂直滚动
+        .heightIn(max = 400.dp) // 闄愬埗鏈€澶ч珮搴?        .verticalScroll(scrollState) // 娣诲姞鍨傜洿婊氬姩
     ) {
         BotBoardContent(boardData = boardData, onImageClick = onImageClick)
     }
 }
+

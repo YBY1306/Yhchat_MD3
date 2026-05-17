@@ -154,6 +154,7 @@ class ChatViewModel @Inject constructor(
     // 流式消息缓存：msgId -> 累积的content
     private val streamingMessages = mutableMapOf<String, String>()
     private val streamingMessageSenders = mutableMapOf<String, com.yhchat.canary.data.model.MessageSender>()
+    private val streamingMessageContentTypes = mutableMapOf<String, Int>()
     
     // 远程草稿输入（多端同步）
     private val _remoteDraftInput = MutableStateFlow<String?>(null)
@@ -589,6 +590,15 @@ class ChatViewModel @Inject constructor(
     private fun handleNewMessage(message: ChatMessage) {
         val normalizedMessage = normalizeMessageOwnership(message)
         val targetChatId = resolveMessageChatId(normalizedMessage)
+
+        if (normalizedMessage.msgId.isNotBlank()) {
+            streamingMessages.putIfAbsent(
+                normalizedMessage.msgId,
+                normalizedMessage.content.text ?: ""
+            )
+            streamingMessageSenders.putIfAbsent(normalizedMessage.msgId, normalizedMessage.sender)
+            streamingMessageContentTypes[normalizedMessage.msgId] = normalizedMessage.contentType
+        }
         
         if (targetChatId == currentChatId) {
             // 检查消息是否已存在，避免重复添加
@@ -608,6 +618,7 @@ class ChatViewModel @Inject constructor(
                 if (normalizedMessage.sender.chatType == 3) {
                     streamingMessages[normalizedMessage.msgId] = normalizedMessage.content.text ?: ""
                     streamingMessageSenders[normalizedMessage.msgId] = normalizedMessage.sender
+                    streamingMessageContentTypes[normalizedMessage.msgId] = normalizedMessage.contentType
                     Log.d(tag, "Initialized streaming cache for bot message: ${normalizedMessage.msgId}")
                 }
             }
@@ -1186,6 +1197,7 @@ class ChatViewModel @Inject constructor(
             _messages[existingIndex] = mergedMessage
             streamingMessages.remove(normalizedMessage.msgId)
             streamingMessageSenders.remove(normalizedMessage.msgId)
+            streamingMessageContentTypes.remove(normalizedMessage.msgId)
             Log.d(
                 tag,
                 "Updated edited message in current list: msgId=${normalizedMessage.msgId}, " +
@@ -1223,6 +1235,7 @@ class ChatViewModel @Inject constructor(
         }
         streamingMessages.remove(messageId)
         streamingMessageSenders.remove(messageId)
+        streamingMessageContentTypes.remove(messageId)
     }
     
     /**
@@ -1240,6 +1253,7 @@ class ChatViewModel @Inject constructor(
         val existingIndex = _messages.indexOfFirst { it.msgId == event.msgId }
         
         val senderOverride = streamingMessageSenders[event.msgId]
+        val cachedContentType = streamingMessageContentTypes[event.msgId]
 
         if (existingIndex == -1) {
             // 消息不存在，先创建基础消息（push_message的作用）
@@ -1252,13 +1266,19 @@ class ChatViewModel @Inject constructor(
                 ?: resolveGroupBotSender(event.recvId)
                 ?: buildDefaultBotSender(event.recvId, event.chatId)
 
+            val initialContent = buildString {
+                val cached = streamingMessages[event.msgId].orEmpty()
+                if (cached.isNotEmpty()) append(cached)
+                append(event.content)
+            }
+
             val baseMessage = ChatMessage(
                 msgId = event.msgId,
                 sender = baseSender,
                 direction = "left",
-                contentType = 1,
+                contentType = cachedContentType ?: 1,
                 content = com.yhchat.canary.data.model.MessageContent(
-                    text = event.content
+                    text = initialContent
                 ),
                 sendTime = System.currentTimeMillis(),
                 cmd = null,
@@ -1273,8 +1293,9 @@ class ChatViewModel @Inject constructor(
             
             val insertIndex = _messages.indexOfLast { it.sendTime <= baseMessage.sendTime } + 1
             _messages.add(insertIndex, baseMessage)
-            streamingMessages[event.msgId] = event.content
+            streamingMessages[event.msgId] = initialContent
             streamingMessageSenders[event.msgId] = baseSender
+            streamingMessageContentTypes.putIfAbsent(event.msgId, baseMessage.contentType)
             Log.d(tag, "Created base message for stream at index $insertIndex")
         } else {
             // 消息已存在，追加内容
@@ -1284,10 +1305,18 @@ class ChatViewModel @Inject constructor(
             streamingMessages[event.msgId] = accumulatedContent
             streamingMessageSenders.putIfAbsent(event.msgId, existingMessage.sender)
 
+            val resolvedContentType = when {
+                existingMessage.contentType == 14 -> 14
+                cachedContentType == 14 -> 14
+                else -> existingMessage.contentType.takeIf { it != 1 } ?: (cachedContentType ?: existingMessage.contentType)
+            }
+
             val updatedMessage = existingMessage.copy(
+                contentType = resolvedContentType,
                 content = existingMessage.content.copy(text = accumulatedContent)
             )
             _messages[existingIndex] = updatedMessage
+            streamingMessageContentTypes[event.msgId] = updatedMessage.contentType
             Log.d(tag, "Updated stream message at index $existingIndex")
         }
     }
@@ -2573,6 +2602,7 @@ class ChatViewModel @Inject constructor(
      */
     fun clearStreamingMessage(msgId: String) {
         streamingMessages.remove(msgId)
+        streamingMessageContentTypes.remove(msgId)
         Log.d(tag, "Cleared streaming message: $msgId")
     }
 
@@ -2654,6 +2684,7 @@ class ChatViewModel @Inject constructor(
 
             _messages[latestIndex] = normalizedLatestMessage
             streamingMessages.remove(normalizedLatestMessage.msgId)
+            streamingMessageContentTypes.remove(normalizedLatestMessage.msgId)
             Log.d(
                 tag,
                 "Replaced edited message with API payload: msgId=${normalizedLatestMessage.msgId}, " +

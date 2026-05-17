@@ -28,6 +28,8 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
@@ -134,26 +136,77 @@ fun MarkdownText(
             when (segment) {
                 is MarkdownSegment.Text -> {
                     if (segment.content.isNotBlank()) {
+                        val taskRuns = remember(segment.content) { splitTaskRuns(segment.content) }
                         SelectionContainer {
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Material3RichText(
-                                    style = richTextStyle,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Markdown(
-                                        content = segment.content,
-                                        onLinkClicked = { url: String ->
-                                            try {
-                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                                } else {
-                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                    context.startActivity(intent)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                taskRuns.forEach { run ->
+                                    when (run) {
+                                        is TaskRun.Markdown -> {
+                                            if (run.content.isBlank()) return@forEach
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                Material3RichText(
+                                                    style = richTextStyle,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Markdown(
+                                                        content = run.content,
+                                                        onLinkClicked = { url: String ->
+                                                            try {
+                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                                                } else {
+                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                                    context.startActivity(intent)
+                                                                }
+                                                            } catch (_: Exception) {
+                                                            }
+                                                        }
+                                                    )
                                                 }
-                                            } catch (_: Exception) {
                                             }
                                         }
-                                    )
+                                        is TaskRun.Task -> {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 2.dp),
+                                                verticalAlignment = Alignment.Top
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (run.checked) {
+                                                        Icons.Filled.CheckBox
+                                                    } else {
+                                                        Icons.Filled.CheckBoxOutlineBlank
+                                                    },
+                                                    contentDescription = if (run.checked) "checked task" else "unchecked task",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier
+                                                        .size(18.dp)
+                                                        .padding(top = 2.dp)
+                                                )
+                                                Spacer(modifier = Modifier.size(6.dp))
+                                                Material3RichText(
+                                                    style = richTextStyle,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Markdown(
+                                                        content = run.content,
+                                                        onLinkClicked = { url: String ->
+                                                            try {
+                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                                                } else {
+                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                                    context.startActivity(intent)
+                                                                }
+                                                            } catch (_: Exception) {
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1518,4 +1571,44 @@ private fun processTaskLists(markdown: String): String {
             else -> line
         }
     }
+}
+
+private sealed interface TaskRun {
+    data class Markdown(val content: String) : TaskRun
+    data class Task(val checked: Boolean, val content: String) : TaskRun
+}
+
+private fun splitTaskRuns(content: String): List<TaskRun> {
+    val runs = mutableListOf<TaskRun>()
+    val markdownBuffer = mutableListOf<String>()
+
+    fun flushMarkdown() {
+        if (markdownBuffer.isNotEmpty()) {
+            runs += TaskRun.Markdown(markdownBuffer.joinToString("\n"))
+            markdownBuffer.clear()
+        }
+    }
+
+    content.lines().forEach { line ->
+        val trimmedStart = line.trimStart()
+        when {
+            trimmedStart.startsWith("☑ ") -> {
+                flushMarkdown()
+                runs += TaskRun.Task(
+                    checked = true,
+                    content = trimmedStart.removePrefix("☑ ").trim()
+                )
+            }
+            trimmedStart.startsWith("☐ ") -> {
+                flushMarkdown()
+                runs += TaskRun.Task(
+                    checked = false,
+                    content = trimmedStart.removePrefix("☐ ").trim()
+                )
+            }
+            else -> markdownBuffer += line
+        }
+    }
+    flushMarkdown()
+    return runs
 }

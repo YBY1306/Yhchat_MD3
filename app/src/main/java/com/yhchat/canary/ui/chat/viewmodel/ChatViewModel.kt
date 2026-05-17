@@ -1684,15 +1684,16 @@ class ChatViewModel @Inject constructor(
         commandId: Long? = null,
         mentionedIds: List<String>? = null,
         onSuccess: () -> Unit = {},
-        onError: (String) -> Unit = {}
+        onError: (String) -> Unit = {},
+        isSendTextAllowEmptySetting: Boolean = false,//TODO 英语不好不知道起什么变量名
     ) {
-        // 如果是指令消息，允许空文本；否则检查文本是否为空
         if (currentChatId.isEmpty()) {
             Log.w(tag, "Chat not initialized")
             onError("Chat not initialized")
             return
         }
-        if (text.isEmpty() && commandId == null) {
+        // 如果是指令消息，允许空文本；否则检查文本是否为空；如果设置了允许发送空文本消息的话也行
+        if (text.isEmpty() && commandId == null && !isSendTextAllowEmptySetting) {
             Log.w(tag, "Cannot send empty message without command")
             onError("Cannot send empty message")
             return

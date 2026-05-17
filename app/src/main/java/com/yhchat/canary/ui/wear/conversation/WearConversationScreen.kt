@@ -52,6 +52,7 @@ fun WearConversationScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val conversations by viewModel.conversations.collectAsState()
+    val stickyData by viewModel.stickyData.collectAsState()
 
     var showConversationMenu by remember { mutableStateOf(false) }
     var selectedConversation by remember { mutableStateOf<Conversation?>(null) }
@@ -125,6 +126,17 @@ fun WearConversationScreen(
             }
 
             else -> {
+                val pinnedConversations = remember(conversations, stickyData) {
+                    val convMap = conversations.associateBy { it.chatId }
+                    stickyData?.sticky?.mapNotNull { stickyItem ->
+                        convMap[stickyItem.chatId]
+                    } ?: emptyList()
+                }
+                val regularConversations = remember(conversations, stickyData) {
+                    val stickyChatIds = stickyData?.sticky?.map { it.chatId }?.toSet() ?: emptySet()
+                    conversations.filter { it.chatId !in stickyChatIds }
+                }
+
                 ScalingLazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
@@ -134,8 +146,46 @@ fun WearConversationScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    if (pinnedConversations.isNotEmpty()) {
+                        items(
+                            items = pinnedConversations,
+                            key = { "wear_pinned_${it.chatId}" }
+                        ) { conversation ->
+                            WearConversationItem(
+                                conversation = conversation,
+                                onClick = {
+                                    viewModel.markConversationAsRead(
+                                        conversation.chatId,
+                                        conversation.chatType
+                                    )
+                                    onConversationClick(
+                                        conversation.chatId,
+                                        conversation.chatType,
+                                        conversation.name
+                                    )
+                                },
+                                onLongClick = {
+                                    selectedConversation = conversation
+                                    coroutineScope.launch {
+                                        isSelectedConversationSticky =
+                                            viewModel.isConversationSticky(conversation.chatId)
+                                        showConversationMenu = true
+                                    }
+                                }
+                            )
+                        }
+                        item(key = "sticky_divider") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp)
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colors.onSurfaceVariant.copy(alpha = 0.2f))
+                            )
+                        }
+                    }
                     items(
-                        items = conversations,
+                        items = regularConversations,
                         key = { "wear_conv_${it.chatId}" }
                     ) { conversation ->
                         WearConversationItem(

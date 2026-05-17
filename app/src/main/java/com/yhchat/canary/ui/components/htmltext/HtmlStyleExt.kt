@@ -117,10 +117,10 @@ internal fun CssStyle.toComposeTextStyle(fallback: TextStyle = TextStyle.Default
 }
 
 internal fun Modifier.htmlBoxModel(style: CssStyle): Modifier {
-    val marginTop = style.marginTop ?: style.margin ?: 0.dp
-    val marginBottom = style.marginBottom ?: style.margin ?: 0.dp
-    val marginStart = style.marginLeft ?: style.margin ?: 0.dp
-    val marginEnd = style.marginRight ?: style.margin ?: 0.dp
+    val marginTop = (style.marginTop ?: style.margin ?: 0.dp).coerceAtLeast(0.dp)
+    val marginBottom = (style.marginBottom ?: style.margin ?: 0.dp).coerceAtLeast(0.dp)
+    val marginStart = (style.marginLeft ?: style.margin ?: 0.dp).coerceAtLeast(0.dp)
+    val marginEnd = (style.marginRight ?: style.margin ?: 0.dp).coerceAtLeast(0.dp)
     val paddingTop = (style.paddingTop ?: style.padding ?: 0.dp).coerceAtLeast(0.dp)
     val paddingBottom = (style.paddingBottom ?: style.padding ?: 0.dp).coerceAtLeast(0.dp)
     val paddingStart = (style.paddingLeft ?: style.padding ?: 0.dp).coerceAtLeast(0.dp)

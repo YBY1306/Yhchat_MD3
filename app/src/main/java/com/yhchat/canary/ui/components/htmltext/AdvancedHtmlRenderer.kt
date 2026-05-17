@@ -776,10 +776,10 @@ private fun HtmlTableNode(
                                             else Modifier
                                         )
                                         .padding(
-                                            top = cell.node.style.paddingTop ?: cell.node.style.padding ?: table.cellPadding.dp,
-                                            bottom = cell.node.style.paddingBottom ?: cell.node.style.padding ?: table.cellPadding.dp,
-                                            start = cell.node.style.paddingLeft ?: cell.node.style.padding ?: 12.dp,
-                                            end = cell.node.style.paddingRight ?: cell.node.style.padding ?: 12.dp
+                                            top = (cell.node.style.paddingTop ?: cell.node.style.padding ?: table.cellPadding.dp).coerceAtLeast(0.dp),
+                                            bottom = (cell.node.style.paddingBottom ?: cell.node.style.padding ?: table.cellPadding.dp).coerceAtLeast(0.dp),
+                                            start = (cell.node.style.paddingLeft ?: cell.node.style.padding ?: 12.dp).coerceAtLeast(0.dp),
+                                            end = (cell.node.style.paddingRight ?: cell.node.style.padding ?: 12.dp).coerceAtLeast(0.dp)
                                         )
                                 ) {
                                     Column {

@@ -60,7 +60,7 @@ fun BotBoardContent(
                 .padding(12.dp)
         ) {
             when (boardData.contentType) {
-                1 -> 
+                1 -> {
                     SelectionContainer {
                         Text(
                             text = safeBoardContent,
@@ -386,4 +386,3 @@ private fun BotBoardContentScrollable(
         BotBoardContent(boardData = boardData, onImageClick = onImageClick)
     }
 }
-

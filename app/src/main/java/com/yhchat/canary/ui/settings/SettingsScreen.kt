@@ -33,14 +33,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.MainActivity
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.SavedAccount
 import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.AccountRepository
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.data.websocket.ConnectionState
+import com.yhchat.canary.data.websocket.WebSocketManager
+import com.yhchat.canary.data.websocket.WebSocketService
 import com.yhchat.canary.service.AudioPlayerService
+import com.yhchat.canary.ui.community.BoardDetailActivity
+import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.login.LoginActivity
+import com.yhchat.canary.ui.sticker.StickerPackDetailActivity
 import kotlinx.coroutines.launch
 
 /**
@@ -69,7 +76,9 @@ fun SettingsScreen(
     val savedAccounts: List<SavedAccount> by (accountRepository?.getAllAccounts() ?: kotlinx.coroutines.flow.flowOf(emptyList()))
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val currentUserId: String? = accountRepository?.getCurrentUserId()
+    val resolvedAccountRepository = accountRepository ?: remember { RepositoryFactory.getAccountRepository(context) }
     var showAccountSwitchSheet by remember { mutableStateOf(false) }
+    var showYhTools by remember { mutableStateOf(false) }
 
     LaunchedEffect(tokenRepository) {
         tokenRepository?.let { tokenRepo: TokenRepository ->
@@ -218,6 +227,32 @@ fun SettingsScreen(
             // 内容设置
             item {
                 ContentSettingsGroup(context = context)
+            }
+
+            item {
+                SettingsGroup(
+                    title = "云湖工具",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Build,
+                                title = "云湖工具箱",
+                                subtitle = if (showYhTools) "点击收起工具栏" else "社区/表情包/WebSocket 快捷入口",
+                                onClick = { showYhTools = !showYhTools }
+                            )
+                        }
+                    )
+                )
+            }
+
+            if (showYhTools) {
+                item {
+                    YhToolsPanel(
+                        context = context,
+                        currentUserId = currentUserId,
+                        accountRepository = resolvedAccountRepository
+                    )
+                }
             }
 
             item {
@@ -2151,4 +2186,195 @@ private fun ContentSettingsGroup(context: Context) {
 @Composable
 fun ThemeSettingItem(context: Context) {
     ThemeSettingsGroup(context = context)
+}
+
+@Composable
+private fun YhToolsPanel(
+    context: Context,
+    currentUserId: String?,
+    accountRepository: AccountRepository
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var postIdInput by remember { mutableStateOf("") }
+    var boardIdInput by remember { mutableStateOf("") }
+    var stickerPackIdInput by remember { mutableStateOf("") }
+    var wsPlatformInput by remember { mutableStateOf("android") }
+    val coroutineScope = rememberCoroutineScope()
+
+    val tokenRepository = remember { RepositoryFactory.getTokenRepository(context) }
+    val messageRepository = remember { RepositoryFactory.getMessageRepository(context) }
+    val conversationRepository = remember { RepositoryFactory.getConversationRepository(context) }
+    val webSocketService = remember { WebSocketService(tokenRepository, context.applicationContext) }
+    val webSocketManager = remember {
+        WebSocketManager(
+            webSocketService = webSocketService,
+            messageRepository = messageRepository,
+            conversationRepository = conversationRepository
+        )
+    }
+    val connectionState by webSocketManager.getConnectionState().collectAsStateWithLifecycle(initialValue = ConnectionState.Disconnected)
+
+    val stateText = when (val state = connectionState) {
+        ConnectionState.Connected -> "已连接"
+        ConnectionState.Connecting -> "连接中"
+        ConnectionState.Disconnected -> "未连接"
+        is ConnectionState.Error -> "错误: ${state.message}"
+    }
+
+    SettingsGroup(
+        items = listOf(
+            {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TabRow(selectedTabIndex = selectedTab) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("社区") }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("表情包") }
+                        )
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            text = { Text("WebSocket") }
+                        )
+                    }
+
+                    when (selectedTab) {
+                        0 -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = postIdInput,
+                                    onValueChange = { postIdInput = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("文章ID") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val postId = postIdInput.toIntOrNull()
+                                        if (postId == null) {
+                                            android.widget.Toast.makeText(context, "文章ID必须是数字", android.widget.Toast.LENGTH_SHORT).show()
+                                            return@Button
+                                        }
+                                        val intent = Intent(context, PostDetailActivity::class.java).apply {
+                                            putExtra("post_id", postId)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text("进入")
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = boardIdInput,
+                                    onValueChange = { boardIdInput = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("社区ID") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val boardId = boardIdInput.toIntOrNull()
+                                        if (boardId == null) {
+                                            android.widget.Toast.makeText(context, "社区ID必须是数字", android.widget.Toast.LENGTH_SHORT).show()
+                                            return@Button
+                                        }
+                                        val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                            putExtra("board_id", boardId)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text("进入")
+                                }
+                            }
+                        }
+                        1 -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = stickerPackIdInput,
+                                    onValueChange = { stickerPackIdInput = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("表情包ID") },
+                                    singleLine = true
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val stickerPackId = stickerPackIdInput.trim()
+                                        if (stickerPackId.isBlank()) {
+                                            android.widget.Toast.makeText(context, "表情包ID不能为空", android.widget.Toast.LENGTH_SHORT).show()
+                                            return@Button
+                                        }
+                                        StickerPackDetailActivity.start(context, stickerPackId)
+                                    }
+                                ) {
+                                    Text("进入")
+                                }
+                            }
+                        }
+                        2 -> {
+                            Text(
+                                text = "状态: $stateText",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    webSocketManager.disconnect()
+                                }) {
+                                    Text("停止")
+                                }
+                                OutlinedTextField(
+                                    value = wsPlatformInput,
+                                    onValueChange = { wsPlatformInput = it },
+                                    modifier = Modifier.width(140.dp),
+                                    label = { Text("在线版本") },
+                                    singleLine = true
+                                )
+                                Button(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            val userId = currentUserId ?: accountRepository.getCurrentUserId()
+                                            if (userId.isNullOrBlank()) {
+                                                android.widget.Toast.makeText(context, "未获取到用户ID", android.widget.Toast.LENGTH_SHORT).show()
+                                                return@launch
+                                            }
+                                            val platform = wsPlatformInput.trim().ifBlank { "android" }
+                                            webSocketManager.connect(userId, platform)
+                                        }
+                                    }
+                                ) {
+                                    Text("重连")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    )
 }

@@ -194,6 +194,7 @@ fun StickerPackDetailContent(
 ) {
     val stickerPack = stickerPackData.stickerPack
     val creator = stickerPackData.user
+    val stickerItems = stickerPack.stickerItems.orEmpty()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -255,7 +256,7 @@ fun StickerPackDetailContent(
                 ) {
                     Column {
                         Text(
-                            text = "${stickerPack.stickerItems.size}",
+                            text = "${stickerItems.size}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -312,9 +313,9 @@ fun StickerPackDetailContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(stickerPack.stickerItems.size) { index ->
+            items(stickerItems.size) { index ->
                 StickerItemView(
-                    sticker = stickerPack.stickerItems[index],
+                    sticker = stickerItems[index],
                     onImageClick = { onImageClick(index) }
                 )
             }

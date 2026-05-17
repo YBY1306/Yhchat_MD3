@@ -244,9 +244,9 @@ private fun HtmlGenericNode(
     }
 
     if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
-        // 瀵逛簬閾炬帴鏍囩锛屼娇鐢?clickable 淇グ绗︾‘淇濇暣涓潡鍖哄煙鍙偣鍑?        val clickableModifier = if (isLink && !href.isNullOrBlank()) {
-            Modifier.clickable { 
-                // 浼樺厛浣跨敤 href 灞炴€э紙鐢ㄤ簬鍧楃骇閾炬帴锛?                onLinkClick?.invoke(href) 
+        val clickableModifier = if (isLink && !href.isNullOrBlank()) {
+            Modifier.clickable {
+                onLinkClick?.invoke(href)
             }
         } else {
             Modifier
@@ -262,8 +262,11 @@ private fun HtmlGenericNode(
     } else {
         // 瀵逛簬琛屽唴閾炬帴锛岄渶瑕佹纭鐞?<a> 鏍囩鐨?href
         val rendered = if (isLink && !href.isNullOrBlank()) {
-            // 褰?<a> 鏍囩鍖呭惈鏂囨湰浣嗘病鏈夊瓙鍏冪礌鏃讹紝浣跨敤 buildInlineAnnotated
-            // 鐒跺悗閫氳繃 URL annotation 鏉ュ鐞嗙偣鍑?            buildInlineAnnotatedWithLink(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged, href)
+            buildInlineAnnotatedWithLink(
+                node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) },
+                merged,
+                href
+            )
         } else {
             buildInlineAnnotated(node.children.ifEmpty { mutableListOf(HtmlNode.Text("")) }, merged)
         }
@@ -745,7 +748,7 @@ private fun HtmlTableNode(
 
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(table.style)) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            // 鏌愪簺娑堟伅姘旀场鍦烘櫙浼氱粰瀛愭爲鏃犵晫瀹藉害锛宧orizontalScroll 涓嶈兘鎺ユ敹鏃犻檺瀹界害鏉熴€?            // 杩欓噷寮哄埗缁欎竴涓湁闄愯鍙ｅ搴︼紙浼樺厛鐖剁害鏉燂紝鍚﹀垯閫€鍖栧埌灞忓箷瀹藉害锛夈€?            val viewportWidth = if (maxWidth < Dp.Infinity && maxWidth > 0.dp) {
+            val viewportWidth = if (maxWidth < Dp.Infinity && maxWidth > 0.dp) {
                 maxWidth
             } else {
                 screenWidth

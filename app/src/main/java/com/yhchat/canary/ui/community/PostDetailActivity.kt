@@ -62,6 +62,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -410,38 +411,50 @@ fun PostBottomActionBar(
     onCommentInputToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var moreMenuExpanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding() // 自动适配安卓手势线
+            .navigationBarsPadding()
     ) {
         HorizontalDivider()
-        
-        // 主操作行：评论输入框（左）+ 互动按钮（右）
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧：评论输入框
-            OutlinedTextField(
-                value = commentText,
-                onValueChange = onCommentTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("写下你的评论...") },
-                maxLines = 1,
-                singleLine = true,
-                shape = RoundedCornerShape(20.dp),
-                trailingIcon = {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onCommentInputToggle() },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (commentText.isBlank()) "写下你的评论..." else commentText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (commentText.isBlank()) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                     if (commentText.isNotBlank()) {
-                        IconButton(
-                            onClick = {
-                                onSendComment(commentText)
-                            }
-                        ) {
+                        IconButton(onClick = { onSendComment(commentText) }, modifier = Modifier.size(30.dp)) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "发送",
@@ -451,13 +464,17 @@ fun PostBottomActionBar(
                     }
                 }
             )
-            
-            // 右侧：互动按钮组
+
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 2.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 点赞按钮
                 IconButton(onClick = onLikeClick) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -481,8 +498,7 @@ fun PostBottomActionBar(
                         )
                     }
                 }
-                
-                // 收藏按钮
+
                 IconButton(onClick = onCollectClick) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -506,8 +522,7 @@ fun PostBottomActionBar(
                         )
                     }
                 }
-                
-                // 打赏按钮
+
                 IconButton(onClick = onRewardClick) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -530,6 +545,156 @@ fun PostBottomActionBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+
+                Box {
+                    IconButton(onClick = { moreMenuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = moreMenuExpanded,
+                        onDismissRequest = { moreMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(if (showCommentInput) "收起评论输入" else "展开评论输入") },
+                            onClick = {
+                                moreMenuExpanded = false
+                                onCommentInputToggle()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        if (showCommentInput) {
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = onCommentTextChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                placeholder = { Text("写下你的评论...") },
+                maxLines = 3,
+                singleLine = false,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                trailingIcon = {
+                    if (commentText.isNotBlank()) {
+                        IconButton(onClick = { onSendComment(commentText) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "发送",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun PostBottomActionBarDuo3(
+    post: CommunityPost,
+    onLikeClick: () -> Unit,
+    onCollectClick: () -> Unit,
+    onRewardClick: () -> Unit,
+    onCommentInputToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .navigationBarsPadding()
+    ) {
+        HorizontalDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                IconButton(onClick = onLikeClick) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(
+                            imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "点赞",
+                            tint = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = post.likeNum.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onCollectClick) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(
+                            imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = "收藏",
+                            tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = post.collectNum.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onRewardClick) {
+                    Icon(
+                        imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                        contentDescription = "打赏",
+                        tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                modifier = Modifier.clickable { onCommentInputToggle() },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = post.commentNum.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Comment,
+                        contentDescription = "评论",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -1102,15 +1267,8 @@ fun PostDetailScreen(
         bottomBar = {
             // 统一底部操作栏
             postDetailState.post?.let { post ->
-                PostBottomActionBar(
+                PostBottomActionBarDuo3(
                     post = post,
-                    commentText = commentText,
-                    onCommentTextChange = { commentText = it },
-                    onSendComment = { content ->
-                        viewModel.commentPostWithToken(postId, content)
-                        commentText = ""
-                        showCommentInput = false
-                    },
                     onLikeClick = {
                         viewModel.likePostWithToken(postId)
                     },
@@ -1305,84 +1463,6 @@ fun PostDetailScreen(
                                 )
                             }
                             
-                            // 评论标题
-                            item {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "评论 (${commentListState.comments.size})",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        TextButton(
-                                            onClick = {
-                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                val clip = ClipData.newPlainText("帖子原文", post.content)
-                                                clipboard.setPrimaryClip(clip)
-                                                Toast.makeText(context, "原文已复制", Toast.LENGTH_SHORT).show()
-                                            }
-                                        ) {
-                                            Text("复制原文")
-                                        }
-                                        TextButton(
-                                            onClick = { showCommentInput = !showCommentInput }
-                                        ) {
-                                            Text("写评论")
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 评论列表
-                            items(commentListState.comments) { comment ->
-                                CommentItem(
-                                    comment = comment,
-                                    onLikeClick = { commentId ->
-                                        viewModel.likeCommentWithToken(postId, commentId)
-                                    },
-                                    onReplyClick = { commentId ->
-                                        // TODO: 实现回复功能
-                                        showCommentInput = true
-                                    },
-                                    onReportClick = { selectedComment ->
-                                        reportTarget = CommunityReportTarget(
-                                            typ = 2,
-                                            targetId = selectedComment.id,
-                                            title = "举报评论"
-                                        )
-                                    }
-                                )
-                            }
-                            
-                            // 自动加载更多评论
-                            if (commentListState.hasMore) {
-                                item {
-                                    LaunchedEffect(Unit) {
-                                        if (!commentListState.isLoading) {
-                                            viewModel.loadMoreCommentsWithToken(postId)
-                                        }
-                                    }
-                                    
-                                    if (commentListState.isLoading) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(24.dp),
-                                                strokeWidth = 2.dp
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                     
@@ -1430,6 +1510,115 @@ fun PostDetailScreen(
                     onDismiss = { showShareDialog = false },
                     onShareToFriend = { showShareToFriendSheet = true }
                 )
+            }
+
+            if (showCommentInput) {
+                ModalBottomSheet(
+                    onDismissRequest = { showCommentInput = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "评论 (${commentListState.comments.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            TextButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText("帖子原文", postDetailState.post?.content ?: "")
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "原文已复制", Toast.LENGTH_SHORT).show()
+                                }
+                            ) { Text("复制原文") }
+                        }
+
+                        OutlinedTextField(
+                            value = commentText,
+                            onValueChange = { commentText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("写下你的评论...") },
+                            maxLines = 3,
+                            singleLine = false,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            trailingIcon = {
+                                if (commentText.isNotBlank()) {
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.commentPostWithToken(postId, commentText)
+                                            commentText = ""
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Send,
+                                            contentDescription = "发送",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 520.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(commentListState.comments) { comment ->
+                                CommentItem(
+                                    comment = comment,
+                                    onLikeClick = { commentId ->
+                                        viewModel.likeCommentWithToken(postId, commentId)
+                                    },
+                                    onReplyClick = {
+                                    },
+                                    onReportClick = { selectedComment ->
+                                        reportTarget = CommunityReportTarget(
+                                            typ = 2,
+                                            targetId = selectedComment.id,
+                                            title = "举报评论"
+                                        )
+                                    }
+                                )
+                            }
+
+                            if (commentListState.hasMore) {
+                                item {
+                                    LaunchedEffect(Unit) {
+                                        if (!commentListState.isLoading) {
+                                            viewModel.loadMoreCommentsWithToken(postId)
+                                        }
+                                    }
+                                    if (commentListState.isLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // 分享给好友BottomSheet

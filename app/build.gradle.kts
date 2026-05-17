@@ -68,6 +68,17 @@ android {
         }
     }
 
+    flavorDimensions += "platform"
+
+    productFlavors {
+        create("default") {
+            dimension = "platform"
+        }
+        create("wear") {
+            dimension = "platform"
+        }
+    }
+
     flavorDimensions += "player"
 
     productFlavors {
@@ -88,25 +99,6 @@ android {
         }
     }
 
-    flavorDimensions += "platform"
-
-    productFlavors {
-        create("a") {
-            dimension = "platform"
-            buildConfigField("boolean", "WITH_PLAYER", "false")
-            buildConfigField("boolean", "WITH_LIVE", "false")
-        }
-        create("b") {
-            dimension = "platform"
-            buildConfigField("boolean", "WITH_PLAYER", "true")
-            buildConfigField("boolean", "WITH_LIVE", "false")
-        }
-        create("c") {
-            dimension = "platform"
-            buildConfigField("boolean", "WITH_PLAYER", "false")
-            buildConfigField("boolean", "WITH_LIVE", "true")
-        }
-    }
 
     buildFeatures {
         compose = true

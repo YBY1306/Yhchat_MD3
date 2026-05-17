@@ -1275,7 +1275,8 @@ fun WearChatInputBar(
                     defaultSendMessageType = newDefaultType
                     chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
                 },
-                selectedMessageType = selectedMessageType
+                selectedMessageType = selectedMessageType,
+                onSendMessage=    currentOnSendMessage
             )
 
         }
@@ -1295,7 +1296,7 @@ private fun VoiceToTextChoiceDialog(
     progress: String,
     onDirectSend: () -> Unit,
     onConvertToText: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = { if (!isConverting) onCancel() },
@@ -1445,7 +1446,9 @@ fun AttachmentMenuWear(
     onA2UiClick: (() -> Unit)? = null,
     defaultMessageType: Int = 1,
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
-    selectedMessageType: Int = 1
+    selectedMessageType: Int = 1,
+    onSendMessage:()->Unit= { null },
+
 ) {
     if (!expanded) return
 
@@ -1552,7 +1555,7 @@ fun AttachmentMenuWear(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { TODO() }
+                                        .clickable { onSendMessage() }
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {

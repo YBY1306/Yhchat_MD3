@@ -1542,7 +1542,7 @@ fun AttachmentMenuWear(
                             item {
                                 ListHeader {
                                     Text(
-                                        "Bot",
+                                        "常用",
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -1558,7 +1558,7 @@ fun AttachmentMenuWear(
                                 ) {
                                     Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(Modifier.width(12.dp))
-                                    Text("Send Empty", style = MaterialTheme.typography.bodyLarge)
+                                    Text("发送空文本", style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
                             item {

@@ -152,6 +152,7 @@ fun WearChatInputBarTop(
         }
         if (isVoiceMode){
             Text("雪王")
+            Text("TODO")
         }
 
     }
@@ -1568,13 +1569,15 @@ fun AttachmentMenuWear(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { TODO() }
+                                        .clickable {
+                                           //TODO
+                                        }
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(Modifier.width(12.dp))
-                                    Text("Bot Cmd", style = MaterialTheme.typography.bodyLarge)
+                                    Text("Bot Cmd TODO", style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
 

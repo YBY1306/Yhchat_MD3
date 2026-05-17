@@ -101,10 +101,13 @@ object CssParser {
         val flexParts = properties["flex"]?.let { parseFlexShorthand(it) }
         val listStyleType = properties["list-style-type"]
             ?: properties["list-style"]?.let { parseListStyleType(it) }
+        val backgroundShorthand = properties["background"]
+        val resolvedBackgroundColor = properties["background-color"]?.let { parseColor(it) }
+            ?: backgroundShorthand?.let { parseBackgroundColor(it) }
 
         return CssStyle(
             color = properties["color"]?.let { parseColor(it) },
-            backgroundColor = properties["background-color"]?.let { parseColor(it) },
+            backgroundColor = resolvedBackgroundColor,
             fontSize = properties["font-size"]?.let { parseFontSize(it) },
             fontWeight = properties["font-weight"]?.let { parseFontWeight(it) },
             fontStyle = properties["font-style"]?.let { parseFontStyle(it) },
@@ -155,6 +158,25 @@ object CssParser {
             transition = properties["transition"],
             outline = properties["outline"]
         )
+    }
+
+    private fun parseBackgroundColor(value: String): Color? {
+        val normalized = value.trim().lowercase()
+        if (normalized.isEmpty()) return null
+        if (normalized.contains("gradient(")) return null
+        if (normalized.contains("url(")) return null
+
+        val token = normalized
+            .split(Regex("\\s+"))
+            .firstOrNull { part ->
+                part.startsWith("#") ||
+                    part.startsWith("rgb(") ||
+                    part.startsWith("rgba(") ||
+                    part.matches(Regex("^[a-z]+$"))
+            }
+            ?: return null
+
+        return parseColor(token)
     }
 
     private fun parseBoxValues(value: String?): BoxValues {

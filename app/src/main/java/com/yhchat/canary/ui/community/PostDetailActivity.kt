@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -69,6 +70,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -992,6 +994,7 @@ fun PostDetailScreen(
     // 评论输入状态
     var commentText by remember { mutableStateOf("") }
     var showCommentInput by remember { mutableStateOf(false) }
+    val commentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     // 打赏对话框状态
     var showRewardDialog by remember { mutableStateOf(false) }
@@ -1310,11 +1313,13 @@ fun PostDetailScreen(
 
             if (showCommentInput) {
                 ModalBottomSheet(
-                    onDismissRequest = { showCommentInput = false }
+                    onDismissRequest = { showCommentInput = false },
+                    sheetState = commentSheetState
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .fillMaxHeight()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Row(
@@ -1369,7 +1374,7 @@ fun PostDetailScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 520.dp),
+                                .fillMaxHeight(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(commentListState.comments) { comment ->

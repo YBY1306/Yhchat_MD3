@@ -9,6 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,13 +46,16 @@ import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.websocket.ConnectionState
-import com.yhchat.canary.data.websocket.WebSocketManager
 import com.yhchat.canary.data.websocket.WebSocketService
 import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.login.LoginActivity
 import com.yhchat.canary.ui.sticker.StickerPackDetailActivity
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 
 /**
@@ -245,8 +253,12 @@ fun SettingsScreen(
                 )
             }
 
-            if (showYhTools) {
-                item {
+            item {
+                AnimatedVisibility(
+                    visible = showYhTools,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
                     YhToolsPanel(
                         context = context,
                         currentUserId = currentUserId,
@@ -2188,6 +2200,12 @@ fun ThemeSettingItem(context: Context) {
     ThemeSettingsGroup(context = context)
 }
 
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface SettingsWsEntryPoint {
+    fun webSocketService(): WebSocketService
+}
+
 @Composable
 private fun YhToolsPanel(
     context: Context,
@@ -2201,18 +2219,12 @@ private fun YhToolsPanel(
     var wsPlatformInput by remember { mutableStateOf("android") }
     val coroutineScope = rememberCoroutineScope()
 
-    val tokenRepository = remember { RepositoryFactory.getTokenRepository(context) }
-    val messageRepository = remember { RepositoryFactory.getMessageRepository(context) }
-    val conversationRepository = remember { RepositoryFactory.getConversationRepository(context) }
-    val webSocketService = remember { WebSocketService(tokenRepository, context.applicationContext) }
-    val webSocketManager = remember {
-        WebSocketManager(
-            webSocketService = webSocketService,
-            messageRepository = messageRepository,
-            conversationRepository = conversationRepository
-        )
+    val appContext = context.applicationContext
+    val wsEntryPoint = remember(appContext) {
+        EntryPointAccessors.fromApplication(appContext, SettingsWsEntryPoint::class.java)
     }
-    val connectionState by webSocketManager.getConnectionState().collectAsStateWithLifecycle(initialValue = ConnectionState.Disconnected)
+    val webSocketService = remember(wsEntryPoint) { wsEntryPoint.webSocketService() }
+    val connectionState by webSocketService.connectionState.collectAsStateWithLifecycle(initialValue = ConnectionState.Disconnected)
 
     val stateText = when (val state = connectionState) {
         ConnectionState.Connected -> "已连接"
@@ -2344,7 +2356,7 @@ private fun YhToolsPanel(
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = {
-                                    webSocketManager.disconnect()
+                                    webSocketService.disconnect()
                                 }) {
                                     Text("停止")
                                 }
@@ -2358,13 +2370,16 @@ private fun YhToolsPanel(
                                 Button(
                                     onClick = {
                                         coroutineScope.launch {
-                                            val userId = currentUserId ?: accountRepository.getCurrentUserId()
+                                            val tokenRepo = RepositoryFactory.getTokenRepository(context)
+                                            val userId = currentUserId
+                                                ?: accountRepository.getCurrentUserId()
+                                                ?: tokenRepo.getUserIdSync()
                                             if (userId.isNullOrBlank()) {
                                                 android.widget.Toast.makeText(context, "未获取到用户ID", android.widget.Toast.LENGTH_SHORT).show()
                                                 return@launch
                                             }
                                             val platform = wsPlatformInput.trim().ifBlank { "android" }
-                                            webSocketManager.connect(userId, platform)
+                                            webSocketService.connect(userId, platform)
                                         }
                                     }
                                 ) {

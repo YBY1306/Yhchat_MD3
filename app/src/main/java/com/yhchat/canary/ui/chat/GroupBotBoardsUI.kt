@@ -38,9 +38,6 @@ import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 
-/**
- * 鏈哄櫒浜虹湅鏉垮唴瀹圭粍浠讹紙鍙鐢級
- */
 @Composable
 fun BotBoardContent(
     boardData: board.Board_data,
@@ -63,7 +60,7 @@ fun BotBoardContent(
                 .padding(12.dp)
         ) {
             when (boardData.contentType) {
-                1 -> { // 鏂囨湰 - 鏀寔閫夋嫨澶嶅埗
+                1 -> 
                     SelectionContainer {
                         Text(
                             text = safeBoardContent,
@@ -72,7 +69,7 @@ fun BotBoardContent(
                         )
                     }
                 }
-                2 -> { // Markdown - MarkdownText缁勪欢鍐呴儴鏀寔閫夋嫨
+                2 -> { // Markdown
                     MarkdownText(
                         markdown = safeBoardContent,
                         modifier = Modifier.fillMaxWidth(),
@@ -95,7 +92,7 @@ fun BotBoardContent(
                         useAdvancedRenderer = true
                     )
                 }
-                else -> { // 榛樿鎸夋枃鏈鐞?- 鏀寔閫夋嫨澶嶅埗
+                else -> {
                     SelectionContainer {
                         Text(
                             text = safeBoardContent,
@@ -188,8 +185,6 @@ fun BotLlmParamsDialog(
     )
 }
 
-/**
- * 缇よ亰鏈哄櫒浜虹湅鏉垮尯鍩? */
 @Composable
 fun GroupBotBoardsSection(
     groupBots: List<Bot_data>,
@@ -202,7 +197,6 @@ fun GroupBotBoardsSection(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    // 杩囨护鍑烘湁鐪嬫澘鍐呭鐨勬満鍣ㄤ汉
     val botsWithBoards = remember(groupBots, groupBotBoards) {
         groupBots.filter { bot ->
             groupBotBoards[bot.botId]?.content?.isNotBlank() == true
@@ -235,7 +229,6 @@ fun GroupBotBoardsSection(
                 )
             )
     ) {
-        // 鏈哄櫒浜洪€夋嫨鎸夐挳鍒楄〃
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,7 +294,7 @@ fun GroupBotBoardsSection(
                     label = {
                         val botName = botLlmRefParams[bot.botId].orEmpty().ifBlank { bot.name }
                         Text(
-                            text = "${botName}鐨勫ぇ妯″瀷鍙傛暟",
+                            text = "${botName}的大模型参数",
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -311,7 +304,6 @@ fun GroupBotBoardsSection(
             }
         }
 
-        // 鏄剧ず閫変腑鏈哄櫒浜虹殑鐪嬫澘鍐呭
         AnimatedVisibility(
             visible = selectedBoardData != null,
             enter = fadeIn(animationSpec = tween(140)),
@@ -324,7 +316,6 @@ fun GroupBotBoardsSection(
                         .heightIn(max = 500.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // 鐪嬫澘鏍囬
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -333,7 +324,7 @@ fun GroupBotBoardsSection(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "${boardData.botName.ifBlank { "Bot" }} Board",
+                            text = "${boardData.botName.ifBlank{ "Bot" }}的看板",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -353,10 +344,9 @@ fun GroupBotBoardsSection(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("澶嶅埗鍘熸枃")
+                            Text("复制原文")
                         }
 
-                        // 鍏抽棴鎸夐挳
                         IconButton(
                             onClick = { selectedBotId = null },
                             modifier = Modifier.size(24.dp)
@@ -369,7 +359,6 @@ fun GroupBotBoardsSection(
                         }
                     }
 
-                    // 鐪嬫澘鍐呭 - 娣诲姞婊氬姩鏀寔
                     BotBoardContentScrollable(
                         boardData = boardData,
                         onImageClick = onImageClick
@@ -380,8 +369,6 @@ fun GroupBotBoardsSection(
     }
 }
 
-/**
- * 鍙粴鍔ㄧ殑鏈哄櫒浜虹湅鏉垮唴瀹圭粍浠? */
 @Composable
 private fun BotBoardContentScrollable(
     boardData: board.Board_data,

@@ -406,29 +406,23 @@ fun PostBottomActionBarDuo3(
     onCommentInputToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
-            shadowElevation = 10.dp
-        ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            color = Color.Transparent,
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
         ) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 2.dp, vertical = 2.dp),
+                    .padding(horizontal = 0.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -471,31 +465,29 @@ fun PostBottomActionBarDuo3(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Surface(
-                modifier = Modifier.clickable { onCommentInputToggle() },
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = post.commentNum.toString(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Comment,
-                        contentDescription = "评论",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
         }
+        Surface(
+            modifier = Modifier.clickable { onCommentInputToggle() },
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = post.commentNum.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = Icons.Default.Comment,
+                    contentDescription = "评论",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

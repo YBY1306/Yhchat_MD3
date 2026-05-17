@@ -22,7 +22,7 @@ import com.yhchat.canary.proto.group.Bot_data
 import com.yhchat.canary.ui.chat.BotBoardContent
 import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.components.rememberBooleanPreference
-import com.yhchat.canary.ui.chat.GroupBotBoardsSection as GroupBotBoardsSectionOriginal
+import com.yhchat.canary.ui.chat.GroupBotBoardsSection as GroupBotBoardsSectionImpl
 
 /**
  * 单个机器人看板区域（用于单聊）
@@ -137,7 +137,7 @@ fun GroupBotBoardsSection(
     val botBoardEnabled by rememberBooleanPreference("chat_settings", "show_bot_board", true)
     
     if (chatType == 2 && groupBots.isNotEmpty() && botBoardEnabled) {
-        GroupBotBoardsSectionOriginal(
+        GroupBotBoardsSectionImpl(
             groupBots = groupBots,
             groupBotBoards = groupBotBoards,
             botLlmRefParams = botLlmRefParams,

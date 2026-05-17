@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,7 +97,8 @@ fun MarkdownText(
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     backgroundColor: Color = Color.Transparent,
     onImageClick: ((String) -> Unit)? = null,
-    imageReferer: String? = "https://myapp.jwznb.com"
+    imageReferer: String? = "https://myapp.jwznb.com",
+    enableHtmlRendering: Boolean = true
 ) {
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
@@ -184,7 +187,7 @@ fun MarkdownText(
                                                         .size(18.dp)
                                                         .padding(top = 2.dp)
                                                 )
-                                                Spacer(modifier = Modifier.size(6.dp))
+                                                Spacer(modifier = Modifier.width(6.dp))
                                                 Material3RichText(
                                                     style = richTextStyle,
                                                     modifier = Modifier.fillMaxWidth()
@@ -252,55 +255,77 @@ fun MarkdownText(
                 }
 
                 is MarkdownSegment.HtmlTable -> {
-                    HtmlTextMessage(
-                        html = segment.content,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = textColor,
-                        style = MaterialTheme.typography.bodyMedium,
-                        onImageClick = { url ->
-                            onImageClick?.invoke(url) ?: run {
-                                previewImageUrl = url
-                            }
-                        },
-                        onUriClick = { url ->
-                            try {
-                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                } else {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                    context.startActivity(intent)
+                    if (enableHtmlRendering) {
+                        HtmlTextMessage(
+                            html = segment.content,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            onImageClick = { url ->
+                                onImageClick?.invoke(url) ?: run {
+                                    previewImageUrl = url
                                 }
-                            } catch (_: Exception) {
-                            }
-                        },
-                        useAdvancedRenderer = true
-                    )
+                            },
+                            onUriClick = { url ->
+                                try {
+                                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                    } else {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            },
+                            useAdvancedRenderer = true
+                        )
+                    } else {
+                        SelectionContainer {
+                            Text(
+                                text = segment.content,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
 
                 is MarkdownSegment.HtmlBlock -> {
-                    HtmlTextMessage(
-                        html = segment.content,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = textColor,
-                        style = MaterialTheme.typography.bodyMedium,
-                        onImageClick = { url ->
-                            onImageClick?.invoke(url) ?: run {
-                                previewImageUrl = url
-                            }
-                        },
-                        onUriClick = { url ->
-                            try {
-                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                } else {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                    context.startActivity(intent)
+                    if (enableHtmlRendering) {
+                        HtmlTextMessage(
+                            html = segment.content,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            onImageClick = { url ->
+                                onImageClick?.invoke(url) ?: run {
+                                    previewImageUrl = url
                                 }
-                            } catch (_: Exception) {
-                            }
-                        },
-                        useAdvancedRenderer = true
-                    )
+                            },
+                            onUriClick = { url ->
+                                try {
+                                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                    } else {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            },
+                            useAdvancedRenderer = true
+                        )
+                    } else {
+                        SelectionContainer {
+                            Text(
+                                text = segment.content,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
                 
                 is MarkdownSegment.CodeBlock -> {

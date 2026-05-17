@@ -258,7 +258,8 @@ fun PostContentCard(
                     currentImageUrl = imageUrl
                     showImageViewer = true
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enableHtmlRendering = false
             )
         } else {
             // 普通文本内容 - 支持选择复制

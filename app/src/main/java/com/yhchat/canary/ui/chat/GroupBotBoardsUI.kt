@@ -122,7 +122,7 @@ fun BotLlmParamsDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "${botName.ifBlank { "鏈哄櫒浜? }}鐨勫ぇ妯″瀷鍙傛暟")
+            Text(text = "${botName.ifBlank { "Bot" }} Params")
         },
         text = {
             Column(
@@ -260,7 +260,7 @@ fun GroupBotBoardsSection(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // 鏈哄櫒浜哄ご鍍?                            AsyncImage(
+                            AsyncImage(
                                 model = ImageUtils.createBotImageRequest(
                                     context = context,
                                     url = bot.avatarUrl
@@ -333,7 +333,7 @@ fun GroupBotBoardsSection(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "${boardData.botName.ifBlank { "鏈哄櫒浜? }}鐨勭湅鏉?,
+                            text = "${boardData.botName.ifBlank { "Bot" }} Board",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -344,7 +344,7 @@ fun GroupBotBoardsSection(
                             onClick = {
                                 val content = boardData.content.ifBlank { "" }
                                 clipboardManager.setText(AnnotatedString(content))
-                                Toast.makeText(context, "宸插鍒跺師鏂?, Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                             }
                         ) {
                             Icon(
@@ -390,10 +390,11 @@ private fun BotBoardContentScrollable(
 ) {
     val scrollState = rememberScrollState()
 
-    // Card宸茬粡鍖呭惈鍦ㄤ簡BotBoardContent涓紝杩欓噷鐩存帴璋冪敤
-    Box(modifier = modifier
-        .fillMaxWidth()
-        .heightIn(max = 400.dp) // 闄愬埗鏈€澶ч珮搴?        .verticalScroll(scrollState) // 娣诲姞鍨傜洿婊氬姩
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 400.dp)
+            .verticalScroll(scrollState)
     ) {
         BotBoardContent(boardData = boardData, onImageClick = onImageClick)
     }

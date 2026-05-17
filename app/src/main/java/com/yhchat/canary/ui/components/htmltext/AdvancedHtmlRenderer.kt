@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
@@ -657,7 +658,7 @@ private fun HtmlListNode(
     Column(modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style)) {
         if (items.isNotEmpty()) {
             items.forEachIndexed { index, item ->
-                val marker = if (ordered) "${start + index}." else "鈥?
+                val marker = if (ordered) "${start + index}." else "•"
                 Row(
                     modifier = Modifier.fillMaxWidth().htmlBoxModel(item.style),
                     verticalAlignment = Alignment.Top

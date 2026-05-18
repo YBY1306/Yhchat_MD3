@@ -98,7 +98,8 @@ fun MarkdownText(
     backgroundColor: Color = Color.Transparent,
     onImageClick: ((String) -> Unit)? = null,
     imageReferer: String? = "https://myapp.jwznb.com",
-    enableHtmlRendering: Boolean = true
+    enableHtmlRendering: Boolean = true,
+    highlightKeyword: String = ""
 ) {
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
@@ -146,13 +147,16 @@ fun MarkdownText(
                                     when (run) {
                                         is TaskRun.Markdown -> {
                                             if (run.content.isBlank()) return@forEach
+                                            val highlightedMarkdown = remember(run.content, highlightKeyword) {
+                                                injectHighlightMark(run.content, highlightKeyword)
+                                            }
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 Material3RichText(
                                                     style = richTextStyle,
                                                     modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                     Markdown(
-                                                        content = run.content,
+                                                        content = highlightedMarkdown,
                                                         onLinkClicked = { url: String ->
                                                             try {
                                                                 if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -169,6 +173,9 @@ fun MarkdownText(
                                             }
                                         }
                                         is TaskRun.Task -> {
+                                            val highlightedTaskMarkdown = remember(run.content, highlightKeyword) {
+                                                injectHighlightMark(run.content, highlightKeyword)
+                                            }
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -193,7 +200,7 @@ fun MarkdownText(
                                                     modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                     Markdown(
-                                                        content = run.content,
+                                                        content = highlightedTaskMarkdown,
                                                         onLinkClicked = { url: String ->
                                                             try {
                                                                 if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -342,7 +349,8 @@ fun MarkdownText(
                         textColor = textColor,
                         backgroundColor = backgroundColor,
                         imageReferer = imageReferer,
-                        onImageClick = onImageClick
+                        onImageClick = onImageClick,
+                        highlightKeyword = highlightKeyword
                     )
                 }
             }
@@ -1132,7 +1140,8 @@ private fun MarkdownDetailsBlock(
     textColor: Color,
     backgroundColor: Color,
     imageReferer: String?,
-    onImageClick: ((String) -> Unit)?
+    onImageClick: ((String) -> Unit)?,
+    highlightKeyword: String
 ) {
     var expanded by remember(summary, contentMarkdown) { mutableStateOf(false) }
 
@@ -1172,10 +1181,19 @@ private fun MarkdownDetailsBlock(
                     textColor = textColor,
                     backgroundColor = Color.Transparent,
                     imageReferer = imageReferer,
-                    onImageClick = onImageClick
+                    onImageClick = onImageClick,
+                    highlightKeyword = highlightKeyword
                 )
             }
         }
+    }
+}
+
+private fun injectHighlightMark(markdown: String, keyword: String): String {
+    if (keyword.isBlank() || markdown.isBlank()) return markdown
+    val pattern = Regex(Regex.escape(keyword), RegexOption.IGNORE_CASE)
+    return pattern.replace(markdown) { match ->
+        "<mark>${match.value}</mark>"
     }
 }
 

@@ -284,20 +284,15 @@ fun PostContentCard(
         
         // 文章内容 - 支持选择复制
         if (post.contentType == 2) {
-            // Markdown 内容：搜索态也保持 Markdown 渲染（不降级为纯文本）
-            val markdownToRender = if (trimmedSearchQuery.isBlank()) {
-                post.content
-            } else {
-                injectSearchHighlightToMarkdown(post.content, trimmedSearchQuery)
-            }
             MarkdownText(
-                markdown = markdownToRender,
+                markdown = post.content,
                 onImageClick = { imageUrl ->
                     currentImageUrl = imageUrl
                     showImageViewer = true
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enableHtmlRendering = true
+                enableHtmlRendering = true,
+                highlightKeyword = trimmedSearchQuery
             )
         } else {
             // 普通文本内容，或搜索态下统一高亮
@@ -1806,13 +1801,6 @@ private fun countKeywordMatches(text: String, keyword: String): Int {
     return count
 }
 
-private fun injectSearchHighlightToMarkdown(markdown: String, keyword: String): String {
-    if (keyword.isBlank() || markdown.isBlank()) return markdown
-    val pattern = Regex(Regex.escape(keyword), RegexOption.IGNORE_CASE)
-    return pattern.replace(markdown) { match ->
-        "<mark>${match.value}</mark>"
-    }
-}
 
 /**
  * 社区举报对话框

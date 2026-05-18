@@ -19,4 +19,14 @@
 > 
 > 那就先凑合一下，在编译时临时将原app模块的类型从application改成library，然后手表界面版弄成新application模块，这样就可以盖掉它了。
 >
-> 由于把它从app模块改成lib模块，就会多出多余定义的字段，就会报错，所以要去掉它们，嗯反正哪里报错删哪里。
+> 由于把它从app模块改成library模块，就会多出多余定义的字段，就会报错，所以要去掉它们，嗯反正哪里报错删哪里。
+
+编译时先将app/build.gradle.kts做临时修改
+```shell
+app_build_gradle_kts=/root/Documents/AndroidStudioProjects/Yhchat_MD3/app/build.gradle.kts
+sed -i 's@alias(libs.plugins.android.library)@alias(libs.plugins.android.library)@' $app_build_gradle_kts
+sed -i 's@applicationId = "com.yhchat.canary"@@' $app_build_gradle_kts
+sed -i 's@versionCode = 1@@' $app_build_gradle_kts
+sed -i 's@versionName = resolvedVersionName@@' $app_build_gradle_kts
+sed -i 's@isShrinkResources = true@@' $app_build_gradle_kts
+```

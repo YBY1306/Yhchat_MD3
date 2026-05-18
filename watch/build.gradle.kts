@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.watch"
         minSdk = 36
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // versionCode = 0
+        versionName = null
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

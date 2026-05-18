@@ -21,7 +21,8 @@
 >
 > 由于把它从app模块改成library模块，就会多出多余定义的字段，就会报错，所以要去掉它们，嗯反正哪里报错删哪里。
 
-编译时先将app/build.gradle.kts做临时修改
+编译时先将app/build.gradle.kts做临时修改。
+~当然之后如果需要git提交的话记得注意不要误提交哦~
 ```shell
 app_build_gradle_kts=/root/Documents/AndroidStudioProjects/Yhchat_MD3/app/build.gradle.kts
 sed -i 's@alias(libs.plugins.android.library)@alias(libs.plugins.android.library)@' $app_build_gradle_kts

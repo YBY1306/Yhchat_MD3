@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,6 +90,7 @@ private fun normalizeTextColorForTheme(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun HtmlFlexNode(
     node: HtmlNode.Element,
     inheritedText: CssStyle,
@@ -110,7 +113,33 @@ private fun HtmlFlexNode(
         else -> Alignment.Top
     }
 
-    if (isRow) {
+    if (isRow && node.style.flexWrap?.equals("wrap", ignoreCase = true) == true) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style),
+            horizontalArrangement = if (gap > 0.dp) Arrangement.spacedBy(gap) else Arrangement.Start,
+            verticalArrangement = if (gap > 0.dp) Arrangement.spacedBy(gap) else Arrangement.Top
+        ) {
+            node.children.forEach { child ->
+                when (child) {
+                    is HtmlNode.Text -> {
+                        val text = normalizeHtmlText(child.text, inheritedText.whiteSpace)
+                        if (text.isNotBlank()) {
+                            Text(text = text, style = inheritedText.toComposeTextStyle())
+                        }
+                    }
+                    is HtmlNode.Element -> {
+                        RenderHtmlNode(
+                            node = child,
+                            inheritedText = child.style.mergeText(inheritedText),
+                            onImageClick = onImageClick,
+                            onLinkClick = onLinkClick,
+                            avoidFillMaxWidth = true
+                        )
+                    }
+                }
+            }
+        }
+    } else if (isRow) {
         Row(
             modifier = Modifier.fillMaxWidth().htmlBoxModel(node.style),
             horizontalArrangement = horizontalArrangement,
@@ -243,7 +272,7 @@ private fun HtmlGenericNode(
         return
     }
 
-    if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag))) {
+    if (forceBlockLayout || (isBlockTag(node.tag) && !isInlineTag(node.tag)) || (isLink && hasBoxStyle(node.style))) {
         val clickableModifier = if (isLink && !href.isNullOrBlank()) {
             Modifier.clickable {
                 onLinkClick?.invoke(href)
@@ -282,6 +311,13 @@ private fun HtmlGenericNode(
             )
         }
     }
+}
+
+private fun hasBoxStyle(style: CssStyle): Boolean {
+    return style.backgroundColor != null ||
+        style.padding != null || style.paddingTop != null || style.paddingRight != null || style.paddingBottom != null || style.paddingLeft != null ||
+        style.margin != null || style.marginTop != null || style.marginRight != null || style.marginBottom != null || style.marginLeft != null ||
+        style.borderRadius != null || style.border != null || style.borderTop != null || style.borderRight != null || style.borderBottom != null || style.borderLeft != null
 }
 
 @Composable

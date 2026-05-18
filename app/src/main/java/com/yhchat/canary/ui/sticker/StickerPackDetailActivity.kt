@@ -47,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -192,133 +194,147 @@ fun StickerPackDetailContent(
     onImageClick: (Int) -> Unit = {},
     onCreatorClick: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val stickerPack = stickerPackData.stickerPack
     val creator = stickerPackData.user
     val stickerItems = stickerPack.stickerItems.orEmpty()
-    Column(
+    LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp),
+        columns = GridCells.Fixed(4),
+        contentPadding = PaddingValues(bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 表情包信息
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Text(
-                    text = stickerPack.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // 创建者信息
-                if (creator != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onCreatorClick(creator.userId) }
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        AsyncImage(
-                            model = creator.avatarUrl,
-                            contentDescription = "创建者头像",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                        Text(
+                            text = stickerPack.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                clipboardManager.setText(AnnotatedString(stickerPack.name))
+                                android.widget.Toast.makeText(context, "已复制表情包名称", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "ID: ${stickerPack.id}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable {
+                                clipboardManager.setText(AnnotatedString(stickerPack.id))
+                                android.widget.Toast.makeText(context, "已复制表情包ID", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (creator != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onCreatorClick(creator.userId) }
+                        ) {
+                            AsyncImage(
+                                model = creator.avatarUrl,
+                                contentDescription = "创建者头像",
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = creator.nickname,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "创建者",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Column {
                             Text(
-                                text = creator.nickname,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                text = "${stickerItems.size}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "创建者",
+                                text = "表情数量",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "${stickerPack.userCount}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "使用人数",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Column {
+                            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            Text(
+                                text = dateFormat.format(Date(stickerPack.createTime * 1000)),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "创建时间",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // 统计信息
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "${stickerItems.size}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "表情数量",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "${stickerPack.userCount}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "使用人数",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Column {
-                        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                        Text(
-                            text = dateFormat.format(Date(stickerPack.createTime * 1000)),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "创建时间",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // 表情列表标题
-        Text(
-            text = "表情列表",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // 表情网格
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            contentPadding = PaddingValues(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(stickerItems.size) { index ->
-                StickerItemView(
-                    sticker = stickerItems[index],
-                    onImageClick = { onImageClick(index) }
-                )
-            }
+
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            Text(
+                text = "表情列表",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+        }
+
+        items(stickerItems.size) { index ->
+            StickerItemView(
+                sticker = stickerItems[index],
+                onImageClick = { onImageClick(index) }
+            )
         }
     }
 }

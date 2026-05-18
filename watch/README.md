@@ -25,7 +25,8 @@
 编译时先将app/build.gradle.kts做临时修改。
 ~当然之后如果需要git提交的话记得注意不要误提交哦~
 ```shell
-app_build_gradle_kts=/root/Documents/AndroidStudioProjects/Yhchat_MD3/app/build.gradle.kts
+git_root="$(git rev-parse --show-toplevel)"
+app_build_gradle_kts="${git_root}/app/build.gradle.kts"
 sed -i 's@alias(libs.plugins.android.application)@alias(libs.plugins.android.library)@' $app_build_gradle_kts
 sed -i 's@applicationId = "com.yhchat.canary"@@' $app_build_gradle_kts
 sed -i 's@versionCode = 1@@' $app_build_gradle_kts

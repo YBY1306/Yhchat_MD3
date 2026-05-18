@@ -33,6 +33,14 @@ sed -i 's@versionName = resolvedVersionName@@' $app_build_gradle_kts
 sed -i 's@isShrinkResources = true@@' $app_build_gradle_kts
 ```
 
+然后由于app模块被变成了library模块，所以app模块中的CanaryApplication的@HiltAndroidApp也会报错，请移除
+由于继承了该类，请改为open的类
+```shell
+canaryApplication_kt=/root/Documents/AndroidStudioProjects/Yhchat_MD3/app/src/main/java/com/yhchat/canary/CanaryApplication.kt
+sed -i 's!@HiltAndroidApp!open!' $canaryApplication_kt
+
+```
+
 ---
 
 # 以下是请教AI后，AI给的说明

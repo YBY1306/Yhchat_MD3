@@ -248,8 +248,7 @@ class FileDownloadService : Service() {
                             Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
                             progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
                         }
-                        targetFile
-                        finalFile.absolutePath
+                        targetFile.absolutePath
                     }
                 }
 

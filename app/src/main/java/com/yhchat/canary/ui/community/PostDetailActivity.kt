@@ -31,6 +31,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -44,6 +51,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MonetizationOn
@@ -172,11 +181,23 @@ fun PostContentCard(
     onCommentClick: () -> Unit = {},
     onRewardClick: () -> Unit = {},
     onReportClick: () -> Unit = {},
+    searchQuery: String = "",
+    onSearchResultCountChanged: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf("") }
+    val trimmedSearchQuery = searchQuery.trim()
+
+    LaunchedEffect(post.id, post.title, post.content, trimmedSearchQuery) {
+        val totalMatches = if (trimmedSearchQuery.isBlank()) {
+            0
+        } else {
+            countKeywordMatches(post.title, trimmedSearchQuery) + countKeywordMatches(post.content, trimmedSearchQuery)
+        }
+        onSearchResultCountChanged(totalMatches)
+    }
     
     Column(
         modifier = modifier
@@ -242,39 +263,65 @@ fun PostContentCard(
         
         // 文章标题 - 支持选择复制
         SelectionContainer {
-            Text(
-                text = post.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (trimmedSearchQuery.isBlank()) {
+                Text(
+                    text = post.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                HighlightedArticleText(
+                    text = post.title,
+                    keyword = trimmedSearchQuery,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(12.dp))
         
         // 文章内容 - 支持选择复制
         if (post.contentType == 2) {
-            // Markdown 内容 - MarkdownText组件内部支持选择
+            // Markdown 内容：搜索态也保持 Markdown 渲染（不降级为纯文本）
+            val markdownToRender = if (trimmedSearchQuery.isBlank()) {
+                post.content
+            } else {
+                injectSearchHighlightToMarkdown(post.content, trimmedSearchQuery)
+            }
             MarkdownText(
-                markdown = post.content,
+                markdown = markdownToRender,
                 onImageClick = { imageUrl ->
                     currentImageUrl = imageUrl
                     showImageViewer = true
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enableHtmlRendering = false
+                enableHtmlRendering = true
             )
         } else {
-            // 普通文本内容 - 支持选择复制
+            // 普通文本内容，或搜索态下统一高亮
             SelectionContainer {
-                ArticleLinkText(
-                    text = post.content,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (trimmedSearchQuery.isBlank()) {
+                    ArticleLinkText(
+                        text = post.content,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    HighlightedArticleText(
+                        text = post.content,
+                        keyword = trimmedSearchQuery,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
         
@@ -404,6 +451,11 @@ fun PostBottomActionBarDuo3(
     onCollectClick: () -> Unit,
     onRewardClick: () -> Unit,
     onCommentInputToggle: () -> Unit,
+    isSearchExpanded: Boolean,
+    searchText: String,
+    searchResultCount: Int,
+    onSearchTextChange: (String) -> Unit,
+    onSearchToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -414,79 +466,122 @@ fun PostBottomActionBarDuo3(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Surface(
-            color = Color.Transparent,
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 0.dp, vertical = 0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            AnimatedVisibility(
+                visible = !isSearchExpanded,
+                enter = fadeIn(animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(180))
             ) {
-                IconButton(onClick = onLikeClick) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    IconButton(onClick = onLikeClick) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(
+                                imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                                contentDescription = "点赞",
+                                tint = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = post.likeNum.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    IconButton(onClick = onCollectClick) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(
+                                imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "收藏",
+                                tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = post.collectNum.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    IconButton(onClick = onRewardClick) {
                         Icon(
-                            imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                            contentDescription = "点赞",
-                            tint = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                            contentDescription = "打赏",
+                            tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                        Text(
-                            text = post.likeNum.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
-                }
-                IconButton(onClick = onCollectClick) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(
-                            imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "收藏",
-                            tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = post.collectNum.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                IconButton(onClick = onRewardClick) {
-                    Icon(
-                        imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
-                        contentDescription = "打赏",
-                        tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
-        }
-        Surface(
-            modifier = Modifier.clickable { onCommentInputToggle() },
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+            AnimatedVisibility(
+                visible = isSearchExpanded,
+                modifier = Modifier.fillMaxWidth(),
+                enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
             ) {
-                Text(
-                    text = post.commentNum.toString(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = onSearchTextChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp),
+                    placeholder = { Text("搜索正文") },
+                    singleLine = true,
+                    trailingIcon = {
+                        Text(
+                            text = searchResultCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
-                Icon(
-                    imageVector = Icons.Default.Comment,
-                    contentDescription = "评论",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!isSearchExpanded) {
+                Surface(
+                    modifier = Modifier.clickable { onCommentInputToggle() },
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = post.commentNum.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Comment,
+                            contentDescription = "评论",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            IconButton(onClick = onSearchToggle) {
+                AnimatedContent(targetState = isSearchExpanded, label = "search_toggle_icon") { expanded ->
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = if (expanded) "关闭搜索" else "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -987,6 +1082,9 @@ fun PostDetailScreen(
     var commentText by remember { mutableStateOf("") }
     var showCommentInput by remember { mutableStateOf(false) }
     val commentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isSearchExpanded by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
+    var searchResultCount by remember { mutableStateOf(0) }
     
     // 打赏对话框状态
     var showRewardDialog by remember { mutableStateOf(false) }
@@ -1072,6 +1170,16 @@ fun PostDetailScreen(
                     },
                     onCommentInputToggle = {
                         showCommentInput = !showCommentInput
+                    },
+                    isSearchExpanded = isSearchExpanded,
+                    searchText = searchText,
+                    searchResultCount = searchResultCount,
+                    onSearchTextChange = { searchText = it },
+                    onSearchToggle = {
+                        if (isSearchExpanded) {
+                            searchText = ""
+                        }
+                        isSearchExpanded = !isSearchExpanded
                     }
                 )
             }
@@ -1250,6 +1358,10 @@ fun PostDetailScreen(
                                             targetId = post.id,
                                             title = "举报文章"
                                         )
+                                    },
+                                    searchQuery = searchText,
+                                    onSearchResultCountChanged = { count ->
+                                        searchResultCount = count
                                     }
                                 )
                             }
@@ -1636,6 +1748,70 @@ fun ArticleLinkText(
                 }
         }
     )
+}
+
+@Composable
+private fun HighlightedArticleText(
+    text: String,
+    keyword: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier
+) {
+    val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
+    val highlighted = remember(text, keyword, highlightColor) {
+        buildAnnotatedString {
+            if (keyword.isBlank()) {
+                append(text)
+                return@buildAnnotatedString
+            }
+            val source = text
+            val lowerSource = source.lowercase()
+            val lowerKeyword = keyword.lowercase()
+            var cursor = 0
+            while (cursor < source.length) {
+                val idx = lowerSource.indexOf(lowerKeyword, cursor)
+                if (idx < 0) {
+                    append(source.substring(cursor))
+                    break
+                }
+                if (idx > cursor) {
+                    append(source.substring(cursor, idx))
+                }
+                withStyle(SpanStyle(background = highlightColor, fontWeight = FontWeight.SemiBold)) {
+                    append(source.substring(idx, idx + keyword.length))
+                }
+                cursor = idx + keyword.length
+            }
+        }
+    }
+    Text(
+        text = highlighted,
+        style = style,
+        modifier = modifier
+    )
+}
+
+private fun countKeywordMatches(text: String, keyword: String): Int {
+    if (keyword.isBlank() || text.isBlank()) return 0
+    val source = text.lowercase()
+    val target = keyword.lowercase()
+    var cursor = 0
+    var count = 0
+    while (cursor < source.length) {
+        val idx = source.indexOf(target, cursor)
+        if (idx < 0) break
+        count += 1
+        cursor = idx + target.length
+    }
+    return count
+}
+
+private fun injectSearchHighlightToMarkdown(markdown: String, keyword: String): String {
+    if (keyword.isBlank() || markdown.isBlank()) return markdown
+    val pattern = Regex(Regex.escape(keyword), RegexOption.IGNORE_CASE)
+    return pattern.replace(markdown) { match ->
+        "<mark>${match.value}</mark>"
+    }
 }
 
 /**

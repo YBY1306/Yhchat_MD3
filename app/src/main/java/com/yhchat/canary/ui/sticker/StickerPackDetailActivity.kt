@@ -239,7 +239,7 @@ fun StickerPackDetailContent(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable {
-                                clipboardManager.setText(buildAnnotatedString { append(stickerPack.id) })
+                                clipboardManager.setText(buildAnnotatedString { append(stickerPack.id.toString()) })
                                 Toast.makeText(context, "已复制表情包ID", Toast.LENGTH_SHORT).show()
                             }
                         )

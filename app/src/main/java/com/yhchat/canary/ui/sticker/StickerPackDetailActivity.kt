@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,7 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,6 +58,7 @@ import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -208,7 +210,7 @@ fun StickerPackDetailContent(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -228,8 +230,8 @@ fun StickerPackDetailContent(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable {
-                                clipboardManager.setText(AnnotatedString(stickerPack.name))
-                                android.widget.Toast.makeText(context, "已复制表情包名称", android.widget.Toast.LENGTH_SHORT).show()
+                                clipboardManager.setText(buildAnnotatedString { append(stickerPack.name) })
+                                Toast.makeText(context, "已复制表情包名称", Toast.LENGTH_SHORT).show()
                             }
                         )
                         Text(
@@ -237,8 +239,8 @@ fun StickerPackDetailContent(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable {
-                                clipboardManager.setText(AnnotatedString(stickerPack.id))
-                                android.widget.Toast.makeText(context, "已复制表情包ID", android.widget.Toast.LENGTH_SHORT).show()
+                                clipboardManager.setText(buildAnnotatedString { append(stickerPack.id) })
+                                Toast.makeText(context, "已复制表情包ID", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -321,7 +323,7 @@ fun StickerPackDetailContent(
             }
         }
 
-        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 text = "表情列表",
                 style = MaterialTheme.typography.titleMedium,

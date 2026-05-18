@@ -41,14 +41,25 @@ android {
         buildConfig = true
     }
 
+    //由于app模块中的部分代码位于flavorDimensions中，无法移除app模块的flavorDimensions，导致这里也要添加一遍，不添加一遍的话会报错
     flavorDimensions += "player"
-
     productFlavors {
         create("standard") {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "false")
         }
+        create("withPlayer") {
+            dimension = "player"
+            buildConfigField("boolean", "WITH_PLAYER", "true")
+            buildConfigField("boolean", "WITH_LIVE", "false")
+        }
+//        // 手表没必要用这个
+//        create("withLive") {
+//            dimension = "player"
+//            buildConfigField("boolean", "WITH_PLAYER", "false")
+//            buildConfigField("boolean", "WITH_LIVE", "true")
+//        }
     }
 }
 

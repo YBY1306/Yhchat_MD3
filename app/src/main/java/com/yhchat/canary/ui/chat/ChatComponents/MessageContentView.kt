@@ -216,7 +216,8 @@ fun MessageContentView(
                                                     context = context,
                                                     fileUrl = fileUrl,
                                                     fileName = fileName,
-                                                    fileSize = content.fileSize ?: 0L
+                                                    fileSize = content.fileSize ?: 0L,
+                                                    msgId = message.msgId
                                                 )
                                             }
                                             is DownloadState.Completed -> {
@@ -225,7 +226,8 @@ fun MessageContentView(
                                                     context = context,
                                                     fileUrl = fileUrl,
                                                     fileName = fileName,
-                                                    fileSize = content.fileSize ?: 0L
+                                                    fileSize = content.fileSize ?: 0L,
+                                                    msgId = message.msgId
                                                 )
                                             }
                                             else -> {

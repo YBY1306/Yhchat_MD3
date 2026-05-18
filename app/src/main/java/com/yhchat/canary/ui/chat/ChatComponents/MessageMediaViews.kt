@@ -66,7 +66,8 @@ fun handleFileDownload(
     context: Context,
     fileUrl: String,
     fileName: String,
-    fileSize: Long
+    fileSize: Long,
+    msgId: String? = null
 ) {
     if (!PermissionUtils.hasAllDownloadPermissions(context)) {
         if (context is Activity) {
@@ -83,7 +84,8 @@ fun handleFileDownload(
         context = context,
         fileUrl = fileUrl,
         fileName = fileName,
-        fileSize = fileSize
+        fileSize = fileSize,
+        msgId = msgId
     )
 }
 

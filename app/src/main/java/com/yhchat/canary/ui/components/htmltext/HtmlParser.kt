@@ -259,7 +259,7 @@ fun htmlToAnnotatedStringWithImages(
                     }
                     closedSubList = listStack.isNotEmpty()
                     possibleNextLineBreakInList = false
-                    builder.pop()
+                    runCatching { builder.pop() }
                 }
             }
         }

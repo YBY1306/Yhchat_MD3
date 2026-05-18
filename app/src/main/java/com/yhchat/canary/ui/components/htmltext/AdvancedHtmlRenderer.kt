@@ -406,7 +406,7 @@ private fun buildInlineAnnotated(
                             ) {
                                 node.children.forEach { appendNode(it, merged.copy(color = merged.color ?: linkColor)) }
                             }
-                            pop()
+                            runCatching { pop() }
                         }
                         else -> {
                             val spanStyle = SpanStyle(
@@ -486,7 +486,7 @@ private fun buildInlineAnnotatedWithLink(
                             ) {
                                 node.children.forEach { appendNode(it, merged.copy(color = merged.color ?: linkColor)) }
                             }
-                            pop()
+                            runCatching { pop() }
                         }
                         else -> {
                             val spanStyle = SpanStyle(
@@ -505,7 +505,7 @@ private fun buildInlineAnnotatedWithLink(
             }
         }
 
-        // 澶勭悊閾炬帴鏍囩鐨勫灞?        pushStringAnnotation(tag = "URL", annotation = href)
+        pushStringAnnotation(tag = "URL", annotation = href)
         withStyle(
             SpanStyle(
                 color = normalizedInheritedText.color ?: linkColor,
@@ -519,7 +519,7 @@ private fun buildInlineAnnotatedWithLink(
                 )
             }
         }
-        pop()
+        runCatching { pop() }
     }
 
     return annotated to baseStyle

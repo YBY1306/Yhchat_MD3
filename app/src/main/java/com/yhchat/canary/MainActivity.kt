@@ -81,7 +81,9 @@ class MainActivity : BaseActivity() {
         setupImageLoader()
 
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        runCatching {
+            enableEdgeToEdge()
+        }
         
         setContent {
             YhchatCanaryTheme {
@@ -108,37 +110,45 @@ class MainActivity : BaseActivity() {
         val isLightTheme = !isSystemInDarkTheme()
         
         SideEffect {
-            // 设置系统导航栏背景色
-            window.navigationBarColor = navigationBarColor.toArgb()
+            runCatching {
+                // 设置系统导航栏背景色
+                window.navigationBarColor = navigationBarColor.toArgb()
+            }
             
             // Android 8.0+ 支持设置导航栏图标颜色
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility = if (isLightTheme) {
-                    // 浅色主题：使用深色图标和手势线
-                    window.decorView.systemUiVisibility or 
-                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-                } else {
-                    // 深色主题：使用浅色图标和手势线
-                    window.decorView.systemUiVisibility and 
-                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                runCatching {
+                    window.decorView.systemUiVisibility = if (isLightTheme) {
+                        // 浅色主题：使用深色图标和手势线
+                        window.decorView.systemUiVisibility or
+                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                    } else {
+                        // 深色主题：使用浅色图标和手势线
+                        window.decorView.systemUiVisibility and
+                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                    }
                 }
             }
             
             // Android 10+ 禁用系统强制对比度，完全使用我们设置的颜色
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.isNavigationBarContrastEnforced = false
+                runCatching {
+                    window.isNavigationBarContrastEnforced = false
+                }
             }
             
             // Android 11+ 使用新的API设置导航栏外观
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                window.insetsController?.setSystemBarsAppearance(
-                    if (isLightTheme) 
-                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS 
-                    else 
-                        0,
-                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                )
+                runCatching {
+                    window.insetsController?.setSystemBarsAppearance(
+                        if (isLightTheme)
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                        else
+                            0,
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                    )
+                }
             }
         }
     }

@@ -17,6 +17,8 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.yhchat.canary.data.local.AppDatabase
+import com.yhchat.canary.data.local.DownloadedFileRecord
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,6 +53,7 @@ class FileDownloadService : Service() {
         const val EXTRA_FILE_SIZE = "extra_file_size"
         const val EXTRA_AUTO_OPEN = "extra_auto_open"
         const val EXTRA_DOWNLOAD_ID = "extra_download_id"
+        const val EXTRA_MSG_ID = "extra_msg_id"
         
         // 下载进度回调接口
         interface DownloadProgressCallback {
@@ -70,6 +73,7 @@ class FileDownloadService : Service() {
             fileUrl: String,
             fileName: String,
             fileSize: Long,
+            msgId: String? = null,
             autoOpen: Boolean = false,
             downloadId: String = UUID.randomUUID().toString(),
             progressCallback: DownloadProgressCallback? = null
@@ -85,6 +89,7 @@ class FileDownloadService : Service() {
                 putExtra(EXTRA_FILE_SIZE, fileSize)
                 putExtra(EXTRA_AUTO_OPEN, autoOpen)
                 putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+                putExtra(EXTRA_MSG_ID, msgId)
             }
             ContextCompat.startForegroundService(context, intent)
             return downloadId
@@ -139,9 +144,10 @@ class FileDownloadService : Service() {
                 val fileSize = intent.getLongExtra(EXTRA_FILE_SIZE, 0L)
                 val autoOpen = intent.getBooleanExtra(EXTRA_AUTO_OPEN, false)
                 val downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID) ?: UUID.randomUUID().toString()
+                val msgId = intent.getStringExtra(EXTRA_MSG_ID)
                 
                 if (!fileUrl.isNullOrEmpty() && !fileName.isNullOrEmpty()) {
-                    startDownloadFile(fileUrl, fileName, fileSize, autoOpen, downloadId)
+                    startDownloadFile(fileUrl, fileName, fileSize, msgId, autoOpen, downloadId)
                 } else {
                     Log.e(TAG, "Invalid download parameters")
                     stopSelf()
@@ -184,8 +190,15 @@ class FileDownloadService : Service() {
         stopSelf()
     }
     
-    private fun startDownloadFile(fileUrl: String, fileName: String, fileSize: Long, autoOpen: Boolean, downloadId: String) {
-        Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen)")
+    private fun startDownloadFile(
+        fileUrl: String,
+        fileName: String,
+        fileSize: Long,
+        msgId: String?,
+        autoOpen: Boolean,
+        downloadId: String
+    ) {
+        Log.d(TAG, "Starting download: $fileName from $fileUrl (autoOpen=$autoOpen, msgId=$msgId)")
 
         val downloadTarget = createDownloadTarget(fileName)
         if (downloadTarget == null) {
@@ -200,6 +213,18 @@ class FileDownloadService : Service() {
         // 在后台线程下载文件
         val downloadJob = serviceScope.launch(Dispatchers.IO) {
             try {
+                if (!msgId.isNullOrBlank()) {
+                    val existingFile = resolveExistingFileByMsgId(msgId, fileName)
+                    if (existingFile != null) {
+                        serviceScope.launch(Dispatchers.Main) {
+                            updateNotification(fileName, "文件已存在，直接打开", 100, 100, true)
+                            progressCallbacks[downloadId]?.onCompleted(downloadId, existingFile.absolutePath)
+                            openFile(existingFile)
+                        }
+                        return@launch
+                    }
+                }
+
                 // 检查是否已取消
                 if (cancelledDownloads.contains(downloadId)) {
                     Log.d(TAG, "Download cancelled before start: $downloadId")
@@ -214,72 +239,25 @@ class FileDownloadService : Service() {
                     }
                     is DownloadTarget.FileTarget -> {
                         val downloadDir = downloadTarget.file.parentFile ?: downloadTarget.file
-                        // 先下载到临时文件
-                        val tempFile = File(downloadDir, fileName)
-                        downloadFileWithProgress(fileUrl, tempFile, fileName, fileSize, downloadId)
+                        val targetFile = File(downloadDir, fileName)
+                        downloadFileWithProgress(fileUrl, targetFile, fileName, fileSize, downloadId)
+                        Log.d(TAG, "Download completed: ${targetFile.absolutePath}")
 
-                        // 计算下载文件的SHA256
-                        val downloadedHash = calculateSHA256(tempFile)
-                        Log.d(TAG, "Downloaded file SHA256: $downloadedHash")
-
-                        // 检查目录中是否已有相同内容的文件
-                        val existingFile = findFileWithSameHash(downloadDir, downloadedHash, fileName)
-
-                        val finalFile = if (existingFile != null) {
-                            // 找到相同文件，删除临时文件
-                            tempFile.delete()
-                            Log.d(TAG, "Found existing file with same content: ${existingFile.name}")
-
-                            serviceScope.launch(Dispatchers.Main) {
-                                Toast.makeText(
-                                    this@FileDownloadService,
-                                    "文件已存在，直接打开",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                updateNotification(
-                                    fileName,
-                                    "文件已存在 - ${existingFile.name}",
-                                    100,
-                                    100,
-                                    true
-                                )
-                            }
-                            existingFile
-                        } else {
-                            // 没有相同文件，重命名临时文件
-                            val originalFile = File(downloadDir, fileName)
-                            val targetFile = if (originalFile.exists()) {
-                                val nameWithoutExt = fileName.substringBeforeLast(".")
-                                val extension = fileName.substringAfterLast(".", "")
-                                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                                val newFileName = if (extension.isNotEmpty()) {
-                                    "${nameWithoutExt}_${timestamp}.${extension}"
-                                } else {
-                                    "${nameWithoutExt}_${timestamp}"
-                                }
-                                File(downloadDir, newFileName)
-                            } else {
-                                originalFile
-                            }
-
-                            tempFile.renameTo(targetFile)
-                            Log.d(TAG, "Download completed: ${targetFile.absolutePath}")
-
-                            serviceScope.launch(Dispatchers.Main) {
-                                updateNotification(
-                                    fileName,
-                                    "下载完成 - ${targetFile.name}",
-                                    100,
-                                    100,
-                                    true
-                                )
-                                // 显示下载完成提示
-                                Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
-                                progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
-                            }
-                            targetFile
+                        serviceScope.launch(Dispatchers.Main) {
+                            updateNotification(fileName, "下载完成 - ${targetFile.name}", 100, 100, true)
+                            Toast.makeText(this@FileDownloadService, "文件下载完成: ${targetFile.name}", Toast.LENGTH_LONG).show()
+                            progressCallbacks[downloadId]?.onCompleted(downloadId, targetFile.absolutePath)
                         }
+                        targetFile
                         finalFile.absolutePath
+                    }
+                }
+
+                if (!msgId.isNullOrBlank()) {
+                    runCatching {
+                        AppDatabase.getDatabase(this@FileDownloadService)
+                            .downloadedFileRecordDao()
+                            .upsert(DownloadedFileRecord(msgId = msgId, fileName = fileName))
                     }
                 }
 
@@ -527,42 +505,15 @@ class FileDownloadService : Service() {
         }
     }
     
-    /**
-     * 计算文件的SHA256哈希值
-     */
-    private fun calculateSHA256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        FileInputStream(file).use { fis ->
-            val buffer = ByteArray(8192)
-            var bytesRead: Int
-            while (fis.read(buffer).also { bytesRead = it } != -1) {
-                digest.update(buffer, 0, bytesRead)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-    
-    /**
-     * 在目录中查找具有相同哈希值的文件
-     */
-    private fun findFileWithSameHash(directory: File, targetHash: String, excludeFileName: String): File? {
-        val files = directory.listFiles { file ->
-            file.isFile && 
-            !file.name.endsWith("${file.name}") && 
-            !file.name.startsWith(excludeFileName) // 排除同名文件
-        } ?: return null
-        
-        for (file in files) {
-            try {
-                val fileHash = calculateSHA256(file)
-                if (fileHash == targetHash) {
-                    return file
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to calculate hash for ${file.name}", e)
-            }
-        }
-        return null
+    private suspend fun resolveExistingFileByMsgId(msgId: String, fallbackFileName: String): File? {
+        val dao = AppDatabase.getDatabase(this).downloadedFileRecordDao()
+        val record = dao.getByMsgId(msgId)
+        val expectedName = record?.fileName?.takeIf { it.isNotBlank() } ?: fallbackFileName
+        val dir = File("/storage/emulated/0/Download/yhchat/")
+        if (!dir.exists() || !dir.isDirectory) return null
+        val direct = File(dir, expectedName)
+        if (direct.exists() && direct.isFile) return direct
+        return dir.listFiles()?.firstOrNull { it.isFile && it.name == expectedName }
     }
     
     /**
@@ -570,6 +521,10 @@ class FileDownloadService : Service() {
      */
     private fun openFile(file: File) {
         try {
+            if (file.extension.equals("exe", ignoreCase = true)) {
+                shareFile(file)
+                return
+            }
             val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 FileProvider.getUriForFile(
                     this,
@@ -613,6 +568,30 @@ class FileDownloadService : Service() {
             Log.e(TAG, "Failed to open file: ${file.name}", e)
             serviceScope.launch(Dispatchers.Main) {
                 Toast.makeText(this@FileDownloadService, "无法打开文件: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun shareFile(file: File) {
+        try {
+            val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+            } else {
+                Uri.fromFile(file)
+            }
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/octet-stream"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, "分享文件").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to share file: ${file.name}", e)
+            serviceScope.launch(Dispatchers.Main) {
+                Toast.makeText(this@FileDownloadService, "无法分享文件: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

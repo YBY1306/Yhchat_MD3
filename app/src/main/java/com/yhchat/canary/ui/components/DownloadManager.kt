@@ -35,7 +35,8 @@ object DownloadManager {
         context: Context,
         fileUrl: String,
         fileName: String,
-        fileSize: Long
+        fileSize: Long,
+        msgId: String? = null
     ) {
         // 如果已经在下载，不重复下载
         if (_downloadStates[fileUrl] is DownloadState.Downloading) {
@@ -47,6 +48,7 @@ object DownloadManager {
             fileUrl = fileUrl,
             fileName = fileName,
             fileSize = fileSize,
+            msgId = msgId,
             autoOpen = true,
             progressCallback = object : FileDownloadService.Companion.DownloadProgressCallback {
                 override fun onProgress(downloadId: String, progress: Int, total: Int) {

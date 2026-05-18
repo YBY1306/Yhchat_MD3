@@ -81,4 +81,15 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // Hilt
+    implementation(libs.hilt.android)
+
+    // Hilt Navigation for Compose (needed for hiltViewModel)
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
 }

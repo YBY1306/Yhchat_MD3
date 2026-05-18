@@ -25,6 +25,8 @@ zxingCore = "3.5.3"
 reorderable = "0.9.6"
 ksoupHtml = "0.6.0"
 jetbrainsMarkdown = "0.7.3"
+composeMaterial3 = "1.6.1"
+coilSvg = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +68,8 @@ zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCo
 reorderable = { group = "org.burnoutcrew.composereorderable", name = "reorderable", version.ref = "reorderable" }
 ksoup-html = { group = "com.mohamedrejeb.ksoup", name = "ksoup-html", version.ref = "ksoupHtml" }
 jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
+compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "composeMaterial3" }
+coil-svg = { module = "io.coil-kt:coil-svg", version.ref = "coilSvg" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

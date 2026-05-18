@@ -5,15 +5,16 @@ plugins {
 }
 
 android {
-    namespace = "com.yhchat.canary.watch"
+    namespace = "com.yhchat.canary"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.yhchat.canary.watch"
-        minSdk = 36
-        targetSdk = 36
+        applicationId = "com.yhchat.canary"
+        applicationIdSuffix=".watch"
+        minSdk = 28
+        targetSdk = 99
         // versionCode = 0
         versionName = null
 

@@ -241,10 +241,10 @@ private fun HtmlGenericNode(
     avoidFillMaxWidth: Boolean = false
 ) {
     val headingStyle = when (node.tag) {
-        "h1" -> CssStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, marginBottom = 8.dp)
-        "h2" -> CssStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, marginBottom = 6.dp)
-        "h3" -> CssStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, marginBottom = 4.dp)
-        "h4" -> CssStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, marginBottom = 4.dp)
+        "h1" -> CssStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeightMultiplier = 1.35f, marginTop = 8.dp, marginBottom = 12.dp)
+        "h2" -> CssStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeightMultiplier = 1.3f, marginTop = 6.dp, marginBottom = 10.dp)
+        "h3" -> CssStyle(fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeightMultiplier = 1.25f, marginTop = 4.dp, marginBottom = 8.dp)
+        "h4" -> CssStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeightMultiplier = 1.2f, marginBottom = 6.dp)
         "h5" -> CssStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, marginBottom = 2.dp)
         "h6" -> CssStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, marginBottom = 2.dp)
         else -> CssStyle()

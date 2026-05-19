@@ -119,6 +119,7 @@ import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import dagger.hilt.android.AndroidEntryPoint
+import java.text.DecimalFormat
 import java.util.regex.Pattern
 
 /**
@@ -285,16 +286,29 @@ fun PostContentCard(
         
         // 文章内容 - 支持选择复制
         if (post.contentType == 2) {
-            MarkdownText(
-                markdown = post.content,
-                onImageClick = { imageUrl ->
-                    currentImageUrl = imageUrl
-                    showImageViewer = true
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enableHtmlRendering = true,
-                highlightKeyword = trimmedSearchQuery
-            )
+            if (trimmedSearchQuery.isBlank()) {
+                MarkdownText(
+                    markdown = post.content,
+                    onImageClick = { imageUrl ->
+                        currentImageUrl = imageUrl
+                        showImageViewer = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enableHtmlRendering = true
+                )
+            } else {
+                SelectionContainer {
+                    HighlightedArticleText(
+                        text = stripMarkdownForSearchDisplay(post.content),
+                        keyword = trimmedSearchQuery,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         } else {
             // 普通文本内容，或搜索态下统一高亮
             SelectionContainer {
@@ -468,7 +482,7 @@ fun PostBottomActionBarDuo3(
             exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
         ) {
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = Color.Transparent,
                 shape = RoundedCornerShape(50)
             ) {
                 Row(
@@ -507,12 +521,19 @@ fun PostBottomActionBarDuo3(
                         }
                     }
                     IconButton(onClick = onRewardClick) {
-                        Icon(
-                            imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
-                            contentDescription = "打赏",
-                            tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(
+                                imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                                contentDescription = "打赏",
+                                tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = formatRewardAmount(post.amountNum),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -523,29 +544,33 @@ fun PostBottomActionBarDuo3(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            AnimatedVisibility(
-                visible = isSearchExpanded,
-                enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
-            ) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = onSearchTextChange,
-                    modifier = Modifier.padding(end = 8.dp),
-                    placeholder = { Text("搜索正文") },
-                    singleLine = true,
-                    trailingIcon = {
-                        Text(
-                            text = searchResultCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
+            Box(modifier = Modifier.weight(1f)) {
+                AnimatedVisibility(
+                    visible = isSearchExpanded,
+                    enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = onSearchTextChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 8.dp),
+                        placeholder = { Text("搜索正文") },
+                        singleLine = true,
+                        trailingIcon = {
+                            Text(
+                                text = searchResultCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    )
+                }
             }
 
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = Color.Transparent,
                 shape = RoundedCornerShape(50)
             ) {
                 Row(
@@ -1817,6 +1842,29 @@ private fun countKeywordMatches(text: String, keyword: String): Int {
         cursor = idx + target.length
     }
     return count
+}
+
+private fun formatRewardAmount(amount: Double): String {
+    val formatter = DecimalFormat("0.#")
+    return formatter.format(amount)
+}
+
+private fun stripMarkdownForSearchDisplay(markdown: String): String {
+    if (markdown.isBlank()) return markdown
+    var text = markdown
+    text = text.replace(Regex("```[\\s\\S]*?```"), " ")
+    text = text.replace(Regex("`([^`]+)`"), "$1")
+    text = text.replace(Regex("!\\[([^\\]]*)\\]\\(([^)]+)\\)"), "$1")
+    text = text.replace(Regex("\\[([^\\]]+)\\]\\(([^)]+)\\)"), "$1")
+    text = text.replace(Regex("(?m)^\\s{0,3}#{1,6}\\s*"), "")
+    text = text.replace(Regex("(?m)^\\s{0,3}>\\s?"), "")
+    text = text.replace(Regex("(?m)^\\s*[-*+]\\s+"), "")
+    text = text.replace(Regex("(?m)^\\s*\\d+\\.\\s+"), "")
+    text = text.replace(Regex("(\\*\\*|__)(.*?)\\1"), "$2")
+    text = text.replace(Regex("(\\*|_)(.*?)\\1"), "$2")
+    text = text.replace(Regex("~~(.*?)~~"), "$1")
+    text = text.replace(Regex("<[^>]+>"), " ")
+    return text.replace(Regex("[ \\t\\x0B\\f\\r]+"), " ").replace(Regex("\\n{3,}"), "\n\n").trim()
 }
 
 

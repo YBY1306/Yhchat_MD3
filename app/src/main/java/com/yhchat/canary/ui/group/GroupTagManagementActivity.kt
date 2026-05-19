@@ -66,6 +66,7 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import java.util.Locale
 
 @AndroidEntryPoint
 class GroupTagManagementActivity : ComponentActivity() {
@@ -460,6 +461,28 @@ fun TagEditDialog(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val isCustomColorInvalid = tagColor.isNotBlank() && !isValidColorValue(tagColor)
+
+                    OutlinedTextField(
+                        value = tagColor,
+                        onValueChange = { onTagColorChange(normalizeColorToRgbHex(it)) },
+                        label = { Text("自定义颜色值") },
+                        placeholder = { Text("#2196F3") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        isError = isCustomColorInvalid,
+                        supportingText = {
+                            if (isCustomColorInvalid) {
+                                Text("颜色格式无效，示例：#2196F3")
+                            } else {
+                                Text("会自动转换为 #RRGGBB")
+                            }
+                        }
+                    )
                 }
                 
                 // 错误提示
@@ -473,9 +496,10 @@ fun TagEditDialog(
             }
         },
         confirmButton = {
+            val canSubmit = !isSaving && tagName.isNotBlank() && isValidColorValue(tagColor)
             Button(
                 onClick = onConfirm,
-                enabled = !isSaving && tagName.isNotBlank()
+                enabled = canSubmit
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(
@@ -498,3 +522,22 @@ fun TagEditDialog(
         }
     )
 }
+
+private fun isValidColorValue(color: String): Boolean {
+    if (color.isBlank()) return false
+    return RGB_HEX_REGEX.matches(normalizeColorToRgbHex(color))
+}
+
+private fun normalizeColorToRgbHex(input: String): String {
+    val raw = input.trim()
+    if (raw.isBlank()) return raw
+    val upperRaw = raw.uppercase(Locale.US)
+    return try {
+        val colorInt = upperRaw.toColorInt()
+        String.format(Locale.US, "#%06X", (colorInt and 0x00FFFFFF))
+    } catch (_: Exception) {
+        upperRaw
+    }
+}
+
+private val RGB_HEX_REGEX = Regex("^#[0-9A-F]{6}$")

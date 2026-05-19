@@ -12,8 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,6 +74,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -329,19 +329,28 @@ fun ConversationScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // 顶部应用栏 - 包含可选标题 + 内嵌搜索栏 + 操作按钮
-        AnimatedVisibility(
-            visible = topBarNavigationState.isVisible,
-            enter = slideInVertically(
-                initialOffsetY = { -it },
-                animationSpec = tween(durationMillis = 220)
-            ) + fadeIn(animationSpec = tween(durationMillis = 180)),
-            exit = slideOutVertically(
-                targetOffsetY = { -it },
-                animationSpec = tween(durationMillis = 220)
-            ) + fadeOut(animationSpec = tween(durationMillis = 160))
+        // 顶部应用栏 - 使用和底栏一致的位移隐藏方式
+        val topBarBaseHeight = 72.dp
+        val topBarHiddenOffset = 120.dp
+        val topBarOffsetY by animateDpAsState(
+            targetValue = if (topBarNavigationState.isVisible) 0.dp else -topBarHiddenOffset,
+            animationSpec = tween(durationMillis = 275),
+            label = "conversationTopBarOffset"
+        )
+        val topBarOccupiedHeight by animateDpAsState(
+            targetValue = if (topBarNavigationState.isVisible) topBarBaseHeight else 0.dp,
+            animationSpec = tween(durationMillis = 275),
+            label = "conversationTopBarHeight"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(topBarOccupiedHeight)
+                .clipToBounds()
         ) {
             TopAppBar(
+                modifier = Modifier.offset(y = topBarOffsetY),
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant

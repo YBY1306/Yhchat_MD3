@@ -125,7 +125,9 @@ fun MarkdownText(
         tableStyle = null
     )
 
-    val normalizedMarkdown = remember(markdown) { processTaskLists(markdown) }
+    val normalizedMarkdown = remember(markdown) {
+        processTaskLists(normalizeHeadingSpacing(markdown))
+    }
     val segments = remember(normalizedMarkdown) {
         MarkdownRendererCache.getSegments(normalizedMarkdown)
     }
@@ -1615,6 +1617,37 @@ private fun processTaskLists(markdown: String): String {
             else -> line
         }
     }
+}
+
+private fun normalizeHeadingSpacing(markdown: String): String {
+    val lines = markdown.lines()
+    if (lines.isEmpty()) return markdown
+
+    val output = mutableListOf<String>()
+    var inFence = false
+    val h1Regex = Regex("^\\s{0,3}#\\s+.+$")
+
+    for (index in lines.indices) {
+        val line = lines[index]
+        val trimmed = line.trimStart()
+
+        if (trimmed.startsWith("```")) {
+            inFence = !inFence
+            output += line
+            continue
+        }
+
+        output += line
+
+        if (!inFence && h1Regex.matches(line)) {
+            val next = lines.getOrNull(index + 1).orEmpty()
+            if (next.isNotBlank()) {
+                output += ""
+            }
+        }
+    }
+
+    return output.joinToString("\n")
 }
 
 private sealed interface TaskRun {

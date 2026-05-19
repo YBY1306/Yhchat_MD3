@@ -37,6 +37,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
@@ -474,66 +476,92 @@ fun PostBottomActionBarDuo3(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         androidx.compose.animation.AnimatedVisibility(
             visible = !isSearchExpanded,
-            enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
+            enter = slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { -it / 4 }
+            ) + fadeIn(animationSpec = tween(180)),
+            exit = slideOutHorizontally(
+                animationSpec = tween(220),
+                targetOffsetX = { -it / 4 }
+            ) + fadeOut(animationSpec = tween(160))
         ) {
-            Surface(
-                color = Color.Transparent,
-                shape = RoundedCornerShape(50)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                Surface(
+                    modifier = Modifier.clickable { onLikeClick() },
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    IconButton(onClick = onLikeClick) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(
-                                imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                                contentDescription = "点赞",
-                                tint = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = post.likeNum.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "点赞",
+                            tint = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = post.likeNum.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (post.isLiked == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    IconButton(onClick = onCollectClick) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(
-                                imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = "收藏",
-                                tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = post.collectNum.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                }
+
+                Surface(
+                    modifier = Modifier.clickable { onCollectClick() },
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = "收藏",
+                            tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = post.collectNum.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    IconButton(onClick = onRewardClick) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(
-                                imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
-                                contentDescription = "打赏",
-                                tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = formatRewardAmount(post.amountNum),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                }
+
+                Surface(
+                    modifier = Modifier.clickable { onRewardClick() },
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                            contentDescription = "打赏",
+                            tint = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = formatRewardAmount(post.amountNum),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (post.isReward == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -544,9 +572,10 @@ fun PostBottomActionBarDuo3(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f, fill = true)) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = isSearchExpanded,
+                    modifier = Modifier.fillMaxWidth(),
                     enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
                     exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
                 ) {
@@ -569,56 +598,51 @@ fun PostBottomActionBarDuo3(
                 }
             }
 
-            Surface(
-                color = Color.Transparent,
-                shape = RoundedCornerShape(50)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !isSearchExpanded,
+                enter = fadeIn(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(140))
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                Surface(
+                    modifier = Modifier.clickable { onCommentInputToggle() },
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    androidx.compose.animation.AnimatedVisibility(visible = !isSearchExpanded) {
-                        Surface(
-                            modifier = Modifier.clickable { onCommentInputToggle() },
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = post.commentNum.toString(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.Comment,
-                                    contentDescription = "评论",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onSearchToggle,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        AnimatedContent(targetState = isSearchExpanded, label = "search_toggle_icon") { expanded ->
-                            Icon(
-                                imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
-                                contentDescription = if (expanded) "关闭搜索" else "搜索",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = post.commentNum.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Comment,
+                            contentDescription = "评论",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            IconButton(
+                onClick = onSearchToggle,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                AnimatedContent(targetState = isSearchExpanded, label = "search_toggle_icon") { expanded ->
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = if (expanded) "关闭搜索" else "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

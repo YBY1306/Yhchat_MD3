@@ -76,8 +76,16 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.compose.material:material-icons-extended")
 
     implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation("androidx.wear.compose:compose-foundation:1.6.1")
+    // implementation("androidx.wear.compose:compose-material:1.6.1")
+    implementation("androidx.wear.compose:compose-material3:1.6.1")
+    implementation("androidx.wear.compose:compose-ui-tooling:1.6.1")
+
+    // 图片加载
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Hilt
     implementation(libs.hilt.android)

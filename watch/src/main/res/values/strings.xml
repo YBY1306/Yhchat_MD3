@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">Watch</string>
+    <!--虽然第三方版直接叫官方的名字好像不太好，但是手表屏幕小显示不了那么多字，而且官方也还没出手表版呢，如果有问题的话再改吧-->
+    <string name="app_name">云湖</string>
 </resources>

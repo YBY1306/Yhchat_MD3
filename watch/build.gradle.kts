@@ -80,7 +80,7 @@ dependencies {
 
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.wear.compose:compose-foundation:1.6.1")
-    // implementation("androidx.wear.compose:compose-material:1.6.1")
+    implementation("androidx.wear.compose:compose-material:1.6.1")
     implementation("androidx.wear.compose:compose-material3:1.6.1")
     implementation("androidx.wear.compose:compose-ui-tooling:1.6.1")
 

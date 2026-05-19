@@ -476,7 +476,7 @@ fun PostBottomActionBarDuo3(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        AnimatedVisibility(
+        androidx.compose.animation.AnimatedVisibility(
             visible = !isSearchExpanded,
             enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
             exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
@@ -545,7 +545,7 @@ fun PostBottomActionBarDuo3(
             horizontalArrangement = Arrangement.End
         ) {
             Box(modifier = Modifier.weight(1f)) {
-                AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                     visible = isSearchExpanded,
                     enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
                     exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(220)) + fadeOut(animationSpec = tween(160))
@@ -578,7 +578,7 @@ fun PostBottomActionBarDuo3(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    AnimatedVisibility(visible = !isSearchExpanded) {
+                    androidx.compose.animation.AnimatedVisibility(visible = !isSearchExpanded) {
                         Surface(
                             modifier = Modifier.clickable { onCommentInputToggle() },
                             shape = RoundedCornerShape(24.dp),

@@ -81,7 +81,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -330,15 +332,21 @@ fun ConversationScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // 顶部应用栏 - 使用和底栏一致的位移隐藏方式
-        val topBarBaseHeight = 72.dp
-        val topBarHiddenOffset = 120.dp
+        val density = LocalDensity.current
+        var topBarMeasuredHeightPx by remember { mutableStateOf(0) }
+        val topBarMeasuredHeightDp = with(density) { topBarMeasuredHeightPx.toDp() }
+        val topBarHiddenOffset = if (topBarMeasuredHeightDp > 0.dp) topBarMeasuredHeightDp + 24.dp else 120.dp
         val topBarOffsetY by animateDpAsState(
             targetValue = if (topBarNavigationState.isVisible) 0.dp else -topBarHiddenOffset,
             animationSpec = tween(durationMillis = 275),
             label = "conversationTopBarOffset"
         )
         val topBarOccupiedHeight by animateDpAsState(
-            targetValue = if (topBarNavigationState.isVisible) topBarBaseHeight else 0.dp,
+            targetValue = if (topBarNavigationState.isVisible) {
+                if (topBarMeasuredHeightDp > 0.dp) topBarMeasuredHeightDp else 72.dp
+            } else {
+                0.dp
+            },
             animationSpec = tween(durationMillis = 275),
             label = "conversationTopBarHeight"
         )
@@ -350,7 +358,9 @@ fun ConversationScreen(
                 .clipToBounds()
         ) {
             TopAppBar(
-                modifier = Modifier.offset(y = topBarOffsetY),
+                modifier = Modifier
+                    .offset(y = topBarOffsetY)
+                    .onSizeChanged { topBarMeasuredHeightPx = it.height },
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant

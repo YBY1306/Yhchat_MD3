@@ -1637,13 +1637,17 @@ private fun normalizeHeadingSpacing(markdown: String): String {
             continue
         }
 
-        output += line
-
         if (!inFence && h1Regex.matches(line)) {
+            if (output.isNotEmpty() && output.last().isNotBlank()) {
+                output += ""
+            }
+            output += line
             val next = lines.getOrNull(index + 1).orEmpty()
             if (next.isNotBlank()) {
                 output += ""
             }
+        } else {
+            output += line
         }
     }
 

@@ -74,16 +74,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +88,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -152,6 +150,9 @@ fun ConversationScreen(
     }
     // 监听滚动状态，自动隐藏/显示顶栏
     observeScrollForNavigation(listState, topBarNavigationState)
+    val topBarNestedScrollConnection = remember(topBarNavigationState) {
+        topBarNavigationState.nestedScrollConnection()
+    }
 
     // 刷新状态 - 使用key保持状态
     var refreshing by rememberSaveable { mutableStateOf(false) }
@@ -329,38 +330,18 @@ fun ConversationScreen(
     }
     
     Column(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(topBarNestedScrollConnection)
     ) {
         // 顶部应用栏 - 使用和底栏一致的位移隐藏方式
-        val density = LocalDensity.current
-        var topBarMeasuredHeightPx by remember { mutableStateOf(0) }
-        val topBarMeasuredHeightDp = with(density) { topBarMeasuredHeightPx.toDp() }
-        val topBarHiddenOffset = if (topBarMeasuredHeightDp > 0.dp) topBarMeasuredHeightDp + 24.dp else 120.dp
         val topBarOffsetY by animateDpAsState(
-            targetValue = if (topBarNavigationState.isVisible) 0.dp else -topBarHiddenOffset,
+            targetValue = if (topBarNavigationState.isVisible) 0.dp else (-160).dp,
             animationSpec = tween(durationMillis = 275),
             label = "conversationTopBarOffset"
         )
-        val topBarOccupiedHeight by animateDpAsState(
-            targetValue = if (topBarNavigationState.isVisible) {
-                if (topBarMeasuredHeightDp > 0.dp) topBarMeasuredHeightDp else 72.dp
-            } else {
-                0.dp
-            },
-            animationSpec = tween(durationMillis = 275),
-            label = "conversationTopBarHeight"
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(topBarOccupiedHeight)
-                .clipToBounds()
-        ) {
-            TopAppBar(
-                modifier = Modifier
-                    .offset(y = topBarOffsetY)
-                    .onSizeChanged { topBarMeasuredHeightPx = it.height },
+        TopAppBar(
+            modifier = Modifier.offset(y = topBarOffsetY),
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -545,7 +526,6 @@ fun ConversationScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        }
 
         // 退出搜索时清除焦点
         LaunchedEffect(isSearchActive) {

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -585,10 +586,14 @@ fun PostBottomActionBarDuo3(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .padding(end = 4.dp),
+                .padding(start = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
+            Box(
+                modifier = Modifier.width(if (isSearchExpanded) 220.dp else 0.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = isSearchExpanded,
                 enter = expandHorizontally(
@@ -605,7 +610,7 @@ fun PostBottomActionBarDuo3(
                     onValueChange = onSearchTextChange,
                     modifier = Modifier
                         .width(220.dp)
-                        .padding(start = 8.dp),
+                        .offset(x = (-6).dp),
                     placeholder = { Text("搜索正文") },
                     singleLine = true,
                     trailingIcon = {
@@ -616,6 +621,7 @@ fun PostBottomActionBarDuo3(
                         )
                     }
                 )
+            }
             }
 
             androidx.compose.animation.AnimatedVisibility(

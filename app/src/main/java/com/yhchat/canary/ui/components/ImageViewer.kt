@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -71,6 +76,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.zip.GZIPInputStream
 
 @Composable
 fun ImageViewer(
@@ -295,6 +301,14 @@ private fun ZoomableImagePage(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        if (isTgsUrl(imageUrl)) {
+            TgsImagePage(
+                imageUrl = imageUrl,
+                onToggleControls = onToggleControls
+            )
+            return@Box
+        }
+
         when (painter.state) {
             is AsyncImagePainter.State.Loading -> {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -404,6 +418,65 @@ private fun ZoomableImagePage(
     }
 }
 
+@Composable
+private fun TgsImagePage(
+    imageUrl: String,
+    onToggleControls: () -> Unit
+) {
+    val context = LocalContext.current
+    val lottieJsonState = produceState<String?>(initialValue = null, imageUrl) {
+        value = loadTgsAsLottieJson(context, imageUrl)
+    }
+    val lottieJson = lottieJsonState.value
+
+    if (lottieJson.isNullOrBlank()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "TGS 加载失败",
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = imageUrl,
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+        return
+    }
+
+    val composition by rememberLottieComposition(
+        spec = LottieCompositionSpec.JsonString(lottieJson)
+    )
+
+    if (composition == null) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        return
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(imageUrl) {
+                detectTapGestures(
+                    onTap = { onToggleControls() },
+                    onLongPress = { onToggleControls() }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
 private fun boundImageOffset(
     containerSize: Size,
     scale: Float,
@@ -435,6 +508,34 @@ private fun createViewerImageRequest(
         .precision(Precision.INEXACT)
         .crossfade(true)
         .build()
+}
+
+private fun isTgsUrl(url: String): Boolean {
+    val clean = url.substringBefore('?').substringBefore('#').lowercase()
+    return clean.endsWith(".tgs")
+}
+
+private suspend fun loadTgsAsLottieJson(context: Context, imageUrl: String): String? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val connection = (URL(imageUrl).openConnection() as java.net.HttpURLConnection).apply {
+                instanceFollowRedirects = true
+                if (imageUrl.contains(".jwznb.com")) {
+                    setRequestProperty("Referer", "https://myapp.jwznb.com")
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                }
+                connect()
+            }
+
+            connection.inputStream.use { input ->
+                GZIPInputStream(input).bufferedReader(Charsets.UTF_8).use { reader ->
+                    reader.readText()
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
 private fun extensionForContentType(contentType: String?): String {

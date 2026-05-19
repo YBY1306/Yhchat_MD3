@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.conversation.ConversationScreen
+import com.yhchat.canary.ui.wear.login.WearLoginActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -30,7 +31,7 @@ class MainActivity : ComponentActivity() {
                 tokenRepository = tokenRepository,//TODO
                 modifier = Modifier.fillMaxSize(),
                 _to_loginfun_xxxx = {
-//                    startActivity(Intent(this, WearLoginActivity::class.java).apply { })
+                    startActivity(Intent(this, WearLoginActivity::class.java).apply { })
                 }
             )
         }

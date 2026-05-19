@@ -468,6 +468,12 @@ fun PostBottomActionBarDuo3(
     onSearchToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val searchFieldWidth by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isSearchExpanded) 220.dp else 0.dp,
+        animationSpec = tween(220),
+        label = "postDetailSearchFieldWidth"
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -476,106 +482,111 @@ fun PostBottomActionBarDuo3(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        androidx.compose.animation.AnimatedVisibility(
-            visible = !isSearchExpanded,
-            enter = expandHorizontally(
-                expandFrom = Alignment.Start,
-                animationSpec = tween(220)
-            ) + fadeIn(animationSpec = tween(180)),
-            exit = shrinkHorizontally(
-                shrinkTowards = Alignment.Start,
-                animationSpec = tween(220)
-            ) + fadeOut(animationSpec = tween(160))
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !isSearchExpanded,
+                enter = expandHorizontally(
+                    expandFrom = Alignment.Start,
+                    animationSpec = tween(220)
+                ) + fadeIn(animationSpec = tween(180)),
+                exit = shrinkHorizontally(
+                    shrinkTowards = Alignment.Start,
+                    animationSpec = tween(220)
+                ) + fadeOut(animationSpec = tween(160))
             ) {
-                Surface(
-                    modifier = Modifier.clickable { onLikeClick() },
-                    shape = RoundedCornerShape(24.dp),
-                    color = if (post.isLiked == "1") {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    Surface(
+                        modifier = Modifier.clickable { onLikeClick() },
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (post.isLiked == "1") {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        }
                     ) {
-                        Icon(
-                            imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                            contentDescription = "点赞",
-                            tint = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = post.likeNum.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                                contentDescription = "点赞",
+                                tint = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = post.likeNum.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
 
-                Surface(
-                    modifier = Modifier.clickable { onCollectClick() },
-                    shape = RoundedCornerShape(24.dp),
-                    color = if (post.isCollected == 1) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    Surface(
+                        modifier = Modifier.clickable { onCollectClick() },
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (post.isCollected == 1) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        }
                     ) {
-                        Icon(
-                            imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "收藏",
-                            tint = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = post.collectNum.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "收藏",
+                                tint = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = post.collectNum.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
 
-                Surface(
-                    modifier = Modifier.clickable { onRewardClick() },
-                    shape = RoundedCornerShape(24.dp),
-                    color = if (post.isReward == 1) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    Surface(
+                        modifier = Modifier.clickable { onRewardClick() },
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (post.isReward == 1) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        }
                     ) {
-                        Icon(
-                            imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
-                            contentDescription = "打赏",
-                            tint = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = formatRewardAmount(post.amountNum),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
+                                contentDescription = "打赏",
+                                tint = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = formatRewardAmount(post.amountNum),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -590,7 +601,7 @@ fun PostBottomActionBarDuo3(
             horizontalArrangement = Arrangement.End
         ) {
             Box(
-                modifier = Modifier.width(220.dp),
+                modifier = Modifier.width(searchFieldWidth),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 androidx.compose.animation.AnimatedVisibility(
@@ -609,7 +620,7 @@ fun PostBottomActionBarDuo3(
                         onValueChange = onSearchTextChange,
                         modifier = Modifier
                             .width(220.dp)
-                            .padding(end = 6.dp),
+                            .padding(end = 4.dp),
                         placeholder = { Text("搜索正文") },
                         singleLine = true,
                         trailingIcon = {

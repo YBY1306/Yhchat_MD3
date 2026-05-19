@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -110,6 +111,7 @@ fun ImageViewer(
     )
     val zoomedPages = remember { mutableStateMapOf<Int, Boolean>() }
     val gestureLockedPages = remember { mutableStateMapOf<Int, Boolean>() }
+    val refreshKeys = remember { mutableStateMapOf<Int, Int>() }
     var controlsVisible by remember { mutableStateOf(true) }
     val currentImageUrl by remember(sanitizedUrls, pagerState) {
         derivedStateOf { sanitizedUrls[pagerState.currentPage.coerceIn(0, sanitizedUrls.lastIndex)] }
@@ -142,6 +144,7 @@ fun ImageViewer(
             ) { page ->
                 ZoomableImagePage(
                     imageUrl = sanitizedUrls[page],
+                    reloadKey = refreshKeys[page] ?: 0,
                     onToggleControls = { controlsVisible = !controlsVisible },
                     onZoomStateChange = { isZoomed -> zoomedPages[page] = isZoomed },
                     onGestureLockChange = { locked -> gestureLockedPages[page] = locked }
@@ -179,6 +182,18 @@ fun ImageViewer(
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledIconButton(
+                            onClick = {
+                                val page = pagerState.currentPage
+                                refreshKeys[page] = (refreshKeys[page] ?: 0) + 1
+                            },
+                            colors = viewerButtonColors()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "刷新"
+                            )
+                        }
                         FilledIconButton(
                             onClick = { downloadImageToGallery(context, currentImageUrl) },
                             colors = viewerButtonColors()
@@ -240,6 +255,7 @@ private fun viewerButtonColors() = IconButtonDefaults.filledIconButtonColors(
 @Composable
 private fun ZoomableImagePage(
     imageUrl: String,
+    reloadKey: Int = 0,
     onToggleControls: () -> Unit,
     onZoomStateChange: (Boolean) -> Unit,
     onGestureLockChange: (Boolean) -> Unit
@@ -253,7 +269,7 @@ private fun ZoomableImagePage(
     var offsetX by remember(imageUrl) { mutableFloatStateOf(0f) }
     var offsetY by remember(imageUrl) { mutableFloatStateOf(0f) }
     var containerSize by remember(imageUrl) { mutableStateOf(Size.Zero) }
-    val imageRequest = remember(context, imageUrl, requestWidth, requestHeight) {
+    val imageRequest = remember(context, imageUrl, requestWidth, requestHeight, reloadKey) {
         createViewerImageRequest(
             context = context,
             imageUrl = imageUrl,
@@ -304,6 +320,7 @@ private fun ZoomableImagePage(
         if (isTgsUrl(imageUrl)) {
             TgsImagePage(
                 imageUrl = imageUrl,
+                reloadKey = reloadKey,
                 onToggleControls = onToggleControls
             )
             return@Box
@@ -421,10 +438,11 @@ private fun ZoomableImagePage(
 @Composable
 private fun TgsImagePage(
     imageUrl: String,
+    reloadKey: Int = 0,
     onToggleControls: () -> Unit
 ) {
     val context = LocalContext.current
-    val lottieJsonState = produceState<String?>(initialValue = null, imageUrl) {
+    val lottieJsonState = produceState<String?>(initialValue = null, imageUrl, reloadKey) {
         value = loadTgsAsLottieJson(context, imageUrl)
     }
     val lottieJson = lottieJsonState.value

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -591,37 +590,37 @@ fun PostBottomActionBarDuo3(
             horizontalArrangement = Arrangement.End
         ) {
             Box(
-                modifier = Modifier.width(if (isSearchExpanded) 220.dp else 0.dp),
+                modifier = Modifier.width(220.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isSearchExpanded,
-                enter = expandHorizontally(
-                    expandFrom = Alignment.End,
-                    animationSpec = tween(220)
-                ) + fadeIn(animationSpec = tween(180)),
-                exit = shrinkHorizontally(
-                    shrinkTowards = Alignment.End,
-                    animationSpec = tween(220)
-                ) + fadeOut(animationSpec = tween(160))
-            ) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = onSearchTextChange,
-                    modifier = Modifier
-                        .width(220.dp)
-                        .offset(x = (-6).dp),
-                    placeholder = { Text("搜索正文") },
-                    singleLine = true,
-                    trailingIcon = {
-                        Text(
-                            text = searchResultCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
-            }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isSearchExpanded,
+                    enter = expandHorizontally(
+                        expandFrom = Alignment.End,
+                        animationSpec = tween(220)
+                    ) + fadeIn(animationSpec = tween(180)),
+                    exit = shrinkHorizontally(
+                        shrinkTowards = Alignment.End,
+                        animationSpec = tween(220)
+                    ) + fadeOut(animationSpec = tween(160))
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = onSearchTextChange,
+                        modifier = Modifier
+                            .width(220.dp)
+                            .padding(end = 6.dp),
+                        placeholder = { Text("搜索正文") },
+                        singleLine = true,
+                        trailingIcon = {
+                            Text(
+                                text = searchResultCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    )
+                }
             }
 
             androidx.compose.animation.AnimatedVisibility(
@@ -649,6 +648,8 @@ fun PostBottomActionBarDuo3(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.width(4.dp))
 
             IconButton(
                 onClick = onSearchToggle,

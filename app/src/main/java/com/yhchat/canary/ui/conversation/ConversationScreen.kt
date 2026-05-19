@@ -74,6 +74,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -335,13 +336,26 @@ fun ConversationScreen(
             .nestedScroll(topBarNestedScrollConnection)
     ) {
         // 顶部应用栏 - 使用和底栏一致的位移隐藏方式
+        val topBarHeight by animateDpAsState(
+            targetValue = if (topBarNavigationState.isVisible) 64.dp else 0.dp,
+            animationSpec = tween(durationMillis = 275),
+            label = "conversationTopBarHeight"
+        )
         val topBarOffsetY by animateDpAsState(
-            targetValue = if (topBarNavigationState.isVisible) 0.dp else (-160).dp,
+            targetValue = if (topBarNavigationState.isVisible) 0.dp else (-64).dp,
             animationSpec = tween(durationMillis = 275),
             label = "conversationTopBarOffset"
         )
-        TopAppBar(
-            modifier = Modifier.offset(y = topBarOffsetY),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(topBarHeight)
+                .clipToBounds()
+        ) {
+            TopAppBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = topBarOffsetY),
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -526,6 +540,7 @@ fun ConversationScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
+        }
 
         // 退出搜索时清除焦点
         LaunchedEffect(isSearchActive) {

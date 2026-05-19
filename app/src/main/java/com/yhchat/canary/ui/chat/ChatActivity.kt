@@ -15,6 +15,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -100,14 +101,18 @@ class ChatActivity : BaseActivity() {
 
         setContent {
             YhchatCanaryTheme {
-                val topBarColor = MaterialTheme.colorScheme.primaryContainer.toArgb()
+                val topBarComposeColor = MaterialTheme.colorScheme.primaryContainer
+                val topBarColor = topBarComposeColor.toArgb()
                 val navigationBarColor = android.graphics.Color.TRANSPARENT
                 val view = LocalView.current
                 val isLightTheme = !androidx.compose.foundation.isSystemInDarkTheme()
+                val useDarkStatusBarIcons = topBarComposeColor.luminance() > 0.5f
                 
                 SideEffect {
+                    val insetsController = WindowCompat.getInsetsController(window, view)
+
                     // 设置状态栏
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+                    insetsController.isAppearanceLightStatusBars = useDarkStatusBarIcons
                     window.statusBarColor = topBarColor
                     
                     // 设置导航栏，让手势线自动适配
@@ -115,7 +120,7 @@ class ChatActivity : BaseActivity() {
                     
                     // Android 8.0+ 设置导航栏图标和手势线颜色
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isLightTheme
+                        insetsController.isAppearanceLightNavigationBars = isLightTheme
                     }
                     
                     // Android 10+ 禁用强制对比度

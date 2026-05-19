@@ -12,6 +12,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -99,6 +101,8 @@ import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.StickyItem
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.components.ConversationMenuDialog
+import com.yhchat.canary.ui.components.observeScrollForNavigation
+import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberSharedPreferences
 import com.yhchat.canary.ui.search.ComprehensiveSearchActivity
@@ -138,11 +142,14 @@ fun ConversationScreen(
 
     // 列表状态
     val listState = rememberLazyListState()
+    val topBarNavigationState = rememberScrollAwareNavigationState()
     
     // 监听滚动状态，自动隐藏/显示导航栏
     if (navigationState != null) {
-        com.yhchat.canary.ui.components.observeScrollForNavigation(listState, navigationState)
+        observeScrollForNavigation(listState, navigationState)
     }
+    // 监听滚动状态，自动隐藏/显示顶栏
+    observeScrollForNavigation(listState, topBarNavigationState)
 
     // 刷新状态 - 使用key保持状态
     var refreshing by rememberSaveable { mutableStateOf(false) }
@@ -323,191 +330,203 @@ fun ConversationScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // 顶部应用栏 - 包含可选标题 + 内嵌搜索栏 + 操作按钮
-        TopAppBar(
-            title = {
-                val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
-                // 为搜索框在激活/未激活状态之间的内边距添加动画，使左右与屏幕边距一致
-                val searchBarVerticalPadding by animateDpAsState(
-                    targetValue = if (isSearchActive) 0.dp else 8.dp,
-                    label = "SearchBarVerticalPadding"
-                )
-                val searchBarHorizontalPadding by animateDpAsState(
-                    targetValue = if (isSearchActive) 0.dp else 16.dp,
-                    label = "SearchBarHorizontalPadding"
-                )
+        AnimatedVisibility(
+            visible = topBarNavigationState.isVisible,
+            enter = slideInVertically(
+                initialOffsetY = { -it },
+                animationSpec = tween(durationMillis = 220)
+            ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+            exit = slideOutVertically(
+                targetOffsetY = { -it },
+                animationSpec = tween(durationMillis = 220)
+            ) + fadeOut(animationSpec = tween(durationMillis = 160))
+        ) {
+            TopAppBar(
+                title = {
+                    val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    // 为搜索框在激活/未激活状态之间的内边距添加动画，使左右与屏幕边距一致
+                    val searchBarVerticalPadding by animateDpAsState(
+                        targetValue = if (isSearchActive) 0.dp else 8.dp,
+                        label = "SearchBarVerticalPadding"
+                    )
+                    val searchBarHorizontalPadding by animateDpAsState(
+                        targetValue = if (isSearchActive) 0.dp else 16.dp,
+                        label = "SearchBarHorizontalPadding"
+                    )
 
-                if (layoutShowSearch || isSearchActive) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                vertical = searchBarVerticalPadding,
-                                horizontal = searchBarHorizontalPadding
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
+                    if (layoutShowSearch || isSearchActive) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(searchBackgroundColor)
-                                .clickable {
-                                    if (isTextFieldEnabled) {
-                                        isManuallyActivated = true
-                                        isSearchActive = true
-                                        coroutineScope.launch {
-                                            kotlinx.coroutines.delay(100)
-                                            try {
-                                                searchFocusRequester.requestFocus()
-                                            } catch (_: Exception) {}
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(
+                                    vertical = searchBarVerticalPadding,
+                                    horizontal = searchBarHorizontalPadding
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
-                                contentDescription = "搜索",
-                                tint = onSearchColor,
+                            Row(
                                 modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable(enabled = isSearchActive) {
-                                        if (searchQuery.isNotEmpty()) {
-                                            searchQuery = ""
-                                            searchViewModel.clearSearch()
-                                        } else {
-                                            isSearchActive = false
-                                            isManuallyActivated = false
-                                            focusManager.clearFocus()
-                                        }
-                                    }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        text = "搜索会话、联系人...",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = onSearchColor.copy(alpha = 0.6f),
-                                        maxLines = 1
-                                    )
-                                }
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { 
-                                        if (isManuallyActivated) {
-                                            searchQuery = it
-                                            if (it.isNotEmpty()) {
-                                                isSearchActive = true
-                                                searchViewModel.search(it)
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(searchBackgroundColor)
+                                    .clickable {
+                                        if (isTextFieldEnabled) {
+                                            isManuallyActivated = true
+                                            isSearchActive = true
+                                            coroutineScope.launch {
+                                                kotlinx.coroutines.delay(100)
+                                                try {
+                                                    searchFocusRequester.requestFocus()
+                                                } catch (_: Exception) {}
                                             }
                                         }
-                                    },
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = onSearchColor),
+                                    }
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = onSearchColor,
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(searchFocusRequester)
-                                        .onFocusChanged { focusState ->
-                                            if (!isFocusClearing) {
-                                                if (focusState.isFocused && !isManuallyActivated) {
-                                                    // 非手动激活的焦点需要清除
-                                                    if (isLowAndroidVersion) {
-                                                        // 安卓8及以下版本使用温和的处理方式
-                                                        coroutineScope.launch {
-                                                            isFocusClearing = true
-                                                            try {
-                                                                focusManager.clearFocus()
-                                                            } catch (_: Exception) {}
-                                                            kotlinx.coroutines.delay(200)
-                                                            isFocusClearing = false
-                                                        }
-                                                    } else {
-                                                        // 安卓9及以上版本使用原有逻辑
-                                                        coroutineScope.launch {
-                                                            isFocusClearing = true
-                                                            focusManager.clearFocus()
-                                                            isTextFieldEnabled = false
-                                                            kotlinx.coroutines.delay(100)
-                                                            isTextFieldEnabled = true
-                                                            isFocusClearing = false
-                                                        }
-                                                    }
-                                                } else if (focusState.isFocused && isManuallyActivated) {
+                                        .size(24.dp)
+                                        .clickable(enabled = isSearchActive) {
+                                            if (searchQuery.isNotEmpty()) {
+                                                searchQuery = ""
+                                                searchViewModel.clearSearch()
+                                            } else {
+                                                isSearchActive = false
+                                                isManuallyActivated = false
+                                                focusManager.clearFocus()
+                                            }
+                                        }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "搜索会话、联系人...",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = onSearchColor.copy(alpha = 0.6f),
+                                            maxLines = 1
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = {
+                                            if (isManuallyActivated) {
+                                                searchQuery = it
+                                                if (it.isNotEmpty()) {
                                                     isSearchActive = true
-                                                } else if (!focusState.isFocused && isSearchActive && searchQuery.isEmpty()) {
-                                                    isSearchActive = false
-                                                    isManuallyActivated = false
+                                                    searchViewModel.search(it)
                                                 }
                                             }
                                         },
-                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = {
-                                        if (searchQuery.isNotEmpty()) {
-                                            searchViewModel.search(searchQuery)
-                                        }
-                                        focusManager.clearFocus()
-                                    }),
-                                    singleLine = true,
-                                    enabled = isTextFieldEnabled && (isManuallyActivated || isSearchActive)
-                                )
-                            }
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { 
-                                        searchQuery = ""
-                                        searchViewModel.clearSearch()
-                                        isSearchActive = false
-                                        isManuallyActivated = false
-                                        focusManager.clearFocus()
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "清除",
-                                        tint = onSearchColor
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = onSearchColor),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(searchFocusRequester)
+                                            .onFocusChanged { focusState ->
+                                                if (!isFocusClearing) {
+                                                    if (focusState.isFocused && !isManuallyActivated) {
+                                                        // 非手动激活的焦点需要清除
+                                                        if (isLowAndroidVersion) {
+                                                            // 安卓8及以下版本使用温和的处理方式
+                                                            coroutineScope.launch {
+                                                                isFocusClearing = true
+                                                                try {
+                                                                    focusManager.clearFocus()
+                                                                } catch (_: Exception) {}
+                                                                kotlinx.coroutines.delay(200)
+                                                                isFocusClearing = false
+                                                            }
+                                                        } else {
+                                                            // 安卓9及以上版本使用原有逻辑
+                                                            coroutineScope.launch {
+                                                                isFocusClearing = true
+                                                                focusManager.clearFocus()
+                                                                isTextFieldEnabled = false
+                                                                kotlinx.coroutines.delay(100)
+                                                                isTextFieldEnabled = true
+                                                                isFocusClearing = false
+                                                            }
+                                                        }
+                                                    } else if (focusState.isFocused && isManuallyActivated) {
+                                                        isSearchActive = true
+                                                    } else if (!focusState.isFocused && isSearchActive && searchQuery.isEmpty()) {
+                                                        isSearchActive = false
+                                                        isManuallyActivated = false
+                                                    }
+                                                }
+                                            },
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                        keyboardActions = KeyboardActions(onSearch = {
+                                            if (searchQuery.isNotEmpty()) {
+                                                searchViewModel.search(searchQuery)
+                                            }
+                                            focusManager.clearFocus()
+                                        }),
+                                        singleLine = true,
+                                        enabled = isTextFieldEnabled && (isManuallyActivated || isSearchActive)
                                     )
+                                }
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = {
+                                            searchQuery = ""
+                                            searchViewModel.clearSearch()
+                                            isSearchActive = false
+                                            isManuallyActivated = false
+                                            focusManager.clearFocus()
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "清除",
+                                            tint = onSearchColor
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            },
-            navigationIcon = {
-                if (!isSearchActive && layoutShowTitle) {
-                    Text(
-                        text = "云湖",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            },
-            actions = {
-                if (!isSearchActive) {
-                    if (layoutShowAddButton) {
-                        IconButton(onClick = { showAddMenuBottomSheet = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "添加")
+                },
+                navigationIcon = {
+                    if (!isSearchActive && layoutShowTitle) {
+                        Text(
+                            text = "云湖",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                actions = {
+                    if (!isSearchActive) {
+                        if (layoutShowAddButton) {
+                            IconButton(onClick = { showAddMenuBottomSheet = true }) {
+                                Icon(Icons.Default.Add, contentDescription = "添加")
+                            }
                         }
                     }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
-        )
+        }
 
         // 退出搜索时清除焦点
         LaunchedEffect(isSearchActive) {
@@ -538,6 +557,7 @@ fun ConversationScreen(
         if (isSearchActive) {
             // ========== 搜索模式 ==========
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {

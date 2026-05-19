@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.YhchatCanary" parent="Theme.SplashScreen">
+        <!-- 状态栏透明 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- 状态栏文字颜色为深色 -->
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- 导航栏透明 -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- 导航栏文字颜色为深色 -->
+        <item name="android:windowLightNavigationBar">true</item>
+        <!-- 启用边到边显示 -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- 不在手机界面上显示标题栏（应用名称）-->
+        <item name="android:windowNoTitle">true</item>
+        <!---->
+        <item name="android:windowActionBar">false</item>
+        <!---->
+        <item name="android:enableOnBackInvokedCallback">true</item>
+        <!--开启手表的从屏幕左边缘往右滑就会直接关闭Activity的手势-->
+        <!--旧版安卓手表没有返回手势，可能也没有返回键，只有开启这个后才能返回，不过会直接关闭Activity-->
+        <item name="android:windowSwipeToDismiss">true</item>
+        <!--手表主题的开屏界面背景-->
+        <item name="windowSplashScreenBackground">@android:color/black</item>
+        <!--手表主题的开屏界面图标-->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <!--似乎与开屏界面有关-->
+        <item name="postSplashScreenTheme">@android:style/Theme.DeviceDefault</item>
+    </style>
+</resources>

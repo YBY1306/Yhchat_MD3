@@ -15,7 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.yhchat.canary"
         applicationIdSuffix=".watch"
-        minSdk = 21
+        minSdk = 25
         targetSdk = 36
         // versionCode = 0
         versionName = null

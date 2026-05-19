@@ -121,7 +121,7 @@ fun MarkdownText(
                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
             )
         ),
-        paragraphSpacing = 8.sp,
+        paragraphSpacing = 14.sp,
         tableStyle = null
     )
 
@@ -1193,7 +1193,8 @@ private fun injectHighlightMark(markdown: String, keyword: String): String {
     if (keyword.isBlank() || markdown.isBlank()) return markdown
     val pattern = Regex(Regex.escape(keyword), RegexOption.IGNORE_CASE)
     return pattern.replace(markdown) { match ->
-        "<mark>${match.value}</mark>"
+        // 使用行内代码包裹，利用现有 codeStyle 背景实现稳定高亮
+        "`" + match.value + "`"
     }
 }
 

@@ -37,9 +37,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +53,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MessageContent
@@ -69,6 +75,10 @@ import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONObject
+import java.net.URL
+import java.util.zip.GZIPInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 消息内容视图
@@ -161,26 +171,43 @@ fun MessageContentView(
             2 -> {
                 // 图片消息
                 content.imageUrl?.let { imageUrl ->
-                    AsyncImage(
-                        model = ImageUtils.createImageRequest(
-                            context = androidx.compose.ui.platform.LocalContext.current,
+                    if (isTgsUrl(imageUrl)) {
+                        TgsPreviewMessage(
                             url = imageUrl,
-                            enableHardware = enableHardware
-                        ),
-                        contentDescription = "图片",
-                        modifier = Modifier
-                            .sizeIn(
-                                minWidth = 120.dp,
-                                maxWidth = 280.dp,
-                                maxHeight = 360.dp
-                            )
-                            .clip(RoundedCornerShape(8.dp))
-                            .combinedClickable(
-                                onClick = { onImageClick(imageUrl) },
-                                onLongClick = onLongClick
+                            modifier = Modifier
+                                .sizeIn(
+                                    minWidth = 120.dp,
+                                    maxWidth = 280.dp,
+                                    maxHeight = 360.dp
+                                )
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = { onImageClick(imageUrl) },
+                                    onLongClick = onLongClick
+                                )
+                        )
+                    } else {
+                        AsyncImage(
+                            model = ImageUtils.createImageRequest(
+                                context = androidx.compose.ui.platform.LocalContext.current,
+                                url = imageUrl,
+                                enableHardware = enableHardware
                             ),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
+                            contentDescription = "图片",
+                            modifier = Modifier
+                                .sizeIn(
+                                    minWidth = 120.dp,
+                                    maxWidth = 280.dp,
+                                    maxHeight = 360.dp
+                                )
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = { onImageClick(imageUrl) },
+                                    onLongClick = onLongClick
+                                ),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    }
                 }
                 content.text?.let { text ->
                     if (text.isNotBlank()) {
@@ -553,40 +580,64 @@ fun MessageContentView(
                 val isStickerPack = stickerPackId != null && stickerPackId != 0L
 
                 content.imageUrl?.let { imageUrl ->
-                    AsyncImage(
-                        model = ImageUtils.createStickerImageRequest(
-                            context = context,
+                    if (isTgsUrl(imageUrl)) {
+                        TgsPreviewMessage(
                             url = imageUrl,
-                            enableHardware = enableHardware
-                        ),
-                        contentDescription = when {
-                            isPersonalExpression -> "个人收藏表情"
-                            isStickerPack -> "表情包"
-                            else -> "表情"
-                        },
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .combinedClickable(
-                                onClick = {
-                                    if (isPersonalExpression) {
-                                        // 个人表情：打开图片预览
-                                        onImageClick(imageUrl)
-                                    } else if (isStickerPack) {
-                                        // 表情包：跳转到表情包详情
-                                        com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
-                                            context = context,
-                                            stickerPackId = stickerPackId?.toString() ?: ""
-                                        )
-                                    } else {
-                                        // 默认：图片预览
-                                        onImageClick(imageUrl)
-                                    }
-                                },
-                                onLongClick = onLongClick
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        if (isPersonalExpression) {
+                                            onImageClick(imageUrl)
+                                        } else if (isStickerPack) {
+                                            com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
+                                                context = context,
+                                                stickerPackId = stickerPackId?.toString() ?: ""
+                                            )
+                                        } else {
+                                            onImageClick(imageUrl)
+                                        }
+                                    },
+                                    onLongClick = onLongClick
+                                )
+                        )
+                    } else {
+                        AsyncImage(
+                            model = ImageUtils.createStickerImageRequest(
+                                context = context,
+                                url = imageUrl,
+                                enableHardware = enableHardware
                             ),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                    )
+                            contentDescription = when {
+                                isPersonalExpression -> "个人收藏表情"
+                                isStickerPack -> "表情包"
+                                else -> "表情"
+                            },
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        if (isPersonalExpression) {
+                                            // 个人表情：打开图片预览
+                                            onImageClick(imageUrl)
+                                        } else if (isStickerPack) {
+                                            // 表情包：跳转到表情包详情
+                                            com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
+                                                context = context,
+                                                stickerPackId = stickerPackId?.toString() ?: ""
+                                            )
+                                        } else {
+                                            // 默认：图片预览
+                                            onImageClick(imageUrl)
+                                        }
+                                    },
+                                    onLongClick = onLongClick
+                                ),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
+                    }
                 } ?: run {
                     // 如果没有 imageUrl，尝试使用 stickerUrl 拼接完整URL
                     content.stickerUrl?.let { stickerUrl ->
@@ -596,33 +647,57 @@ fun MessageContentView(
                             "https://chat-img.jwznb.com/$stickerUrl"
                         }
 
-                        AsyncImage(
-                            model = ImageUtils.createStickerImageRequest(
-                                context = context,
+                        if (isTgsUrl(fullUrl)) {
+                            TgsPreviewMessage(
                                 url = fullUrl,
-                                enableHardware = enableHardware
-                            ),
-                            contentDescription = "表情",
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .combinedClickable(
-                                    onClick = {
-                                        if (isPersonalExpression) {
-                                            onImageClick(fullUrl)
-                                        } else if (isStickerPack) {
-                                            com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
-                                                context = context,
-                                                stickerPackId = stickerPackId?.toString() ?: ""
-                                            )
-                                        } else {
-                                            onImageClick(fullUrl)
-                                        }
-                                    },
-                                    onLongClick = onLongClick
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (isPersonalExpression) {
+                                                onImageClick(fullUrl)
+                                            } else if (isStickerPack) {
+                                                com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
+                                                    context = context,
+                                                    stickerPackId = stickerPackId?.toString() ?: ""
+                                                )
+                                            } else {
+                                                onImageClick(fullUrl)
+                                            }
+                                        },
+                                        onLongClick = onLongClick
+                                    )
+                            )
+                        } else {
+                            AsyncImage(
+                                model = ImageUtils.createStickerImageRequest(
+                                    context = context,
+                                    url = fullUrl,
+                                    enableHardware = enableHardware
                                 ),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                        )
+                                contentDescription = "表情",
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (isPersonalExpression) {
+                                                onImageClick(fullUrl)
+                                            } else if (isStickerPack) {
+                                                com.yhchat.canary.ui.sticker.StickerPackDetailActivity.start(
+                                                    context = context,
+                                                    stickerPackId = stickerPackId?.toString() ?: ""
+                                                )
+                                            } else {
+                                                onImageClick(fullUrl)
+                                            }
+                                        },
+                                        onLongClick = onLongClick
+                                    ),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        }
                     }
                 }
             }
@@ -1397,4 +1472,77 @@ private fun resolveA2UiSurfaceId(messages: List<String>): String? {
         }
     }
     return null
+}
+
+private fun isTgsUrl(url: String): Boolean {
+    val clean = url.substringBefore('?').substringBefore('#').lowercase()
+    return clean.endsWith(".tgs")
+}
+
+@Composable
+private fun TgsPreviewMessage(
+    url: String,
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lottieJsonState = produceState<String?>(initialValue = null, url) {
+        value = loadTgsJson(context, url)
+    }
+    val lottieJson = lottieJsonState.value
+    val composition by rememberLottieComposition(
+        spec = LottieCompositionSpec.JsonString(lottieJson.orEmpty())
+    )
+
+    Box(
+        modifier = modifier.background(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+            shape = RoundedCornerShape(8.dp)
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            lottieJson == null -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+            composition != null -> {
+                LottieAnimation(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            else -> {
+                Text(
+                    text = "TGS加载失败",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+private suspend fun loadTgsJson(context: Context, url: String): String? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val connection = (URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                instanceFollowRedirects = true
+                if (url.contains(".jwznb.com")) {
+                    setRequestProperty("Referer", "https://myapp.jwznb.com")
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                }
+                connect()
+            }
+            connection.inputStream.use { input ->
+                GZIPInputStream(input).bufferedReader(Charsets.UTF_8).use { reader ->
+                    reader.readText()
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 }

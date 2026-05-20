@@ -46,12 +46,12 @@ settings_gradle_kts="${git_root}/settings.gradle.kts"
 echo 'include(":watch")' >> "${settings_gradle_kts}"
 ```
 
-然后由于app模块被变成了library模块，所以app模块中的CanaryApplication的@HiltAndroidApp也会报错，请在编译前移除
-由于把这个类直接继承出来用，因此请在编译前将它改为open的类
+然后由于app模块被变成了library模块，所以app模块中的CanaryApplication的@HiltAndroidApp也会报错，请移除
+由于继承了该类，请改为open的类
 ```shell
 git_root="$(git rev-parse --show-toplevel)"
 canaryApplication_kt="${git_root}/app/src/main/java/com/yhchat/canary/CanaryApplication.kt"
-sed -i 's!@HiltAndroidApp!open!' "${canaryApplication_kt}"
+sed -i 's!@HiltAndroidApp!open!' $canaryApplication_kt
 ```
 
 ---

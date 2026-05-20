@@ -89,7 +89,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -339,17 +338,25 @@ fun ConversationScreen(
     val topBarSpacerHeightDp = with(density) {
         (topBarHeightPx + topBarOffsetPx).coerceAtLeast(0).toDp()
     }
+    val topBarRenderOffsetDp = with(density) {
+        topBarOffsetPx.toDp() - topBarSpacerHeightDp
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
     ) {
         Spacer(modifier = Modifier.height(topBarSpacerHeightDp))
-        TopAppBar(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .onSizeChanged { topBarHeightPx = it.height }
-                .offset { IntOffset(0, topBarOffsetPx) },
+                .height(0.dp)
+        ) {
+            TopAppBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onSizeChanged { topBarHeightPx = it.height }
+                    .offset(y = topBarRenderOffsetDp),
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -534,6 +541,7 @@ fun ConversationScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
+        }
 
         // 退出搜索时清除焦点
         LaunchedEffect(isSearchActive) {

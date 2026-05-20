@@ -472,17 +472,25 @@ fun PostBottomActionBarDuo3(
     onSearchToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val searchFieldBaseWidth by animateDpAsState(
-        targetValue = if (isSearchExpanded) 206.dp else 0.dp,
-        animationSpec = tween(190),
-        label = "postDetailSearchFieldBaseWidth"
+    var searchExpandSettled by remember { mutableStateOf(false) }
+    LaunchedEffect(isSearchExpanded) {
+        if (isSearchExpanded) {
+            searchExpandSettled = false
+            kotlinx.coroutines.delay(170)
+            searchExpandSettled = true
+        } else {
+            searchExpandSettled = false
+        }
+    }
+    val searchFieldWidth by animateDpAsState(
+        targetValue = when {
+            !isSearchExpanded -> 0.dp
+            searchExpandSettled -> 228.dp
+            else -> 196.dp
+        },
+        animationSpec = tween(170),
+        label = "postDetailSearchFieldWidth"
     )
-    val searchFieldSettleExtraWidth by animateDpAsState(
-        targetValue = if (isSearchExpanded && searchFieldBaseWidth >= 205.dp) 14.dp else 0.dp,
-        animationSpec = tween(120),
-        label = "postDetailSearchFieldSettleExtraWidth"
-    )
-    val searchFieldWidth = searchFieldBaseWidth + searchFieldSettleExtraWidth
     val searchFieldAlpha by animateFloatAsState(
         targetValue = if (isSearchExpanded) 1f else 0f,
         animationSpec = tween(180),

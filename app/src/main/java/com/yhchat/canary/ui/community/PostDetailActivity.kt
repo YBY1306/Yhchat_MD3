@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
@@ -471,11 +472,17 @@ fun PostBottomActionBarDuo3(
     onSearchToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val searchFieldWidth by animateDpAsState(
-        targetValue = if (isSearchExpanded) 220.dp else 0.dp,
-        animationSpec = tween(220),
-        label = "postDetailSearchFieldWidth"
+    val searchFieldBaseWidth by animateDpAsState(
+        targetValue = if (isSearchExpanded) 206.dp else 0.dp,
+        animationSpec = tween(190),
+        label = "postDetailSearchFieldBaseWidth"
     )
+    val searchFieldSettleExtraWidth by animateDpAsState(
+        targetValue = if (isSearchExpanded && searchFieldBaseWidth >= 205.dp) 14.dp else 0.dp,
+        animationSpec = tween(120),
+        label = "postDetailSearchFieldSettleExtraWidth"
+    )
+    val searchFieldWidth = searchFieldBaseWidth + searchFieldSettleExtraWidth
     val searchFieldAlpha by animateFloatAsState(
         targetValue = if (isSearchExpanded) 1f else 0f,
         animationSpec = tween(180),
@@ -698,12 +705,18 @@ fun PostBottomActionBarDuo3(
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
-                Icon(
-                    imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
-                    contentDescription = if (isSearchExpanded) "关闭搜索" else "搜索",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+                Crossfade(
+                    targetState = isSearchExpanded,
+                    animationSpec = tween(180),
+                    label = "post_detail_search_toggle"
+                ) { expanded ->
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = if (expanded) "关闭搜索" else "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

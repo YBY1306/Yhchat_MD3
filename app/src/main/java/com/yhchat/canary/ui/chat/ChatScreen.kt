@@ -765,6 +765,11 @@ fun ChatScreen(
                         val message = reversedMessages[index]
                         // 获取发送者的权限等级（仅群聊）
                         val memberPermission = uiState.groupMembers[message.sender.chatId]?.permissionLevel
+                        val isMyMessage = if (userId.isNotBlank() && message.sender.chatId.isNotBlank()) {
+                            message.sender.chatId == userId
+                        } else {
+                            viewModel.isMyMessage(message)
+                        }
                         val isStreaming = viewModel.isMessageStreaming(message.msgId)
                         val itemModifier = if (isStreaming) {
                             Modifier.fillMaxWidth()
@@ -797,7 +802,7 @@ fun ChatScreen(
                         
                         AnimatedMessageItem(
                             message = message,
-                            isMyMessage = viewModel.isMyMessage(message),
+                            isMyMessage = isMyMessage,
                             conversationChatType = chatType,
                             modifier = itemModifier,
                             enableAnimations = enableAnimations,

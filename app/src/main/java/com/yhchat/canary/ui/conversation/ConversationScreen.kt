@@ -7,13 +7,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,15 +81,17 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -328,18 +329,27 @@ fun ConversationScreen(
         }
     }
     
+    val density = LocalDensity.current
+    var topBarHeightPx by remember { mutableStateOf(0) }
+    val topBarOffsetPx by animateIntAsState(
+        targetValue = if (topBarNavigationState.isVisible) 0 else -topBarHeightPx.coerceAtLeast(1),
+        animationSpec = tween(durationMillis = 260),
+        label = "conversationTopBarOffsetPx"
+    )
+    val topBarSpacerHeightDp = with(density) {
+        (topBarHeightPx + topBarOffsetPx).coerceAtLeast(0).toDp()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
     ) {
-        AnimatedVisibility(
-            visible = topBarNavigationState.isVisible,
-            enter = slideInVertically(animationSpec = tween(durationMillis = 260)) { -it } + fadeIn(animationSpec = tween(durationMillis = 220)),
-            exit = slideOutVertically(animationSpec = tween(durationMillis = 220)) { -it } + fadeOut(animationSpec = tween(durationMillis = 180))
-        ) {
-            TopAppBar(
-                modifier = Modifier
-                    .fillMaxWidth(),
+        Spacer(modifier = Modifier.height(topBarSpacerHeightDp))
+        TopAppBar(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { topBarHeightPx = it.height }
+                .offset { IntOffset(0, topBarOffsetPx) },
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -524,7 +534,6 @@ fun ConversationScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        }
 
         // 退出搜索时清除焦点
         LaunchedEffect(isSearchActive) {

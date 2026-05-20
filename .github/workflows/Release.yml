@@ -14,7 +14,7 @@ on:
       latest_tag:
         description: '更新日志结束 tag/ref（可选，例如 experimental）'
         required: false
-        default: ''
+        default: 'experimental'
 
 jobs:
   build:
@@ -226,7 +226,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*.apk
-          name: Canary ${{ steps.version.outputs.release_name }} (${{ steps.date.outputs.date }})
+          name: Canary ${{ steps.version.outputs.release_name }}
           tag_name: ${{ steps.release_meta.outputs.tag_name }}
           body_path: release-body.md
           draft: false

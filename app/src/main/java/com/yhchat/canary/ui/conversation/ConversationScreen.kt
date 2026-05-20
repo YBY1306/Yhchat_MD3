@@ -335,28 +335,28 @@ fun ConversationScreen(
         animationSpec = tween(durationMillis = 260),
         label = "conversationTopBarOffsetPx"
     )
-    val topBarSpacerHeightDp = with(density) {
-        (topBarHeightPx + topBarOffsetPx).coerceAtLeast(0).toDp()
-    }
-    val topBarRenderOffsetDp = with(density) {
-        topBarOffsetPx.toDp() - topBarSpacerHeightDp
+    val topBarOffsetDp = with(density) { topBarOffsetPx.toDp() }
+    val topBarVisibleHeightDp = if (topBarHeightPx <= 0) {
+        if (topBarNavigationState.isVisible) 64.dp else 0.dp
+    } else {
+        with(density) { (topBarHeightPx + topBarOffsetPx).coerceAtLeast(0).toDp() }
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
     ) {
-        Spacer(modifier = Modifier.height(topBarSpacerHeightDp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.dp)
+                .height(topBarVisibleHeightDp)
+                .clipToBounds()
         ) {
             TopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .onSizeChanged { topBarHeightPx = it.height }
-                    .offset(y = topBarRenderOffsetDp),
+                    .offset(y = topBarOffsetDp),
                 title = {
                     val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant

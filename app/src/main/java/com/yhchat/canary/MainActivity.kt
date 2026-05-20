@@ -74,16 +74,14 @@ import kotlin.toString
 class MainActivity : BaseActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 处理 Deep Link
-        handleDeepLink()
-
-        // 配置Coil ImageLoader，为chat-img.jwznb.com添加Referer，支持GIF和WebP
-        setupImageLoader()
-
         super.onCreate(savedInstanceState)
         runCatching {
             enableEdgeToEdge()
         }
+        // 处理 Deep Link
+        handleDeepLink()
+        // 配置Coil ImageLoader，为chat-img.jwznb.com添加Referer，支持GIF和WebP
+        setupImageLoader()
         
         setContent {
             YhchatCanaryTheme {
@@ -117,40 +115,50 @@ class MainActivity : BaseActivity() {
             
             // Android 8.0+ 支持设置导航栏图标颜色
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                @Suppress("DEPRECATION")
                 runCatching {
-                    window.decorView.systemUiVisibility = if (isLightTheme) {
-                        // 浅色主题：使用深色图标和手势线
-                        window.decorView.systemUiVisibility or
-                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-                    } else {
-                        // 深色主题：使用浅色图标和手势线
-                        window.decorView.systemUiVisibility and
-                            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
-                    }
+                    applyLightNavigationBarIconsForOAndAbove(isLightTheme)
                 }
             }
             
             // Android 10+ 禁用系统强制对比度，完全使用我们设置的颜色
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 runCatching {
-                    window.isNavigationBarContrastEnforced = false
+                    disableNavigationBarContrastForQAndAbove()
                 }
             }
             
             // Android 11+ 使用新的API设置导航栏外观
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 runCatching {
-                    window.insetsController?.setSystemBarsAppearance(
-                        if (isLightTheme)
-                            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                        else
-                            0,
-                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                    )
+                    applyNavigationBarAppearanceForRAndAbove(isLightTheme)
                 }
             }
         }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+    @Suppress("DEPRECATION")
+    private fun applyLightNavigationBarIconsForOAndAbove(isLightTheme: Boolean) {
+        window.decorView.systemUiVisibility = if (isLightTheme) {
+            window.decorView.systemUiVisibility or
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        } else {
+            window.decorView.systemUiVisibility and
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun disableNavigationBarContrastForQAndAbove() {
+        window.isNavigationBarContrastEnforced = false
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+    private fun applyNavigationBarAppearanceForRAndAbove(isLightTheme: Boolean) {
+        window.insetsController?.setSystemBarsAppearance(
+            if (isLightTheme) android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS else 0,
+            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        )
     }
     
     @Composable

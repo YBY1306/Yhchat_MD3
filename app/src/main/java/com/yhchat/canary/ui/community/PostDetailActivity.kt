@@ -32,13 +32,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -92,6 +94,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -468,10 +471,15 @@ fun PostBottomActionBarDuo3(
     onSearchToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val searchFieldWidth by androidx.compose.animation.core.animateDpAsState(
+    val searchFieldWidth by animateDpAsState(
         targetValue = if (isSearchExpanded) 220.dp else 0.dp,
         animationSpec = tween(220),
         label = "postDetailSearchFieldWidth"
+    )
+    val searchFieldAlpha by animateFloatAsState(
+        targetValue = if (isSearchExpanded) 1f else 0f,
+        animationSpec = tween(180),
+        label = "postDetailSearchFieldAlpha"
     )
 
     Row(
@@ -596,41 +604,61 @@ fun PostBottomActionBarDuo3(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .height(40.dp)
                 .padding(start = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
             Box(
-                modifier = Modifier.width(searchFieldWidth),
+                modifier = Modifier
+                    .width(searchFieldWidth)
+                    .height(32.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isSearchExpanded,
-                    enter = expandHorizontally(
-                        expandFrom = Alignment.End,
-                        animationSpec = tween(220)
-                    ) + fadeIn(animationSpec = tween(180)),
-                    exit = shrinkHorizontally(
-                        shrinkTowards = Alignment.End,
-                        animationSpec = tween(220)
-                    ) + fadeOut(animationSpec = tween(160))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .padding(end = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
                 ) {
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = onSearchTextChange,
+                    Row(
                         modifier = Modifier
-                            .width(220.dp)
-                            .padding(end = 4.dp),
-                        placeholder = { Text("搜索正文") },
-                        singleLine = true,
-                        trailingIcon = {
-                            Text(
-                                text = searchResultCount.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    )
+                            .fillMaxSize()
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicTextField(
+                            value = searchText,
+                            onValueChange = onSearchTextChange,
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .alpha(searchFieldAlpha),
+                            decorationBox = { innerTextField ->
+                                if (searchText.isEmpty()) {
+                                    Text(
+                                        text = "搜索正文",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        )
+                        Text(
+                            text = searchResultCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.alpha(searchFieldAlpha)
+                        )
+                    }
                 }
             }
 
@@ -664,18 +692,18 @@ fun PostBottomActionBarDuo3(
 
             IconButton(
                 onClick = onSearchToggle,
+                modifier = Modifier.size(32.dp),
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
-                AnimatedContent(targetState = isSearchExpanded, label = "search_toggle_icon") { expanded ->
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = if (expanded) "关闭搜索" else "搜索",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Icon(
+                    imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = if (isSearchExpanded) "关闭搜索" else "搜索",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

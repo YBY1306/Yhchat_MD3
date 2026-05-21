@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.chat
+package aa.bb.chat
 
 import android.content.Intent
 import android.net.Uri
@@ -62,7 +62,6 @@ import com.yhchat.canary.utils.UnifiedLinkHandler
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.ChatMessage
-import java.util.*
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -78,6 +77,9 @@ import com.yhchat.canary.ui.community.SendToChatBottomSheet
 import com.yhchat.canary.data.model.MsgForwardReceive
 import com.yhchat.canary.data.model.StickerItem
 import com.yhchat.canary.ui.bot.InstructionFormActivity
+import com.yhchat.canary.ui.chat.ChatInputBar
+import com.yhchat.canary.ui.chat.ChatInputBarTop
+import com.yhchat.canary.ui.chat.ChatViewModel
 import com.yhchat.canary.ui.components.MenuButtonBar
 import com.yhchat.canary.utils.STTUtils
 
@@ -658,7 +660,7 @@ fun ChatScreen(
     ) {
         // 背景图片
         if (uiState.chatBackgroundUrl != null) {
-            coil.compose.AsyncImage(
+            AsyncImage(
                 model = uiState.chatBackgroundUrl,
                 contentDescription = "聊天背景",
                 modifier = Modifier.fillMaxSize(),
@@ -721,7 +723,7 @@ fun ChatScreen(
                         },
                         text = inputText,
 
-                    )
+                        )
                 }
 
                 // 顶部应用栏（受布局设置控制）
@@ -1295,34 +1297,34 @@ fun ChatScreen(
                     }
 
                     // "回到最新消息"浮动按钮
-                    if(false)
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showScrollToBottomButton,
-                            enter = slideInVertically { it } + fadeIn(),
-                            exit = slideOutVertically { it } + fadeOut(),
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(16.dp)
-                        ) {
-                            FloatingActionButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        shouldStickToBottom = true
-                                        pendingAutoScrollToBottom = false
-                                        // 滚动到最新消息（索引0，因为是 reverseLayout）
-                                        listState.animateScrollToItem(0)
-                                    }
-                                },
-                                modifier = Modifier.size(48.dp),
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "回到最新消息"
-                                )
-                            }
-                        }
+                    if(false){}
+//                        AnimatedVisibility(
+//                            visible = showScrollToBottomButton,
+//                            enter = slideInVertically { it } + fadeIn(),
+//                            exit = slideOutVertically { it } + fadeOut(),
+//                            modifier = Modifier
+//                                .align(Alignment.BottomEnd)
+//                                .padding(16.dp)
+//                        ) {
+//                            FloatingActionButton(
+//                                onClick = {
+//                                    coroutineScope.launch {
+//                                        shouldStickToBottom = true
+//                                        pendingAutoScrollToBottom = false
+//                                        // 滚动到最新消息（索引0，因为是 reverseLayout）
+//                                        listState.animateScrollToItem(0)
+//                                    }
+//                                },
+//                                modifier = Modifier.size(48.dp),
+//                                containerColor = MaterialTheme.colorScheme.primary,
+//                                contentColor = MaterialTheme.colorScheme.onPrimary
+//                            ) {
+//                                Icon(
+//                                    imageVector = Icons.Default.KeyboardArrowDown,
+//                                    contentDescription = "回到最新消息"
+//                                )
+//                            }
+//                        }
                 }
 
                 // 菜单按钮栏（仅群聊显示，且设置允许）
@@ -1365,23 +1367,28 @@ fun ChatScreen(
                         text = inputText,
                         onTextChange = { inputText = it },
                         onSendMessage = {
-                            if (inputText.isNotBlank()||true) {
+                            if (inputText.isNotBlank() || true) {
                                 val messageText = inputText
 
                                 val mentionedIdsList = mutableListOf<String>()
                                 val mentionRegex = Regex("@([^\\s@]+)")
                                 mentionRegex.findAll(messageText).forEach { matchResult ->
                                     val userName = matchResult.groupValues[1]
-                                    mentionedUsers.entries.find { it.value == userName }?.let { entry ->
-                                        mentionedIdsList.add(entry.key)
-                                    }
+                                    mentionedUsers.entries.find { it.value == userName }
+                                        ?.let { entry ->
+                                            mentionedIdsList.add(entry.key)
+                                        }
                                 }
 
                                 if (selectedInstruction != null) {
-                                    Log.d("ChatScreen", "📤 发送指令消息: /${selectedInstruction?.name}, commandId=${selectedInstruction?.id}, text=$messageText")
+                                    Log.d(
+                                        "ChatScreen",
+                                        "📤 发送指令消息: /${selectedInstruction?.name}, commandId=${selectedInstruction?.id}, text=$messageText"
+                                    )
                                 } else {
-                                    Log.d("ChatScreen", "📤 发送普通消息: $messageText" +
-                                            if (mentionedIdsList.isNotEmpty()) ", @${mentionedIdsList.size}人: $mentionedIdsList" else ""
+                                    Log.d(
+                                        "ChatScreen", "📤 发送普通消息: $messageText" +
+                                                if (mentionedIdsList.isNotEmpty()) ", @${mentionedIdsList.size}人: $mentionedIdsList" else ""
                                     )
                                 }
 
@@ -1479,7 +1486,10 @@ fun ChatScreen(
                             quotedVideoTime = null
                         },
                         onInstructionClick = { instruction ->
-                            Log.d("ChatScreen", "🎯 用户点击指令: /${instruction.name} (id=${instruction.id}, type=${instruction.type})")
+                            Log.d(
+                                "ChatScreen",
+                                "🎯 用户点击指令: /${instruction.name} (id=${instruction.id}, type=${instruction.type})"
+                            )
 
                             when (instruction.type) {
                                 1 -> {
@@ -1488,6 +1498,7 @@ fun ChatScreen(
                                         inputText = instruction.defaultText
                                     }
                                 }
+
                                 2 -> {
                                     val textToSend = "/${instruction.name}"
                                     selectedInstruction = instruction
@@ -1511,6 +1522,7 @@ fun ChatScreen(
                                     quotedVideoUrl = null
                                     quotedVideoTime = null
                                 }
+
                                 5 -> {
                                     InstructionFormActivity.start(
                                         context = context,
@@ -1520,6 +1532,7 @@ fun ChatScreen(
                                         chatName = chatName
                                     )
                                 }
+
                                 else -> {
                                     selectedInstruction = instruction
                                 }
@@ -1542,7 +1555,7 @@ fun ChatScreen(
                                 top = 1.dp,
                                 bottom = 0.dp
                             ),
-                        onHideInputBar={showInputBar=false}//TODO
+                        onHideInputBar = { showInputBar = false }//TODO
                     )
                 }
             }  // 闭合Column

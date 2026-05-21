@@ -42,7 +42,7 @@ sed -i 's!@HiltAndroidApp!open!' "${canaryApplication_kt}"
 
 ---
 
-# 以下是请教AI后，AI给的说明
+# 以下是之前请教AI后，AI给的说明
 
 ~不过我已撤销了对主模块的修改，所以还是要在编译时手动进行临时修改~
 

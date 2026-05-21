@@ -1,5 +1,4 @@
-
-package com.yhchat.canary.ui.wear.login
+package com.yhchat.canary.watch.ui.login
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

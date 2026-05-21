@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.chat
+package com.yhchat.canary.watch.ui.chat
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

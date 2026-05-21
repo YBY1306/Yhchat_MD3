@@ -1,10 +1,10 @@
 package com.yhchat.canary.watch.ui.chat
 
-import aa.bb.chat.ChatScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -19,11 +19,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.File
 
 @AndroidEntryPoint
 class ChatActivity : BaseActivity() {
@@ -157,8 +159,8 @@ class ChatActivity : BaseActivity() {
                                 imagePickerLauncher.launch("image/*")
                             },
                             onCameraClick = {
-                                val photoFile = java.io.File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
-                                cameraImageUri = androidx.core.content.FileProvider.getUriForFile(
+                                val photoFile = File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                cameraImageUri = FileProvider.getUriForFile(
                                     this@ChatActivity,
                                     "${packageName}.fileprovider",
                                     photoFile
@@ -168,11 +170,11 @@ class ChatActivity : BaseActivity() {
                                 }
                             },
                             onFilePickerClick = {
-                                android.util.Log.d("ChatActivity", "📁 启动文件选择器")
+                                Log.d("ChatActivity", "📁 启动文件选择器")
                                 filePickerLauncher.launch("*/*")
                             },
                             onVideoPickerClick = {
-                                android.util.Log.d("ChatActivity", "📹 启动视频选择器")
+                                Log.d("ChatActivity", "📹 启动视频选择器")
                                 videoPickerLauncher.launch("video/*")
                             },
                             imageUriToSend = imageUriToSend,
@@ -193,11 +195,11 @@ class ChatActivity : BaseActivity() {
                                 }
                             },
                             onFileSent = {
-                                android.util.Log.d("ChatActivity", "📁 文件发送完成，清空URI")
+                                Log.d("ChatActivity", "📁 文件发送完成，清空URI")
                                 fileUriToSend = null
                             },
                             onVideoSent = {
-                                android.util.Log.d("ChatActivity", "📹 视频发送完成，清空URI")
+                                Log.d("ChatActivity", "📹 视频发送完成，清空URI")
                                 videoUriToSend = null
                             },
                             searchTargetMsgId = searchTargetMsgId,

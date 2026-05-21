@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.watch.ui.chat.ChatActivity
-import com.yhchat.canary.ui.wear.login.TokenLoginActivity
+import com.yhchat.canary.watch.ui.login.TokenLoginActivity
 import com.yhchat.canary.watch.ui.conversation.ConversationScreen
 import dagger.hilt.android.AndroidEntryPoint
 

@@ -1,4 +1,4 @@
-package aa.bb.chat
+package com.yhchat.canary.watch.ui.chat
 
 import android.content.Intent
 import android.net.Uri
@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,7 +38,6 @@ import androidx.activity.compose.BackHandler
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -77,8 +74,6 @@ import com.yhchat.canary.ui.community.SendToChatBottomSheet
 import com.yhchat.canary.data.model.MsgForwardReceive
 import com.yhchat.canary.data.model.StickerItem
 import com.yhchat.canary.ui.bot.InstructionFormActivity
-import com.yhchat.canary.ui.chat.ChatInputBar
-import com.yhchat.canary.ui.chat.ChatInputBarTop
 import com.yhchat.canary.ui.chat.ChatViewModel
 import com.yhchat.canary.ui.components.MenuButtonBar
 import com.yhchat.canary.utils.STTUtils

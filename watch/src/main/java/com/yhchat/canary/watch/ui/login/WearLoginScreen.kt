@@ -23,9 +23,9 @@ import com.yhchat.canary.ui.login.LoginViewModel
 
 
 @Composable
-fun WearAppLoginScreen(
+fun TokenLoginScreen(
     loginViewModel: LoginViewModel = viewModel(),
-    loginActivity: WearLoginActivity? = null,
+    loginActivity: TokenLoginActivity? = null,
     context: Context
 ) {
     val tokenRepository = RepositoryFactory.getTokenRepository(context)

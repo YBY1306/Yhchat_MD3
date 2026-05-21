@@ -9,12 +9,12 @@ import com.yhchat.canary.ui.login.LoginViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class WearLoginActivity : ComponentActivity() {
+class TokenLoginActivity : ComponentActivity() {
     private val loginViewModel: LoginViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            WearAppLoginScreen(loginViewModel, this, this)
+            TokenLoginScreen(loginViewModel, this, this)
         }
     }
 }

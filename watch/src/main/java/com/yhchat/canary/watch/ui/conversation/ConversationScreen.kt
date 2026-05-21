@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.conversation
+package com.yhchat.canary.watch.ui.conversation
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -32,6 +32,8 @@ import com.yhchat.canary.R
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.components.ConversationMenuDialog
+import com.yhchat.canary.ui.components.ScrollAwareNavigationState
+import com.yhchat.canary.ui.conversation.ConversationViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,7 +49,7 @@ fun ConversationScreen(
     _to_loginfun_xxxx:(()->Unit)?=null,
     onSearchClick: () -> Unit={},
     onMenuClick: () -> Unit={},
-    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
+    navigationState: ScrollAwareNavigationState? = null
 ) {
     val ctx = LocalContext.current
 

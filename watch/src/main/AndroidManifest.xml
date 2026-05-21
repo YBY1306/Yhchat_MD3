@@ -12,7 +12,7 @@
         android:theme="@style/Theme.YhchatCanary"
         tools:replace="android:name">
         <activity
-            android:name=".MainActivity"
+            android:name=".watch.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.YhchatCanary"

@@ -36,7 +36,7 @@
             android:label="登录"
             android:theme="@style/Theme.YhchatCanary">
         </activity>
-<!--        <activity android:name=".ui.chat.ChatAddActivity" tools:remove="true"/>-->
+        <activity android:name=".ui.chat.ChatAddActivity" tools:node="remove"/>
         <activity android:name=".watch.ui.chat.ChatAddActivity" tools:remove="true"/>
         <activity-alias
             android:name=".ui.chat.ChatAddActivity"

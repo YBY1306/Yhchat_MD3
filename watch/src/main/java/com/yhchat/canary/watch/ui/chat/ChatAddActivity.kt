@@ -211,7 +211,7 @@ fun ChatAddScreen(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(1f)
                 .wrapContentHeight(),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {

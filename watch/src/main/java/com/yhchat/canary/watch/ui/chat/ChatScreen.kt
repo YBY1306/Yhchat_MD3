@@ -77,6 +77,8 @@ import com.yhchat.canary.ui.bot.InstructionFormActivity
 import com.yhchat.canary.ui.chat.ChatViewModel
 import com.yhchat.canary.ui.components.MenuButtonBar
 import com.yhchat.canary.utils.STTUtils
+import com.yhchat.canary.watch.ui.chat.components.ChatInputBar
+import com.yhchat.canary.watch.ui.chat.components.ChatInputBarTop
 
 /**
  * 聊天界面

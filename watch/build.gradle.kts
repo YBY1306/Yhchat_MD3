@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.yhchat.canary"
+    namespace = "com.yhchat.canary.watch"
     compileSdk {
         version = release(36)
     }

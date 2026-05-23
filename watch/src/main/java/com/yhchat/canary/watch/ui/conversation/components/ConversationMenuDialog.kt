@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
@@ -91,7 +92,16 @@ fun ConversationMenuDialog(
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
+                    // 对话信息按钮
+                    MenuButton(
+                        icon = Icons.Filled.Info,
+                        text = "对话信息" ,
+                        onClick = {
+                            onDismiss()
+                        }
+                    )
+
                     // 置顶/取消置顶按钮
                     MenuButton(
                         icon = if (isSticky) Icons.Filled.PushPin else Icons.Outlined.PushPin,

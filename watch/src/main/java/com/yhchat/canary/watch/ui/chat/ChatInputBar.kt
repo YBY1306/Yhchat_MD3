@@ -93,7 +93,7 @@ fun ChatInputBarTop(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    if (showExpressionPicker||isVoiceMode)
+                    if (showExpressionPicker || isVoiceMode)
                         MaterialTheme.colorScheme.primary
                     else
                         MaterialTheme.colorScheme.surfaceVariant,
@@ -1263,7 +1263,11 @@ fun ChatInputBar(
                     chatPrefs.edit().putInt("default_send_message_type", newDefaultType).apply()
                 },
                 selectedMessageType = selectedMessageType,
-                onSendMessage=    currentOnSendMessage
+                onSendEmptyMessage= {
+                    showAttachMenu=false
+                    currentOnSendMessage()
+                    onHideInputBar?.invoke()
+                },
             )
 
         }
@@ -1434,7 +1438,7 @@ fun AttachmentMenuWear(
     defaultMessageType: Int = 1,
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1,
-    onSendMessage:()->Unit= { null },
+    onSendEmptyMessage:()->Unit= { null },
 
 ) {
     if (!expanded) return
@@ -1473,7 +1477,8 @@ fun AttachmentMenuWear(
                 }
         ) {
             Box(
-                Modifier.fillMaxSize()
+                Modifier
+                    .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f))
                     .clickable {
                         scope.launch {
@@ -1517,7 +1522,11 @@ fun AttachmentMenuWear(
                                     .width(40.dp)
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp))
-                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.4f
+                                        )
+                                    )
                             )
                         }
 
@@ -1542,7 +1551,7 @@ fun AttachmentMenuWear(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onSendMessage() }
+                                        .clickable { onSendEmptyMessage() }
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -1556,7 +1565,7 @@ fun AttachmentMenuWear(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                           //TODO
+                                            //TODO
                                         }
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically

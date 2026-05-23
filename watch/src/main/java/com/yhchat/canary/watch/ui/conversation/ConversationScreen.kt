@@ -31,9 +31,9 @@ import androidx.wear.compose.material3.AppScaffold
 import com.yhchat.canary.R
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.ui.components.ConversationMenuDialog
 import com.yhchat.canary.ui.components.ScrollAwareNavigationState
 import com.yhchat.canary.ui.conversation.ConversationViewModel
+import com.yhchat.canary.watch.ui.conversation.components.ConversationMenuDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*

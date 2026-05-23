@@ -30,6 +30,12 @@
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.YhchatCanary" />
+        <activity
+            android:name=".watch.ui.login.TokenLoginActivity"
+            android:exported="true"
+            android:label="登录"
+            android:theme="@style/Theme.YhchatCanary">
+        </activity>
     </application>
 
 </manifest>

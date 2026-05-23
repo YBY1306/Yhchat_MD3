@@ -38,6 +38,9 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * 会话列表界面
+ */
 @Composable
 fun ConversationScreen(
     token: String,
@@ -51,34 +54,41 @@ fun ConversationScreen(
     onMenuClick: () -> Unit={},
     navigationState: ScrollAwareNavigationState? = null
 ) {
-    val ctx = LocalContext.current
-
     val uiState by viewModel.uiState.collectAsState()
     val conversations by viewModel.conversations.collectAsState()
     val stickyData by viewModel.stickyData.collectAsState()
 
+    val context = LocalContext.current
+
+    // 列表状态
+    val listState = rememberScalingLazyListState()
+
+    // 长按菜单状态
     var showConversationMenu by remember { mutableStateOf(false) }
     var selectedConversation by remember { mutableStateOf<Conversation?>(null) }
     var isSelectedConversationSticky by remember { mutableStateOf(false) }
+
+    // 协程作用域
     val coroutineScope = rememberCoroutineScope()
 
-    val context = LocalContext.current
+    // 设置tokenRepository（只在第一次或tokenRepository变化时执行）
+    LaunchedEffect(tokenRepository) {
+        tokenRepository?.let { viewModel.setTokenRepository(it) }
+    }
+    // 启动WebSocket连接（只在第一次或token/userId变化时执行）
+    // 检查是否禁用了 WebSocket
     val isWebSocketDisabledValue = remember {
         context
             .getSharedPreferences("display_settings", 0)
             .getBoolean("disable_websocket", false)
     }
-
-    LaunchedEffect(tokenRepository) {
-        tokenRepository?.let { viewModel.setTokenRepository(it) }
-    }
-
     LaunchedEffect(token, userId, isWebSocketDisabledValue) {
         if (token.isNotEmpty() && userId.isNotEmpty() && !isWebSocketDisabledValue) {//TODO
             viewModel.startWebSocket(userId)
         }
     }
 
+    // 每次进入页面都拉取一次
     LaunchedEffect(token) {
         if (token.isNotEmpty() || true) {//TODO
             viewModel.loadConversations(token)//参数未使用
@@ -86,7 +96,6 @@ fun ConversationScreen(
         }
     }
 
-    val listState = rememberScalingLazyListState()
 
     AppScaffold(
         modifier = modifier.fillMaxSize(),
@@ -219,6 +228,7 @@ fun ConversationScreen(
         }
     }
 
+    // 长按菜单弹窗
     if (showConversationMenu && selectedConversation != null) {
         ConversationMenuDialog(
             conversation = selectedConversation!!,

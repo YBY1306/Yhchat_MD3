@@ -635,20 +635,6 @@ fun ChatScreen(
     // 下拉刷新状态（刷新最新消息）
     val pullToRefreshState = rememberPullToRefreshState()
 
-
-
-    var xxxffgdgd by remember { mutableStateOf(false) }
-    var xxxsasd by remember { mutableStateOf(false) }
-    var xxxsasaas by remember { mutableStateOf(false) }
-    var xxxreew by remember { mutableStateOf(false) }
-    var xxchytd by remember { mutableStateOf(false) }
-
-
-    var _xxx_is_biaoqing_on: Boolean = false
-    var _xxx_is_yuyin_on: Boolean = false
-    var _xxx_is_biaoqinxxg_on: Boolean = false
-    var _xxx_is_bihjgaoqing_on: Boolean = false
-
     // 应用聊天背景
     Box(
         modifier = modifier.fillMaxSize()
@@ -678,7 +664,8 @@ fun ChatScreen(
                     .then(if (!isLargeScreen) Modifier.imePadding() else Modifier)  // 大屏悬浮键盘不推动界面
             ) {
 
-
+                // 底部栏 (Wear版)：滑到底部再下滑时显示输入栏
+                // 的顶部部分
                 if (showInputBar) {
                     ChatInputBarTop(
                         onTextChange = { inputText = it },

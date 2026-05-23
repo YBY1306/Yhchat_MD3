@@ -37,6 +37,7 @@
             android:theme="@style/Theme.YhchatCanary">
         </activity>
 <!--        <activity android:name=".ui.chat.ChatAddActivity" tools:remove="true"/>-->
+        <activity android:name=".watch.ui.chat.ChatAddActivity" tools:remove="true"/>
         <activity-alias
             android:name=".ui.chat.ChatAddActivity"
             android:targetActivity=".watch.ui.chat.ChatAddActivity">

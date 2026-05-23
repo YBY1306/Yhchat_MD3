@@ -73,8 +73,7 @@ fun ConversationMenuDialog(
         ) {
             Card(
                 modifier = modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                    .fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {

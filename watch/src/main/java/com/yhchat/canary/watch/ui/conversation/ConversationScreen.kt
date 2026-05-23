@@ -247,6 +247,9 @@ fun ConversationScreen(
     }
 }
 
+/**
+ * 会话项
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WearConversationItem(
@@ -262,6 +265,7 @@ private fun WearConversationItem(
         else url + "?imageView2/2/w/72/h/72"
     }
 
+    // 性能优化：remember时间格式化对象和结果，避免每次重组都创建新对象
     val timeText = remember(conversation.timestampMs) {
         val sdf = if (System.currentTimeMillis() - conversation.timestampMs < 24 * 60 * 60 * 1000)
             SimpleDateFormat("HH:mm", Locale.getDefault())

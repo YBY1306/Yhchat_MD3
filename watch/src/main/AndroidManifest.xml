@@ -36,6 +36,23 @@
             android:label="登录"
             android:theme="@style/Theme.YhchatCanary">
         </activity>
+<!--        <activity android:name=".ui.chat.ChatAddActivity" tools:remove="true"/>-->
+        <activity-alias
+            android:name=".ui.chat.ChatAddActivity"
+            android:targetActivity=".watch.ui.chat.ChatAddActivity">
+            <!-- 处理yunhu://chat-add链接 -->
+<!--            <intent-filter android:autoVerify="true">-->
+<!--                <action android:name="android.intent.action.VIEW" />-->
+<!--                <category android:name="android.intent.category.DEFAULT" />-->
+<!--                <category android:name="android.intent.category.BROWSABLE" />-->
+<!--                <data android:scheme="yunhu"-->
+<!--                    android:host="chat-add" />-->
+<!--                <data android:scheme="https"-->
+<!--                    android:host="yhfx.jwznb.com" />-->
+<!--                <data android:scheme="yunhu"-->
+<!--                    android:host="jwznb.com" />-->
+<!--            </intent-filter>-->
+        </activity-alias>
     </application>
 
 </manifest>

@@ -1,4 +1,5 @@
 package com.yhchat.canary.watch.ui.chat
+// package com.yhchat.canary.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -189,15 +190,6 @@ fun ChatInputBar(
     voiceViewModel: VoiceMessageViewModel? = null,// 语音消息 ViewModel
 
     onHideInputBar: (() -> Unit)? = null,//TODO
-    _xxx_a1: Boolean = false,
-    _xxx_a2: Boolean = false,
-    _xxx_a3: Boolean = false,
-    _xxx_a4: Boolean = false,
-    _xxx_a5: Boolean = false,
-    _xxx_is_biaoqing_on: Boolean = false,
-    _xxx_is_yuyin_on: Boolean = false,
-    _xxx_is_biaoqinxxg_on: Boolean = false,
-    _xxx_is_bihjgaoqing_on: Boolean = false,
 ) {
     val ctx = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current

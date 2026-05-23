@@ -57,19 +57,21 @@
         </activity>
         <activity-alias
             android:name=".ui.chat.ChatAddActivity"
-            android:targetActivity=".watch.ui.chat.ChatAddActivity">
+            android:targetActivity=".watch.ui.chat.ChatAddActivity"
+            android:exported="true"
+            android:label="添加聊天">
             <!-- 处理yunhu://chat-add链接 -->
-<!--            <intent-filter android:autoVerify="true">-->
-<!--                <action android:name="android.intent.action.VIEW" />-->
-<!--                <category android:name="android.intent.category.DEFAULT" />-->
-<!--                <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                <data android:scheme="yunhu"-->
-<!--                    android:host="chat-add" />-->
-<!--                <data android:scheme="https"-->
-<!--                    android:host="yhfx.jwznb.com" />-->
-<!--                <data android:scheme="yunhu"-->
-<!--                    android:host="jwznb.com" />-->
-<!--            </intent-filter>-->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yunhu"
+                    android:host="chat-add" />
+                <data android:scheme="https"
+                    android:host="yhfx.jwznb.com" />
+                <data android:scheme="yunhu"
+                    android:host="jwznb.com" />
+            </intent-filter>
         </activity-alias>
     </application>
 

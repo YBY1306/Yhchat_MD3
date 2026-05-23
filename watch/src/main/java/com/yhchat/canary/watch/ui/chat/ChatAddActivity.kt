@@ -179,7 +179,7 @@ fun ChatAddScreen(
     modifier: Modifier = Modifier
 ) {
     val isWatch=true
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
 
     val uiState by viewModel.uiState.collectAsState()
     

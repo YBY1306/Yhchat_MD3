@@ -1047,7 +1047,8 @@ fun ChatScreen(
                                                 msg.content.text?.let { text ->
                                                     viewModel.sendMessage(
                                                         text = text,
-                                                        contentType = msg.contentType
+                                                        contentType = msg.contentType,
+                                                        isSendTextAllowEmptySetting = true,
                                                     )
                                                     Toast.makeText(context, "+1 文本消息已发送", Toast.LENGTH_SHORT).show()
                                                 } ?: Toast.makeText(context, "消息内容为空", Toast.LENGTH_SHORT).show()
@@ -1407,7 +1408,8 @@ fun ChatScreen(
                                     },
                                     onError = { error ->
                                         Log.e("ChatScreen", "发送消息失败: $error")
-                                    }
+                                    },
+                                    isSendTextAllowEmptySetting = true,
                                 )
                             }
                         },
@@ -1495,7 +1497,8 @@ fun ChatScreen(
                                         quoteImageName = quotedImageName,
                                         quoteVideoUrl = quotedVideoUrl,
                                         quoteVideoTime = quotedVideoTime,
-                                        commandId = instruction.id
+                                        commandId = instruction.id,
+                                        isSendTextAllowEmptySetting = true,
                                     )
                                     inputText = ""
                                     selectedInstruction = null

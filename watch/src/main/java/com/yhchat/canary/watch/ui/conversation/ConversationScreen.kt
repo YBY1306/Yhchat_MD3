@@ -163,7 +163,7 @@ fun ConversationScreen(
                             items = pinnedConversations,
                             key = { "wear_pinned_${it.chatId}" }
                         ) { conversation ->
-                            WearConversationItem(
+                            ConversationItem(
                                 conversation = conversation,
                                 onClick = {
                                     viewModel.markConversationAsRead(
@@ -200,7 +200,7 @@ fun ConversationScreen(
                         items = regularConversations,
                         key = { "wear_conv_${it.chatId}" }
                     ) { conversation ->
-                        WearConversationItem(
+                        ConversationItem(
                             conversation = conversation,
                             onClick = {
                                 viewModel.markConversationAsRead(
@@ -252,7 +252,7 @@ fun ConversationScreen(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WearConversationItem(
+private fun ConversationItem(
     conversation: Conversation,
     onClick: () -> Unit,
     onLongClick: () -> Unit

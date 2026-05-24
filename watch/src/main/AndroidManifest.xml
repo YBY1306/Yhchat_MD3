@@ -73,6 +73,17 @@
                     android:host="jwznb.com" />
             </intent-filter>
         </activity-alias>
+        <activity android:name="com.yhchat.canary.ui.sticker.StickerPackDetailActivity" tools:node="remove"/>
+        <activity
+            android:name=".ui.sticker.StickerPackDetailActivity"
+            android:exported="false"
+            android:label="表情包详情"
+            android:theme="@style/Theme.YhchatCanary" />
+        <activity-alias
+            android:name="com.yhchat.canary.ui.sticker.StickerPackDetailActivity"
+            android:targetActivity=".ui.sticker.StickerPackDetailActivity"
+            android:exported="false"
+            android:label="表情包详情"/>
     </application>
 
 </manifest>

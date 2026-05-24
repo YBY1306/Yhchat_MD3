@@ -1458,13 +1458,15 @@ fun AttachmentMenuWear(
                 .pointerInput(parentHeight) {
                     if (parentHeight <= 0f) return@pointerInput
                     detectVerticalDragGestures(
-                        onDragEnd = {
+                        onDragEnd = {//松手时
                             scope.launch {
-                                if (offsetY.value > 0.35f) {
-                                    offsetY.animateTo(1f)
-                                    onDismissRequest()
-                                } else {
-                                    offsetY.animateTo(0f)
+                                //数字是从上往下算的位置
+                                //而不是拖动的相对偏移量
+                                if (offsetY.value > 0.35f) {//未能把它拖到屏幕上方
+                                    offsetY.animateTo(1f)//它又自己掉下去了
+                                    onDismissRequest()//取消
+                                } else {//成功把它拖到屏幕上方
+                                    offsetY.animateTo(0f)//自动"站稳"
                                 }
                             }
                         }
@@ -1504,7 +1506,7 @@ fun AttachmentMenuWear(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset { IntOffset(0, (offsetY.value * parentHeight).roundToInt()) }
+                    .offset { IntOffset(0, (offsetY.value * parentHeight).roundToInt()) }//似乎这里是根据那个拖动的位置来改变它显示的大小位置
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

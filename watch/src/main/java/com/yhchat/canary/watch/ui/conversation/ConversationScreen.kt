@@ -203,12 +203,13 @@ fun ConversationScreen(
                         ) {
                             Button(
                                 onClick = {
-
-                                }
+                                    showOverscrollDialog = true
+                                },
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 Text("840000")
                             }
-                          }
+                        }
                     }
                     if (pinnedConversations.isNotEmpty()) {
                         items(

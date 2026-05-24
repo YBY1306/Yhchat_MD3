@@ -180,11 +180,15 @@ fun ChatInputBarTop(
             )
         }
         if (isVoiceMode){
-            Column(
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading) {
+//                    .weight(1f)
+                    .fillMaxWidth()
+//                    .height(36.dp)
+                    .padding(horizontal = 8.dp)
+                    .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading,) {
                         detectTapGestures(
                             onPress = {
                                 Log.d("ChatInputBar", "voice press down")
@@ -244,7 +248,7 @@ fun ChatInputBarTop(
                 Icon(
                     imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+//                    modifier = Modifier.size(16.dp),
                     tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(

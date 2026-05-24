@@ -363,7 +363,7 @@ fun MessageItem(
 
 
     if (showContextMenuDialog) {
-        MessageContextMenu(
+        com.yhchat.canary.watch.ui.chat.ChatComponents.MessageContextMenu(
             message = message,
             showRecall = when (conversationChatType) {
                 2 -> message.msgDeleteTime == null

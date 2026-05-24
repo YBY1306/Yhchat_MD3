@@ -187,7 +187,7 @@ fun ChatInputBarTop(
 //                    .weight(1f)
                     .fillMaxWidth()
 //                    .height(36.dp)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
                     .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading,) {
                         detectTapGestures(
                             onPress = {

@@ -175,6 +175,8 @@ fun ConversationScreen(
 //                                return Offset.Zero
 //                            }
 //                        }),
+                    //todo onPre: is at head
+
                     contentPadding = PaddingValues(
                         start = 8.dp, end = 8.dp,
                         top = 4.dp, bottom = 16.dp

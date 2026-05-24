@@ -100,7 +100,6 @@ import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.yhchat.canary.ui.chat.ChatComponents.SingleBotBoardSection
 import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.chat.ChatViewModel
-import com.yhchat.canary.ui.chat.ppp
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 import dagger.hilt.android.AndroidEntryPoint

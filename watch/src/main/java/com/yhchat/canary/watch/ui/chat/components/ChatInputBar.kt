@@ -1467,6 +1467,7 @@ private fun VoiceToTextChoiceDialog(
     onConvertToText: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    androidx.wear.compose.material3.
     AlertDialog(
         onDismissRequest = { if (!isConverting) onCancel() },
         title = {
@@ -1515,7 +1516,8 @@ private fun VoiceToTextChoiceDialog(
                     Text("取消")
                 }
             }
-        }
+        },
+        visible =true,
     )
 }
 

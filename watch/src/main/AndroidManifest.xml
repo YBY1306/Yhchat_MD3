@@ -84,6 +84,12 @@
             android:targetActivity=".ui.sticker.StickerPackDetailActivity"
             android:exported="false"
             android:label="表情包详情"/>
+
+        <activity
+            android:name="com.yhchat.canary.watch.ui.chat.bot.SingleBotBoard"
+            android:exported="true"
+            android:label="表情包详情"
+            android:theme="@style/Theme.YhchatCanary" />
     </application>
 
 </manifest>

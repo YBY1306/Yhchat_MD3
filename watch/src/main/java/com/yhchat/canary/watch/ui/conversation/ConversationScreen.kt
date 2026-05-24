@@ -201,8 +201,14 @@ fun ConversationScreen(
 //                                    }
 //                                }),
                         ) {
-                            Text("840000")
-                        }
+                            Button(
+                                onClick = {
+
+                                }
+                            ) {
+                                Text("840000")
+                            }
+                          }
                     }
                     if (pinnedConversations.isNotEmpty()) {
                         items(

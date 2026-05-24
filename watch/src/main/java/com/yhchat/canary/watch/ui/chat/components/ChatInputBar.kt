@@ -71,6 +71,7 @@ import com.yhchat.canary.ui.components.QuotedMessageBar
 import com.yhchat.canary.ui.components.VoiceMessageViewModel
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.utils.STTUtils
+import kotlinx.coroutines.coroutineScope
 import java.io.File
 
 
@@ -83,6 +84,8 @@ fun ChatInputBarTop(
     voiceViewModel: VoiceMessageViewModel? = null ,// 语音消息 ViewModel
     chatId: String? = null, // 聊天ID
     chatType: Long = 1L, // 聊天类型：1-用户，2-群聊，3-机器人
+    onVoiceMessageSend: ((String, String, Long, Long) -> Unit)? = null, // 语音消息发送回调 (fileKey, fileHash, fileSize, audioDuration)
+
     ) {
     val ctx = LocalContext.current
 
@@ -98,6 +101,8 @@ fun ChatInputBarTop(
     // 语音转文字对话框状态
     var showVoiceToTextDialog by remember { mutableStateOf(false) }
     var pendingVoiceFile by remember { mutableStateOf<java.io.File?>(null) }
+    var isConvertingToText by remember { mutableStateOf(false) }
+    var voiceToTextProgress by remember { mutableStateOf("") }
 
     // 权限请求
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -109,6 +114,8 @@ fun ChatInputBarTop(
             Toast.makeText(ctx, "需要麦克风权限才能录音", Toast.LENGTH_SHORT).show()
         }
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
@@ -257,6 +264,70 @@ fun ChatInputBarTop(
             }
         }
 
+        // 语音转文字选择对话框
+        if (showVoiceToTextDialog && pendingVoiceFile != null) {
+            VoiceToTextChoiceDialog(
+                isConverting = isConvertingToText,
+                progress = voiceToTextProgress,
+                onDirectSend = {
+                    // 直接发送语音
+                    showVoiceToTextDialog = false
+                    val file = pendingVoiceFile
+                    pendingVoiceFile = null
+                    if (file != null && voiceViewModel != null && chatId != null) {
+                        voiceViewModel.uploadVoiceFile(
+                            context = ctx,
+                            file = file,
+                            chatId = chatId,
+                            chatType = chatType,
+                            onSuccess = { fileKey, fileHash, fileSize, duration ->
+                                onVoiceMessageSend?.invoke(fileKey, fileHash, fileSize, duration)
+                                isVoiceMode = false
+                            }
+                        )
+                    }
+                },
+                onConvertToText = {
+                    // 转文字
+                    isConvertingToText = true
+                    voiceToTextProgress = "正在识别语音..."
+                    val file = pendingVoiceFile
+                    if (file != null) {
+                        coroutineScope.launch {
+                            com.yhchat.canary.utils.STTUtils.speechToTextFromFile(
+                                context = ctx,
+                                audioFile = file,
+                                onProgress = { progress -> voiceToTextProgress = progress }
+                            ).fold(
+                                onSuccess = { text ->
+                                    // 插入到输入框
+                                    onTextChange(if (text.isNotBlank()) "$text " else text)
+                                    showVoiceToTextDialog = false
+                                    pendingVoiceFile = null
+                                    isConvertingToText = false
+                                    voiceToTextProgress = ""
+                                    isVoiceMode = false
+                                    // 删除临时文件
+                                    file.delete()
+                                },
+                                onFailure = { error ->
+                                    voiceToTextProgress = "识别失败: ${error.message}"
+                                    isConvertingToText = false
+                                    Toast.makeText(ctx, "语音转文字失败: ${error.message}", Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
+                    }
+                },
+                onCancel = {
+                    showVoiceToTextDialog = false
+                    pendingVoiceFile?.delete()
+                    pendingVoiceFile = null
+                    isConvertingToText = false
+                    voiceToTextProgress = ""
+                }
+            )
+        }
     }
 }
 

@@ -169,6 +169,8 @@ fun BotBoardScreen(chatId: String, chatType: Int,
         )
 
     }else
+        if (chatType==3){
+
     SingleBotBoardSection(
         chatId = chatId,
         chatType = chatType,
@@ -176,5 +178,5 @@ fun BotBoardScreen(chatId: String, chatType: Int,
         onOpenBotLlmParams = {  },
         onImageClick = {  },
 //                modifier = null
-    )
+    )}
 }

@@ -80,9 +80,35 @@ fun ChatInputBarTop(
     onStickerClick: ((StickerItem) -> Unit)? = { null },  // 表情包贴纸点击回调\
     onTextChange: (String) -> Unit={},
     text: String,
+    voiceViewModel: VoiceMessageViewModel? = null ,// 语音消息 ViewModel
+    chatId: String? = null, // 聊天ID
+    chatType: Long = 1L, // 聊天类型：1-用户，2-群聊，3-机器人
     ) {
+    val ctx = LocalContext.current
+
     var showExpressionPicker by remember { mutableStateOf(false) }
     var isVoiceMode by remember { mutableStateOf(false) }
+
+    // 语音相关状态
+    val voiceState = voiceViewModel?.voiceState?.collectAsState()?.value
+    val isRecording = voiceState?.isRecording ?: false
+    val isProcessing = voiceState?.isProcessing ?: false
+    val isUploading = voiceState?.isUploading ?: false
+
+    // 语音转文字对话框状态
+    var showVoiceToTextDialog by remember { mutableStateOf(false) }
+    var pendingVoiceFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    // 权限请求
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted && voiceViewModel != null) {
+            voiceViewModel.startRecording(ctx)
+        } else {
+            Toast.makeText(ctx, "需要麦克风权限才能录音", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
@@ -147,7 +173,89 @@ fun ChatInputBarTop(
             )
         }
         if (isVoiceMode){
-            Text("TODO")
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading) {
+                        detectTapGestures(
+                            onPress = {
+                                Log.d("ChatInputBar", "voice press down")
+
+                                if (isProcessing || isUploading) {
+                                    Log.d("ChatInputBar", "voice press ignored: isProcessing=$isProcessing isUploading=$isUploading")
+                                    return@detectTapGestures
+                                }
+
+                                if (voiceViewModel == null || chatId == null) {
+                                    Log.w(
+                                        "ChatInputBar",
+                                        "press ignored: voiceViewModel=${voiceViewModel != null} chatId=$chatId chatType=$chatType isVoiceMode=$isVoiceMode",
+                                        Throwable("ChatInputBar missing voice params")
+                                    )
+                                    Toast.makeText(ctx, "语音功能参数缺失", Toast.LENGTH_SHORT).show()
+                                    return@detectTapGestures
+                                }
+
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    ctx,
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (!hasPermission) {
+                                    Log.d("ChatInputBar", "request RECORD_AUDIO permission")
+                                    Toast.makeText(ctx, "请授予麦克风权限", Toast.LENGTH_SHORT).show()
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    return@detectTapGestures
+                                }
+
+                                Log.d("ChatInputBar", "startRecording")
+                                voiceViewModel.startRecording(ctx)
+
+                                val released = tryAwaitRelease()
+                                if (released) {
+                                    Log.d("ChatInputBar", "voice released, show dialog")
+                                    // 停止录音但不上传，等待用户选择
+                                    voiceViewModel.stopRecordingOnly(ctx) { file ->
+                                        if (file != null) {
+                                            pendingVoiceFile = file
+                                            showVoiceToTextDialog = true
+                                        } else {
+                                            Toast.makeText(ctx, "录音失败", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } else {
+                                    Log.d("ChatInputBar", "cancelRecording")
+                                    voiceViewModel.cancelRecording()
+                                }
+                            }
+                        )
+                    },
+
+
+                ) {
+                Text("TODO")
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = when {
+                        isRecording -> "正在录制..."
+                        isUploading -> "上传中..."
+                        isProcessing -> "处理中..."
+                        else -> "长按说话"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when {
+                        isRecording -> MaterialTheme.colorScheme.error
+                        isUploading || isProcessing -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
         }
 
     }

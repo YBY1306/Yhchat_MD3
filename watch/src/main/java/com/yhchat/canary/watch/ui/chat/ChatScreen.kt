@@ -706,8 +706,8 @@ fun ChatScreen(
                             quotedVideoTime = null
                         },
                         text = inputText,
-
-                        )
+                        voiceViewModel = voiceMessageViewModel,
+                    )
                 }
 
                 // 顶部应用栏（受布局设置控制）

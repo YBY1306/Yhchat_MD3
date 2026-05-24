@@ -86,7 +86,7 @@
             android:label="表情包详情"/>
 
         <activity
-            android:name="com.yhchat.canary.watch.ui.chat.bot.SingleBotBoardActivity"
+            android:name="com.yhchat.canary.watch.ui.chat.bot.BotBoardActivity"
             android:exported="true"
             android:label="表情包详情"
             android:theme="@style/Theme.YhchatCanary" />

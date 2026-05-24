@@ -33,7 +33,7 @@ import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 
 
-class SingleBotBoardActivity : ComponentActivity() {
+class BotBoardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

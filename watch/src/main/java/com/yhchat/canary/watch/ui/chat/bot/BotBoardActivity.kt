@@ -139,10 +139,8 @@ class BotBoardActivity : ComponentActivity() {
 @Composable
 fun BotBoardScreen(chatId: String, chatType: Int,
        viewModel: ChatViewModel = viewModel(),
-
-
-       ) {
-        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 如果是机器人聊天，加载机器人信息和看板
     LaunchedEffect(chatId, chatType) {
         if (chatType == 3) {
@@ -158,74 +156,4 @@ fun BotBoardScreen(chatId: String, chatType: Int,
         onImageClick = {  },
 //                modifier = null
     )
-}
-
-@Composable
-fun WearApp(greetingName: String ) {
-    MaterialTheme {
-        AppScaffold {
-            val listState = rememberTransformingLazyColumnState()
-            val transformationSpec = rememberTransformationSpec()
-            ScreenScaffold(
-                scrollState = listState,
-                edgeButton = {
-                    EdgeButton(
-                        onClick = { /*TODO*/ },
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            ),
-                    ) {
-                        Text("More")
-                    }
-                },
-            ) { contentPadding -> // ScreenScaffold provides default padding; adjust as needed
-                TransformingLazyColumn(contentPadding = contentPadding, state = listState) {
-                    item {
-                        ListHeader(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .transformedHeight(this, transformationSpec),
-                            transformation = SurfaceTransformation(transformationSpec),
-                        ) {
-                            Text(text = stringResource(R.string.app_name, greetingName))
-                        }
-                    }
-
-                    item {
-                        Button(
-                            onClick = { /*TODO*/ },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
-                            transformation = SurfaceTransformation(transformationSpec),
-                        ) {
-                            Text("Button B")
-                        }
-                    }
-                    item {
-                        Button(
-                            onClick = { /*TODO*/ },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
-                            transformation = SurfaceTransformation(transformationSpec),
-                        ) {
-                            Text("Button C")
-                        }
-                    }
-
-                }
-            }
-        }
-    }
-}
-
-@WearPreviewDevices
-@WearPreviewFontScales
-@Composable
-fun DefaultPreview() {
-    WearApp("Preview Android")
 }

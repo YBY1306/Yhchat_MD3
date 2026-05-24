@@ -7,14 +7,78 @@ package com.yhchat.canary.watch.ui.chat.bot
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yhchat.canary.BuildConfig
+import com.yhchat.canary.data.api.ApiClient
+import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.data.model.MsgForwardReceive
+import com.yhchat.canary.ui.bot.BotDetailActivity
+import com.yhchat.canary.ui.chat.ChatComponents.*
+import com.yhchat.canary.ui.community.SendToChatBottomSheet
+import com.yhchat.canary.ui.components.ChatInputBar
+import com.yhchat.canary.ui.components.ImageViewer
+import com.yhchat.canary.ui.components.MultiSelectBottomBar
+import com.yhchat.canary.ui.components.VoiceMessageViewModel
+import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.components.rememberIntPreference
+import com.yhchat.canary.ui.live.LiveRoomLauncher
+import com.yhchat.canary.ui.live.LiveRoomsBottomSheet
+import com.yhchat.canary.ui.live.LiveRoomsViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.util.*
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,12 +100,15 @@ import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.yhchat.canary.ui.chat.ChatComponents.SingleBotBoardSection
 import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.chat.ChatViewModel
+import com.yhchat.canary.ui.chat.ppp
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 
 class BotBoardActivity : ComponentActivity() {
-  val  viewModel: ChatViewModel by viewModels()
+//  val  viewModel: ChatViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +118,7 @@ class BotBoardActivity : ComponentActivity() {
 
         setContent {
 //            WearApp("Android")
-            pp(chatId,chatType)
+            pppp(chatId,chatType)
         }
     }
 
@@ -69,18 +136,19 @@ class BotBoardActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
-fun pp(chatId: String, chatType: Int,
+fun pppp(chatId: String, chatType: Int,
        viewModel: ChatViewModel = viewModel(),
 
 
-) {
+       ) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     SingleBotBoardSection(
         chatId = chatId,
         chatType = chatType,
-        uiState = ChatUiState(),
+        uiState =uiState,
         onOpenBotLlmParams = {  },
         onImageClick = {  },
 //                modifier = null

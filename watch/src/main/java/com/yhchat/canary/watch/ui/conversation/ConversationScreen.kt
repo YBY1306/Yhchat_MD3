@@ -7,11 +7,17 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -67,6 +73,9 @@ fun ConversationScreen(
     var showConversationMenu by remember { mutableStateOf(false) }
     var selectedConversation by remember { mutableStateOf<Conversation?>(null) }
     var isSelectedConversationSticky by remember { mutableStateOf(false) }
+
+    // 下拉到顶时显示对话框
+    var showOverscrollDialog by remember { mutableStateOf(false) }
 
     // 协程作用域
     val coroutineScope = rememberCoroutineScope()
@@ -151,7 +160,20 @@ fun ConversationScreen(
 
                 ScalingLazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(object : NestedScrollConnection {
+                            override fun onPostScroll(
+                                consumed: Offset,
+                                available: Offset,
+                                source: NestedScrollSource
+                            ): Offset {
+                                if (available.y > 0 && !showOverscrollDialog) {
+                                    showOverscrollDialog = true
+                                }
+                                return Offset.Zero
+                            }
+                        }),
                     contentPadding = PaddingValues(
                         start = 8.dp, end = 8.dp,
                         top = 4.dp, bottom = 16.dp
@@ -242,6 +264,20 @@ fun ConversationScreen(
             },
             onDelete = {
                 selectedConversation?.let { viewModel.deleteConversation(it.chatId) }
+            }
+        )
+    }
+
+    // 下拉到顶弹窗
+    if (showOverscrollDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverscrollDialog = false },
+            title = { Text("HelloWorld") },
+            text = { Text("HelloWorld") },
+            confirmButton = {
+                TextButton(onClick = { showOverscrollDialog = false }) {
+                    Text("OK")
+                }
             }
         )
     }

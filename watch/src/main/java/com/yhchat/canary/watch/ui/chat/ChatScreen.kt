@@ -874,7 +874,7 @@ fun ChatScreen(
                                         )
                                 }
 
-                                com.yhchat.canary.ui.chat.ChatComponents.AnimatedMessageItem(
+                                com.yhchat.canary.watch.ui.chat.ChatComponents.AnimatedMessageItem(
                                     message = message,
                                     isMyMessage = viewModel.isMyMessage(message),
                                     conversationChatType = chatType,

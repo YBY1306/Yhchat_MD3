@@ -148,6 +148,20 @@ fun BotBoardScreen(chatId: String, chatType: Int,
             viewModel.loadBotBoard(chatId, chatType)
         }
     }
+    if (chatType==2){
+        // 群聊中的机器人看板列表
+        GroupBotBoardsSection(
+            chatType = chatType,
+            groupBots = uiState.groupBots,
+            groupBotBoards = uiState.groupBotBoards,
+            botLlmRefParams = uiState.botLlmRefParams.associate { it.botId to it.botNickname },
+            botLlmParamValues = uiState.botLlmParamValues,
+            onOpenBotLlmParams = {   },
+            modifier = Modifier.zIndex(2f),
+            onImageClick = {              }
+        )
+
+    }else
     SingleBotBoardSection(
         chatId = chatId,
         chatType = chatType,

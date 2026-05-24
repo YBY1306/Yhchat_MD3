@@ -153,7 +153,7 @@ fun ConversationMenuDialog(
                     }
 
                     // TODO KanBan
-                    if (conversation.chatType == 2 /*group*/ || conversation.chatType == 3 /*bot*/) {
+                    if (conversation.chatType == 2 /*group*/ || conversation.chatType == 3 /*bot*/ || true ) {
                         MenuButton(
                             icon = Icons.Filled.Info,
                             text = "KanBan",

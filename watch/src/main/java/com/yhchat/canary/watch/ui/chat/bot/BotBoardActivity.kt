@@ -117,7 +117,7 @@ class BotBoardActivity : ComponentActivity() {
 
         setContent {
 //            WearApp("Android")
-            pppp(chatId,chatType)
+            BotBoardScreen(chatId,chatType)
         }
     }
 
@@ -137,7 +137,7 @@ class BotBoardActivity : ComponentActivity() {
 }
 
 @Composable
-fun pppp(chatId: String, chatType: Int,
+fun BotBoardScreen(chatId: String, chatType: Int,
        viewModel: ChatViewModel = viewModel(),
 
 

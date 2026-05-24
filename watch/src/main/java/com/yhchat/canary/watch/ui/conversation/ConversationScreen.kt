@@ -180,6 +180,7 @@ fun ConversationScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    item{ Text("840000") }
                     if (pinnedConversations.isNotEmpty()) {
                         items(
                             items = pinnedConversations,

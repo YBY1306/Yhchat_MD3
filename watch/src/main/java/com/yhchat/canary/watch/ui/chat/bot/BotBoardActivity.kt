@@ -29,6 +29,9 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
+import com.yhchat.canary.ui.chat.ChatComponents.GroupBotBoardsSection
+import com.yhchat.canary.ui.chat.ChatComponents.SingleBotBoardSection
+import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 
@@ -38,10 +41,18 @@ class BotBoardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: ""
-        val chatType = intent.getStringExtra(EXTRA_CHAT_TYPE) ?: ""
+        val chatType = intent.getIntExtra(EXTRA_CHAT_TYPE,0)
 
         setContent {
-            WearApp("Android")
+//            WearApp("Android")
+            SingleBotBoardSection(
+                chatId = chatId,
+                chatType = chatType,
+                uiState = ChatUiState(),
+                onOpenBotLlmParams = {  },
+                onImageClick = {  },
+//                modifier = null
+            )
         }
     }
 

@@ -168,7 +168,7 @@ fun ConversationScreen(
                                 available: Offset,
                                 source: NestedScrollSource
                             ): Offset {
-                                if (available.y > 0 && !showOverscrollDialog) {
+                                if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
                                     showOverscrollDialog = true
                                 }
                                 return Offset.Zero

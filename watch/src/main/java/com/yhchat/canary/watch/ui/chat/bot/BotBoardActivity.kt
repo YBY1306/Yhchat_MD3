@@ -126,7 +126,7 @@ class BotBoardActivity : ComponentActivity() {
         private const val EXTRA_CHAT_TYPE = "chat_type"
 
         fun start(context: Context, chatId: String, chatType: Int = 0 ) {
-            val intent = Intent(context, UserDetailActivity::class.java).apply {
+            val intent = Intent(context, BotBoardActivity::class.java).apply {
                 putExtra(EXTRA_CHAT_ID, chatId)
                 putExtra(EXTRA_CHAT_TYPE, chatType)
 //                groupId?.let { putExtra(EXTRA_GROUP_ID, it)                }

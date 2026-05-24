@@ -154,17 +154,16 @@ fun BotBoardScreen(chatId: String, chatType: Int,
             viewModel.loadBotBoard(chatId, chatType)
         }
     }
-    if (chatType==3){
-
+    if (chatType==3)
         SingleBotBoardSection(
             chatId = chatId,
             chatType = chatType,
             uiState =uiState,
-            onOpenBotLlmParams = {  },
-            onImageClick = {  },
+            onOpenBotLlmParams = { /*TODO*/ },
+            onImageClick = { /*TODO*/ },
 //                modifier = null
-        )}
-    else if (chatType==2){
+        )
+    if (chatType==2)
         // 群聊中的机器人看板列表
         GroupBotBoardsSection(
             chatType = chatType,
@@ -172,11 +171,10 @@ fun BotBoardScreen(chatId: String, chatType: Int,
             groupBotBoards = uiState.groupBotBoards,
             botLlmRefParams = uiState.botLlmRefParams.associate { it.botId to it.botNickname },
             botLlmParamValues = uiState.botLlmParamValues,
-            onOpenBotLlmParams = {   },
+            onOpenBotLlmParams = {  /*TODO*/ },
             modifier = Modifier.zIndex(2f),
-            onImageClick = {              }
+            onImageClick = {        /*TODO*/      }
         )
 
-    }
 
 }

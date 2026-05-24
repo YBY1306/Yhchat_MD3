@@ -37,9 +37,8 @@ class BotBoardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
-        val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
-        val groupId = intent.getStringExtra(EXTRA_GROUP_ID)
+        val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: ""
+        val chatType = intent.getStringExtra(EXTRA_CHAT_TYPE) ?: ""
 
         setContent {
             WearApp("Android")
@@ -47,15 +46,14 @@ class BotBoardActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val EXTRA_USER_ID = "user_id"
-        private const val EXTRA_USER_NAME = "user_name"
-        private const val EXTRA_GROUP_ID = "group_id"
+        private const val EXTRA_CHAT_ID = "chat_id"
+        private const val EXTRA_CHAT_TYPE = "chat_type"
 
-        fun start(context: Context, userId: String, userName: String = "", groupId: String? = null) {
+        fun start(context: Context, chatId: String, chatType: Int = 0 ) {
             val intent = Intent(context, UserDetailActivity::class.java).apply {
-                putExtra(EXTRA_USER_ID, userId)
-                putExtra(EXTRA_USER_NAME, userName)
-                groupId?.let { putExtra(EXTRA_GROUP_ID, it) }
+                putExtra(EXTRA_CHAT_ID, chatId)
+                putExtra(EXTRA_CHAT_TYPE, chatType)
+//                groupId?.let { putExtra(EXTRA_GROUP_ID, it)                }
             }
             context.startActivity(intent)
         }

@@ -12,7 +12,7 @@
         <!-- 启用边到边显示 -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <!-- 不在手机界面上显示标题栏（应用名称）-->
-        <item name="android:windowNoTitle">true</item>
+        <!-- <item name="android:windowNoTitle">true</item> -->
         <!---->
         <item name="android:windowActionBar">false</item>
         <!---->

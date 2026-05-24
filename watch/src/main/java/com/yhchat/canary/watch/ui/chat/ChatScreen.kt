@@ -707,6 +707,8 @@ fun ChatScreen(
                         },
                         text = inputText,
                         voiceViewModel = voiceMessageViewModel,
+                        chatId = chatId,
+                        chatType = chatType.toLong(),
                     )
                 }
 

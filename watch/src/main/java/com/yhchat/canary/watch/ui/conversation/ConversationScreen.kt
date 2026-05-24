@@ -161,19 +161,19 @@ fun ConversationScreen(
                 ScalingLazyColumn(
                     state = listState,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(object : NestedScrollConnection {
-                            override fun onPostScroll(
-                                consumed: Offset,
-                                available: Offset,
-                                source: NestedScrollSource
-                            ): Offset {
-                                if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
-                                    showOverscrollDialog = true
-                                }
-                                return Offset.Zero
-                            }
-                        }),
+                        .fillMaxSize(),
+//                        .nestedScroll(object : NestedScrollConnection {
+//                            override fun onPostScroll(
+//                                consumed: Offset,
+//                                available: Offset,
+//                                source: NestedScrollSource
+//                            ): Offset {
+//                                if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
+//                                    showOverscrollDialog = true
+//                                }
+//                                return Offset.Zero
+//                            }
+//                        }),
                     contentPadding = PaddingValues(
                         start = 8.dp, end = 8.dp,
                         top = 4.dp, bottom = 16.dp

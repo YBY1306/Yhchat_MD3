@@ -248,7 +248,7 @@ fun ChatInputBarTop(
                 Icon(
                     imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
                     contentDescription = null,
-//                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp),
                     tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(

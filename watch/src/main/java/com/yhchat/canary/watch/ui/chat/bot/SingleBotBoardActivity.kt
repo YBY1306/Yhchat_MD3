@@ -8,8 +8,6 @@ package com.yhchat.canary.watch.ui.chat.bot
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,7 +33,7 @@ import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 
 
-class SingleBotBoard : ComponentActivity() {
+class SingleBotBoardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

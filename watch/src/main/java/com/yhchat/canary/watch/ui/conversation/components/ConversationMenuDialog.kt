@@ -152,6 +152,18 @@ fun ConversationMenuDialog(
                         )
                     }
 
+                    // TODO KanBan
+                    if (conversation.chatType == 2 /*group*/ || conversation.chatType == 3 /*bot*/) {
+                        MenuButton(
+                            icon = Icons.Filled.Info,
+                            text = "KanBan",
+                            onClick = {
+                                //TODO
+                                onDismiss()
+                            }
+                        )
+                    }
+
                     // 置顶/取消置顶按钮
                     MenuButton(
                         icon = if (isSticky) Icons.Filled.PushPin else Icons.Outlined.PushPin,

@@ -121,7 +121,7 @@ fun ChatInputBarTop(
         modifier = Modifier.fillMaxWidth(), // 填充宽度以显示居中效果
         horizontalAlignment = Alignment.CenterHorizontally // 水平居中
     ) {
-        // 按钮 - 圆形背景
+        // 切换按钮 - 圆形背景
         Box(
             modifier = Modifier
                 .size(32.dp)

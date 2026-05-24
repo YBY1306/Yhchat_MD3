@@ -34,6 +34,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.ListHeader
 import com.yhchat.canary.R
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.repository.TokenRepository
@@ -180,7 +181,27 @@ fun ConversationScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    item{ Text("840000") }
+                    item{
+                        ListHeader(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(object : NestedScrollConnection {
+                                    override fun onPostScroll(
+                                        consumed: Offset,
+                                        available: Offset,
+                                        source: NestedScrollSource
+                                    ): Offset {
+                                        val i=0
+                                        if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
+                                            showOverscrollDialog = true
+                                        }
+                                        return Offset.Zero
+                                    }
+                                }),
+                        ) {
+                            Text("840000")
+                        }
+                    }
                     if (pinnedConversations.isNotEmpty()) {
                         items(
                             items = pinnedConversations,

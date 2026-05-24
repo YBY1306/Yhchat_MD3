@@ -270,7 +270,7 @@ fun ConversationScreen(
 
     // 下拉到顶弹窗
     if (showOverscrollDialog) {
-        AlertDialog(
+        androidx.wear.compose.material3. AlertDialog(
             onDismissRequest = { showOverscrollDialog = false },
             title = { Text("HelloWorld") },
             text = { Text("HelloWorld") },
@@ -278,7 +278,8 @@ fun ConversationScreen(
                 TextButton(onClick = { showOverscrollDialog = false }) {
                     Text("OK")
                 }
-            }
+            },
+            visible = true
         )
     }
 }

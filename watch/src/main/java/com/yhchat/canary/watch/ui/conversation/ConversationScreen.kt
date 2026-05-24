@@ -183,21 +183,21 @@ fun ConversationScreen(
                 ) {
                     item{
                         ListHeader(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .nestedScroll(object : NestedScrollConnection {
-                                    override fun onPostScroll(
-                                        consumed: Offset,
-                                        available: Offset,
-                                        source: NestedScrollSource
-                                    ): Offset {
-                                        val i=0
-                                        if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
-                                            showOverscrollDialog = true
-                                        }
-                                        return Offset.Zero
-                                    }
-                                }),
+//                            modifier = Modifier
+//                                .fillMaxSize()
+//                                .nestedScroll(object : NestedScrollConnection {
+//                                    override fun onPostScroll(
+//                                        consumed: Offset,
+//                                        available: Offset,
+//                                        source: NestedScrollSource
+//                                    ): Offset {
+//                                        val i=0
+//                                        if (available.y > 0 && source == NestedScrollSource.Drag && !showOverscrollDialog) {
+//                                            showOverscrollDialog = true
+//                                        }
+//                                        return Offset.Zero
+//                                    }
+//                                }),
                         ) {
                             Text("840000")
                         }

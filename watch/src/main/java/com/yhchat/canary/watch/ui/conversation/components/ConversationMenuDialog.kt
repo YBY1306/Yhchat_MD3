@@ -41,6 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.wear.compose.material3.Dialog
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.ui.group.GroupInfoActivity
+import com.yhchat.canary.watch.ui.chat.bot.BotBoardActivity
 
 /**
  * 会话长按菜单弹窗
@@ -152,13 +153,14 @@ fun ConversationMenuDialog(
                         )
                     }
 
-                    // TODO KanBan
+                    // TODO 看板
                     if (conversation.chatType == 2 /*group*/ || conversation.chatType == 3 /*bot*/ || true ) {
                         MenuButton(
                             icon = Icons.Filled.Info,
-                            text = "KanBan",
+                            text = "查看看板",
                             onClick = {
                                 //TODO
+                                BotBoardActivity.start(context,chatId,chatType)
                                 onDismiss()
                             }
                         )

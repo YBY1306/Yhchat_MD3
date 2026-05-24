@@ -10,10 +10,14 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
@@ -29,30 +33,25 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
-import com.yhchat.canary.ui.chat.ChatComponents.GroupBotBoardsSection
 import com.yhchat.canary.ui.chat.ChatComponents.SingleBotBoardSection
 import com.yhchat.canary.ui.chat.ChatUiState
+import com.yhchat.canary.ui.chat.ChatViewModel
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 
 
 class BotBoardActivity : ComponentActivity() {
+  val  viewModel: ChatViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: ""
         val chatType = intent.getIntExtra(EXTRA_CHAT_TYPE,0)
+//        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
         setContent {
 //            WearApp("Android")
-            SingleBotBoardSection(
-                chatId = chatId,
-                chatType = chatType,
-                uiState = ChatUiState(),
-                onOpenBotLlmParams = {  },
-                onImageClick = {  },
-//                modifier = null
-            )
+            pp(chatId,chatType)
         }
     }
 
@@ -69,6 +68,23 @@ class BotBoardActivity : ComponentActivity() {
             context.startActivity(intent)
         }
     }
+}
+@Composable
+fun pp(chatId: String, chatType: Int,
+       viewModel: ChatViewModel = viewModel(),
+
+
+) {
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    SingleBotBoardSection(
+        chatId = chatId,
+        chatType = chatType,
+        uiState = ChatUiState(),
+        onOpenBotLlmParams = {  },
+        onImageClick = {  },
+//                modifier = null
+    )
 }
 
 @Composable

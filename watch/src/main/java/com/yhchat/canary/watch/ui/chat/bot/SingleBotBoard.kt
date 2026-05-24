@@ -5,6 +5,7 @@
 
 package com.yhchat.canary.watch.ui.chat.bot
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -30,14 +31,35 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
+import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.watch.R
 
 
 class SingleBotBoard : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+        val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
+        val groupId = intent.getStringExtra(EXTRA_GROUP_ID)
+
         setContent {
             WearApp("Android")
+        }
+    }
+
+    companion object {
+        private const val EXTRA_USER_ID = "user_id"
+        private const val EXTRA_USER_NAME = "user_name"
+        private const val EXTRA_GROUP_ID = "group_id"
+
+        fun start(context: Context, userId: String, userName: String = "", groupId: String? = null) {
+            val intent = Intent(context, UserDetailActivity::class.java).apply {
+                putExtra(EXTRA_USER_ID, userId)
+                putExtra(EXTRA_USER_NAME, userName)
+                groupId?.let { putExtra(EXTRA_GROUP_ID, it) }
+            }
+            context.startActivity(intent)
         }
     }
 }

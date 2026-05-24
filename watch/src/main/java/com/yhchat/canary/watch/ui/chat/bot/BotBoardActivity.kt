@@ -143,7 +143,13 @@ fun pppp(chatId: String, chatType: Int,
 
        ) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+    // 如果是机器人聊天，加载机器人信息和看板
+    LaunchedEffect(chatId, chatType) {
+        if (chatType == 3) {
+            viewModel.loadBotInfo(chatId)
+            viewModel.loadBotBoard(chatId, chatType)
+        }
+    }
     SingleBotBoardSection(
         chatId = chatId,
         chatType = chatType,

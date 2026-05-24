@@ -136,7 +136,7 @@ fun ChatInputBarTop(
                 .pointerInput(keys = emptyArray()) {
                     detectTapGestures(
                         onTap = {
-                            if (!showExpressionPicker && !isVoiceMode) showExpressionPicker = true
+                            if (!showExpressionPicker && !isVoiceMode) isVoiceMode = true
                             else {
                                 showExpressionPicker = !showExpressionPicker
                                 isVoiceMode = !isVoiceMode

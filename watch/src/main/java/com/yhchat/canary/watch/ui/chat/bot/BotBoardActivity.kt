@@ -141,6 +141,12 @@ fun BotBoardScreen(chatId: String, chatType: Int,
        viewModel: ChatViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 初始化聊天
+    LaunchedEffect(chatId, chatType) {
+        viewModel.initChat(chatId, chatType, chatId)
+    }
+
     // 如果是机器人聊天，加载机器人信息和看板
     LaunchedEffect(chatId, chatType) {
         if (chatType == 3) {
@@ -148,6 +154,7 @@ fun BotBoardScreen(chatId: String, chatType: Int,
             viewModel.loadBotBoard(chatId, chatType)
         }
     }
+
     if (chatType==2){
         // 群聊中的机器人看板列表
         GroupBotBoardsSection(

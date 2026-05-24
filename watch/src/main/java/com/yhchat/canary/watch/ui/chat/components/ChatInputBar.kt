@@ -234,7 +234,6 @@ fun ChatInputBarTop(
 
 
                 ) {
-                Text("TODO")
                 Icon(
                     imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
                     contentDescription = null,

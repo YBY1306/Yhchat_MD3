@@ -1461,7 +1461,7 @@ fun ChatInputBar(
                     visible = true,
                     onDismissRequest = { /*TODO*/ }
                 ) {
-                    InstructionPicker(
+                    InstructionPickerDialog(
                         groupId = groupId,
                         botId = botId,
                         onInstructionClick = { instruction ->

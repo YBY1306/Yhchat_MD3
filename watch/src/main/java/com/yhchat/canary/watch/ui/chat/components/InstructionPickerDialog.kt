@@ -142,7 +142,7 @@ fun InstructionPickerDialog(
                         }
                     }
                 }
-            }
+        }
     }
 }
 

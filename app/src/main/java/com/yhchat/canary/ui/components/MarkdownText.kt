@@ -1,5 +1,6 @@
 package com.yhchat.canary.ui.components
 
+import android.os.Build
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +32,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CheckBox
@@ -50,8 +55,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
@@ -63,6 +71,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSp
 import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -70,6 +79,10 @@ import com.halilibo.richtext.markdown.Markdown
 import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material3.Material3RichText
 import com.halilibo.richtext.ui.string.RichTextStringStyle
+import com.hrm.latex.renderer.Latex
+import com.hrm.latex.renderer.LatexAutoWrap
+import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.hrm.latex.renderer.model.LatexConfig
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
@@ -104,6 +117,7 @@ fun MarkdownText(
 ) {
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
+    val latexEnabled = remember { Build.VERSION.SDK_INT >= Build.VERSION_CODES.M }
 
     val richTextStyle = RichTextStyle(
         stringStyle = RichTextStringStyle(
@@ -128,6 +142,25 @@ fun MarkdownText(
 
     val normalizedMarkdown = MarkdownRendererCache.getNormalizedMarkdown(markdown)
     val segments = MarkdownRendererCache.getSegments(normalizedMarkdown)
+    val latexConfig = remember(textColor, context) {
+        LatexConfig(
+            fontSize = 16.sp,
+            color = textColor,
+            darkColor = textColor,
+            accessibilityEnabled = true,
+            onHyperlinkClick = { url ->
+                try {
+                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                    } else {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -147,37 +180,26 @@ fun MarkdownText(
                                     when (run) {
                                         is TaskRun.Markdown -> {
                                             if (run.content.isBlank()) return@forEach
-                                            val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
-                                                run.content,
-                                                highlightKeyword
-                                            )
-                                            Box(modifier = Modifier.fillMaxWidth()) {
-                                                Material3RichText(
-                                                    style = richTextStyle,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Markdown(
-                                                        content = highlightedMarkdown,
-                                                        onLinkClicked = { url: String ->
-                                                            try {
-                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                                                } else {
-                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                                    context.startActivity(intent)
-                                                                }
-                                                            } catch (_: Exception) {
-                                                            }
+                                            MarkdownTextRun(
+                                                content = run.content,
+                                                richTextStyle = richTextStyle,
+                                                latexConfig = latexConfig,
+                                                latexEnabled = latexEnabled,
+                                                highlightKeyword = highlightKeyword,
+                                                onLinkClicked = { url ->
+                                                    try {
+                                                        if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                                            com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                                        } else {
+                                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                            context.startActivity(intent)
                                                         }
-                                                    )
+                                                    } catch (_: Exception) {
+                                                    }
                                                 }
-                                            }
+                                            )
                                         }
                                         is TaskRun.Task -> {
-                                            val highlightedTaskMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
-                                                run.content,
-                                                highlightKeyword
-                                            )
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -197,13 +219,14 @@ fun MarkdownText(
                                                         .padding(top = 2.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Material3RichText(
-                                                    style = richTextStyle,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Markdown(
-                                                        content = highlightedTaskMarkdown,
-                                                        onLinkClicked = { url: String ->
+                                                Box(modifier = Modifier.fillMaxWidth()) {
+                                                    MarkdownTextRun(
+                                                        content = run.content,
+                                                        richTextStyle = richTextStyle,
+                                                        latexConfig = latexConfig,
+                                                        latexEnabled = latexEnabled,
+                                                        highlightKeyword = highlightKeyword,
+                                                        onLinkClicked = { url ->
                                                             try {
                                                                 if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
                                                                     com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
@@ -365,6 +388,197 @@ fun MarkdownText(
             onDismiss = { previewImageUrl = null }
         )
     }
+}
+
+@Composable
+private fun MarkdownTextRun(
+    content: String,
+    richTextStyle: RichTextStyle,
+    latexConfig: LatexConfig,
+    latexEnabled: Boolean,
+    highlightKeyword: String,
+    onLinkClicked: (String) -> Unit
+) {
+    if (!latexEnabled) {
+        val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
+            content,
+            highlightKeyword
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Material3RichText(
+                style = richTextStyle,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Markdown(
+                    content = highlightedMarkdown,
+                    onLinkClicked = onLinkClicked
+                )
+            }
+        }
+        return
+    }
+
+    val latexSegments = MarkdownRendererCache.getLatexSegments(content)
+    if (latexSegments.size == 1 && latexSegments.first() is MarkdownInlineSegment.Markdown) {
+        val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
+            content,
+            highlightKeyword
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Material3RichText(
+                style = richTextStyle,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Markdown(
+                    content = highlightedMarkdown,
+                    onLinkClicked = onLinkClicked
+                )
+            }
+        }
+        return
+    }
+
+    val onlyInlineLatex = latexSegments.none { it is MarkdownInlineSegment.LatexBlock }
+    if (onlyInlineLatex) {
+        InlineMarkdownWithLatex(
+            segments = latexSegments,
+            latexConfig = latexConfig,
+            highlightKeyword = highlightKeyword
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        latexSegments.forEach { segment ->
+            when (segment) {
+                is MarkdownInlineSegment.Markdown -> {
+                    if (segment.content.isNotBlank()) {
+                        val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
+                            segment.content,
+                            highlightKeyword
+                        )
+                        Material3RichText(
+                            style = richTextStyle,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Markdown(
+                                content = highlightedMarkdown,
+                                onLinkClicked = onLinkClicked
+                            )
+                        }
+                    }
+                }
+
+                is MarkdownInlineSegment.LatexInline -> {
+                    LatexInlineText(
+                        latex = segment.content,
+                        latexConfig = latexConfig
+                    )
+                }
+
+                is MarkdownInlineSegment.LatexBlock -> {
+                    LatexAutoWrap(
+                        latex = segment.content,
+                        modifier = Modifier.fillMaxWidth(),
+                        config = latexConfig
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InlineMarkdownWithLatex(
+    segments: List<MarkdownInlineSegment>,
+    latexConfig: LatexConfig,
+    highlightKeyword: String
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        segments.forEach { segment ->
+            when (segment) {
+                is MarkdownInlineSegment.Markdown -> {
+                    if (segment.content.isNotBlank()) {
+                        val highlighted = remember(segment.content, highlightKeyword) {
+                            MarkdownRendererCache.getHighlightedMarkdown(
+                                segment.content,
+                                highlightKeyword
+                            )
+                        }
+                        BasicText(
+                            text = parseSimpleMarkdown(
+                                text = highlighted,
+                                baseColor = latexConfig.color
+                            )
+                        )
+                    }
+                }
+
+                is MarkdownInlineSegment.LatexInline -> {
+                    LatexInlineText(
+                        latex = segment.content,
+                        latexConfig = latexConfig
+                    )
+                }
+
+                is MarkdownInlineSegment.LatexBlock -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun LatexInlineText(
+    latex: String,
+    latexConfig: LatexConfig
+) {
+    val density = LocalDensity.current
+    val measurer = rememberLatexMeasurer(latexConfig)
+    val dimensions = remember(latex, latexConfig) {
+        runCatching { measurer.measure(latex, latexConfig) }.getOrNull()
+    }
+
+    if (dimensions == null) {
+        Latex(
+            latex = latex,
+            config = latexConfig
+        )
+        return
+    }
+
+    val inlineContentId = remember(latex) { "latex_inline_$latex" }
+    val annotated = remember(inlineContentId) {
+        buildAnnotatedString {
+            appendInlineContent(inlineContentId, "[latex]")
+        }
+    }
+    val inlineContent = remember(inlineContentId, dimensions, latex, latexConfig, density) {
+        mapOf(
+            inlineContentId to InlineTextContent(
+                Placeholder(
+                    width = with(density) { dimensions.widthPx.toSp() },
+                    height = with(density) { dimensions.heightPx.toSp() },
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
+                )
+            ) {
+                Latex(
+                    latex = latex,
+                    config = latexConfig
+                )
+            }
+        )
+    }
+
+    BasicText(
+        text = annotated,
+        inlineContent = inlineContent
+    )
 }
 
 @Composable
@@ -903,6 +1117,12 @@ private sealed interface MarkdownSegment {
     data class Details(val summary: String, val content: String) : MarkdownSegment
 }
 
+private sealed interface MarkdownInlineSegment {
+    data class Markdown(val content: String) : MarkdownInlineSegment
+    data class LatexInline(val content: String) : MarkdownInlineSegment
+    data class LatexBlock(val content: String) : MarkdownInlineSegment
+}
+
 private object MarkdownRendererCache {
     private const val SEGMENT_CACHE_SIZE = 256
     private const val TABLE_NODE_CACHE_SIZE = 192
@@ -911,6 +1131,7 @@ private object MarkdownRendererCache {
     private const val TASK_RUN_CACHE_SIZE = 512
     private const val HIGHLIGHT_CACHE_SIZE = 1024
     private const val DETAILS_STATE_CACHE_SIZE = 256
+    private const val LATEX_SEGMENT_CACHE_SIZE = 1024
 
     private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
@@ -921,6 +1142,7 @@ private object MarkdownRendererCache {
     private val taskRunsCache = createLruCache<String, List<TaskRun>>(TASK_RUN_CACHE_SIZE)
     private val highlightedMarkdownCache = createLruCache<String, String>(HIGHLIGHT_CACHE_SIZE)
     private val detailsExpandedCache = createLruCache<String, Boolean>(DETAILS_STATE_CACHE_SIZE)
+    private val latexSegmentsCache = createLruCache<String, List<MarkdownInlineSegment>>(LATEX_SEGMENT_CACHE_SIZE)
 
     fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
         processTaskLists(normalizeHeadingSpacing(markdown))
@@ -939,6 +1161,10 @@ private object MarkdownRendererCache {
         return highlightedMarkdownCache.cached(content + "\u0000" + keyword.lowercase()) {
             injectHighlightMark(content, keyword)
         }
+    }
+
+    fun getLatexSegments(content: String): List<MarkdownInlineSegment> = latexSegmentsCache.cached(content) {
+        splitLatexSegments(content)
     }
 
     fun getDetailsExpanded(key: String): Boolean = synchronized(detailsExpandedCache) {
@@ -1564,6 +1790,8 @@ private val htmlTableStartRegex = Regex("<table\\b[^>]*>", setOf(RegexOption.IGN
 private val htmlTableEndRegex = Regex("</table>", setOf(RegexOption.IGNORE_CASE))
 private val htmlDivStartRegex = Regex("<div\\b[^>]*>", setOf(RegexOption.IGNORE_CASE))
 private val htmlDivEndRegex = Regex("</div>", setOf(RegexOption.IGNORE_CASE))
+private val latexBlockRegex = Regex("(?s)(^|\\n)\\$\\$(.+?)\\$\\$(?=\\n|$)")
+private val latexInlineRegex = Regex("(?<!\\\\)\\$(.+?)(?<!\\\\)\\$")
 
 private fun String.indexOfHtmlTableStart(): Int {
     return htmlTableStartRegex.find(this)?.range?.first ?: -1
@@ -1632,6 +1860,85 @@ private fun processLineBreaks(text: String): String {
     }
     
     return result.joinToString("\n")
+}
+
+private fun splitLatexSegments(content: String): List<MarkdownInlineSegment> {
+    if (!content.contains('$')) {
+        return listOf(MarkdownInlineSegment.Markdown(content))
+    }
+
+    val segments = mutableListOf<MarkdownInlineSegment>()
+    var currentIndex = 0
+
+    latexBlockRegex.findAll(content).forEach { match ->
+        val fullRange = match.range
+        val blockPrefixLength = match.groups[1]?.value?.length ?: 0
+        val contentStart = fullRange.first + blockPrefixLength
+
+        if (contentStart > currentIndex) {
+            val before = content.substring(currentIndex, contentStart)
+            appendInlineLatexSegments(before, segments)
+        }
+
+        val latex = match.groups[2]?.value?.trim().orEmpty()
+        if (latex.isNotBlank()) {
+            segments += MarkdownInlineSegment.LatexBlock(latex)
+        }
+
+        currentIndex = fullRange.last + 1
+    }
+
+    if (currentIndex < content.length) {
+        appendInlineLatexSegments(content.substring(currentIndex), segments)
+    }
+
+    if (segments.isEmpty()) {
+        return listOf(MarkdownInlineSegment.Markdown(content))
+    }
+
+    return segments
+}
+
+private fun appendInlineLatexSegments(
+    content: String,
+    segments: MutableList<MarkdownInlineSegment>
+) {
+    if (content.isEmpty()) return
+    if (!content.contains('$')) {
+        segments += MarkdownInlineSegment.Markdown(content)
+        return
+    }
+
+    var currentIndex = 0
+    latexInlineRegex.findAll(content).forEach { match ->
+        val range = match.range
+        if (range.first > currentIndex) {
+            val before = content.substring(currentIndex, range.first)
+            if (before.isNotEmpty()) {
+                segments += MarkdownInlineSegment.Markdown(before)
+            }
+        }
+
+        val latex = match.groups[1]?.value?.trim().orEmpty()
+        if (latex.isNotBlank()) {
+            segments += MarkdownInlineSegment.LatexInline(latex)
+        } else {
+            segments += MarkdownInlineSegment.Markdown(match.value)
+        }
+
+        currentIndex = range.last + 1
+    }
+
+    if (currentIndex < content.length) {
+        val trailing = content.substring(currentIndex)
+        if (trailing.isNotEmpty()) {
+            segments += MarkdownInlineSegment.Markdown(trailing)
+        }
+    }
+
+    if (segments.isEmpty()) {
+        segments += MarkdownInlineSegment.Markdown(content)
+    }
 }
 
 /**

@@ -740,7 +740,6 @@ fun ConversationScreen(
                 .fillMaxWidth()
                 .height(topBarContainerHeightDp)
                 .clipToBounds()
-                .align(Alignment.TopStart)
                 .zIndex(1f)
         ) {
             Card(

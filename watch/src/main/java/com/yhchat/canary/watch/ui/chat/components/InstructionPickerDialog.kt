@@ -329,13 +329,12 @@ class InstructionPickerViewModel : ViewModel() {
         }
     }
 
-    fun loadinstructionsofbots(){
-        _uiState.value.instructions.forEach { instruction->
-           if ( _uiState.value.bots.isNoFind(instruction.botId)) {
-               _uiState.value.bots.add(instruction.botId)
-               _uiState.value.instructionsofbots[instruction.botId].add(instruction)
-           }
-        }
+    fun loadinstructionsofbots() {
+        val grouped = _uiState.value.instructions.groupBy { it.botId }
+        _uiState.value = _uiState.value.copy(
+            bots = grouped.keys.toList(),
+            instructionsofbots = grouped
+        )
     }
 }
 

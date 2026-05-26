@@ -1372,7 +1372,7 @@ fun ChatInputBar(
                         onClick = {
                             showAttachMenu = !showAttachMenu
                             showExpressionPicker = false
-                            showInstructionPicker = false
+                            // showInstructionPicker = false
                             isVoiceMode = false
                             if (showAttachMenu) {
                                 keyboardController?.hide()

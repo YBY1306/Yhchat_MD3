@@ -227,6 +227,85 @@ private fun InstructionItem(
 }
 
 /**
+ * TODO
+ */
+@Composable
+private fun InstructionBotItem(
+    bot: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text =bot,// instruction.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+
+//                // 权限标识
+//                if (instruction.auth > 0) {
+//                    Surface(
+//                        color = when (instruction.auth) {
+//                            2 -> MaterialTheme.colorScheme.primaryContainer
+//                            3 -> MaterialTheme.colorScheme.secondaryContainer
+//                            else -> MaterialTheme.colorScheme.tertiaryContainer
+//                        },
+//                        shape = MaterialTheme.shapes.small
+//                    ) {
+//                        Text(
+//                            text = when (instruction.auth) {
+//                                2 -> "群主"
+//                                3 -> "管理员"
+//                                else -> "禁用"
+//                            },
+//                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = when (instruction.auth) {
+//                                2 -> MaterialTheme.colorScheme.onPrimaryContainer
+//                                3 -> MaterialTheme.colorScheme.onSecondaryContainer
+//                                else -> MaterialTheme.colorScheme.onTertiaryContainer
+//                            }
+//                        )
+//                    }
+//                }
+            }
+
+//            if (instruction.desc.isNotEmpty()) {
+//                Spacer(modifier = Modifier.height(4.dp))
+//                Text(
+//                    text = instruction.desc,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onSurfaceVariant
+//                )
+//            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+//            Text(
+//                text = "来自: ${instruction.botName}",
+//                style = MaterialTheme.typography.labelSmall,
+//                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+//            )
+        }
+    }
+}
+
+/**
  * 指令选择器ViewModel
  */
 class InstructionPickerViewModel : ViewModel() {

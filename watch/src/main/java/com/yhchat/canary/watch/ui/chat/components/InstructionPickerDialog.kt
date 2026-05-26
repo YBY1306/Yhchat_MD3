@@ -141,6 +141,7 @@ fun InstructionPickerDialog(
 //                                }
 //                            )
 //                        }
+                        val i=0
                         items(uiState.instructionsofbots.keys.toList()) { bot ->
                             InstructionBotItem(
                                 bot = bot,
@@ -419,10 +420,12 @@ class InstructionPickerViewModel : ViewModel() {
     }
 
     fun loadinstructionsofbots() {
-        val grouped = _uiState.value.instructions.groupBy { it.botId }
-        _uiState.value = _uiState.value.copy(
-            instructionsofbots = grouped
-        )
+        viewModelScope.launch {
+            val grouped = _uiState.value.instructions.groupBy { it.botId }
+            _uiState.value = _uiState.value.copy(
+                instructionsofbots = grouped
+            )
+        }
     }
 }
 

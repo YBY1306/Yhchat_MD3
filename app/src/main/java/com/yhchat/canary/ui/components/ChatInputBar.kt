@@ -205,6 +205,16 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
             Toast.makeText(ctx, "需要麦克风权限才能录音", Toast.LENGTH_SHORT).show()
         }
     }
+    val currentOnCameraClick by rememberUpdatedState(onCameraClick)
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            currentOnCameraClick?.invoke()
+        } else {
+            Toast.makeText(ctx, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
+        }
+    }
     
     // 监听错误状态
     LaunchedEffect(voiceState?.error) {
@@ -773,7 +783,15 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                     showAttachMenu = false
                 },
                 onCameraClick = {
-                    onCameraClick?.invoke()
+                    when {
+                        onCameraClick == null -> Unit
+                        ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
+                            onCameraClick.invoke()
+                        }
+                        else -> {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }
                     showAttachMenu = false
                 },
                 onVideoClick = {

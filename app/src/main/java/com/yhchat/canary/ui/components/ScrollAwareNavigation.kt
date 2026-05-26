@@ -166,8 +166,8 @@ fun observeScrollForNavigation(listState: LazyListState, navigationState: Scroll
             // 使用新的onScroll方法来处理累积滚动
             navigationState.onScroll(delta)
             
-            // 在列表顶部时始终显示导航栏
-            if (currentIndex == 0 && currentScrollOffset < 50 && !navigationState.isVisible) {
+            // 仅在真正回到顶部时强制显示，避免滚动过程中直接闪现到终态
+            if (currentIndex == 0 && currentScrollOffset == 0 && !navigationState.isVisible) {
                 navigationState.show()
             }
             
@@ -209,8 +209,8 @@ fun observeScrollForNavigation(gridState: LazyGridState, navigationState: Scroll
             // 使用新的onScroll方法来处理累积滚动
             navigationState.onScroll(delta)
             
-            // 在列表顶部时始终显示导航栏
-            if (currentIndex == 0 && currentScrollOffset < 50 && !navigationState.isVisible) {
+            // 仅在真正回到顶部时强制显示，避免滚动过程中直接闪现到终态
+            if (currentIndex == 0 && currentScrollOffset == 0 && !navigationState.isVisible) {
                 navigationState.show()
             }
             
@@ -243,8 +243,8 @@ fun observeScrollForNavigation(scrollState: ScrollState, navigationState: Scroll
             // 使用新的onScroll方法来处理累积滚动
             navigationState.onScroll(delta)
             
-            // 在顶部时始终显示导航栏
-            if (currentScrollOffset < 50 && !navigationState.isVisible) {
+            // 仅在真正回到顶部时强制显示，避免滚动过程中直接闪现到终态
+            if (currentScrollOffset == 0 && !navigationState.isVisible) {
                 navigationState.show()
             }
             

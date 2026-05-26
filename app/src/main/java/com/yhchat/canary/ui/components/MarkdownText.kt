@@ -125,12 +125,8 @@ fun MarkdownText(
         tableStyle = null
     )
 
-    val normalizedMarkdown = remember(markdown) {
-        processTaskLists(normalizeHeadingSpacing(markdown))
-    }
-    val segments = remember(normalizedMarkdown) {
-        MarkdownRendererCache.getSegments(normalizedMarkdown)
-    }
+    val normalizedMarkdown = MarkdownRendererCache.getNormalizedMarkdown(markdown)
+    val segments = MarkdownRendererCache.getSegments(normalizedMarkdown)
 
     Column(
         modifier = modifier
@@ -142,16 +138,17 @@ fun MarkdownText(
             when (segment) {
                 is MarkdownSegment.Text -> {
                     if (segment.content.isNotBlank()) {
-                        val taskRuns = remember(segment.content) { splitTaskRuns(segment.content) }
+                        val taskRuns = MarkdownRendererCache.getTaskRuns(segment.content)
                         SelectionContainer {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 taskRuns.forEach { run ->
                                     when (run) {
                                         is TaskRun.Markdown -> {
                                             if (run.content.isBlank()) return@forEach
-                                            val highlightedMarkdown = remember(run.content, highlightKeyword) {
-                                                injectHighlightMark(run.content, highlightKeyword)
-                                            }
+                                            val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
+                                                run.content,
+                                                highlightKeyword
+                                            )
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 Material3RichText(
                                                     style = richTextStyle,
@@ -175,9 +172,10 @@ fun MarkdownText(
                                             }
                                         }
                                         is TaskRun.Task -> {
-                                            val highlightedTaskMarkdown = remember(run.content, highlightKeyword) {
-                                                injectHighlightMark(run.content, highlightKeyword)
-                                            }
+                                            val highlightedTaskMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
+                                                run.content,
+                                                highlightKeyword
+                                            )
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -907,15 +905,48 @@ private object MarkdownRendererCache {
     private const val SEGMENT_CACHE_SIZE = 256
     private const val TABLE_NODE_CACHE_SIZE = 192
     private const val INLINE_SEGMENT_CACHE_SIZE = 512
+    private const val NORMALIZED_MARKDOWN_CACHE_SIZE = 256
+    private const val TASK_RUN_CACHE_SIZE = 512
+    private const val HIGHLIGHT_CACHE_SIZE = 1024
+    private const val DETAILS_STATE_CACHE_SIZE = 256
 
+    private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
     private val tableNodeCache = createLruCache<String, ASTNode?>(TABLE_NODE_CACHE_SIZE)
     private val parsedTableCache = createLruCache<String, ParsedMarkdownTable?>(TABLE_NODE_CACHE_SIZE)
     private val referenceLinksCache = createLruCache<String, Map<String, String?>>(TABLE_NODE_CACHE_SIZE)
     private val inlineSegmentsCache = createLruCache<String, List<MarkdownSegment>>(INLINE_SEGMENT_CACHE_SIZE)
+    private val taskRunsCache = createLruCache<String, List<TaskRun>>(TASK_RUN_CACHE_SIZE)
+    private val highlightedMarkdownCache = createLruCache<String, String>(HIGHLIGHT_CACHE_SIZE)
+    private val detailsExpandedCache = createLruCache<String, Boolean>(DETAILS_STATE_CACHE_SIZE)
+
+    fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
+        processTaskLists(normalizeHeadingSpacing(markdown))
+    }
 
     fun getSegments(markdown: String): List<MarkdownSegment> = segmentCache.cached(markdown) {
         parseMarkdownSegments(markdown)
+    }
+
+    fun getTaskRuns(content: String): List<TaskRun> = taskRunsCache.cached(content) {
+        splitTaskRuns(content)
+    }
+
+    fun getHighlightedMarkdown(content: String, keyword: String): String {
+        if (keyword.isBlank() || content.isBlank()) return content
+        return highlightedMarkdownCache.cached(content + "\u0000" + keyword.lowercase()) {
+            injectHighlightMark(content, keyword)
+        }
+    }
+
+    fun getDetailsExpanded(key: String): Boolean = synchronized(detailsExpandedCache) {
+        detailsExpandedCache[key] ?: false
+    }
+
+    fun setDetailsExpanded(key: String, expanded: Boolean) {
+        synchronized(detailsExpandedCache) {
+            detailsExpandedCache[key] = expanded
+        }
     }
 
     fun getTableNode(tableMarkdown: String): ASTNode? = tableNodeCache.cached(tableMarkdown) {
@@ -1145,7 +1176,12 @@ private fun MarkdownDetailsBlock(
     onImageClick: ((String) -> Unit)?,
     highlightKeyword: String
 ) {
-    var expanded by remember(summary, contentMarkdown) { mutableStateOf(false) }
+    val detailsCacheKey = remember(summary, contentMarkdown) {
+        summary + "\u0000" + contentMarkdown
+    }
+    var expanded by remember(detailsCacheKey) {
+        mutableStateOf(MarkdownRendererCache.getDetailsExpanded(detailsCacheKey))
+    }
 
     Column(
         modifier = Modifier
@@ -1153,7 +1189,10 @@ private fun MarkdownDetailsBlock(
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
-            .clickable { expanded = !expanded }
+            .clickable {
+                expanded = !expanded
+                MarkdownRendererCache.setDetailsExpanded(detailsCacheKey, expanded)
+            }
             .padding(12.dp)
     ) {
         Row(

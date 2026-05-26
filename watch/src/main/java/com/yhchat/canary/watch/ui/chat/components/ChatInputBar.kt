@@ -1776,7 +1776,7 @@ fun AttachmentMenuWear(
                                 ) {
                                     Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(Modifier.width(12.dp))
-                                    Text("onOpenBotInstructionClick()", style = MaterialTheme.typography.bodyLarge)
+                                    Text("Open Bot Instruction", style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
 

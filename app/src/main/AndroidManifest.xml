@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-sdk
-        tools:overrideLibrary="androidx.media3.ui,androidx.media3.exoplayer,androidx.media3.extractor,androidx.media3.common,androidx.media3.datasource,androidx.media3.decoder,androidx.media3.container,androidx.media3.database,com.hrm.latex.renderer" />
+        tools:overrideLibrary="androidx.media3.ui,androidx.media3.exoplayer,androidx.media3.extractor,androidx.media3.common,androidx.media3.datasource,androidx.media3.decoder,androidx.media3.container,androidx.media3.database,com.hrm.latex.renderer,androidx.compose.ui.util" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

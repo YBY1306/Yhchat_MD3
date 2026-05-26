@@ -1638,7 +1638,7 @@ fun AttachmentMenuWear(
     defaultMessageType: Int = 1,
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1,
-    onSendEmptyMessage:()->Unit= { null },
+    onSendEmptyMessage: () -> Unit = { null },
     onOpenBotInstructionClick: () -> Unit = { null } ,
 
 ) {
@@ -1769,6 +1769,7 @@ fun AttachmentMenuWear(
                                         .fillMaxWidth()
                                         .clickable {
                                             //TODO
+                                            onOpenBotInstructionClick()
                                         }
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically

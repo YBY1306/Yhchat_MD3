@@ -1450,6 +1450,7 @@ fun ChatInputBar(
                     currentOnSendMessage()
                     onHideInputBar?.invoke()
                 },
+                onOpenBotInstructionClick={showInstructionPicker=true},
             )
 
 
@@ -1638,6 +1639,7 @@ fun AttachmentMenuWear(
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1,
     onSendEmptyMessage:()->Unit= { null },
+    onOpenBotInstructionClick: () -> Unit = { null } ,
 
 ) {
     if (!expanded) return

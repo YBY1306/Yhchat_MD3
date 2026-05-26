@@ -116,8 +116,9 @@ fun MessageContentView(
     val showMarkdownRawText by rememberBooleanPreference("message_settings", "show_markdown_raw_text", false)
     val showInlineExpressions by rememberBooleanPreference("display_settings", "show_inline_expressions", true)
     val openHtmlInInternalBrowser = remember(message.msgId, content.text) {
-        {
-            content.text?.takeIf { it.isNotBlank() }?.let { html ->
+        ({
+            val html = content.text?.takeIf { it.isNotBlank() }
+            if (html != null) {
                 WebViewActivity.startHtml(
                     context = context,
                     html = html,
@@ -125,7 +126,7 @@ fun MessageContentView(
                     baseUrl = "https://www.yhchat.com/"
                 )
             }
-        }
+        })
     }
 
     Column(modifier = modifier) {

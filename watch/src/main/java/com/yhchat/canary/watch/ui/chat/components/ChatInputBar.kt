@@ -1468,6 +1468,10 @@ fun ChatInputBar(
                             onInstructionClick?.invoke(instruction)
                             showInstructionPicker = false
                         },
+                        // InstructionPicker的onDismiss
+                        // InstructionItem的onClick里使用
+                        // 用于关闭这个面板
+                        // 嗯手表版界面里还要顺手也把加号菜单也关了才好
                         onDismiss = {
                             showInstructionPicker = false
                             showAttachMenu=false

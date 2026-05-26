@@ -392,6 +392,12 @@ class InstructionPickerViewModel : ViewModel() {
                     error = error
                 )
             }
+            val grouped = _uiState.value.instructions.groupBy { it.botId }
+
+            //todo
+            _uiState.value = _uiState.value.copy(
+                instructionsofbots = grouped
+            )
         }
     }
 
@@ -416,6 +422,12 @@ class InstructionPickerViewModel : ViewModel() {
                     error = error
                 )
             }
+
+            //todo
+            val grouped = _uiState.value.instructions.groupBy { it.botId }
+            _uiState.value = _uiState.value.copy(
+                instructionsofbots = grouped
+            )
         }
     }
 

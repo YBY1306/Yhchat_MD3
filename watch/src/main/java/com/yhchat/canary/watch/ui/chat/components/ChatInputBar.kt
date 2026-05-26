@@ -1468,7 +1468,10 @@ fun ChatInputBar(
                             onInstructionClick?.invoke(instruction)
                             showInstructionPicker = false
                         },
-                        onDismiss = { showInstructionPicker = false }
+                        onDismiss = {
+                            showInstructionPicker = false
+                            showAttachMenu=false
+                        }
                     )
                 }
 

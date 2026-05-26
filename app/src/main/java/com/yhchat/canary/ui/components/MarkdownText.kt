@@ -71,7 +71,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSp
 import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -562,8 +561,8 @@ private fun LatexInlineText(
         mapOf(
             inlineContentId to InlineTextContent(
                 Placeholder(
-                    width = with(density) { dimensions.widthPx.toSp() },
-                    height = with(density) { dimensions.heightPx.toSp() },
+                    width = with(density) { dimensions.widthPx.toDp().toSp() },
+                    height = with(density) { dimensions.heightPx.toDp().toSp() },
                     placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
                 )
             ) {

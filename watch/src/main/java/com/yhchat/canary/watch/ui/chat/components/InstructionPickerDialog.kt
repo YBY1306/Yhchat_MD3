@@ -132,11 +132,20 @@ fun InstructionPickerDialog(
                         contentPadding = PaddingValues(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(uiState.instructions) { instruction ->
-                            InstructionItem(
-                                instruction = instruction,
+//                        items(uiState.instructions) { instruction ->
+//                            InstructionItem(
+//                                instruction = instruction,
+//                                onClick = {
+//                                    onInstructionClick(instruction)
+//                                    onDismiss()
+//                                }
+//                            )
+//                        }
+                        items(uiState.instructionsofbots.keys.toList()) { bot ->
+                            InstructionBotItem(
+                                bot = bot,
                                 onClick = {
-                                    onInstructionClick(instruction)
+//                                    onInstructionClick(instruction)
                                     onDismiss()
                                 }
                             )

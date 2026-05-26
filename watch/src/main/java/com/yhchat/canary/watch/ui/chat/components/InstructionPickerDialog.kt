@@ -333,6 +333,8 @@ class InstructionPickerViewModel : ViewModel() {
 data class InstructionPickerUiState(
     val isLoading: Boolean = false,
     val instructions: List<Instruction> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val bots: List<String> = emptyList(),
+    val instructionsofbots: Map<String,List<Instruction>> = emptyMap(),
 )
 

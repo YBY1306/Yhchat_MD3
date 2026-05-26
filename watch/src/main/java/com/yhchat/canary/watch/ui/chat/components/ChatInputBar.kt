@@ -1459,7 +1459,7 @@ fun ChatInputBar(
             if (showInstructionPicker)
                 androidx.wear.compose.material3.Dialog(
                     visible = true,
-                    onDismissRequest = { /*TODO*/ }
+                    onDismissRequest = { showInstructionPicker=false /*TODO*/ }
                 ) {
                     InstructionPickerDialog(
                         groupId = groupId,

@@ -332,7 +332,7 @@ class InstructionPickerViewModel : ViewModel() {
     fun loadinstructionsofbots() {
         val grouped = _uiState.value.instructions.groupBy { it.botId }
         _uiState.value = _uiState.value.copy(
-            bots = grouped.keys.toList(),
+            bots = grouped.keys,
             instructionsofbots = grouped
         )
     }
@@ -342,7 +342,7 @@ data class InstructionPickerUiState(
     val isLoading: Boolean = false,
     val instructions: List<Instruction> = emptyList(),
     val error: String? = null,
-    val bots: List<String> = emptyList(),
+    val bots: Set<String> = emptySet(),
     val instructionsofbots: Map<String,List<Instruction>> = emptyMap(),
 )
 

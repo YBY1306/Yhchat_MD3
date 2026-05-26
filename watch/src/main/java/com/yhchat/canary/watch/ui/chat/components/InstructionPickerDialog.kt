@@ -330,7 +330,7 @@ class InstructionPickerViewModel : ViewModel() {
     }
 
     fun loadinstructionsofbots(){
-        _uiState.value.instructions.forEach { instruction->//TODO 不知道有没有顺序，没有的话就用Set了
+        _uiState.value.instructions.forEach { instruction->
            if ( _uiState.value.bots.isNoFind(instruction.botId)) {
                _uiState.value.bots.add(instruction.botId)
                _uiState.value.instructionsofbots[instruction.botId].add(instruction)

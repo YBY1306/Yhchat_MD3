@@ -65,6 +65,7 @@ fun InstructionPickerDialog(
             groupId != null -> viewModel.loadGroupInstructions(groupId)
             botId != null -> viewModel.loadBotInstructions(botId)
         }
+        viewModel.loadinstructionsofbots()
     }
     
     val uiState by viewModel.uiState.collectAsState()

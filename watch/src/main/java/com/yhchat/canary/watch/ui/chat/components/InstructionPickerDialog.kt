@@ -421,10 +421,12 @@ class InstructionPickerViewModel : ViewModel() {
 
     fun loadinstructionsofbots() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val grouped = _uiState.value.instructions.groupBy { it.botId }
             _uiState.value = _uiState.value.copy(
                 instructionsofbots = grouped
             )
+            _uiState.value = _uiState.value.copy(isLoading = false, error = null)
         }
     }
 }

@@ -94,6 +94,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -339,27 +340,418 @@ fun ConversationScreen(
         label = "conversationTopBarOffsetPx"
     )
     val topBarOffsetDp = with(density) { topBarOffsetPx.toDp() }
-    val topBarVisibleHeightDp = if (topBarHeightPx <= 0) {
-        if (topBarNavigationState.isVisible) 64.dp else 0.dp
+    val topBarContainerHeightDp = if (topBarHeightPx <= 0) {
+        76.dp
     } else {
-        with(density) { (topBarHeightPx + topBarOffsetPx).coerceAtLeast(0).toDp() }
+        with(density) { topBarHeightPx.toDp() }
     }
+    val topContentPaddingDp by animateDpAsState(
+        targetValue = if (topBarNavigationState.isVisible) topBarContainerHeightDp else 0.dp,
+        animationSpec = tween(durationMillis = 260),
+        label = "conversationTopContentPadding"
+    )
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = topContentPaddingDp)
+        ) {
+
+            // 退出搜索时清除焦点
+            LaunchedEffect(isSearchActive) {
+                if (!isSearchActive) {
+                    try { searchFocusRequester.freeFocus() } catch (_: Exception) {}
+                }
+            }
+            
+            // 错误信息
+            uiState.error?.let { error ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            if (isSearchActive) {
+                // ========== 搜索模式 ==========
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                // 本地会话匹配结果
+                if (filteredConversations.isNotEmpty()) {
+                    item(key = "local_header") {
+                        Text(
+                            text = "本地筛选",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    items(
+                        items = filteredConversations,
+                        key = { "local_${it.chatId}" },
+                        contentType = { "conversation" }
+                    ) { conversation ->
+                        ConversationItem(
+                            conversation = conversation,
+                            onClick = {
+                                viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
+                                onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
+                            },
+                            onLongClick = {
+                                selectedConversation = conversation
+                                coroutineScope.launch {
+                                    isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
+                                    showConversationMenu = true
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // API搜索结果
+                if (searchUiState.isLoading) {
+                    item(key = "search_loading") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+
+                searchResult?.let { result ->
+                    result.list.forEachIndexed { catIndex, category ->
+                        category.list?.let { items ->
+                            if (items.isNotEmpty()) {
+                                item(key = "api_header_${catIndex}_${category.title}") {
+                                    Text(
+                                        text = category.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                itemsIndexed(
+                    items = category.list ?: emptyList(),
+                    key = { index, item -> "api_${catIndex}_${item.friendId}_${item.friendType}_$index" }
+                ) { index, searchItem ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onConversationClick(
+                                    searchItem.friendId,
+                                    searchItem.friendType,
+                                    searchItem.nickname
+                                )
+                            },
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val avatarRequest = remember(searchItem.avatarUrl) {
+                                ImageRequest.Builder(context)
+                                    .data(searchItem.avatarUrl)
+                                    .addHeader("Referer", "https://myapp.jwznb.com")
+                                    .crossfade(true)
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = avatarRequest,
+                                contentDescription = searchItem.nickname,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(id = R.drawable.ic_person)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = searchItem.nickname,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                val idLabel = when (searchItem.friendType) {
+                                    1 -> "用户"
+                                    2 -> "群组"
+                                    3 -> "机器人"
+                                    else -> "ID"
+                                }
+                                Text(
+                                    text = "$idLabel: ${searchItem.friendId}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                color = when (searchItem.friendType) {
+                                    1 -> MaterialTheme.colorScheme.primaryContainer
+                                    2 -> MaterialTheme.colorScheme.secondaryContainer
+                                    3 -> MaterialTheme.colorScheme.tertiaryContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = when (searchItem.friendType) {
+                                        1 -> "用户"
+                                        2 -> "群组"
+                                        3 -> "机器人"
+                                        else -> "未知"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
+                            }
+                        }
+                    }
+                }
+
+                // 无结果提示
+                if (searchQuery.isNotBlank() && filteredConversations.isEmpty() && searchResult == null && !searchUiState.isLoading) {
+                    item(key = "no_results") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "未找到相关结果",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                }
+            } else {
+                // ========== 正常模式 ==========
+                // 会话列表（支持下拉刷新）
+                PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = {
+                    // 只有用户主动下拉刷新时才重新加载数据
+                    refreshing = true
+                    viewModel.loadConversations(token)
+                    // 延迟一下再关闭刷新状态，让用户感知到刷新动作
+                    coroutineScope.launch {
+                        kotlinx.coroutines.delay(500)
+                        refreshing = false
+                    }
+                },
+                state = pullToRefreshState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (uiState.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    val pagedConversations by viewModel.pagedConversations.collectAsState()
+                    
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        // 置顶会话显示在列表最顶部 - 横向滑动样式
+                        if (showStickyConversations && !stickyData?.sticky.isNullOrEmpty()) {
+                            item(key = "sticky_conversations_section") {
+                                Column {
+                                    // 置顶会话横向列表
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        items(
+                                            items = stickyData?.sticky ?: emptyList(),
+                                            key = { stickyItem -> "sticky_${stickyItem.chatId}_${stickyItem.id}" },
+                                            contentType = { "sticky" }
+                                        ) { stickyItem ->
+                                            StickyConversationCard(
+                                                stickyItem = stickyItem,
+                                                onClick = {
+                                                    // 标记会话为已读
+                                                    viewModel.markConversationAsRead(stickyItem.chatId, stickyItem.chatType)
+                                                    
+                                                    // 跳转到聊天界面
+                                                    onConversationClick(stickyItem.chatId, stickyItem.chatType, stickyItem.chatName)
+                                                },
+                                                onLongClick = {
+                                                    // 创建临时Conversation对象用于菜单
+                                                    val stickyConversation = Conversation(
+                                                        chatId = stickyItem.chatId,
+                                                        chatType = stickyItem.chatType,
+                                                        name = stickyItem.chatName,
+                                                        chatContent = "",
+                                                        timestampMs = 0L,
+                                                        unreadMessage = 0,
+                                                        at = 0,
+                                                        avatarUrl = stickyItem.avatarUrl,
+                                                        timestamp = 0L,
+                                                        certificationLevel = stickyItem.certificationLevel
+                                                    )
+                                                    selectedConversation = stickyConversation
+                                                    coroutineScope.launch {
+                                                        isSelectedConversationSticky = true
+                                                        showConversationMenu = true
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                    
+                                    // 分隔线
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp)
+                                            .height(1.dp)
+                                            .background(MaterialTheme.colorScheme.outlineVariant)
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // 普通会话列表 - 受布局设置控制
+                        if (layoutShowConversationList) {
+                            items(
+                                items = pagedConversations,
+                                key = { conversation -> "conversation_${conversation.chatId}" },
+                                contentType = { "conversation" }
+                            ) { conversation ->
+                                // 使用remember确保点击时获取最新的conversation数据
+                                val chatId = conversation.chatId
+                                val chatType = conversation.chatType
+                                val chatName = conversation.name
+                                
+                                ConversationItem(
+                                    conversation = conversation,
+                                    onClick = {
+                                        // 标记会话为已读
+                                        viewModel.markConversationAsRead(chatId, chatType)
+                                        
+                                        // 调用统一的点击回调（大屏模式会在右侧面板打开，小屏模式会启动新Activity）
+                                        onConversationClick(chatId, chatType, chatName)
+                                    },
+                                    onLongClick = {
+                                        selectedConversation = conversation
+                                        coroutineScope.launch {
+                                            isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
+                                            showConversationMenu = true
+                                        }
+                                    }
+                                )
+                            }
+                            if (pagedConversations.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "暂无会话",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        text = "会话列表已隐藏",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        // 加载更多提示
+                        if (uiState.isLoading && pagedConversations.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                        }
+                    }
+                    // 触底自动加载更多
+                    LaunchedEffect(pagedConversations, listState) {
+                        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                            .collect { lastIndex ->
+                                if (lastIndex == pagedConversations.lastIndex && !uiState.isLoading) {
+                                    viewModel.loadMoreConversations()
+                                }
+                            }
+                    }
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(topBarVisibleHeightDp)
+                .height(topBarContainerHeightDp)
                 .clipToBounds()
+                .align(Alignment.TopStart)
+                .zIndex(1f)
         ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .onSizeChanged { topBarHeightPx = it.height }
+                    .onSizeChanged {
+                        if (topBarHeightPx != it.height) {
+                            topBarHeightPx = it.height
+                        }
+                    }
                     .offset(y = topBarOffsetDp),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
@@ -549,380 +941,6 @@ fun ConversationScreen(
                 )
             }
         }
-
-        // 退出搜索时清除焦点
-        LaunchedEffect(isSearchActive) {
-            if (!isSearchActive) {
-                try { searchFocusRequester.freeFocus() } catch (_: Exception) {}
-            }
-        }
-        
-        // 错误信息
-        uiState.error?.let { error ->
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.errorContainer,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-
-        if (isSearchActive) {
-            // ========== 搜索模式 ==========
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                // 本地会话匹配结果
-                if (filteredConversations.isNotEmpty()) {
-                    item(key = "local_header") {
-                        Text(
-                            text = "本地筛选",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(
-                        items = filteredConversations,
-                        key = { "local_${it.chatId}" },
-                        contentType = { "conversation" }
-                    ) { conversation ->
-                        ConversationItem(
-                            conversation = conversation,
-                            onClick = {
-                                viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
-                                onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
-                            },
-                            onLongClick = {
-                                selectedConversation = conversation
-                                coroutineScope.launch {
-                                    isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
-                                    showConversationMenu = true
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // API搜索结果
-                if (searchUiState.isLoading) {
-                    item(key = "search_loading") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
-
-                searchResult?.let { result ->
-                    result.list.forEachIndexed { catIndex, category ->
-                        category.list?.let { items ->
-                            if (items.isNotEmpty()) {
-                                item(key = "api_header_${catIndex}_${category.title}") {
-                                    Text(
-                                        text = category.title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-                itemsIndexed(
-                    items = category.list ?: emptyList(),
-                    key = { index, item -> "api_${catIndex}_${item.friendId}_${item.friendType}_$index" }
-                ) { index, searchItem ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onConversationClick(
-                                    searchItem.friendId,
-                                    searchItem.friendType,
-                                    searchItem.nickname
-                                )
-                            },
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val avatarRequest = remember(searchItem.avatarUrl) {
-                                ImageRequest.Builder(context)
-                                    .data(searchItem.avatarUrl)
-                                    .addHeader("Referer", "https://myapp.jwznb.com")
-                                    .crossfade(true)
-                                    .build()
-                            }
-                            AsyncImage(
-                                model = avatarRequest,
-                                contentDescription = searchItem.nickname,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop,
-                                error = painterResource(id = R.drawable.ic_person)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = searchItem.nickname,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                val idLabel = when (searchItem.friendType) {
-                                    1 -> "用户"
-                                    2 -> "群组"
-                                    3 -> "机器人"
-                                    else -> "ID"
-                                }
-                                Text(
-                                    text = "$idLabel: ${searchItem.friendId}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Surface(
-                                color = when (searchItem.friendType) {
-                                    1 -> MaterialTheme.colorScheme.primaryContainer
-                                    2 -> MaterialTheme.colorScheme.secondaryContainer
-                                    3 -> MaterialTheme.colorScheme.tertiaryContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = when (searchItem.friendType) {
-                                        1 -> "用户"
-                                        2 -> "群组"
-                                        3 -> "机器人"
-                                        else -> "未知"
-                                    },
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
-                }
-                            }
-                        }
-                    }
-                }
-
-                // 无结果提示
-                if (searchQuery.isNotBlank() && filteredConversations.isEmpty() && searchResult == null && !searchUiState.isLoading) {
-                    item(key = "no_results") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "未找到相关结果",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            // ========== 正常模式 ==========
-            // 会话列表（支持下拉刷新）
-            PullToRefreshBox(
-                isRefreshing = refreshing,
-                onRefresh = {
-                    // 只有用户主动下拉刷新时才重新加载数据
-                    refreshing = true
-                    viewModel.loadConversations(token)
-                    // 延迟一下再关闭刷新状态，让用户感知到刷新动作
-                    coroutineScope.launch {
-                        kotlinx.coroutines.delay(500)
-                        refreshing = false
-                    }
-                },
-                state = pullToRefreshState,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (uiState.isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    val pagedConversations by viewModel.pagedConversations.collectAsState()
-                    
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        // 置顶会话显示在列表最顶部 - 横向滑动样式
-                        if (showStickyConversations && !stickyData?.sticky.isNullOrEmpty()) {
-                            item(key = "sticky_conversations_section") {
-                                Column {
-                                    // 置顶会话横向列表
-                                    LazyRow(
-                                        contentPadding = PaddingValues(horizontal = 8.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        items(
-                                            items = stickyData?.sticky ?: emptyList(),
-                                            key = { stickyItem -> "sticky_${stickyItem.chatId}_${stickyItem.id}" },
-                                            contentType = { "sticky" }
-                                        ) { stickyItem ->
-                                            StickyConversationCard(
-                                                stickyItem = stickyItem,
-                                                onClick = {
-                                                    // 标记会话为已读
-                                                    viewModel.markConversationAsRead(stickyItem.chatId, stickyItem.chatType)
-                                                    
-                                                    // 跳转到聊天界面
-                                                    onConversationClick(stickyItem.chatId, stickyItem.chatType, stickyItem.chatName)
-                                                },
-                                                onLongClick = {
-                                                    // 创建临时Conversation对象用于菜单
-                                                    val stickyConversation = Conversation(
-                                                        chatId = stickyItem.chatId,
-                                                        chatType = stickyItem.chatType,
-                                                        name = stickyItem.chatName,
-                                                        chatContent = "",
-                                                        timestampMs = 0L,
-                                                        unreadMessage = 0,
-                                                        at = 0,
-                                                        avatarUrl = stickyItem.avatarUrl,
-                                                        timestamp = 0L,
-                                                        certificationLevel = stickyItem.certificationLevel
-                                                    )
-                                                    selectedConversation = stickyConversation
-                                                    coroutineScope.launch {
-                                                        isSelectedConversationSticky = true
-                                                        showConversationMenu = true
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    }
-                                    
-                                    // 分隔线
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 8.dp)
-                                            .height(1.dp)
-                                            .background(MaterialTheme.colorScheme.outlineVariant)
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // 普通会话列表 - 受布局设置控制
-                        if (layoutShowConversationList) {
-                            items(
-                                items = pagedConversations,
-                                key = { conversation -> "conversation_${conversation.chatId}" },
-                                contentType = { "conversation" }
-                            ) { conversation ->
-                                // 使用remember确保点击时获取最新的conversation数据
-                                val chatId = conversation.chatId
-                                val chatType = conversation.chatType
-                                val chatName = conversation.name
-                                
-                                ConversationItem(
-                                    conversation = conversation,
-                                    onClick = {
-                                        // 标记会话为已读
-                                        viewModel.markConversationAsRead(chatId, chatType)
-                                        
-                                        // 调用统一的点击回调（大屏模式会在右侧面板打开，小屏模式会启动新Activity）
-                                        onConversationClick(chatId, chatType, chatName)
-                                    },
-                                    onLongClick = {
-                                        selectedConversation = conversation
-                                        coroutineScope.launch {
-                                            isSelectedConversationSticky = viewModel.isConversationSticky(conversation.chatId)
-                                            showConversationMenu = true
-                                        }
-                                    }
-                                )
-                            }
-                            if (pagedConversations.isEmpty()) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(32.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "暂无会话",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Text(
-                                        text = "会话列表已隐藏",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        // 加载更多提示
-                        if (uiState.isLoading && pagedConversations.isNotEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                }
-                            }
-                        }
-                    }
-                    // 触底自动加载更多
-                    LaunchedEffect(pagedConversations, listState) {
-                        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-                            .collect { lastIndex ->
-                                if (lastIndex == pagedConversations.lastIndex && !uiState.isLoading) {
-                                    viewModel.loadMoreConversations()
-                                }
-                            }
-                    }
-                }
-            }
-        }
     }
     
     // 长按菜单弹窗
@@ -1012,9 +1030,10 @@ fun ConversationScreen(
                 showAddUser = layoutShowAddUser,
                 showAddGroup = layoutShowAddGroup,
                 showScan = layoutShowScan
-            )
+                )
+            }
         }
-    }
+
 }
 
 /**

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -73,6 +74,7 @@ import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.MessageSelectionContainer
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONObject
 import java.net.URL
@@ -113,6 +115,18 @@ fun MessageContentView(
     val showHtmlRawText by rememberBooleanPreference("message_settings", "show_html_raw_text", false)
     val showMarkdownRawText by rememberBooleanPreference("message_settings", "show_markdown_raw_text", false)
     val showInlineExpressions by rememberBooleanPreference("display_settings", "show_inline_expressions", true)
+    val openHtmlInInternalBrowser = remember(message.msgId, content.text) {
+        {
+            content.text?.takeIf { it.isNotBlank() }?.let { html ->
+                WebViewActivity.startHtml(
+                    context = context,
+                    html = html,
+                    title = "HTML消息",
+                    baseUrl = "https://www.yhchat.com/"
+                )
+            }
+        }
+    }
 
     Column(modifier = modifier) {
         when (contentType) {
@@ -131,7 +145,8 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
-                            onMultiSelect = onMultiSelect
+                            onMultiSelect = onMultiSelect,
+                            onOpenInInternalBrowser = openHtmlInInternalBrowser
                         ) {
                             Text(
                                 text = htmlContent,
@@ -151,7 +166,8 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
-                            onMultiSelect = onMultiSelect
+                            onMultiSelect = onMultiSelect,
+                            onOpenInInternalBrowser = openHtmlInInternalBrowser
                         ) {
                             HtmlTextMessage(
                                 html = htmlContent,
@@ -553,7 +569,9 @@ fun MessageContentView(
                                 },
                                 backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
                                 onImageClick = onImageClick,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .wrapContentWidth()
+                                    .widthIn(max = 320.dp)
                             )
                         }
                     }

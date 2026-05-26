@@ -72,6 +72,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import com.yhchat.canary.utils.UnifiedLinkHandler
 
 class WebViewActivity : BaseActivity() {
     private val viewModel: WebViewViewModel by viewModels()
@@ -80,11 +81,32 @@ class WebViewActivity : BaseActivity() {
         private const val EXTRA_URL = "extra_url"
         private const val EXTRA_TITLE = "extra_title"
         private const val EXTRA_TOKEN = "extra_token"
+        private const val EXTRA_HTML = "extra_html"
+        private const val EXTRA_BASE_URL = "extra_base_url"
 
         fun start(context: Context, url: String, title: String? = null, token: String? = null) {
             val intent = Intent(context, WebViewActivity::class.java).apply {
                 putExtra(EXTRA_URL, url)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_TOKEN, token)
+                if (context !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            context.startActivity(intent)
+        }
+
+        fun startHtml(
+            context: Context,
+            html: String,
+            title: String? = null,
+            baseUrl: String? = null,
+            token: String? = null
+        ) {
+            val intent = Intent(context, WebViewActivity::class.java).apply {
+                putExtra(EXTRA_HTML, html)
+                putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_BASE_URL, baseUrl)
                 putExtra(EXTRA_TOKEN, token)
                 if (context !is android.app.Activity) {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -111,10 +133,12 @@ class WebViewActivity : BaseActivity() {
         enableEdgeToEdge()
 
         val url = intent.getStringExtra(EXTRA_URL) ?: ""
+        val html = intent.getStringExtra(EXTRA_HTML)
         val initialTitle = intent.getStringExtra(EXTRA_TITLE) ?: "加载中..."
         val token = intent.getStringExtra(EXTRA_TOKEN)
+        val baseUrl = intent.getStringExtra(EXTRA_BASE_URL)
 
-        if (url.isEmpty()) {
+        if (url.isEmpty() && html.isNullOrEmpty()) {
             finish()
             return
         }
@@ -123,6 +147,8 @@ class WebViewActivity : BaseActivity() {
             YhchatCanaryTheme {
                 WebViewScreen(
                     initialUrl = url,
+                    initialHtml = html,
+                    initialBaseUrl = baseUrl,
                     initialTitle = initialTitle,
                     token = token,
                     viewModel = viewModel,
@@ -137,6 +163,8 @@ class WebViewActivity : BaseActivity() {
 @Composable
 fun WebViewScreen(
     initialUrl: String,
+    initialHtml: String?,
+    initialBaseUrl: String?,
     initialTitle: String,
     token: String?,
     viewModel: WebViewViewModel,
@@ -146,8 +174,17 @@ fun WebViewScreen(
     val uiState by viewModel.uiState.collectAsState()
     var webView by remember { mutableStateOf<WebView?>(null) }
 
-    LaunchedEffect(initialUrl, initialTitle) {
-        viewModel.initialize(initialUrl, initialTitle)
+    val displayUrl = remember(initialUrl, initialHtml, initialBaseUrl) {
+        when {
+            initialUrl.isNotBlank() -> initialUrl
+            !initialBaseUrl.isNullOrBlank() -> initialBaseUrl
+            !initialHtml.isNullOrBlank() -> "本地HTML"
+            else -> ""
+        }
+    }
+
+    LaunchedEffect(displayUrl, initialTitle) {
+        viewModel.initialize(displayUrl, initialTitle)
     }
 
     // 处理物理返回键
@@ -214,7 +251,11 @@ fun WebViewScreen(
                                 text = { Text("在浏览器中打开") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
-                                    WebViewActivity.openInExternalBrowser(context, uiState.url)
+                                    if (uiState.url.startsWith("http://") || uiState.url.startsWith("https://")) {
+                                        WebViewActivity.openInExternalBrowser(context, uiState.url)
+                                    } else {
+                                        Toast.makeText(context, "当前内容没有可打开的链接", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 leadingIcon = { Icon(Icons.Default.OpenInBrowser, null) }
                             )
@@ -222,10 +263,14 @@ fun WebViewScreen(
                                 text = { Text("复制链接") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("url", uiState.url)
-                                    clipboard.setPrimaryClip(clip)
-                                    Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                    if (uiState.url.isNotBlank() && uiState.url != "本地HTML") {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("url", uiState.url)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "当前内容没有可复制的链接", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
                             )
@@ -357,9 +402,10 @@ fun WebViewScreen(
 
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 val url = request?.url?.toString() ?: return false
-                                
-                                // 拦截非 http/https 协议
-                                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+
+                                if (UnifiedLinkHandler.isHandleableLink(url) ||
+                                    (!url.startsWith("http://") && !url.startsWith("https://"))
+                                ) {
                                     viewModel.requestExternalJump(url)
                                     return true
                                 }
@@ -385,8 +431,21 @@ fun WebViewScreen(
                             )
                         }
 
-                        // 加载 URL 时添加 token 请求头
-                        if (token != null) {
+                        if (!initialHtml.isNullOrBlank()) {
+                            loadDataWithBaseURL(
+                                initialBaseUrl,
+                                buildHtmlDocument(initialHtml),
+                                "text/html",
+                                "UTF-8",
+                                null
+                            )
+                            viewModel.onPageFinished(
+                                url = displayUrl,
+                                title = initialTitle,
+                                canGoBack = canGoBack(),
+                                canGoForward = canGoForward()
+                            )
+                        } else if (token != null) {
                             val headers = mapOf("token" to token)
                             loadUrl(initialUrl, headers)
                         } else {
@@ -426,10 +485,14 @@ fun WebViewScreen(
                     val jumpUrl = uiState.pendingJumpUrl
                     viewModel.dismissJumpDialog()
                     try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jumpUrl)).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        if (UnifiedLinkHandler.isHandleableLink(jumpUrl)) {
+                            UnifiedLinkHandler.handleLink(context, jumpUrl)
+                        } else {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jumpUrl)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     } catch (e: Exception) {
                         Toast.makeText(context, "未找到可处理该链接的应用", Toast.LENGTH_SHORT).show()
                     }
@@ -520,4 +583,17 @@ private fun WebView.setupWebViewSettings() {
         cacheMode = WebSettings.LOAD_DEFAULT
         userAgentString = "$userAgentString Yunhu/Canary"
     }
+}
+
+private fun buildHtmlDocument(html: String): String {
+    val trimmed = html.trim()
+    val hasHtmlTag = Regex("<\\s*html[\\s>]", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)
+    val hasHeadTag = Regex("<\\s*head[\\s>]", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)
+    val hasBodyTag = Regex("<\\s*body[\\s>]", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)
+    if (hasHtmlTag) {
+        return trimmed
+    }
+    val head = if (hasHeadTag) "" else "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>"
+    val bodyContent = if (hasBodyTag) trimmed else "<body>$trimmed</body>"
+    return "<!DOCTYPE html><html>$head$bodyContent</html>"
 }

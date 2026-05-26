@@ -25,12 +25,13 @@ fun MessageSelectionContainer(
     onPlusOne: (() -> Unit)? = null,
     onForward: (() -> Unit)? = null,
     onMultiSelect: (() -> Unit)? = null,
+    onOpenInInternalBrowser: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
     val defaultToolbar = LocalTextToolbar.current
     
-    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect) {
+    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
         CustomTextToolbar(
             view = view,
             defaultToolbar = defaultToolbar,
@@ -39,7 +40,8 @@ fun MessageSelectionContainer(
             onDelete = onDelete,
             onPlusOne = onPlusOne,
             onForward = onForward,
-            onMultiSelect = onMultiSelect
+            onMultiSelect = onMultiSelect,
+            onOpenInInternalBrowser = onOpenInInternalBrowser
         )
     }
     
@@ -61,7 +63,8 @@ private class CustomTextToolbar(
     private val onDelete: (() -> Unit)?,
     private val onPlusOne: (() -> Unit)?,
     private val onForward: (() -> Unit)?,
-    private val onMultiSelect: (() -> Unit)?
+    private val onMultiSelect: (() -> Unit)?,
+    private val onOpenInInternalBrowser: (() -> Unit)?
 ) : TextToolbar {
     
     private var actionMode: ActionMode? = null
@@ -130,9 +133,14 @@ private class CustomTextToolbar(
                     menu.add(0, MENU_ITEM_MULTI_SELECT, 14, "多选")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
+
+                onOpenInInternalBrowser?.let {
+                    menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 15, "在内置浏览器中打开")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+                }
                 
                 onDelete?.let {
-                    menu.add(0, MENU_ITEM_DELETE, 15, "撤回")
+                    menu.add(0, MENU_ITEM_DELETE, 16, "撤回")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
@@ -177,6 +185,11 @@ private class CustomTextToolbar(
                         mode.finish()
                         true
                     }
+                    MENU_ITEM_OPEN_IN_INTERNAL_BROWSER -> {
+                        onOpenInInternalBrowser?.invoke()
+                        mode.finish()
+                        true
+                    }
                     MENU_ITEM_DELETE -> {
                         onDelete?.invoke()
                         mode.finish()
@@ -216,5 +229,6 @@ private class CustomTextToolbar(
         private const val MENU_ITEM_FORWARD = 1004
         private const val MENU_ITEM_MULTI_SELECT = 1005
         private const val MENU_ITEM_DELETE = 1006
+        private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
     }
 }

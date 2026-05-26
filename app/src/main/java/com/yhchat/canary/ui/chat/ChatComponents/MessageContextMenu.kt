@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -62,7 +63,8 @@ fun MessageContextMenu(
     onSaveAudio: (() -> Unit)? = null,
     onSpeechToText: (() -> Unit)? = null,  // 语音转文字
     onPlusOne: (() -> Unit)? = null,  // +1 复制发送同样消息
-    onMultiSelect: (() -> Unit)? = null  // 多选
+    onMultiSelect: (() -> Unit)? = null,  // 多选
+    onOpenInInternalBrowser: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -119,6 +121,27 @@ fun MessageContextMenu(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("自由复制")
+                        }
+                    }
+                }
+
+                if (message.contentType == 8 && onOpenInInternalBrowser != null) {
+                    TextButton(
+                        onClick = onOpenInInternalBrowser,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = "在内置浏览器中打开",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("在内置浏览器中打开")
                         }
                     }
                 }

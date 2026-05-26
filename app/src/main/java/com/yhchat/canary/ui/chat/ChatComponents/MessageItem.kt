@@ -71,6 +71,7 @@ import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -117,6 +118,18 @@ fun MessageItem(
 
     var showFreeCopyDialog by remember { mutableStateOf(false) }
     var freeCopyText by remember { mutableStateOf("") }
+    val openHtmlInInternalBrowser = remember(message.msgId, message.content.text) {
+        {
+            message.content.text?.takeIf { it.isNotBlank() }?.let { html ->
+                WebViewActivity.startHtml(
+                    context = context,
+                    html = html,
+                    title = "HTML消息",
+                    baseUrl = "https://www.yhchat.com/"
+                )
+            }
+        }
+    }
 
     if (message.msgDeleteTime != null) {
         RecallMessageItem(message = message, modifier = modifier)
@@ -454,7 +467,13 @@ fun MessageItem(
             onMultiSelect = {
                 onMultiSelect?.invoke()
                 showContextMenuDialog = false
-            }
+            },
+            onOpenInInternalBrowser = if (message.contentType == 8) {
+                {
+                    openHtmlInInternalBrowser()
+                    showContextMenuDialog = false
+                }
+            } else null
         )
     }
 

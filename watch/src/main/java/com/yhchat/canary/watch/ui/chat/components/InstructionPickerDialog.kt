@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.wear.compose.foundation.lazy.items
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.Instruction
@@ -126,7 +127,7 @@ fun InstructionPickerDialog(
                 }
                 
                 else -> {
-                    LazyColumn(
+                    androidx.wear.compose.foundation.lazy.ScalingLazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -140,7 +141,6 @@ fun InstructionPickerDialog(
 //                                }
 //                            )
 //                        }
-                        val i=0
                         items(uiState.instructionsofbots.keys.toList()) { botId ->
                             InstructionBotItem(
                                 onClick = {

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.repository.GroupRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -391,11 +392,22 @@ class InstructionPickerViewModel : ViewModel() {
                     error = error
                 )
             }
-            val grouped = _uiState.value.instructions.groupBy { it.botId }
+
 
             //todo
+            val grouped = _uiState.value.instructions.groupBy { it.botId }
+
             _uiState.value = _uiState.value.copy(
                 instructionsofbots = grouped
+            )
+
+            val botnamemap: MutableMap<String, String> = mutableMapOf()
+            _uiState.value.instructions.forEach {instruction->
+                botnamemap[instruction.botId]=instruction.botName
+            }
+
+            _uiState.value = _uiState.value.copy(
+                botnamemap = botnamemap
             )
         }
     }
@@ -422,10 +434,21 @@ class InstructionPickerViewModel : ViewModel() {
                 )
             }
 
+
             //todo
             val grouped = _uiState.value.instructions.groupBy { it.botId }
+
             _uiState.value = _uiState.value.copy(
                 instructionsofbots = grouped
+            )
+
+            val botnamemap: MutableMap<String, String> = mutableMapOf()
+            _uiState.value.instructions.forEach {instruction->
+                botnamemap[instruction.botId]=instruction.botName
+            }
+
+            _uiState.value = _uiState.value.copy(
+                botnamemap = botnamemap
             )
         }
     }
@@ -437,5 +460,6 @@ data class InstructionPickerUiState(
     val instructions: List<Instruction> = emptyList(),
     val error: String? = null,
     val instructionsofbots: Map<String,List<Instruction>> = emptyMap(),
+    val botnamemap:Map<String, String> =emptyMap()
 )
 

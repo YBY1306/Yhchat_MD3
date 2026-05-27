@@ -301,16 +301,9 @@ fun ConversationScreen(
 
     // 下拉到顶弹窗
     if (showOverscrollDialog) {
-        androidx.wear.compose.material3. AlertDialog(
+        com.yhchat.canary.watch.ui.second_floor.SecondFloorDialog(
             onDismissRequest = { showOverscrollDialog = false },
-            title = { Text("HelloWorld") },
-            text = { Text("HelloWorld") },
-            confirmButton = {
-                TextButton(onClick = { showOverscrollDialog = false }) {
-                    Text("OK")
-                }
-            },
-            visible = true
+            onOkClick = { showOverscrollDialog = false },
         )
         // todo 二楼菜单
         //  联系人

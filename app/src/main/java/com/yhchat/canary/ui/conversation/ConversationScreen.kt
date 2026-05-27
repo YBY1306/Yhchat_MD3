@@ -406,7 +406,7 @@ fun ConversationScreen(
                         ConversationItem(
                             conversation = conversation,
                             onClick = {
-                                viewModel.markConversationAsRead(conversation.chatId, conversation.chatType)
+                                viewModel.markConversationAsRead(conversation.chatId)
                                 onConversationClick(conversation.chatId, conversation.chatType, conversation.name)
                             },
                             onLongClick = {
@@ -599,10 +599,8 @@ fun ConversationScreen(
                                             StickyConversationCard(
                                                 stickyItem = stickyItem,
                                                 onClick = {
-                                                    // 标记会话为已读
-                                                    viewModel.markConversationAsRead(stickyItem.chatId, stickyItem.chatType)
+                                                    viewModel.markConversationAsRead(stickyItem.chatId)
                                                     
-                                                    // 跳转到聊天界面
                                                     onConversationClick(stickyItem.chatId, stickyItem.chatType, stickyItem.chatName)
                                                 },
                                                 onLongClick = {
@@ -656,10 +654,8 @@ fun ConversationScreen(
                                 ConversationItem(
                                     conversation = conversation,
                                     onClick = {
-                                        // 标记会话为已读
-                                        viewModel.markConversationAsRead(chatId, chatType)
+                                        viewModel.markConversationAsRead(chatId)
                                         
-                                        // 调用统一的点击回调（大屏模式会在右侧面板打开，小屏模式会启动新Activity）
                                         onConversationClick(chatId, chatType, chatName)
                                     },
                                     onLongClick = {

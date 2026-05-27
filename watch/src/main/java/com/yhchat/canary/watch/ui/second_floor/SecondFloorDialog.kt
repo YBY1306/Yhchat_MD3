@@ -142,13 +142,13 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 onDismissRequest = { isDisplayProfileScreen=false },
                 visible = true,
             ) {
-                val mainViewModel: MainViewModel = viewModel()
-                val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
-                val userRepository by mainViewModel.userRepositoryState.collectAsStateWithLifecycle()
+//                val mainViewModel: MainViewModel = viewModel()
+//                val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
+//                val userRepository by mainViewModel.userRepositoryState.collectAsStateWithLifecycle()
 
                 ProfileScreen(
-                    userRepository = userRepository,
-                    tokenRepository = tokenRepository,
+//                    userRepository = userRepository,
+//                    tokenRepository = tokenRepository,
 //                    navigationRepository = navigationRepository,
 //                    navigationState = navigationState
                 )

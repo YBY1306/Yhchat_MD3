@@ -47,18 +47,18 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
 
         ScreenScaffold(
             scrollState = listState,
-            edgeButton = {
-                EdgeButton(
-                    onClick = { /*TODO*/ },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                ) {
-                    Text("More")
-                }
-            },
+//            edgeButton = {
+//                EdgeButton(
+//                    onClick = { /*TODO*/ },
+//                    colors =
+//                        ButtonDefaults.buttonColors(
+//                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+//                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+//                        ),
+//                ) {
+//                    Text("More")
+//                }
+//            },
         ) { contentPadding -> // ScreenScaffold provides default padding; adjust as needed
             TransformingLazyColumn(contentPadding = contentPadding, state = listState) {
                 item {

@@ -41,7 +41,9 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
 
         var isDisplayContactsScreen by remember { mutableStateOf(false) }
         var isDisplayProfileScreen by remember { mutableStateOf(false) }
-        var isDisplaySettingsScreen by remember { mutableStateOf(false) }
+//        var isDisplaySettingsScreen by remember { mutableStateOf(false) }
+
+        val currentContext=LocalContext.current
 
         ScreenScaffold(
             scrollState = listState,
@@ -94,7 +96,10 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 }
                 item {
                     Button(
-                        onClick = { isDisplaySettingsScreen=true },
+                        onClick = {
+                            // isDisplaySettingsScreen = true
+                            SettingsActivity.start(currentContext)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec),
@@ -135,16 +140,16 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
             }
 
 
-        if (isDisplaySettingsScreen) {
-//            val mainViewModel: MainViewModel = viewModel()
-//            val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
-            SettingsActivity.start(
-                LocalContext.current,
-//                null,//  navigationRepository,
-//                tokenRepository,
-            )
-            isDisplaySettingsScreen=false
-        }
+//        if (isDisplaySettingsScreen) {
+////            val mainViewModel: MainViewModel = viewModel()
+////            val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
+//            SettingsActivity.start(
+//                LocalContext.current,
+////                null,//  navigationRepository,
+////                tokenRepository,
+//            )
+//            isDisplaySettingsScreen=false
+//        }
 
 
     }

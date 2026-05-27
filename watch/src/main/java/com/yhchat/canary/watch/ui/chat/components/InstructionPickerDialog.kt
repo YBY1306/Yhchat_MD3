@@ -164,19 +164,28 @@ fun InstructionPickerDialog(
                             visible = true,
                             onDismissRequest = {selectedBotId=""},
                         ){
-                            androidx.wear.compose.foundation.lazy.ScalingLazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            Surface(
+                                modifier = modifier
+                                    .fillMaxSize(),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 2.dp
                             ) {
-                                items( uiState.instructionsofbots[selectedBotId]?: emptyList()) { instruction ->
-                                    InstructionItem(
-                                        instruction = instruction,
-                                        onClick = {
-                                            onInstructionClick(instruction)
-                                            onDismiss()
-                                        }
-                                    )
+                                androidx.wear.compose.foundation.lazy.ScalingLazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(
+                                        uiState.instructionsofbots[selectedBotId] ?: emptyList()
+                                    ) { instruction ->
+                                        InstructionItem(
+                                            instruction = instruction,
+                                            onClick = {
+                                                onInstructionClick(instruction)
+                                                onDismiss()
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

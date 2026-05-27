@@ -163,7 +163,16 @@ fun InstructionPickerDialog(
                         Dialog(
                             visible = true,
                             onDismissRequest = {selectedBotId=""},
-                        ){}
+                        ){
+                            androidx.wear.compose.foundation.lazy.ScalingLazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items( uiState.instructionsofbots[selectedBotId]?: emptyList()) { botId ->
+                                }
+                            }
+                        }
                     }
 
                 }

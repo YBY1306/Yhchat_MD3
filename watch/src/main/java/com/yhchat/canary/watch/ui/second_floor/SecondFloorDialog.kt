@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -27,6 +28,7 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 import com.yhchat.canary.MainViewModel
 import com.yhchat.canary.ui.contacts.ContactsScreen
 import com.yhchat.canary.ui.profile.ProfileScreen
+import com.yhchat.canary.ui.settings.SettingsActivity
 
 @Composable
 fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
@@ -153,6 +155,18 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
 //                    navigationState = navigationState
                 )
             }
+
+
+        if (isDisplaySettingsScreen) {
+            val mainViewModel: MainViewModel = viewModel()
+            val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
+            SettingsActivity.start(
+                LocalContext.current,
+                null,//  navigationRepository,
+                tokenRepository,
+            )
+        }
+
 
     }
     // todo 二楼菜单

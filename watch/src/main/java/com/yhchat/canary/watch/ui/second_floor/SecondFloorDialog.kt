@@ -1,4 +1,4 @@
-package com.yhchat.canary.watch.ui.chat.second_floor
+package com.yhchat.canary.watch.ui.second_floor
 
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.material3.AlertDialog

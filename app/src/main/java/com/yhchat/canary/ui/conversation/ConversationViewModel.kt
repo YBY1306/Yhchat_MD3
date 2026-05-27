@@ -199,7 +199,7 @@ class ConversationViewModel @Inject constructor(
                     unreadMessage = if (conversation.doNotDisturb == 1) {
                         0
                     } else {
-                        (conversation.unreadMessage + 1).coerceAtMost(9999)
+                        conversation.unreadMessage + 1
                     }
                 )
                 currentConversations[conversationIndex] = updatedConversation

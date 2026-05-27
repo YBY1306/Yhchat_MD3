@@ -1457,10 +1457,6 @@ fun ChatInputBar(
             // 指令选择器（显示在TODO）
             // if (showInstructionPicker && onInstructionClick != null && (groupId != null || botId != null))
             if (showInstructionPicker)
-                androidx.wear.compose.material3.Dialog(
-                    visible = true,
-                    onDismissRequest = { showInstructionPicker=false /*TODO*/ }
-                ) {
                     InstructionPickerDialog(
                         groupId = groupId,
                         botId = botId,
@@ -1480,7 +1476,6 @@ fun ChatInputBar(
                             showInstructionPicker = false
                         }
                     )
-                }
 
 
 

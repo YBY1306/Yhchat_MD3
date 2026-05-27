@@ -73,7 +73,7 @@ fun InstructionPickerDialog(
     
     val uiState by viewModel.uiState.collectAsState()
 
-    val selectedBotId=remember { mutableStateOf("") }
+    val selectedBotId by remember { mutableStateOf("") }
 
     Surface(
         modifier = modifier
@@ -159,7 +159,7 @@ fun InstructionPickerDialog(
                 }
         }
 
-        if (selectedBotId.value.isNotEmpty()){
+        if (selectedBotId.isNotEmpty()){
             Dialog(
                 visible = true,
                 onDismissRequest = {},

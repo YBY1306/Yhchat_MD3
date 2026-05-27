@@ -150,7 +150,8 @@ fun InstructionPickerDialog(
                             InstructionBotItem(
                                 onClick = {
 //                                    onInstructionClick(instruction)
-                                    onDismiss()
+//                                    onDismiss()
+                                    selectedBotId=botId
                                 },
                                 botId = botId,
                                 botName = uiState.botnamemap[botId]!!,

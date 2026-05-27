@@ -25,8 +25,10 @@ fun YhSecondaryTabRow(
         modifier = modifier,
         containerColor = containerColor,
         contentColor = contentColor,
-        indicator = {
-            RoundedTopSecondaryIndicator(selectedTabIndex)
+        indicator = { tabIndicatorScope ->
+            with(tabIndicatorScope) {
+                RoundedTopSecondaryIndicator(selectedTabIndex)
+            }
         },
         tabs = tabs
     )
@@ -49,8 +51,10 @@ fun YhScrollableTabRow(
         containerColor = containerColor,
         contentColor = contentColor,
         divider = divider,
-        indicator = {
-            RoundedTopSecondaryIndicator(selectedTabIndex)
+        indicator = { tabIndicatorScope ->
+            with(tabIndicatorScope) {
+                RoundedTopSecondaryIndicator(selectedTabIndex)
+            }
         },
         tabs = tabs
     )

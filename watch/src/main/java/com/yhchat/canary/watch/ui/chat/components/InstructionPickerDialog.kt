@@ -244,7 +244,7 @@ private fun InstructionItem(
 private fun InstructionBotItem(
     onClick: () -> Unit,
     botId: String,
-    botName: String="",
+    botName: String? =null,
 ) {
     Card(
         modifier = Modifier

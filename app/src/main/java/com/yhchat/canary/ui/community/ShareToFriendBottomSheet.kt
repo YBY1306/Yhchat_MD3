@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.contacts.ContactsViewModel
 import kotlinx.coroutines.launch
@@ -174,7 +174,7 @@ fun SendToChatBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                ScrollableTabRow(
+                YhScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     modifier = Modifier.wrapContentWidth(),
                     containerColor = Color.Transparent,

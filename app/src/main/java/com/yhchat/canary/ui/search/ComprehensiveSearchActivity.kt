@@ -31,7 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -51,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.UserInfo
+import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.launch
 
@@ -163,7 +163,7 @@ private fun ComprehensiveSearchScreen(
         )
         
         // 标签
-        TabRow(
+        YhSecondaryTabRow(
             selectedTabIndex = pagerState.currentPage,
             modifier = Modifier.fillMaxWidth()
         ) {

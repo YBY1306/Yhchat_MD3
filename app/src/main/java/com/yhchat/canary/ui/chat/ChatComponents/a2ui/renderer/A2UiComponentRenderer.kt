@@ -40,7 +40,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -69,6 +68,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.buildChoicePickerValue
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.combineScopePath
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.executeA2UiAction
@@ -948,7 +948,7 @@ internal fun RenderA2UiComponent(
             val activeTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
             
             Column(modifier = modifier.fillMaxWidth()) {
-                ScrollableTabRow(
+                YhScrollableTabRow(
                     selectedTabIndex = activeTabIndex.coerceIn(0, tabs.size.coerceAtLeast(1) - 1),
                     edgePadding = 0.dp,
                     containerColor = Color.Transparent

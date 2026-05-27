@@ -48,6 +48,7 @@ import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.websocket.ConnectionState
 import com.yhchat.canary.data.websocket.WebSocketService
 import com.yhchat.canary.service.AudioPlayerService
+import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.login.LoginActivity
@@ -2242,7 +2243,7 @@ private fun YhToolsPanel(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    TabRow(selectedTabIndex = selectedTab) {
+                    YhSecondaryTabRow(selectedTabIndex = selectedTab) {
                         Tab(
                             selected = selectedTab == 0,
                             onClick = { selectedTab = 0 },

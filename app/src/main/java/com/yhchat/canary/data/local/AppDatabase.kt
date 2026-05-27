@@ -21,7 +21,7 @@ import com.yhchat.canary.data.model.SavedAccount
         CachedProfileData::class,
         DownloadedFileRecord::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

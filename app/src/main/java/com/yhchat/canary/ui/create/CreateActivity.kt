@@ -36,7 +36,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -53,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -126,7 +126,7 @@ fun CreateScreen(
                 .padding(padding)
         ) {
             // 选项卡
-            TabRow(selectedTabIndex = selectedTab) {
+            YhSecondaryTabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -447,4 +447,3 @@ fun CreateBotContent(
         }
     }
 }
-

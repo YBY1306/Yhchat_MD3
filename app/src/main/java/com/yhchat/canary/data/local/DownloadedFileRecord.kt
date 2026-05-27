@@ -8,6 +8,6 @@ data class DownloadedFileRecord(
     @PrimaryKey
     val msgId: String,
     val fileName: String,
+    val fileSize: Long,
     val updatedAt: Long = System.currentTimeMillis()
 )
-

@@ -36,6 +36,7 @@ import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.RecommendGroup
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -352,7 +353,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                 }
             } else {
                 // 分类选项
-                ScrollableTabRow(
+                YhScrollableTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     modifier = Modifier.fillMaxWidth(),
                     edgePadding = 16.dp

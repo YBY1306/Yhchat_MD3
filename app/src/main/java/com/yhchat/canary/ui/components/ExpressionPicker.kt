@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -29,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -61,6 +59,7 @@ import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.data.repository.ExpressionRepository
 import com.yhchat.canary.data.repository.StickerRepository
 import com.yhchat.canary.ui.sticker.StickerPackManagerActivity
+import com.yhchat.canary.ui.components.YhScrollableTabRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,7 +143,7 @@ fun ExpressionPicker(
                     )
                 }
 
-                ScrollableTabRow(
+                YhScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     modifier = Modifier.weight(1f),
                     edgePadding = 8.dp,

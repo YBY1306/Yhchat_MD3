@@ -214,7 +214,11 @@ class FileDownloadService : Service() {
         val downloadJob = serviceScope.launch(Dispatchers.IO) {
             try {
                 if (!msgId.isNullOrBlank()) {
-                    val existingFile = resolveExistingFileByMsgId(msgId, fileName)
+                    val existingFile = resolveExistingFileByMsgId(
+                        msgId = msgId,
+                        fallbackFileName = fileName,
+                        expectedFileSize = fileSize
+                    )
                     if (existingFile != null) {
                         serviceScope.launch(Dispatchers.Main) {
                             updateNotification(fileName, "文件已存在，直接打开", 100, 100, true)
@@ -256,7 +260,13 @@ class FileDownloadService : Service() {
                     runCatching {
                         AppDatabase.getDatabase(this@FileDownloadService)
                             .downloadedFileRecordDao()
-                            .upsert(DownloadedFileRecord(msgId = msgId, fileName = fileName))
+                            .upsert(
+                                DownloadedFileRecord(
+                                    msgId = msgId,
+                                    fileName = fileName,
+                                    fileSize = fileSize
+                                )
+                            )
                     }
                 }
 
@@ -504,15 +514,25 @@ class FileDownloadService : Service() {
         }
     }
     
-    private suspend fun resolveExistingFileByMsgId(msgId: String, fallbackFileName: String): File? {
+    private suspend fun resolveExistingFileByMsgId(
+        msgId: String,
+        fallbackFileName: String,
+        expectedFileSize: Long
+    ): File? {
         val dao = AppDatabase.getDatabase(this).downloadedFileRecordDao()
-        val record = dao.getByMsgId(msgId)
-        val expectedName = record?.fileName?.takeIf { it.isNotBlank() } ?: fallbackFileName
+        val record = dao.getByMsgId(msgId) ?: return null
+        val expectedName = record.fileName.takeIf { it.isNotBlank() } ?: fallbackFileName
+        val expectedSize = record.fileSize.takeIf { it > 0L } ?: return null
         val dir = File("/storage/emulated/0/Download/yhchat/")
         if (!dir.exists() || !dir.isDirectory) return null
         val direct = File(dir, expectedName)
-        if (direct.exists() && direct.isFile) return direct
-        return dir.listFiles()?.firstOrNull { it.isFile && it.name == expectedName }
+        if (direct.exists() && direct.isFile) {
+            if (direct.name == expectedName && direct.length() == expectedSize) {
+                return direct
+            }
+            return null
+        }
+        return null
     }
     
     /**

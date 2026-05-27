@@ -54,7 +54,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -82,6 +81,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
@@ -179,7 +179,7 @@ fun CommunityTabScreen(
         )
         
         // 标签选择栏
-        TabRow(
+        YhSecondaryTabRow(
             selectedTabIndex = selectedTab,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             containerColor = Color.Transparent,

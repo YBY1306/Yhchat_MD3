@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,14 +15,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
@@ -54,6 +60,7 @@ import com.yhchat.canary.data.model.StickerItem
 import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.data.repository.ExpressionRepository
 import com.yhchat.canary.data.repository.StickerRepository
+import com.yhchat.canary.ui.sticker.StickerPackManagerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,51 +131,61 @@ fun ExpressionPicker(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Tab 切换
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                edgePadding = 8.dp,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 默认表情 tab
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("默认表情") }
-                )
+                IconButton(
+                    onClick = { StickerPackManagerActivity.start(context) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "表情包设置"
+                    )
+                }
 
-                // 我收藏的 tab
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("已收藏表情") }
-                )
-                
-                // 表情包 tabs
-                uiState.stickerPacks.forEachIndexed { index, stickerPack ->
-                    val tabIndex = index + 2
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab,
+                    modifier = Modifier.weight(1f),
+                    edgePadding = 8.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
                     Tab(
-                        selected = selectedTab == tabIndex,
-                        onClick = { selectedTab = tabIndex }
-                    ) {
-                        // 使用表情包第一个贴纸作为图标
-                        val firstSticker = stickerPack.stickerItems.firstOrNull()
-                        if (firstSticker != null) {
-                            AsyncImage(
-                                model = ImageUtils.createStickerImageRequest(
-                                    context = context,
-                                    url = firstSticker.getFullUrl()
-                                ),
-                                contentDescription = stickerPack.name,
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp)
-                                    .size(24.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Text("📦")
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("默认表情") }
+                    )
+
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("已收藏表情") }
+                    )
+
+                    uiState.stickerPacks.forEachIndexed { index, stickerPack ->
+                        val tabIndex = index + 2
+                        Tab(
+                            selected = selectedTab == tabIndex,
+                            onClick = { selectedTab = tabIndex }
+                        ) {
+                            val firstSticker = stickerPack.stickerItems.firstOrNull()
+                            if (firstSticker != null) {
+                                AsyncImage(
+                                    model = ImageUtils.createStickerImageRequest(
+                                        context = context,
+                                        url = firstSticker.getFullUrl()
+                                    ),
+                                    contentDescription = stickerPack.name,
+                                    modifier = Modifier
+                                        .padding(vertical = 8.dp)
+                                        .size(24.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text("📦")
+                            }
                         }
                     }
                 }

@@ -254,6 +254,11 @@
             android:exported="false"
             android:label="表情包详情"
             android:theme="@style/Theme.YhchatCanary" />
+        <activity
+            android:name=".ui.sticker.StickerPackManagerActivity"
+            android:exported="false"
+            android:label="表情包设置"
+            android:theme="@style/Theme.YhchatCanary" />
 
         <activity
             android:name=".ui.community.GroupListActivity"

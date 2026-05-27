@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AlertDialog
@@ -22,7 +24,9 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.yhchat.canary.MainViewModel
 import com.yhchat.canary.ui.contacts.ContactsScreen
+import com.yhchat.canary.ui.profile.ProfileScreen
 
 @Composable
 fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
@@ -77,7 +81,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 }
                 item {
                     Button(
-                        onClick = { /*TODO*/ },
+                        onClick = { isDisplayProfileScreen=true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec),
@@ -130,6 +134,24 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 visible = true,
             ) {
                 ContactsScreen()
+            }
+
+
+        if (isDisplayProfileScreen)
+            Dialog(
+                onDismissRequest = { isDisplayProfileScreen=false },
+                visible = true,
+            ) {
+                val mainViewModel: MainViewModel = viewModel()
+                val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
+                val userRepository by mainViewModel.userRepositoryState.collectAsStateWithLifecycle()
+
+                ProfileScreen(
+                    userRepository = userRepository,
+                    tokenRepository = tokenRepository,
+//                    navigationRepository = navigationRepository,
+//                    navigationState = navigationState
+                )
             }
 
     }

@@ -77,14 +77,19 @@ fun InstructionPickerDialog(
 
     var selectedBotId by remember { mutableStateOf("") }
 
-    Surface(
-        modifier = modifier
-            .fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+
+    androidx.wear.compose.material3.Dialog(
+        visible = true,
+        onDismissRequest = onCancelDismiss
     ) {
-        // 直接显示内容，去掉TabRow
-        when {
+        Surface(
+            modifier = modifier
+                .fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp
+        ) {
+            // 直接显示内容，去掉TabRow
+            when {
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -93,7 +98,7 @@ fun InstructionPickerDialog(
                         CircularProgressIndicator()
                     }
                 }
-                
+
                 uiState.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -118,7 +123,7 @@ fun InstructionPickerDialog(
                         }
                     }
                 }
-                
+
                 uiState.instructions.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -131,7 +136,7 @@ fun InstructionPickerDialog(
                         )
                     }
                 }
-                
+
                 else -> {
                     androidx.wear.compose.foundation.lazy.ScalingLazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -152,7 +157,7 @@ fun InstructionPickerDialog(
                                 onClick = {
 //                                    onInstructionClick(instruction)
 //                                    onDismiss()
-                                    selectedBotId=botId
+                                    selectedBotId = botId
                                 },
                                 botId = botId,
                                 botName = uiState.botnamemap[botId]!!,
@@ -161,11 +166,11 @@ fun InstructionPickerDialog(
                     }
 
 
-                    if (selectedBotId.isNotEmpty()){
+                    if (selectedBotId.isNotEmpty()) {
                         Dialog(
                             visible = true,
-                            onDismissRequest = {selectedBotId=""},
-                        ){
+                            onDismissRequest = { selectedBotId = "" },
+                        ) {
                             Surface(
                                 modifier = modifier
                                     .fillMaxSize(),
@@ -194,8 +199,8 @@ fun InstructionPickerDialog(
                     }
 
                 }
+            }
         }
-
     }
 }
 

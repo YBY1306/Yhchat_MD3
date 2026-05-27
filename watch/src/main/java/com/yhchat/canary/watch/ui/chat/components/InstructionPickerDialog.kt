@@ -157,15 +157,18 @@ fun InstructionPickerDialog(
                             )
                         }
                     }
+
+
+                    if (selectedBotId.isNotEmpty()){
+                        Dialog(
+                            visible = true,
+                            onDismissRequest = {selectedBotId=""},
+                        ){}
+                    }
+
                 }
         }
 
-        if (selectedBotId.isNotEmpty()){
-            Dialog(
-                visible = true,
-                onDismissRequest = {selectedBotId=""},
-            ){}
-        }
     }
 }
 

@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.material3.Dialog
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.Instruction
@@ -70,7 +72,9 @@ fun InstructionPickerDialog(
     }
     
     val uiState by viewModel.uiState.collectAsState()
-    
+
+    val selectedBotId=remember { mutableStateOf("") }
+
     Surface(
         modifier = modifier
             .fillMaxSize(),
@@ -153,6 +157,13 @@ fun InstructionPickerDialog(
                         }
                     }
                 }
+        }
+
+        if (selectedBotId.value.isNotEmpty()){
+            Dialog(
+                visible = true,
+                onDismissRequest = {},
+            ){}
         }
     }
 }

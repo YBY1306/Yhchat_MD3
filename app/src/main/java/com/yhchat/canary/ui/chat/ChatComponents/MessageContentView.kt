@@ -748,13 +748,15 @@ fun MessageContentView(
                         },
                         onPlusOne = { onPlusOne(message) }
                     ) {
-                        if (showInlineExpressions) {
+                        val containsExpressionToken = text.contains("[.") && text.contains("]")
+                        val containsLink = LinkDetector.containsLink(text)
+                        if (showInlineExpressions && (containsExpressionToken || containsLink)) {
                             ExpressionText(
                                 text = text,
                                 style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
                                 linkColor = MaterialTheme.colorScheme.primary
                             )
-                        } else if (LinkDetector.containsLink(text)) {
+                        } else if (containsLink) {
                             // 包含链接的文本
                             LinkText(
                                 text = text,

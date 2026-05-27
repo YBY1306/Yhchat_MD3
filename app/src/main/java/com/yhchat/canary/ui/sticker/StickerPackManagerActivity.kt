@@ -21,12 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,32 +44,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.StickerPack
-import com.yhchat.canary.data.repository.StickerRepository
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.burnoutcrew.reorderable.ItemPosition
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.draggableHandle
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.reorderable
 
 class StickerPackManagerActivity : ComponentActivity() {
     companion object {
@@ -80,15 +77,20 @@ class StickerPackManagerActivity : ComponentActivity() {
         enableEdgeToEdge()
         SystemBarUtils.setupTransparentSystemBars(this)
 
+        val repository = RepositoryFactory.getStickerRepository(this)
+
         setContent {
             YhchatCanaryTheme {
                 SystemBarUtils.SetSystemNavigationBarColor(this@StickerPackManagerActivity)
+                val managerViewModel: StickerPackManagerViewModel = viewModel(
+                    factory = StickerPackManagerViewModel.factory(repository)
+                )
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     StickerPackManagerScreen(
-                        repository = RepositoryFactory.getStickerRepository(this@StickerPackManagerActivity),
+                        viewModel = managerViewModel,
                         onBackClick = { finish() }
                     )
                 }
@@ -97,83 +99,22 @@ class StickerPackManagerActivity : ComponentActivity() {
     }
 }
 
-private data class StickerPackManagerUiState(
-    val isLoading: Boolean = true,
-    val isSavingOrder: Boolean = false,
-    val stickerPacks: List<StickerPack> = emptyList(),
-    val error: String? = null
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StickerPackManagerScreen(
-    repository: StickerRepository,
+    viewModel: StickerPackManagerViewModel,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
-    var uiState by remember { mutableStateOf(StickerPackManagerUiState()) }
-    val stickerPacks = remember { mutableStateListOf<StickerPack>() }
-    var hadDraggingItem by remember { mutableStateOf(false) }
-
-    fun loadStickerPacks() {
-        scope.launch {
-            uiState = uiState.copy(isLoading = true, error = null)
-            repository.getStickerPackList().fold(
-                onSuccess = { packs ->
-                    stickerPacks.clear()
-                    stickerPacks.addAll(packs.sortedByDescending { it.sort })
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        stickerPacks = stickerPacks.toList(),
-                        error = null
-                    )
-                },
-                onFailure = { error ->
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        error = error.message ?: "加载失败"
-                    )
-                }
-            )
-        }
-    }
-
-    fun syncSortOrder() {
-        scope.launch {
-            uiState = uiState.copy(isSavingOrder = true, error = null)
-            val sortList = stickerPacks.mapIndexed { index, pack ->
-                pack.id to (stickerPacks.size - index)
-            }
-            repository.sortStickerPacks(sortList).fold(
-                onSuccess = {
-                    uiState = uiState.copy(
-                        isSavingOrder = false,
-                        stickerPacks = stickerPacks.toList()
-                    )
-                },
-                onFailure = { error ->
-                    uiState = uiState.copy(
-                        isSavingOrder = false,
-                        error = error.message ?: "排序失败"
-                    )
-                    loadStickerPacks()
-                }
-            )
-        }
+    val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        viewModel.moveStickerPack(from.index, to.index)
     }
 
     LaunchedEffect(Unit) {
-        loadStickerPacks()
+        viewModel.loadStickerPacks()
     }
-
-    val reorderState = rememberReorderableLazyListState(
-        onMove = { from: ItemPosition, to: ItemPosition ->
-            val moved = stickerPacks.removeAt(from.index)
-            stickerPacks.add(to.index, moved)
-            uiState = uiState.copy(stickerPacks = stickerPacks.toList())
-        }
-    )
 
     Scaffold(
         topBar = {
@@ -200,7 +141,7 @@ private fun StickerPackManagerScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
-                uiState.error != null && stickerPacks.isEmpty() -> {
+                uiState.error != null && uiState.stickerPacks.isEmpty() -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -210,7 +151,7 @@ private fun StickerPackManagerScreen(
                             text = uiState.error ?: "加载失败",
                             color = MaterialTheme.colorScheme.error
                         )
-                        TextButton(onClick = { loadStickerPacks() }) {
+                        TextButton(onClick = { viewModel.loadStickerPacks() }) {
                             Text("重试")
                         }
                     }
@@ -235,7 +176,10 @@ private fun StickerPackManagerScreen(
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "正在保存排序",
@@ -246,41 +190,51 @@ private fun StickerPackManagerScreen(
                         }
 
                         LazyColumn(
-                            state = reorderState.listState,
+                            state = lazyListState,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 12.dp)
-                                .reorderable(reorderState)
-                                .detectReorderAfterLongPress(reorderState),
+                                .reorderable(reorderableState),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(stickerPacks, key = { it.id }) { stickerPack ->
-                                ReorderableItem(reorderState, key = stickerPack.id) { isDragging ->
-                                    val elevation by animateDpAsState(
+                            itemsIndexed(
+                                items = uiState.stickerPacks,
+                                key = { _, item -> item.id }
+                            ) { index, stickerPack ->
+                                ReorderableItem(
+                                    state = reorderableState,
+                                    key = stickerPack.id
+                                ) { isDragging ->
+                                    val elevation = animateDpAsState(
                                         targetValue = if (isDragging) 8.dp else 2.dp,
                                         label = "StickerPackCardElevation"
-                                    )
+                                    ).value
+
                                     StickerPackManagerItem(
                                         stickerPack = stickerPack,
+                                        index = index,
+                                        canMoveUp = index > 0,
+                                        canMoveDown = index < uiState.stickerPacks.lastIndex,
                                         elevation = elevation,
+                                        onReorderFinished = { viewModel.syncSortOrder() },
+                                        onMoveUp = {
+                                            viewModel.moveStickerPack(index, index - 1)
+                                            viewModel.syncSortOrder()
+                                        },
+                                        onMoveDown = {
+                                            viewModel.moveStickerPack(index, index + 1)
+                                            viewModel.syncSortOrder()
+                                        },
                                         onRemove = {
-                                            scope.launch {
-                                                repository.removeStickerPack(stickerPack.id).fold(
-                                                    onSuccess = {
-                                                        stickerPacks.removeAll { it.id == stickerPack.id }
-                                                        uiState = uiState.copy(stickerPacks = stickerPacks.toList())
-                                                        Toast.makeText(context, "已移除", Toast.LENGTH_SHORT).show()
-                                                        syncSortOrder()
-                                                    },
-                                                    onFailure = { error ->
-                                                        Toast.makeText(
-                                                            context,
-                                                            error.message ?: "移除失败",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                )
-                                            }
+                                            viewModel.removeStickerPack(
+                                                packId = stickerPack.id,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "已移除", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onFailure = { message ->
+                                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
                                         }
                                     )
                                 }
@@ -295,20 +249,18 @@ private fun StickerPackManagerScreen(
             }
         }
     }
-
-    LaunchedEffect(reorderState.draggingItemIndex) {
-        val isDragging = reorderState.draggingItemIndex != null
-        if (hadDraggingItem && !isDragging && !uiState.isLoading && stickerPacks.isNotEmpty()) {
-            syncSortOrder()
-        }
-        hadDraggingItem = isDragging
-    }
 }
 
 @Composable
-private fun StickerPackManagerItem(
+private fun ReorderableCollectionItemScope.StickerPackManagerItem(
     stickerPack: StickerPack,
-    elevation: androidx.compose.ui.unit.Dp,
+    index: Int,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    elevation: Dp,
+    onReorderFinished: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onRemove: () -> Unit
 ) {
     val preview = stickerPack.stickerItems.firstOrNull()
@@ -324,12 +276,25 @@ private fun StickerPackManagerItem(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.DragHandle,
-                contentDescription = "拖拽排序",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DragHandle,
+                    contentDescription = "拖拽排序",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .draggableHandle(
+                            onDragStopped = onReorderFinished
+                        )
+                        .size(22.dp)
+                )
+                Text(
+                    text = (index + 1).toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -350,7 +315,7 @@ private fun StickerPackManagerItem(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("📦")
+                    Text("表")
                 }
             }
 
@@ -370,6 +335,29 @@ private fun StickerPackManagerItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = canMoveUp
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "上移"
+                    )
+                }
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = canMoveDown
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "下移"
+                    )
+                }
             }
 
             IconButton(onClick = onRemove) {

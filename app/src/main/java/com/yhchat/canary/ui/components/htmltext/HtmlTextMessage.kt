@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.components.htmltext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -100,23 +99,21 @@ fun HtmlTextMessage(
 
         val mergedInlineContent = if (inlineContent.isEmpty()) imageInlineContent else (inlineContent + imageInlineContent)
 
-        SelectionContainer {
-            BaseHtmlText(
-                modifier = modifier,
-                annotatedString = annotatedString,
-                linkBoxModifier = linkBoxModifier,
-                onTextLayout = onTextLayout,
-                onUriClick = onUriClick,
-            ) { textModifier, onLayout ->
-                Text(
-                    text = annotatedString,
-                    modifier = textModifier,
-                    color = color,
-                    style = style,
-                    inlineContent = mergedInlineContent,
-                    onTextLayout = onLayout,
-                )
-            }
+        BaseHtmlText(
+            modifier = modifier,
+            annotatedString = annotatedString,
+            linkBoxModifier = linkBoxModifier,
+            onTextLayout = onTextLayout,
+            onUriClick = onUriClick,
+        ) { textModifier, onLayout ->
+            Text(
+                text = annotatedString,
+                modifier = textModifier,
+                color = color,
+                style = style,
+                inlineContent = mergedInlineContent,
+                onTextLayout = onLayout,
+            )
         }
     }
 }

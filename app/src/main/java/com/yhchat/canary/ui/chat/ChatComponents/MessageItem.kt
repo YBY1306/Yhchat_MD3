@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -256,15 +255,13 @@ fun MessageItem(
                             Spacer(modifier = Modifier.height(12.dp))
                         } else {
                             message.content.text?.let { previewText ->
-                                SelectionContainer {
-                                    Text(
-                                        text = previewText.take(200) + if (previewText.length > 200) "..." else "",
-                                        color = textColor,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 3,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
+                                Text(
+                                    text = previewText.take(200) + if (previewText.length > 200) "..." else "",
+                                    color = textColor,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 3,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
@@ -522,15 +519,13 @@ fun RecallMessageItem(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             tonalElevation = 1.dp
         ) {
-            SelectionContainer {
-                Text(
+            Text(
                     text = "${message.sender.name} 在 ${formatRecallTime(message.msgDeleteTime!!)} 撤回了一条消息",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            }
         }
     }
 }
@@ -551,15 +546,13 @@ fun TipMessageItem(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             tonalElevation = 1.dp
         ) {
-            SelectionContainer {
-                Text(
+            Text(
                     text = message.content.text ?: "系统提示",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            }
         }
     }
 }

@@ -140,6 +140,7 @@ dependencies {
     implementation("androidx.compose.material:material")
 
     implementation(libs.reorderable)
+    implementation(libs.calvin.reorderable)
 
     implementation("androidx.documentfile:documentfile:1.0.1")
     

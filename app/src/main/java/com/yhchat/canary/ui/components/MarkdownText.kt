@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
@@ -244,13 +243,7 @@ fun MarkdownText(
                                 }
                             }
                         }
-                        if (enableTextSelection) {
-                            SelectionContainer {
-                                textContent()
-                            }
-                        } else {
-                            textContent()
-                        }
+                        textContent()
                     }
                 }
 
@@ -326,13 +319,7 @@ fun MarkdownText(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        if (enableTextSelection) {
-                            SelectionContainer {
-                                htmlFallbackContent()
-                            }
-                        } else {
-                            htmlFallbackContent()
-                        }
+                        htmlFallbackContent()
                     }
                 }
 
@@ -370,13 +357,7 @@ fun MarkdownText(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        if (enableTextSelection) {
-                            SelectionContainer {
-                                htmlBlockFallbackContent()
-                            }
-                        } else {
-                            htmlBlockFallbackContent()
-                        }
+                        htmlBlockFallbackContent()
                     }
                 }
                 
@@ -700,20 +681,18 @@ private fun CodeBlockComponent(
             }
             
             // 代码内容
-            SelectionContainer {
-                Text(
-                    text = code,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        lineHeight = 20.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(scrollState)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                )
-            }
+            Text(
+                text = code,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 20.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
         }
     }
 }

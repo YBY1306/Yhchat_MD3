@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -42,21 +43,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import org.burnoutcrew.reorderable.ItemPosition
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.draggableHandle
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.reorderable
 import kotlin.system.exitProcess
 
-/**
- * 导航栏设置Activity
- */
 class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
     private val navigationRepository by lazy {
         com.yhchat.canary.data.di.RepositoryFactory.getNavigationRepository(this)
@@ -64,18 +63,18 @@ class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
     private val navigationSettingsViewModel by lazy {
         NavigationSettingsViewModel(navigationRepository)
     }
-    
+
     companion object {
         fun start(context: Context, navigationRepository: NavigationRepository) {
             val intent = Intent(context, NavigationSettingsActivity::class.java)
             context.startActivity(intent)
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         setContent {
             YhchatCanaryTheme {
                 Surface(
@@ -93,9 +92,6 @@ class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
     }
 }
 
-/**
- * 导航栏设置界面
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationSettingsScreen(
@@ -107,16 +103,19 @@ fun NavigationSettingsScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val navigationConfig by navigationRepository.navigationConfig.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    // 当配置更新时同步items
+
     LaunchedEffect(navigationConfig) {
         viewModel.syncFromConfig(navigationConfig)
     }
-    
+
+    val lazyListState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        viewModel.moveItem(from.index, to.index)
+    }
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // 顶部应用栏
         TopAppBar(
             title = {
                 Text(
@@ -135,16 +134,13 @@ fun NavigationSettingsScreen(
             },
             actions = {
                 TextButton(
-                    onClick = {
-                        viewModel.resetToDefault()
-                    }
+                    onClick = { viewModel.resetToDefault() }
                 ) {
                     Text("重置")
                 }
             }
         )
-        
-        // 说明文字
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,14 +159,13 @@ fun NavigationSettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• 点击开关显示/隐藏导航项\n• 长按并拖拽项目调整显示顺序\n• 修改后需要重启应用才能生效",
+                    text = "点击开关显示或隐藏导航项，拖拽项目调整显示顺序，修改后需要重启应用才能生效。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        
-        // 应用更改按钮
+
         if (uiState.hasChanges) {
             Card(
                 modifier = Modifier
@@ -194,9 +189,7 @@ fun NavigationSettingsScreen(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Button(
-                        onClick = {
-                            viewModel.applyChanges()
-                        },
+                        onClick = { viewModel.applyChanges() },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -206,44 +199,37 @@ fun NavigationSettingsScreen(
                 }
             }
         }
-        
-        // 导航项列表
-        val state = rememberReorderableLazyListState(onMove = { from: ItemPosition, to: ItemPosition ->
-            val fromIndex = from.index
-            val toIndex = to.index
-            viewModel.moveItem(fromIndex, toIndex)
-        })
 
         LazyColumn(
-            state = state.listState,
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
-                .reorderable(state)
-                .detectReorderAfterLongPress(state)
+                .reorderable(reorderState)
         ) {
             itemsIndexed(uiState.items, key = { _, item -> item.id }) { index, item ->
-                ReorderableItem(state, key = item.id) { isDragging ->
-                    val elevation = animateDpAsState(if (isDragging) 8.dp else 2.dp, label = "elevation")
+                ReorderableItem(reorderState, key = item.id) { isDragging ->
+                    val elevation = animateDpAsState(
+                        targetValue = if (isDragging) 8.dp else 2.dp,
+                        label = "NavigationItemElevation"
+                    ).value
                     NavigationItemCard(
                         item = item,
                         index = index,
                         totalItems = uiState.items.size,
-                        elevation = elevation.value,
+                        elevation = elevation,
                         onVisibilityChange = { isVisible ->
                             viewModel.updateVisibility(item.id, isVisible)
                         }
                     )
                 }
             }
-            
-            // 添加一些底部空间
+
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        
-        // 重启确认对话框
+
         if (uiState.showRestartDialog) {
             AlertDialog(
                 onDismissRequest = viewModel::dismissRestartDialog,
@@ -252,9 +238,7 @@ fun NavigationSettingsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            // 重启应用
-                            val intent = context.packageManager
-                                .getLaunchIntentForPackage(context.packageName)
+                            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                             intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                             intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
@@ -275,15 +259,12 @@ fun NavigationSettingsScreen(
     }
 }
 
-/**
- * 导航项卡片
- */
 @Composable
-private fun NavigationItemCard(
+private fun ReorderableCollectionItemScope.NavigationItemCard(
     item: NavigationItem,
     index: Int,
     totalItems: Int,
-    elevation: androidx.compose.ui.unit.Dp,
+    elevation: Dp,
     onVisibilityChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -299,27 +280,26 @@ private fun NavigationItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 拖拽手柄图标
             Icon(
                 imageVector = Icons.Default.Menu,
                 contentDescription = "拖拽排序",
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier
+                    .draggableHandle()
+                    .size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 导航项图标
             Icon(
                 imageVector = item.getIcon(),
                 contentDescription = item.title,
                 modifier = Modifier.size(25.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
-            // 导航项信息
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -331,15 +311,14 @@ private fun NavigationItemCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "位置: 第 ${index + 1} 个",
+                    text = "位置: 第 ${index + 1} 项 / 共 $totalItems 项",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(8.dp))
-            
-            // 可见性开关
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

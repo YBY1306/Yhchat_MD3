@@ -72,8 +72,7 @@ fun InstructionPickerDialog(
     
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .height(300.dp),
+            .fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp
     ) {

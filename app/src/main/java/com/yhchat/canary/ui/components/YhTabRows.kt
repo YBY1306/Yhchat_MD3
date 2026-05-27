@@ -1,12 +1,10 @@
 package com.yhchat.canary.ui.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -16,7 +14,7 @@ fun YhSecondaryTabRow(
     selectedTabIndex: Int,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
-    contentColor: Color = TabRowDefaults.secondaryContentColor,
+    contentColor: Color = Color.Unspecified,
     tabs: @Composable () -> Unit
 ) {
     SecondaryTabRow(
@@ -25,14 +23,7 @@ fun YhSecondaryTabRow(
         containerColor = containerColor,
         contentColor = contentColor,
         indicator = {
-            with(this) {
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier
-                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = true)
-                        .clip(RoundedCornerShape(topStart = 999.dp, topEnd = 999.dp)),
-                    height = 3.dp
-                )
-            }
+            RoundedCornerTabIndicator(index = selectedTabIndex)
         },
         tabs = tabs
     )
@@ -44,11 +35,11 @@ fun YhScrollableTabRow(
     modifier: Modifier = Modifier,
     edgePadding: Dp = 8.dp,
     containerColor: Color = Color.Transparent,
-    contentColor: Color = TabRowDefaults.secondaryContentColor,
+    contentColor: Color = Color.Unspecified,
     divider: @Composable () -> Unit = {},
     tabs: @Composable () -> Unit
 ) {
-    ScrollableTabRow(
+    SecondaryScrollableTabRow(
         selectedTabIndex = selectedTabIndex,
         modifier = modifier,
         edgePadding = edgePadding,
@@ -56,14 +47,7 @@ fun YhScrollableTabRow(
         contentColor = contentColor,
         divider = divider,
         indicator = {
-            with(this) {
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier
-                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = true)
-                        .clip(RoundedCornerShape(topStart = 999.dp, topEnd = 999.dp)),
-                    height = 3.dp
-                )
-            }
+            RoundedCornerTabIndicator(index = selectedTabIndex)
         },
         tabs = tabs
     )

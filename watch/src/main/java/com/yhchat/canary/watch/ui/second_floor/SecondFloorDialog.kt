@@ -10,6 +10,7 @@ import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Dialog
 import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
@@ -42,6 +43,17 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
             },
         ) { contentPadding -> // ScreenScaffold provides default padding; adjust as needed
             TransformingLazyColumn(contentPadding = contentPadding, state = listState) {
+                item {
+                    ListHeader(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec),
+                    ) {
+                        Text(text = "二楼菜单")
+                    }
+                }
                 item {
                     Button(
                         onClick = { /*TODO*/ },

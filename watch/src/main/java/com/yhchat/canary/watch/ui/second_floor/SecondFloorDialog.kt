@@ -2,6 +2,10 @@ package com.yhchat.canary.watch.ui.second_floor
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -18,6 +22,7 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.yhchat.canary.ui.contacts.ContactsScreen
 
 @Composable
 fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
@@ -27,6 +32,11 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
     ){
         val listState = rememberTransformingLazyColumnState()
         val transformationSpec = rememberTransformationSpec()
+
+        var isDisplayContactsScreen by remember { mutableStateOf(false) }
+        var isDisplayProfileScreen by remember { mutableStateOf(false) }
+        var isDisplaySettingsScreen by remember { mutableStateOf(false) }
+
         ScreenScaffold(
             scrollState = listState,
             edgeButton = {
@@ -56,7 +66,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 }
                 item {
                     Button(
-                        onClick = { /*TODO*/ },
+                        onClick = {isDisplayContactsScreen=true},
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec),
@@ -112,6 +122,16 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
 
             }
         }
+
+
+        if (isDisplayContactsScreen)
+            Dialog(
+                onDismissRequest = { isDisplayContactsScreen=false },
+                visible = true,
+            ) {
+                ContactsScreen()
+            }
+
     }
     // todo 二楼菜单
     //  联系人

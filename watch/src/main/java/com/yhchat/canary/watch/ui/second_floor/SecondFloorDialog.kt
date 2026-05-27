@@ -158,12 +158,12 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
 
 
         if (isDisplaySettingsScreen) {
-            val mainViewModel: MainViewModel = viewModel()
-            val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
+//            val mainViewModel: MainViewModel = viewModel()
+//            val tokenRepository by mainViewModel.tokenRepositoryState.collectAsStateWithLifecycle()
             SettingsActivity.start(
                 LocalContext.current,
-                null,//  navigationRepository,
-                tokenRepository,
+//                null,//  navigationRepository,
+//                tokenRepository,
             )
             isDisplaySettingsScreen=false
         }

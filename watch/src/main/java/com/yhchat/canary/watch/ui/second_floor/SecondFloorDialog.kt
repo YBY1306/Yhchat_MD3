@@ -50,7 +50,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                             .transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
                     ) {
-                        Text("Button B")
+                        Text("联系人")
                     }
                 }
                 item {
@@ -61,7 +61,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                             .transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
                     ) {
-                        Text("Button B")
+                        Text("个人中心")
                     }
                 }
                 item {
@@ -72,7 +72,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                             .transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
                     ) {
-                        Text("Button B")
+                        Text("设置")
                     }
                 }
                 item {

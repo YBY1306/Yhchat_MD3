@@ -103,28 +103,6 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                         Text("设置")
                     }
                 }
-                item {
-                    Button(
-                        onClick = { /*TODO*/ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
-                        transformation = SurfaceTransformation(transformationSpec),
-                    ) {
-                        Text("Button B")
-                    }
-                }
-                item {
-                    Button(
-                        onClick = { /*TODO*/ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
-                        transformation = SurfaceTransformation(transformationSpec),
-                    ) {
-                        Text("Button B")
-                    }
-                }
 
             }
         }

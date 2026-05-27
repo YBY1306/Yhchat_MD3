@@ -142,13 +142,14 @@ fun InstructionPickerDialog(
 //                            )
 //                        }
                         val i=0
-                        items(uiState.instructionsofbots.keys.toList()) { bot ->
+                        items(uiState.instructionsofbots.keys.toList()) { botId ->
                             InstructionBotItem(
-                                botId = bot,
                                 onClick = {
 //                                    onInstructionClick(instruction)
                                     onDismiss()
-                                }
+                                },
+                                botId = botId,
+                                botName = uiState.botnamemap[botId],
                             )
                         }
                     }
@@ -264,7 +265,7 @@ private fun InstructionBotItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text =botId,// instruction.name,
+                    text =botName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium
                 )
@@ -307,11 +308,11 @@ private fun InstructionBotItem(
 //            }
 
             Spacer(modifier = Modifier.height(4.dp))
-//            Text(
-//                text = "来自: ${instruction.botName}",
-//                style = MaterialTheme.typography.labelSmall,
-//                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-//            )
+            Text(
+                text = botName,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
         }
     }
 }

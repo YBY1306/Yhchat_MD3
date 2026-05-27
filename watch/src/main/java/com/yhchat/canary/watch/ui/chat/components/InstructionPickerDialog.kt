@@ -141,7 +141,7 @@ fun InstructionPickerDialog(
 //                                }
 //                            )
 //                        }
-                        items(uiState.instructionsofbots.keys.toList()) { botId ->
+                        items(uiState.botnamemap.keys.toList()) { botId ->
                             InstructionBotItem(
                                 onClick = {
 //                                    onInstructionClick(instruction)

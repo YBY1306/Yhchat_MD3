@@ -149,7 +149,7 @@ fun InstructionPickerDialog(
                                     onDismiss()
                                 },
                                 botId = botId,
-                                botName = uiState.botnamemap[botId],
+                                botName = uiState.botnamemap[botId]!!,
                             )
                         }
                     }
@@ -243,8 +243,8 @@ private fun InstructionItem(
 @Composable
 private fun InstructionBotItem(
     onClick: () -> Unit,
-    botId: String,
-    botName: String? =null,
+    botId: String="",
+    botName: String="",
 ) {
     Card(
         modifier = Modifier

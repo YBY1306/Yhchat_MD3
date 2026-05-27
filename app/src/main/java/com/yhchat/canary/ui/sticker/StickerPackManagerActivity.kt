@@ -59,11 +59,10 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import sh.calvin.reorderable.DraggableHandle
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableCollectionItemScope
-import sh.calvin.reorderable.draggableHandle
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import sh.calvin.reorderable.reorderable
 
 class StickerPackManagerActivity : ComponentActivity() {
     companion object {
@@ -193,8 +192,7 @@ private fun StickerPackManagerScreen(
                             state = lazyListState,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 12.dp)
-                                .reorderable(reorderableState),
+                                .padding(horizontal = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             itemsIndexed(
@@ -283,11 +281,13 @@ private fun ReorderableCollectionItemScope.StickerPackManagerItem(
                     imageVector = Icons.Default.DragHandle,
                     contentDescription = "拖拽排序",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .draggableHandle(
-                            onDragStopped = onReorderFinished
-                        )
-                        .size(22.dp)
+                    modifier = with(this@StickerPackManagerItem) {
+                        Modifier
+                            .draggableHandle(
+                                onDragStopped = onReorderFinished
+                            )
+                            .size(22.dp)
+                    }
                 )
                 Text(
                     text = (index + 1).toString(),

@@ -49,11 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
+import sh.calvin.reorderable.DraggableHandle
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.draggableHandle
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import sh.calvin.reorderable.reorderable
 import kotlin.system.exitProcess
 
 class NavigationSettingsActivity : com.yhchat.canary.ui.base.BaseActivity() {
@@ -205,7 +204,6 @@ fun NavigationSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
-                .reorderable(reorderState)
         ) {
             itemsIndexed(uiState.items, key = { _, item -> item.id }) { index, item ->
                 ReorderableItem(reorderState, key = item.id) { isDragging ->
@@ -283,9 +281,11 @@ private fun ReorderableCollectionItemScope.NavigationItemCard(
             Icon(
                 imageVector = Icons.Default.Menu,
                 contentDescription = "拖拽排序",
-                modifier = Modifier
-                    .draggableHandle()
-                    .size(24.dp),
+                modifier = with(this@NavigationItemCard) {
+                    Modifier
+                        .draggableHandle()
+                        .size(24.dp)
+                },
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
 

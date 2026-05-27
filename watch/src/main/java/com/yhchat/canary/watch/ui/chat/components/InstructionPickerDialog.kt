@@ -58,7 +58,7 @@ fun InstructionPickerDialog(
     groupId: String? = null,
     botId: String? = null,
     onInstructionClick: (Instruction) -> Unit,
-    onDismiss: () -> Unit , // 这个是点完按钮之后的如何关闭该界面 //由于是从com.yhchat.canary.ui.components.InstructionPicker修改而来，所以暂不修改型参名
+    onDismiss: () -> Unit , // 这个是点完按钮之后的如何关闭该界面 // 由于是从com.yhchat.canary.ui.components.InstructionPicker修改而来，所以暂不修改型参名
     onCancelDismiss: () -> Unit = {} , // 这个是取消之后的如何关闭该界面
     modifier: Modifier = Modifier
 ) {

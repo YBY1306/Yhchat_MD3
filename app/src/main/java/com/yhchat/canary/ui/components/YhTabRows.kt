@@ -3,7 +3,6 @@ package com.yhchat.canary.ui.components
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.TabIndicatorScope
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,7 +25,14 @@ fun YhSecondaryTabRow(
         containerColor = containerColor,
         contentColor = contentColor,
         indicator = {
-            RoundedTopSecondaryIndicator(selectedTabIndex)
+            with(this) {
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier
+                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = true)
+                        .clip(RoundedCornerShape(topStart = 999.dp, topEnd = 999.dp)),
+                    height = 3.dp
+                )
+            }
         },
         tabs = tabs
     )
@@ -50,20 +56,15 @@ fun YhScrollableTabRow(
         contentColor = contentColor,
         divider = divider,
         indicator = {
-            RoundedTopSecondaryIndicator(selectedTabIndex)
+            with(this) {
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier
+                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = true)
+                        .clip(RoundedCornerShape(topStart = 999.dp, topEnd = 999.dp)),
+                    height = 3.dp
+                )
+            }
         },
         tabs = tabs
-    )
-}
-
-@Composable
-private fun TabIndicatorScope.RoundedTopSecondaryIndicator(
-    selectedTabIndex: Int
-) {
-    TabRowDefaults.SecondaryIndicator(
-        modifier = Modifier
-            .tabIndicatorOffset(selectedTabIndex, matchContentSize = true)
-            .clip(RoundedCornerShape(topStart = 999.dp, topEnd = 999.dp)),
-        height = 3.dp
     )
 }

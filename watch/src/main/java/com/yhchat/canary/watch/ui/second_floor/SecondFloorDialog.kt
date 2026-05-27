@@ -94,7 +94,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 }
                 item {
                     Button(
-                        onClick = { /*TODO*/ },
+                        onClick = { isDisplaySettingsScreen=true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec),
@@ -165,6 +165,7 @@ fun SecondFloorDialog(onDismissRequest: () -> Unit, onOkClick: () -> Unit) {
                 null,//  navigationRepository,
                 tokenRepository,
             )
+            isDisplaySettingsScreen=false
         }
 
 

@@ -29,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -73,7 +74,7 @@ fun InstructionPickerDialog(
     
     val uiState by viewModel.uiState.collectAsState()
 
-    val selectedBotId by remember { mutableStateOf("") }
+    var selectedBotId by remember { mutableStateOf("") }
 
     Surface(
         modifier = modifier
@@ -162,7 +163,7 @@ fun InstructionPickerDialog(
         if (selectedBotId.isNotEmpty()){
             Dialog(
                 visible = true,
-                onDismissRequest = {},
+                onDismissRequest = {selectedBotId=""},
             ){}
         }
     }

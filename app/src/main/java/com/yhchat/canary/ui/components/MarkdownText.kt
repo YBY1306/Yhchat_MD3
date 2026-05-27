@@ -164,7 +164,6 @@ fun MarkdownText(
     Column(
         modifier = modifier
             .wrapContentWidth()
-            .widthIn(max = 320.dp)
             .background(backgroundColor),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

@@ -572,7 +572,6 @@ fun MessageContentView(
                                 onImageClick = onImageClick,
                                 modifier = Modifier
                                     .wrapContentWidth()
-                                    .widthIn(max = 320.dp)
                             )
                         }
                     }

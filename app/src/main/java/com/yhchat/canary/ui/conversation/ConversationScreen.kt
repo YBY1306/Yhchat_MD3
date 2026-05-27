@@ -346,7 +346,7 @@ fun ConversationScreen(
         with(density) { topBarHeightPx.toDp() }
     }
     val topContentPaddingDp by animateDpAsState(
-        targetValue = if (topBarNavigationState.isVisible) topBarContainerHeightDp else 0.dp,
+        targetValue = topBarContainerHeightDp,
         animationSpec = tween(durationMillis = 260),
         label = "conversationTopContentPadding"
     )

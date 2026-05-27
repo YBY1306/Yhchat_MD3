@@ -170,9 +170,9 @@ dependencies {
     implementation("com.halilibo.compose-richtext:richtext-ui-material3:0.17.0")
     implementation("com.halilibo.compose-richtext:richtext-commonmark:0.17.0")
     implementation(libs.jetbrains.markdown)
-    implementation(libs.latex.base)
-    implementation(libs.latex.parser)
     implementation(libs.latex.renderer)
+
+    // .tgs渲染
     implementation("com.airbnb.android:lottie-compose:6.6.0")
 
     implementation(libs.ksoup.html)

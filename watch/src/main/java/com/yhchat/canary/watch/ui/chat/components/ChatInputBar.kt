@@ -1475,6 +1475,9 @@ fun ChatInputBar(
                         onDismiss = {
                             showInstructionPicker = false
                             showAttachMenu=false
+                        },
+                        onCancelDismiss={
+                            showInstructionPicker = false
                         }
                     )
                 }

@@ -144,7 +144,7 @@ fun InstructionPickerDialog(
                         val i=0
                         items(uiState.instructionsofbots.keys.toList()) { bot ->
                             InstructionBotItem(
-                                bot = bot,
+                                botId = bot,
                                 onClick = {
 //                                    onInstructionClick(instruction)
                                     onDismiss()
@@ -241,8 +241,9 @@ private fun InstructionItem(
  */
 @Composable
 private fun InstructionBotItem(
-    bot: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    botId: String,
+    botName: String="",
 ) {
     Card(
         modifier = Modifier
@@ -263,7 +264,7 @@ private fun InstructionBotItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text =bot,// instruction.name,
+                    text =botId,// instruction.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium
                 )

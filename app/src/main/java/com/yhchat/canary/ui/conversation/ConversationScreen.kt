@@ -7,12 +7,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,7 +27,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,7 +77,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -334,19 +333,13 @@ fun ConversationScreen(
     
     val density = LocalDensity.current
     var topBarHeightPx by remember { mutableStateOf(0) }
-    val topBarOffsetPx by animateIntAsState(
-        targetValue = if (topBarNavigationState.isVisible) 0 else -topBarHeightPx.coerceAtLeast(1),
-        animationSpec = tween(durationMillis = 260),
-        label = "conversationTopBarOffsetPx"
-    )
-    val topBarOffsetDp = with(density) { topBarOffsetPx.toDp() }
     val topBarContainerHeightDp = if (topBarHeightPx <= 0) {
         76.dp
     } else {
         with(density) { topBarHeightPx.toDp() }
     }
     val topContentPaddingDp by animateDpAsState(
-        targetValue = topBarContainerHeightDp,
+        targetValue = if (topBarNavigationState.isVisible) topBarContainerHeightDp else 0.dp,
         animationSpec = tween(durationMillis = 260),
         label = "conversationTopContentPadding"
     )
@@ -735,11 +728,18 @@ fun ConversationScreen(
             }
         }
 
-        Box(
+        AnimatedVisibility(
+            visible = topBarNavigationState.isVisible,
+            enter = fadeIn(animationSpec = tween(durationMillis = 220)) + expandVertically(
+                animationSpec = tween(durationMillis = 260),
+                expandFrom = Alignment.Top
+            ),
+            exit = fadeOut(animationSpec = tween(durationMillis = 180)) + shrinkVertically(
+                animationSpec = tween(durationMillis = 260),
+                shrinkTowards = Alignment.Top
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(topBarContainerHeightDp)
-                .clipToBounds()
                 .zIndex(1f)
         ) {
             Card(
@@ -750,8 +750,7 @@ fun ConversationScreen(
                         if (topBarHeightPx != it.height) {
                             topBarHeightPx = it.height
                         }
-                    }
-                    .offset(y = topBarOffsetDp),
+                    },
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)

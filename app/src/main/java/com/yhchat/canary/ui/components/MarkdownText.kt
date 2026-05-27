@@ -112,7 +112,8 @@ fun MarkdownText(
     onImageClick: ((String) -> Unit)? = null,
     imageReferer: String? = "https://myapp.jwznb.com",
     enableHtmlRendering: Boolean = true,
-    highlightKeyword: String = ""
+    highlightKeyword: String = "",
+    enableTextSelection: Boolean = true
 ) {
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
@@ -172,7 +173,7 @@ fun MarkdownText(
                 is MarkdownSegment.Text -> {
                     if (segment.content.isNotBlank()) {
                         val taskRuns = MarkdownRendererCache.getTaskRuns(segment.content)
-                        SelectionContainer {
+                        val textContent: @Composable () -> Unit = {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 taskRuns.forEach { run ->
                                     when (run) {
@@ -243,6 +244,13 @@ fun MarkdownText(
                                 }
                             }
                         }
+                        if (enableTextSelection) {
+                            SelectionContainer {
+                                textContent()
+                            }
+                        } else {
+                            textContent()
+                        }
                     }
                 }
 
@@ -310,13 +318,20 @@ fun MarkdownText(
                             useAdvancedRenderer = true
                         )
                     } else {
-                        SelectionContainer {
+                        val htmlFallbackContent: @Composable () -> Unit = {
                             Text(
                                 text = segment.content,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = textColor,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                        }
+                        if (enableTextSelection) {
+                            SelectionContainer {
+                                htmlFallbackContent()
+                            }
+                        } else {
+                            htmlFallbackContent()
                         }
                     }
                 }
@@ -347,13 +362,20 @@ fun MarkdownText(
                             useAdvancedRenderer = true
                         )
                     } else {
-                        SelectionContainer {
+                        val htmlBlockFallbackContent: @Composable () -> Unit = {
                             Text(
                                 text = segment.content,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = textColor,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                        }
+                        if (enableTextSelection) {
+                            SelectionContainer {
+                                htmlBlockFallbackContent()
+                            }
+                        } else {
+                            htmlBlockFallbackContent()
                         }
                     }
                 }
@@ -496,36 +518,48 @@ private fun InlineMarkdownWithLatex(
     latexConfig: LatexConfig,
     highlightKeyword: String
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth()
+    val lines = remember(segments) { splitInlineSegmentsByLine(segments) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        segments.forEach { segment ->
-            when (segment) {
-                is MarkdownInlineSegment.Markdown -> {
-                    if (segment.content.isNotBlank()) {
-                        val highlighted = remember(segment.content, highlightKeyword) {
-                            MarkdownRendererCache.getHighlightedMarkdown(
-                                segment.content,
-                                highlightKeyword
-                            )
+        lines.forEach { line ->
+            if (line.isEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    line.forEach { segment ->
+                        when (segment) {
+                            is MarkdownInlineSegment.Markdown -> {
+                                if (segment.content.isNotEmpty()) {
+                                    val highlighted = remember(segment.content, highlightKeyword) {
+                                        MarkdownRendererCache.getHighlightedMarkdown(
+                                            segment.content,
+                                            highlightKeyword
+                                        )
+                                    }
+                                    BasicText(
+                                        text = parseSimpleMarkdown(
+                                            text = highlighted,
+                                            baseColor = latexConfig.color
+                                        )
+                                    )
+                                }
+                            }
+
+                            is MarkdownInlineSegment.LatexInline -> {
+                                LatexInlineText(
+                                    latex = segment.content,
+                                    latexConfig = latexConfig
+                                )
+                            }
+
+                            is MarkdownInlineSegment.LatexBlock -> Unit
                         }
-                        BasicText(
-                            text = parseSimpleMarkdown(
-                                text = highlighted,
-                                baseColor = latexConfig.color
-                            )
-                        )
                     }
                 }
-
-                is MarkdownInlineSegment.LatexInline -> {
-                    LatexInlineText(
-                        latex = segment.content,
-                        latexConfig = latexConfig
-                    )
-                }
-
-                is MarkdownInlineSegment.LatexBlock -> Unit
             }
         }
     }
@@ -1858,6 +1892,48 @@ private fun processLineBreaks(text: String): String {
     }
     
     return result.joinToString("\n")
+}
+
+private fun splitInlineSegmentsByLine(
+    segments: List<MarkdownInlineSegment>
+): List<List<MarkdownInlineSegment>> {
+    if (segments.isEmpty()) return emptyList()
+
+    val lines = mutableListOf<MutableList<MarkdownInlineSegment>>()
+    var currentLine = mutableListOf<MarkdownInlineSegment>()
+
+    fun flushLine() {
+        lines += currentLine
+        currentLine = mutableListOf()
+    }
+
+    segments.forEach { segment ->
+        when (segment) {
+            is MarkdownInlineSegment.Markdown -> {
+                val parts = segment.content.split('\n')
+                parts.forEachIndexed { index, part ->
+                    val normalizedPart = part.removeSuffix("  ")
+                    if (normalizedPart.isNotEmpty()) {
+                        currentLine += MarkdownInlineSegment.Markdown(normalizedPart)
+                    }
+                    if (index != parts.lastIndex) {
+                        flushLine()
+                    }
+                }
+            }
+
+            is MarkdownInlineSegment.LatexInline -> {
+                currentLine += segment
+            }
+
+            is MarkdownInlineSegment.LatexBlock -> {
+                currentLine += segment
+            }
+        }
+    }
+
+    lines += currentLine
+    return lines
 }
 
 private fun splitLatexSegments(content: String): List<MarkdownInlineSegment> {

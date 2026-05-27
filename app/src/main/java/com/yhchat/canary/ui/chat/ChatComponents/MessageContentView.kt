@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Cancel
@@ -229,13 +228,11 @@ fun MessageContentView(
                 content.text?.let { text ->
                     if (text.isNotBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        SelectionContainer {
-                            Text(
-                                text = text,
-                                color = textColor,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        Text(
+                            text = text,
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }
@@ -296,16 +293,14 @@ fun MessageContentView(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        SelectionContainer {
-                                            Text(
-                                                text = fileName,
-                                                color = textColor,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                        Text(
+                                            text = fileName,
+                                            color = textColor,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
@@ -469,14 +464,12 @@ fun MessageContentView(
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 // 显示A2UI JSON之前的文本
                                 if (beforeText.isNotBlank()) {
-                                    SelectionContainer {
-                                        Text(
-                                            text = beforeText,
-                                            color = textColor,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                    Text(
+                                        text = beforeText,
+                                        color = textColor,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
@@ -489,14 +482,12 @@ fun MessageContentView(
                                 // 显示A2UI JSON之后的文本
                                 if (afterText.isNotBlank()) {
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    SelectionContainer {
-                                        Text(
-                                            text = afterText,
-                                            color = textColor,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                    Text(
+                                        text = afterText,
+                                        color = textColor,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         } else if (text.isNotBlank()) {
@@ -570,6 +561,7 @@ fun MessageContentView(
                                 },
                                 backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
                                 onImageClick = onImageClick,
+                                enableTextSelection = false,
                                 modifier = Modifier
                                     .wrapContentWidth()
                             )
@@ -888,15 +880,13 @@ fun MessageContentView(
                             max = if (hasQuoteMedia) 180.dp else 240.dp
                         )
                     ) {
-                        SelectionContainer {
-                            Text(
-                                text = safeQuoteText,
-                                color = textColor.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        Text(
+                            text = safeQuoteText,
+                            color = textColor.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -988,54 +978,50 @@ private fun PostMessageView(
             modifier = Modifier.padding(12.dp)
         ) {
             // 文章图标和标题 - 支持文本选择
-            SelectionContainer {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "📄",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text(
-                        text = postTitle ?: "文章",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "📄",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = postTitle ?: "文章",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             // 文章内容预览 - 支持文本选择
             if (!postContent.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                SelectionContainer {
-                    when (postContentType) {
-                        "2" -> {
-                            // Markdown内容预览
-                            Text(
-                                text = postContent.take(100) + if (postContent.length > 100) "..." else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = textColor.copy(alpha = 0.8f),
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        else -> {
-                            // 普通文本内容预览
-                            Text(
-                                text = postContent.take(100) + if (postContent.length > 100) "..." else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = textColor.copy(alpha = 0.8f),
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                when (postContentType) {
+                    "2" -> {
+                        // Markdown内容预览
+                        Text(
+                            text = postContent.take(100) + if (postContent.length > 100) "..." else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textColor.copy(alpha = 0.8f),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    else -> {
+                        // 普通文本内容预览
+                        Text(
+                            text = postContent.take(100) + if (postContent.length > 100) "..." else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textColor.copy(alpha = 0.8f),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -1079,13 +1065,11 @@ private fun FormMessageView(
         // 显示文本内容（如果有）
         content.text?.let { text ->
             if (text.isNotBlank()) {
-                SelectionContainer {
-                    Text(
-                        text = text,
-                        color = textColor,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                Text(
+                    text = text,
+                    color = textColor,
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 if (formItems.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     androidx.compose.material3.HorizontalDivider(
@@ -1219,14 +1203,12 @@ private fun FormItemView(
                     color = textColor.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
-                    SelectionContainer {
-                        Text(
-                            text = item.value?.toString() ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
+                    Text(
+                        text = item.value?.toString() ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
                 }
             }
         }
@@ -1273,16 +1255,14 @@ private fun FormItemView(
                     color = textColor.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
-                    SelectionContainer {
-                        Text(
-                            text = item.value?.toString() ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            maxLines = 5,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Text(
+                        text = item.value?.toString() ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        maxLines = 5,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -104,6 +105,7 @@ fun CaptchaImage(
     onRefresh: () -> Unit
 ) {
     if (!captchaImage.isNullOrEmpty()) {
+        val context = LocalContext.current
         val imageResult = remember(captchaImage) {
             try {
                 // 处理特殊格式: "data:image/png;base64,..." -> 提取base64部分

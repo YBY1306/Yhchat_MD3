@@ -7,6 +7,7 @@ import android.os.Process
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.yhchat.canary.crash.CrashHandler
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ class CanaryApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashHandler.install(this)
         AppForegroundTracker.init()
         startMemoryAutoCleanLoop()
     }

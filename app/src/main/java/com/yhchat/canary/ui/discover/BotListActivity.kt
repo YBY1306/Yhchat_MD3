@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotBanner
@@ -288,7 +289,7 @@ fun BannerCarousel(
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(banner.targetUrl))
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                // 忽略错误
+                                CrashHandler.showCaughtException(context, e)
                             }
                         }
                     },
@@ -463,4 +464,3 @@ fun BotListItem(
         }
     }
 }
-

@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.model.ChatAddInfo
 import com.yhchat.canary.data.model.ChatAddType
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -157,6 +158,7 @@ class ChatAddActivity : ComponentActivity() {
             finish()
         } catch (e: Exception) {
             android.util.Log.e("ChatAddActivity", "初始化失败", e)
+            CrashHandler.showCaughtException(this, e)
             finish()
         }
     }

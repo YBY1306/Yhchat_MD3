@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -65,6 +66,7 @@ class GroupInfoActivity : BaseActivity() {
                                 startActivity(intent)
                             } catch (e: Exception) {
                                 android.util.Log.e("GroupInfoActivity", "Failed to open settings", e)
+                                CrashHandler.showCaughtException(this@GroupInfoActivity, e)
                                 android.widget.Toast.makeText(
                                     this@GroupInfoActivity,
                                     "无法打开群聊设置",
@@ -88,6 +90,7 @@ class GroupInfoActivity : BaseActivity() {
                                 )
                             } catch (e: Exception) {
                                 android.util.Log.e("GroupInfoActivity", "Failed to open chat search", e)
+                                CrashHandler.showCaughtException(this@GroupInfoActivity, e)
                                 android.widget.Toast.makeText(
                                     this@GroupInfoActivity,
                                     "无法打开聊天记录搜索",

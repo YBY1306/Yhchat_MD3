@@ -70,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -123,6 +124,7 @@ class WebViewActivity : BaseActivity() {
                 }
                 context.startActivity(intent)
             } catch (e: Exception) {
+                CrashHandler.showCaughtException(context, e)
                 Toast.makeText(context, "无法打开浏览器", Toast.LENGTH_SHORT).show()
             }
         }
@@ -376,6 +378,7 @@ fun WebViewScreen(
                                             inputStream
                                         )
                                     } catch (e: Exception) {
+                                        CrashHandler.showCaughtException(context, e)
                                         // 如果拦截失败，返回 null 让 WebView 自己处理
                                         return null
                                     }
@@ -494,6 +497,7 @@ fun WebViewScreen(
                             context.startActivity(intent)
                         }
                     } catch (e: Exception) {
+                        CrashHandler.showCaughtException(context, e)
                         Toast.makeText(context, "未找到可处理该链接的应用", Toast.LENGTH_SHORT).show()
                     }
                 }) {
@@ -553,6 +557,7 @@ fun WebViewScreen(
                         dm.enqueue(request)
                         Toast.makeText(context, "开始下载: $fileName", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
+                        CrashHandler.showCaughtException(context, e)
                         Toast.makeText(context, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }) {

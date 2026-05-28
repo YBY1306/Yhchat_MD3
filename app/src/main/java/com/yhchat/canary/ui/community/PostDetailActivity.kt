@@ -111,6 +111,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityComment
@@ -1885,6 +1886,7 @@ fun ArticleLinkText(
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             context.startActivity(intent)
                         } catch (e: Exception) {
+                            CrashHandler.showCaughtException(context, e)
                             Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
                         }
                     }

@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.model.DiskFile
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.disk.webdav.WebDAVBrowserActivity
@@ -515,6 +516,7 @@ private fun downloadFileWithService(context: Context, file: DiskFile) {
         )
         Toast.makeText(context, "开始下载: ${file.name}", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
+        CrashHandler.showCaughtException(context, e)
         Toast.makeText(context, "下载失败: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }

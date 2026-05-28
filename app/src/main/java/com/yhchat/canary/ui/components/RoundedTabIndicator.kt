@@ -45,6 +45,13 @@ fun TabIndicatorScope.RoundedCornerTabIndicator(
     Box(
         Modifier
             .tabIndicatorLayout { measurable: Measurable, constraints: Constraints, tabPositions: List<TabPosition> ->
+                if (tabPositions.isEmpty()) {
+                    val placeable = measurable.measure(Constraints.fixed(0, 0))
+                    return@tabIndicatorLayout layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(0, constraints.maxHeight)
+                    }
+                }
+
                 val safeIndex = index.coerceIn(0, tabPositions.lastIndex)
                 val newStart = tabPositions[safeIndex].left
                 val newEnd = tabPositions[safeIndex].right

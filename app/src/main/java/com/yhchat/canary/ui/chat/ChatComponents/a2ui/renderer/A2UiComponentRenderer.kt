@@ -948,21 +948,23 @@ internal fun RenderA2UiComponent(
             val activeTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
             
             Column(modifier = modifier.fillMaxWidth()) {
-                YhScrollableTabRow(
-                    selectedTabIndex = activeTabIndex.coerceIn(0, tabs.size.coerceAtLeast(1) - 1),
-                    edgePadding = 0.dp,
-                    containerColor = Color.Transparent
-                ) {
-                    tabs.forEachIndexed { index, tabMap ->
-                        Tab(
-                            selected = activeTabIndex == index,
-                            onClick = {
-                                if (activeTabPath != null) {
-                                    onDataModelChange(activeTabPath, index)
-                                }
-                            },
-                            text = { Text(tabMap["label"]?.toString() ?: "Tab ${index + 1}") }
-                        )
+                if (tabs.isNotEmpty()) {
+                    YhScrollableTabRow(
+                        selectedTabIndex = activeTabIndex.coerceIn(0, tabs.lastIndex),
+                        edgePadding = 0.dp,
+                        containerColor = Color.Transparent
+                    ) {
+                        tabs.forEachIndexed { index, tabMap ->
+                            Tab(
+                                selected = activeTabIndex == index,
+                                onClick = {
+                                    if (activeTabPath != null) {
+                                        onDataModelChange(activeTabPath, index)
+                                    }
+                                },
+                                text = { Text(tabMap["label"]?.toString() ?: "Tab ${index + 1}") }
+                            )
+                        }
                     }
                 }
                 

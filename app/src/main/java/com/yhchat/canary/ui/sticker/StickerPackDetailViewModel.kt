@@ -104,4 +104,3 @@ class StickerPackDetailViewModel @Inject constructor(
         )
     }
 }
-

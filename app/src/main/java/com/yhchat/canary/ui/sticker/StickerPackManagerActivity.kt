@@ -59,7 +59,6 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import sh.calvin.reorderable.DraggableHandle
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.rememberReorderableLazyListState

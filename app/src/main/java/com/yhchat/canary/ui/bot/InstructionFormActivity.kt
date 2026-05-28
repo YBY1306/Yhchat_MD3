@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.repository.SendMessagePayload
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.Dispatchers
@@ -144,8 +145,8 @@ fun InstructionFormScreen(
     val scrollState = rememberScrollState()
     
     // 解析表单配置
-    val formFields = remember(instruction.form) {
-        parseFormJson(instruction.form)
+    val formFields = remember(instruction.form, context) {
+        parseFormJson(context, instruction.form)
     }
     
     // 表单数据状态
@@ -490,7 +491,7 @@ fun FormFieldComponent(
 /**
  * 解析表单JSON
  */
-fun parseFormJson(formJson: String): List<FormField> {
+fun parseFormJson(context: Context, formJson: String): List<FormField> {
     if (formJson.isBlank()) return emptyList()
     
     return try {
@@ -519,6 +520,7 @@ fun parseFormJson(formJson: String): List<FormField> {
         fields
     } catch (e: Exception) {
         android.util.Log.e("FormParser", "解析表单JSON失败", e)
+        CrashHandler.showCaughtException(context, e)
         emptyList()
     }
 }
@@ -590,6 +592,7 @@ suspend fun sendFormMessage(
             }
         } catch (e: Exception) {
             android.util.Log.e("InstructionForm", "发送异常", e)
+            CrashHandler.showCaughtException(context, e)
             false
         }
     }

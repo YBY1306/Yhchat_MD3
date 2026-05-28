@@ -46,6 +46,13 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.YhchatCanary">
         <activity
+            android:name=".ui.crash.CrashReportActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="错误日志"
+            android:theme="@style/Theme.YhchatCanary" />
+
+        <activity
             android:name=".ui.login.LoginActivity"
             android:exported="true"
             android:label="登录"

@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.R
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.chat.ChatActivity
@@ -137,6 +138,7 @@ class AppInfoActivity : BaseActivity() {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
         } catch (e: Exception) {
+            CrashHandler.showCaughtException(this, e)
             e.printStackTrace()
         }
     }

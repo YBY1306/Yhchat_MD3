@@ -49,7 +49,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.model.NavigationItem
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import sh.calvin.reorderable.DraggableHandle
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState

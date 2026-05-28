@@ -58,6 +58,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class ChangePasswordActivity : ComponentActivity() {
@@ -126,6 +127,7 @@ fun CaptchaImage(
                     Result.failure<Bitmap>(Exception("Failed to decode bitmap"))
                 }
             } catch (e: Exception) {
+                CrashHandler.showCaughtException(context, e)
                 Result.failure<Bitmap>(Exception("Decode error: ${e.message}"))
             }
         }

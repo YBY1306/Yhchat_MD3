@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.contextmenu.builder.item
+import androidx.compose.foundation.text.contextmenu.data.TextContextMenuSession
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -54,46 +55,74 @@ fun MessageSelectionContainer(
     val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
         Modifier.appendTextContextMenuComponents {
             onQuote?.let { action ->
-                item(key = MENU_ITEM_QUOTE, label = "引用") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_QUOTE,
+                    label = "引用",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onPlusOne?.let { action ->
-                item(key = MENU_ITEM_PLUS_ONE, label = "+1") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_PLUS_ONE,
+                    label = "+1",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onEdit?.let { action ->
-                item(key = MENU_ITEM_EDIT, label = "编辑") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_EDIT,
+                    label = "编辑",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onForward?.let { action ->
-                item(key = MENU_ITEM_FORWARD, label = "转发") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_FORWARD,
+                    label = "转发",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onMultiSelect?.let { action ->
-                item(key = MENU_ITEM_MULTI_SELECT, label = "多选") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_MULTI_SELECT,
+                    label = "多选",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onOpenInInternalBrowser?.let { action ->
-                item(key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, label = "在内置浏览器中打开") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER,
+                    label = "在内置浏览器中打开",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
             onDelete?.let { action ->
-                item(key = MENU_ITEM_DELETE, label = "撤回") { session ->
-                    action()
-                    session.close()
-                }
+                item(
+                    key = MENU_ITEM_DELETE,
+                    label = "撤回",
+                    onClick = { session: TextContextMenuSession ->
+                        action()
+                        session.close()
+                    }
+                )
             }
         }
     }

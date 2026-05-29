@@ -72,6 +72,8 @@ import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.parser.MarkdownParser
 import java.util.Collections
 
 
@@ -488,6 +490,8 @@ private fun MikepenzMarkdownText(
     val annotator = com.mikepenz.markdown.model.markdownAnnotator(
         config = com.mikepenz.markdown.model.markdownAnnotatorConfig(eolAsNewLine = true)
     )
+    val flavour = remember { GFMFlavourDescriptor() }
+    val parser = remember(flavour) { MarkdownParser(flavour) }
 
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
@@ -497,6 +501,8 @@ private fun MikepenzMarkdownText(
             modifier = modifier,
             colors = colors,
             typography = typography,
+            flavour = flavour,
+            parser = parser,
             annotator = annotator
         )
     }
@@ -741,7 +747,7 @@ private object MarkdownRendererCache {
     private val latexSegmentsCache = createLruCache<String, List<MarkdownInlineSegment>>(LATEX_SEGMENT_CACHE_SIZE)
 
     fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
-        processTaskLists(normalizeHeadingSpacing(markdown))
+        processTaskLists(normalizeLoosePipeTables(normalizeHeadingSpacing(markdown)))
     }
 
     fun getSegments(markdown: String): List<MarkdownSegment> = segmentCache.cached(markdown) {
@@ -1411,6 +1417,95 @@ private fun normalizeHeadingSpacing(markdown: String): String {
     }
 
     return output.joinToString("\n")
+}
+
+private fun normalizeLoosePipeTables(markdown: String): String {
+    val lines = markdown.lines()
+    if (lines.isEmpty()) return markdown
+
+    val output = mutableListOf<String>()
+    var i = 0
+    var inFence = false
+
+    while (i < lines.size) {
+        val line = lines[i]
+        val trimmed = line.trim()
+
+        if (trimmed.startsWith("```")) {
+            inFence = !inFence
+            output += line
+            i++
+            continue
+        }
+
+        if (!inFence && isLoosePipeTableStart(lines, i)) {
+            val block = mutableListOf<String>()
+            while (i < lines.size && isLoosePipeTableLine(lines[i])) {
+                block += lines[i]
+                i++
+            }
+            output += normalizePipeTableBlock(block)
+            continue
+        }
+
+        output += line
+        i++
+    }
+
+    return output.joinToString("\n")
+}
+
+private fun isLoosePipeTableStart(lines: List<String>, index: Int): Boolean {
+    val header = lines.getOrNull(index) ?: return false
+    val separator = lines.getOrNull(index + 1) ?: return false
+    return header.count { it == '|' } > 0 && isPipeTableSeparator(separator)
+}
+
+private fun isLoosePipeTableLine(line: String): Boolean {
+    val trimmed = line.trim()
+    if (trimmed.isEmpty()) return false
+    if (trimmed.startsWith("***") || trimmed.startsWith("---")) return false
+    return trimmed.contains('|') || isPipeTableSeparator(trimmed)
+}
+
+private fun isPipeTableSeparator(line: String): Boolean {
+    val trimmed = line.trim().trim('|').trim()
+    if (trimmed.isEmpty() || !trimmed.contains('-')) return false
+    return trimmed.split('|').all { cell ->
+        val value = cell.trim()
+        value.length >= 3 && value.all { it == '-' || it == ':' }
+    }
+}
+
+private fun normalizePipeTableBlock(block: List<String>): List<String> {
+    if (block.size < 2) return block
+
+    val parsedRows = block.map { line ->
+        line.trim().trim('|').split('|').map { it.trim() }
+    }
+    val columnCount = parsedRows.maxOfOrNull { it.size }?.coerceAtLeast(1) ?: 1
+
+    return parsedRows.mapIndexed { index, cells ->
+        val normalizedCells = cells.toMutableList()
+        while (normalizedCells.size < columnCount) {
+            normalizedCells += ""
+        }
+
+        if (index == 1 && isPipeTableSeparator(block[index])) {
+            val separatorCells = normalizedCells.map { cell ->
+                val trimmed = cell.trim()
+                when {
+                    trimmed.startsWith(":") && trimmed.endsWith(":") -> ":---:"
+                    trimmed.endsWith(":") -> "---:"
+                    trimmed.startsWith(":") -> ":---"
+                    else -> "---"
+                }
+            }
+            separatorCells.joinToString(prefix = "|", postfix = "|", separator = "|")
+        } else {
+            normalizedCells.joinToString(prefix = "|", postfix = "|", separator = "|")
+        }
+    }
 }
 
 private sealed interface TaskRun {

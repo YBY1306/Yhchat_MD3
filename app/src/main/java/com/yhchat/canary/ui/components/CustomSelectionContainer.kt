@@ -4,11 +4,16 @@ import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.contextmenu.builder.item
+import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.TextToolbar
@@ -17,6 +22,7 @@ import androidx.compose.ui.platform.TextToolbarStatus
 /**
  * 自定义SelectionContainer，支持在文本选择菜单中添加额外操作
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageSelectionContainer(
     onQuote: (() -> Unit)? = null,
@@ -45,12 +51,69 @@ fun MessageSelectionContainer(
         )
     }
     
+    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
+        Modifier.appendTextContextMenuComponents {
+            onQuote?.let { action ->
+                item(key = MENU_ITEM_QUOTE, label = "引用") {
+                    action()
+                    it.close()
+                }
+            }
+            onPlusOne?.let { action ->
+                item(key = MENU_ITEM_PLUS_ONE, label = "+1") {
+                    action()
+                    it.close()
+                }
+            }
+            onEdit?.let { action ->
+                item(key = MENU_ITEM_EDIT, label = "编辑") {
+                    action()
+                    it.close()
+                }
+            }
+            onForward?.let { action ->
+                item(key = MENU_ITEM_FORWARD, label = "转发") {
+                    action()
+                    it.close()
+                }
+            }
+            onMultiSelect?.let { action ->
+                item(key = MENU_ITEM_MULTI_SELECT, label = "多选") {
+                    action()
+                    it.close()
+                }
+            }
+            onOpenInInternalBrowser?.let { action ->
+                item(key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, label = "在内置浏览器中打开") {
+                    action()
+                    it.close()
+                }
+            }
+            onDelete?.let { action ->
+                item(key = MENU_ITEM_DELETE, label = "撤回") {
+                    action()
+                    it.close()
+                }
+            }
+        }
+    }
+
     CompositionLocalProvider(LocalTextToolbar provides customToolbar) {
-        SelectionContainer {
-            content()
+        Box(modifier = customMenuModifier) {
+            SelectionContainer {
+                content()
+            }
         }
     }
 }
+
+private const val MENU_ITEM_QUOTE = 1001
+private const val MENU_ITEM_PLUS_ONE = 1002
+private const val MENU_ITEM_EDIT = 1003
+private const val MENU_ITEM_FORWARD = 1004
+private const val MENU_ITEM_MULTI_SELECT = 1005
+private const val MENU_ITEM_DELETE = 1006
+private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
 
 /**
  * 自定义文本工具栏
@@ -222,13 +285,4 @@ private class CustomTextToolbar(
         actionMode = null
     }
     
-    companion object {
-        private const val MENU_ITEM_QUOTE = 1001
-        private const val MENU_ITEM_PLUS_ONE = 1002
-        private const val MENU_ITEM_EDIT = 1003
-        private const val MENU_ITEM_FORWARD = 1004
-        private const val MENU_ITEM_MULTI_SELECT = 1005
-        private const val MENU_ITEM_DELETE = 1006
-        private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
-    }
 }

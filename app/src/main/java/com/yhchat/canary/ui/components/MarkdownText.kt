@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,7 @@ import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 import java.util.Collections
+import kotlinx.coroutines.delay
 
 
 /**
@@ -102,8 +104,13 @@ fun MarkdownText(
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     val latexEnabled = remember { Build.VERSION.SDK_INT >= Build.VERSION_CODES.M }
+    val displayMarkdown = if (persistRenderState) {
+        markdown
+    } else {
+        rememberStreamingMarkdown(markdown)
+    }
 
-    val normalizedMarkdown = MarkdownRendererCache.getNormalizedMarkdown(markdown)
+    val normalizedMarkdown = MarkdownRendererCache.getNormalizedMarkdown(displayMarkdown)
     val segments = MarkdownRendererCache.getSegments(normalizedMarkdown)
     val latexConfig = remember(textColor, context) {
         LatexConfig(
@@ -504,7 +511,6 @@ private fun MikepenzMarkdownText(
     val flavour = remember { GFMFlavourDescriptor() }
     val parser = remember(flavour) { MarkdownParser(flavour) }
     val referenceLinkHandler = remember { PersistentReferenceLinkHandler() }
-
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
     ) {
@@ -523,18 +529,54 @@ private fun MikepenzMarkdownText(
                 annotator = annotator
             )
         } else {
-            MikepenzMarkdown(
+            val markdownState = rememberMarkdownState(
                 content = markdown,
+                lookupLinks = true,
+                retainState = false,
+                flavour = flavour,
+                parser = parser,
+                referenceLinkHandler = referenceLinkHandler,
+                immediate = true
+            )
+            MikepenzMarkdown(
+                markdownState = markdownState,
                 modifier = modifier,
                 colors = colors,
                 typography = typography,
-                flavour = flavour,
-                parser = parser,
                 annotator = annotator
             )
         }
     }
 }
+
+@Composable
+private fun rememberStreamingMarkdown(markdown: String): String {
+    var lastNonBlankMarkdown by remember { mutableStateOf(markdown.takeIf { it.isNotBlank() }.orEmpty()) }
+    var renderedMarkdown by remember { mutableStateOf(lastNonBlankMarkdown) }
+    var lastRenderTimeMillis by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(markdown) {
+        if (markdown.isNotBlank()) {
+            lastNonBlankMarkdown = markdown
+            val now = System.currentTimeMillis()
+            val elapsed = now - lastRenderTimeMillis
+            if (renderedMarkdown.isBlank() || elapsed >= STREAMING_MARKDOWN_FRAME_MS) {
+                renderedMarkdown = markdown
+                lastRenderTimeMillis = now
+            } else {
+                delay(STREAMING_MARKDOWN_FRAME_MS - elapsed)
+                renderedMarkdown = lastNonBlankMarkdown
+                lastRenderTimeMillis = System.currentTimeMillis()
+            }
+        } else if (lastNonBlankMarkdown.isNotBlank()) {
+            renderedMarkdown = lastNonBlankMarkdown
+        }
+    }
+
+    return renderedMarkdown.ifBlank { markdown }
+}
+
+private const val STREAMING_MARKDOWN_FRAME_MS = 32L
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

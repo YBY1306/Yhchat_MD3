@@ -71,10 +71,9 @@ import com.hrm.latex.renderer.LatexAutoWrap
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
-import com.mikepenz.markdown.model.Input
 import com.mikepenz.markdown.model.MarkdownState
-import com.mikepenz.markdown.model.MarkdownStateImpl
 import com.mikepenz.markdown.model.ReferenceLinkHandler
+import com.mikepenz.markdown.model.rememberMarkdownState
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
@@ -510,14 +509,12 @@ private fun MikepenzMarkdownText(
         LocalUriHandler provides uriHandler
     ) {
         if (persistRenderState) {
-            val markdownState = remember(markdown, flavour, parser, referenceLinkHandler) {
-                MarkdownRendererCache.getMarkdownState(
-                    content = markdown,
-                    flavour = flavour,
-                    parser = parser,
-                    referenceLinkHandler = referenceLinkHandler
-                )
-            }
+            val markdownState = rememberPersistentMarkdownState(
+                content = markdown,
+                flavour = flavour,
+                parser = parser,
+                referenceLinkHandler = referenceLinkHandler
+            )
             MikepenzMarkdown(
                 markdownState = markdownState,
                 modifier = modifier,
@@ -593,6 +590,38 @@ private fun InlineMarkdownWithLatex(
             }
         }
     }
+}
+
+@Composable
+private fun rememberPersistentMarkdownState(
+    content: String,
+    flavour: GFMFlavourDescriptor,
+    parser: MarkdownParser,
+    referenceLinkHandler: ReferenceLinkHandler
+): MarkdownState {
+    val cachedState = remember(content) {
+        MarkdownRendererCache.getMarkdownState(
+            content = content,
+            flavour = flavour,
+            parser = parser,
+            referenceLinkHandler = referenceLinkHandler
+        )
+    }
+    if (cachedState != null) {
+        return cachedState
+    }
+
+    val state = rememberMarkdownState(
+        content = content,
+        lookupLinks = true,
+        retainState = true,
+        flavour = flavour,
+        parser = parser,
+        referenceLinkHandler = referenceLinkHandler,
+        immediate = true
+    )
+    MarkdownRendererCache.putMarkdownState(content, state)
+    return state
 }
 
 @Composable
@@ -808,17 +837,14 @@ private object MarkdownRendererCache {
         flavour: GFMFlavourDescriptor,
         parser: MarkdownParser,
         referenceLinkHandler: ReferenceLinkHandler
-    ): MarkdownState = markdownStateCache.cached(content) {
-        MarkdownStateImpl(
-            Input(
-                content = content,
-                lookupLinks = true,
-                flavour = flavour,
-                parser = parser,
-                referenceLinkHandler = referenceLinkHandler,
-                retainState = true
-            )
-        )
+    ): MarkdownState? = synchronized(markdownStateCache) {
+        markdownStateCache[content]
+    }
+
+    fun putMarkdownState(content: String, state: MarkdownState) {
+        synchronized(markdownStateCache) {
+            markdownStateCache[content] = state
+        }
     }
 
     fun getDetailsExpanded(key: String): Boolean = synchronized(detailsExpandedCache) {
@@ -844,12 +870,16 @@ private object MarkdownRendererCache {
 private class PersistentReferenceLinkHandler : ReferenceLinkHandler {
     private val links = Collections.synchronizedMap(mutableMapOf<String, String>())
 
-    override fun store(label: String, destination: String) {
-        links[label] = destination
+    override fun store(label: String, destination: String?) {
+        if (destination == null) {
+            links.remove(label)
+        } else {
+            links[label] = destination
+        }
     }
 
-    override fun find(label: String): String? {
-        return links[label]
+    override fun find(label: String): String {
+        return links[label].orEmpty()
     }
 }
 

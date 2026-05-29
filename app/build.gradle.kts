@@ -167,9 +167,7 @@ dependencies {
         exclude(group = "xmlpull", module = "xmlpull")
     }
     
-    // Compose Rich Text - Markdown 渲染
-    implementation("com.halilibo.compose-richtext:richtext-ui-material3:0.17.0")
-    implementation("com.halilibo.compose-richtext:richtext-commonmark:0.17.0")
+    // Markdown 渲染
     implementation(libs.jetbrains.markdown)
     implementation(libs.latex.renderer)
 

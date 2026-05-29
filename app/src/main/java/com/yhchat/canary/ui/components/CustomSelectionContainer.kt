@@ -4,6 +4,7 @@ import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.content.res.Resources
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -57,71 +58,71 @@ fun MessageSelectionContainer(
                 item(
                     key = MENU_ITEM_QUOTE,
                     label = "引用",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onPlusOne?.let { action ->
                 item(
                     key = MENU_ITEM_PLUS_ONE,
                     label = "+1",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onEdit?.let { action ->
                 item(
                     key = MENU_ITEM_EDIT,
                     label = "编辑",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onForward?.let { action ->
                 item(
                     key = MENU_ITEM_FORWARD,
                     label = "转发",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onMultiSelect?.let { action ->
                 item(
                     key = MENU_ITEM_MULTI_SELECT,
                     label = "多选",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onOpenInInternalBrowser?.let { action ->
                 item(
                     key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER,
                     label = "在内置浏览器中打开",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
             onDelete?.let { action ->
                 item(
                     key = MENU_ITEM_DELETE,
                     label = "撤回",
-                    onClick = {
-                        action()
-                        close()
-                    }
-                )
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
             }
         }
     }

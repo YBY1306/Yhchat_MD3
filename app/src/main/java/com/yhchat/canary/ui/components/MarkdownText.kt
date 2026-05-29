@@ -852,7 +852,7 @@ private object MarkdownRendererCache {
     private val markdownStateCache = createLruCache<String, MarkdownState>(MARKDOWN_STATE_CACHE_SIZE)
 
     fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
-        processTaskLists(normalizeLoosePipeTables(normalizeHeadingSpacing(markdown)))
+        processTaskLists(normalizeLoosePipeTables(normalizeHeadingSpacing(normalizeSingleTildeStrikethrough(markdown))))
     }
 
     fun getSegments(markdown: String): List<MarkdownSegment> = segmentCache.cached(markdown) {
@@ -1553,6 +1553,99 @@ private fun normalizeHeadingSpacing(markdown: String): String {
     }
 
     return output.joinToString("\n")
+}
+
+private fun normalizeSingleTildeStrikethrough(markdown: String): String {
+    if (!markdown.contains('~')) return markdown
+
+    val output = StringBuilder(markdown.length)
+    var inFence = false
+
+    markdown.lineSequence().forEachIndexed { index, line ->
+        if (index > 0) output.append('\n')
+
+        val trimmed = line.trimStart()
+        if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+            output.append(line)
+            inFence = !inFence
+            return@forEachIndexed
+        }
+
+        output.append(
+            if (inFence) {
+                line
+            } else {
+                normalizeSingleTildeInLine(line)
+            }
+        )
+    }
+
+    return output.toString()
+}
+
+private fun normalizeSingleTildeInLine(line: String): String {
+    if (!line.contains('~')) return line
+
+    val output = StringBuilder(line.length)
+    var index = 0
+    var inInlineCode = false
+
+    while (index < line.length) {
+        val current = line[index]
+        if (current == '`') {
+            output.append(current)
+            inInlineCode = !inInlineCode
+            index++
+            continue
+        }
+
+        if (!inInlineCode && current == '~' && isSingleTildeDelimiter(line, index)) {
+            val closeIndex = findSingleTildeClose(line, index + 1)
+            if (closeIndex != -1) {
+                output.append("~~")
+                output.append(line.substring(index + 1, closeIndex))
+                output.append("~~")
+                index = closeIndex + 1
+                continue
+            }
+        }
+
+        output.append(current)
+        index++
+    }
+
+    return output.toString()
+}
+
+private fun findSingleTildeClose(line: String, startIndex: Int): Int {
+    var index = startIndex
+    var inInlineCode = false
+
+    while (index < line.length) {
+        val current = line[index]
+        if (current == '`') {
+            inInlineCode = !inInlineCode
+            index++
+            continue
+        }
+
+        if (!inInlineCode && current == '~' && isSingleTildeDelimiter(line, index)) {
+            val inner = line.substring(startIndex, index)
+            if (inner.isNotBlank()) {
+                return index
+            }
+        }
+
+        index++
+    }
+
+    return -1
+}
+
+private fun isSingleTildeDelimiter(line: String, index: Int): Boolean {
+    if (line.getOrNull(index - 1) == '~' || line.getOrNull(index + 1) == '~') return false
+    if (index > 0 && line[index - 1] == '\\') return false
+    return true
 }
 
 private fun normalizeLoosePipeTables(markdown: String): String {

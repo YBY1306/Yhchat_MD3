@@ -32,6 +32,7 @@ class ChatActivity : BaseActivity() {
     private var chatId by mutableStateOf("")
     private var chatType by mutableStateOf(1)
     private var chatName by mutableStateOf("")
+    private var chatAvatarUrl by mutableStateOf<String?>(null)
     
     // 搜索跳转参数
     private var searchTargetMsgId by mutableStateOf<String?>(null)
@@ -144,6 +145,7 @@ class ChatActivity : BaseActivity() {
                             chatId = chatId,
                             chatType = chatType,
                             chatName = chatName,
+                            chatAvatarUrl = chatAvatarUrl,
                             enableAnimations = enableAnimations,
                             userId = "",
                             onBackClick = { finish() },
@@ -226,6 +228,7 @@ class ChatActivity : BaseActivity() {
         val newChatId = intent.getStringExtra("chatId") ?: ""
         val newChatType = intent.getIntExtra("chatType", 1)
         val newChatName = intent.getStringExtra("chatName") ?: ""
+        val newChatAvatarUrl = intent.getStringExtra("avatarUrl")
         
         // 读取搜索跳转参数
         val newSearchTargetMsgId = intent.getStringExtra("searchTargetMsgId")
@@ -238,6 +241,7 @@ class ChatActivity : BaseActivity() {
         chatId = newChatId
         chatType = newChatType
         chatName = newChatName
+        chatAvatarUrl = newChatAvatarUrl
         searchTargetMsgId = newSearchTargetMsgId
         searchTargetMsgSeq = newSearchTargetMsgSeq
         launchedFromBubble = intent.getBooleanExtra("fromBubble", false)

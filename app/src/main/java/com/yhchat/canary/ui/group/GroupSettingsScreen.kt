@@ -814,7 +814,8 @@ private fun MessageTypeLimitDialog(
         8 to "HTML消息",
         10 to "视频消息",
         11 to "语音消息",
-        13 to "语音通话"
+        13 to "语音通话",
+        14 to "A2UI消息"
     )
 
     AlertDialog(

@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import android.content.Intent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -28,25 +29,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.yhchat.canary.ui.chat.ChatUiState
+import com.yhchat.canary.ui.components.ChatSharedElementState
+import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 
 /**
  * 聊天界面顶部应用栏
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun ChatTopAppBar(
     chatId: String,
     chatType: Int,
     chatName: String,
+    avatarUrl: String? = null,
     uiState: ChatUiState,
     showTtsButton: Boolean,
     showRefreshButton: Boolean,
@@ -55,6 +62,7 @@ fun ChatTopAppBar(
     onRefreshClick: () -> Unit,
     onTtsClick: () -> Unit,
     onLiveClick: () -> Unit,
+    sharedElementState: ChatSharedElementState? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -85,13 +93,60 @@ fun ChatTopAppBar(
     
     TopAppBar(
         title = {
-            Row {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val avatarModel = remember(context, avatarUrl, chatType) {
+                    avatarUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                        if (chatType == 3) {
+                            ImageUtils.createBotImageRequest(context, url)
+                        } else {
+                            ImageUtils.createAvatarImageRequest(context, url)
+                        }
+                    }
+                }
+                AsyncImage(
+                    model = avatarModel,
+                    contentDescription = "会话头像",
+                    modifier = Modifier
+                        .size(36.dp)
+                        .then(
+                            sharedElementState?.let { state ->
+                                with(state.scope) {
+                                    Modifier.sharedElementWithCallerManagedVisibility(
+                                        sharedContentState = rememberSharedContentState(
+                                            key = state.key("avatar", chatId)
+                                        ),
+                                        visible = state.isActiveFor(chatId)
+                                    )
+                                }
+                            } ?: Modifier
+                        )
+                        .clip(androidx.compose.foundation.shape.CircleShape),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
                 Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = safeChatName,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.then(
+                            sharedElementState?.let { state ->
+                                with(state.scope) {
+                                    Modifier.sharedElementWithCallerManagedVisibility(
+                                        sharedContentState = rememberSharedContentState(
+                                            key = state.key("title", chatId)
+                                        ),
+                                        visible = state.isActiveFor(chatId)
+                                    )
+                                }
+                            } ?: Modifier
+                        )
                     )
                     if (chatType == 2 && uiState.groupMemberCount > 0) {
                         Text(

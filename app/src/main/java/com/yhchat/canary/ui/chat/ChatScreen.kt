@@ -49,6 +49,7 @@ import com.yhchat.canary.ui.bot.BotDetailActivity
 import com.yhchat.canary.ui.chat.ChatComponents.*
 import com.yhchat.canary.ui.community.SendToChatBottomSheet
 import com.yhchat.canary.ui.components.ChatInputBar
+import com.yhchat.canary.ui.components.ChatSharedElementState
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.components.MultiSelectBottomBar
 import com.yhchat.canary.ui.components.VoiceMessageViewModel
@@ -97,7 +98,9 @@ fun ChatScreen(
     // 搜索跳转参数
     searchTargetMsgId: String? = null,  // 搜索目标消息ID
     searchTargetMsgSeq: Long? = null,  // 搜索目标消息序列号
-    isLargeScreen: Boolean = false  // 大屏模式，跳过imePadding避免悬浮键盘跳动
+    isLargeScreen: Boolean = false,  // 大屏模式，跳过imePadding避免悬浮键盘跳动
+    chatAvatarUrl: String? = null,
+    sharedElementState: ChatSharedElementState? = null
 ) {
     val context = LocalContext.current
     val liveRoomsViewModel: LiveRoomsViewModel = hiltViewModel()
@@ -642,6 +645,7 @@ fun ChatScreen(
                 chatId = chatId,
                 chatType = chatType,
                 chatName = chatName,
+                avatarUrl = chatAvatarUrl,
                 uiState = uiState,
                 showTtsButton = showTtsButton,
                 showRefreshButton = showRefreshButton,
@@ -653,6 +657,7 @@ fun ChatScreen(
                     showLiveRoomsSheet = true
                     liveRoomsViewModel.refresh(groupId = chatId)
                 },
+                sharedElementState = sharedElementState,
                 modifier = Modifier.zIndex(3f)
             )
         }

@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -39,6 +41,7 @@ import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.ui.chat.ChatScreen
 import com.yhchat.canary.ui.community.*
 import com.yhchat.canary.ui.components.AdaptiveNavigationBar
+import com.yhchat.canary.ui.components.ChatSharedElementState
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
@@ -161,6 +164,7 @@ class MainActivity : BaseActivity() {
         )
     }
     
+    @OptIn(ExperimentalSharedTransitionApi::class)
     @Composable
     private fun MainContent() {
         val context = LocalContext.current
@@ -181,12 +185,14 @@ class MainActivity : BaseActivity() {
         var currentChatId by rememberSaveable { mutableStateOf("") }
         var currentChatType by rememberSaveable { mutableStateOf(0) }
         var currentChatName by rememberSaveable { mutableStateOf("") }
+        var currentChatAvatarUrl by rememberSaveable { mutableStateOf<String?>(null) }
         var pendingLoginToken by rememberSaveable { mutableStateOf<String?>(null) }
         
         // 大屏分屏模式：当前选中的聊天（右侧面板）
         var splitChatId by rememberSaveable { mutableStateOf("") }
         var splitChatType by rememberSaveable { mutableStateOf(0) }
         var splitChatName by rememberSaveable { mutableStateOf("") }
+        var splitChatAvatarUrl by rememberSaveable { mutableStateOf<String?>(null) }
         
         // 大屏社区分屏状态
         var communityPanelType by rememberSaveable { mutableStateOf("") } // "", "board", "post", "myposts", "recommend", "collect", "blocked"
@@ -245,6 +251,13 @@ class MainActivity : BaseActivity() {
         }
         
 
+        SharedTransitionLayout {
+        val sharedElementState = ChatSharedElementState(
+            scope = this,
+            selectedChatId = if (currentScreen == "chat") currentChatId else splitChatId,
+            visible = true
+        )
+
         when {
             !isLoggedIn -> {
                 // 未登录，显示登录界面
@@ -264,6 +277,8 @@ class MainActivity : BaseActivity() {
                     currentChatId = currentChatId,
                     currentChatType = currentChatType,
                     currentChatName = currentChatName,
+                    currentChatAvatarUrl = currentChatAvatarUrl,
+                    sharedElementState = sharedElementState,
                     userId = userId,
                     onBackClick = { currentScreen = "conversation" }
                 )
@@ -357,11 +372,12 @@ class MainActivity : BaseActivity() {
                                                     ConversationScreen(
                                                         token = token,
                                                         userId = userId,
-                                                        onConversationClick = { chatId, chatType, chatName ->
+                                                        onConversationClick = { chatId, chatType, chatName, avatarUrl ->
                                                             // 大屏模式：更新右侧面板而不是启动新Activity
                                                             splitChatId = chatId
                                                             splitChatType = chatType
                                                             splitChatName = chatName
+                                                            splitChatAvatarUrl = avatarUrl
                                                         },
                                                         onSearchClick = {
                                                             if (isInitialized) {
@@ -371,7 +387,8 @@ class MainActivity : BaseActivity() {
                                                         onMenuClick = { },
                                                         tokenRepository = tokenRepository,
                                                         viewModel = conversationViewModel,
-                                                        navigationState = navigationState
+                                                        navigationState = navigationState,
+                                                        sharedElementState = sharedElementState
                                                     )
                                                 }
                                                 
@@ -426,6 +443,8 @@ class MainActivity : BaseActivity() {
                                                                 chatId = splitChatId,
                                                                 chatType = splitChatType,
                                                                 chatName = splitChatName,
+                                                                chatAvatarUrl = splitChatAvatarUrl,
+                                                                sharedElementState = sharedElementState,
                                                                 userId = userId,
                                                                 isLargeScreen = true,
                                                                 onBackClick = {
@@ -433,6 +452,7 @@ class MainActivity : BaseActivity() {
                                                                     splitChatId = ""
                                                                     splitChatType = 0
                                                                     splitChatName = ""
+                                                                    splitChatAvatarUrl = null
                                                                 },
                                                                 onAvatarClick = { avatarUserId, userName, chatType, _ ->
                                                                     val groupId = if (chatType == 2) splitChatId else null
@@ -814,8 +834,12 @@ class MainActivity : BaseActivity() {
                                                 ConversationScreen(
                                                     token = token,
                                                     userId = userId,
-                                                    onConversationClick = { chatId, chatType, chatName ->
-                                                        launchChatActivity(chatId, chatType, chatName)
+                                                    onConversationClick = { chatId, chatType, chatName, avatarUrl ->
+                                                        currentChatId = chatId
+                                                        currentChatType = chatType
+                                                        currentChatName = chatName
+                                                        currentChatAvatarUrl = avatarUrl
+                                                        currentScreen = "chat"
                                                     },
                                                     onSearchClick = {
                                                         if (isInitialized) {
@@ -825,7 +849,8 @@ class MainActivity : BaseActivity() {
                                                     onMenuClick = { },
                                                     tokenRepository = tokenRepository,
                                                     viewModel = conversationViewModel,
-                                                    navigationState = navigationState
+                                                    navigationState = navigationState,
+                                                    sharedElementState = sharedElementState
                                                 )
                                             }
                                             "community" -> {
@@ -872,7 +897,11 @@ class MainActivity : BaseActivity() {
                                                 currentScreen = "conversation"
                                             },
                                             onItemClick = { chatId, chatType, chatName ->
-                                                launchChatActivity(chatId, chatType, chatName)
+                                                currentChatId = chatId
+                                                currentChatType = chatType
+                                                currentChatName = chatName
+                                                currentChatAvatarUrl = null
+                                                currentScreen = "chat"
                                             },
                                             viewModel = searchViewModel,
                                             modifier = Modifier.fillMaxSize()
@@ -902,6 +931,7 @@ class MainActivity : BaseActivity() {
                 }
             }
         }
+        }
     }
     
     /**
@@ -912,14 +942,49 @@ class MainActivity : BaseActivity() {
         currentChatId: String,
         currentChatType: Int,
         currentChatName: String,
+        currentChatAvatarUrl: String?,
+        sharedElementState: ChatSharedElementState,
         userId: String,
         onBackClick: () -> Unit
     ) {
         if (currentChatId.isNotEmpty()) {
+            var imageUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+            var fileUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+            var videoUriToSend by remember { mutableStateOf<android.net.Uri?>(null) }
+            var cameraImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+            val imagePickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri: android.net.Uri? ->
+                uri?.let { imageUriToSend = it }
+            }
+
+            val filePickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri: android.net.Uri? ->
+                uri?.let { fileUriToSend = it }
+            }
+
+            val videoPickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri: android.net.Uri? ->
+                uri?.let { videoUriToSend = it }
+            }
+
+            val cameraLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.TakePicture()
+            ) { success: Boolean ->
+                if (success) {
+                    cameraImageUri?.let { imageUriToSend = it }
+                }
+            }
+
             ChatScreen(
                 chatId = currentChatId,
                 chatType = currentChatType,
                 chatName = currentChatName,
+                chatAvatarUrl = currentChatAvatarUrl,
+                sharedElementState = sharedElementState,
                 userId = userId,
                 onBackClick = onBackClick,
                 onAvatarClick = { userId, userName, chatType, _ ->
@@ -930,6 +995,39 @@ class MainActivity : BaseActivity() {
                         userName = userName,
                         groupId = groupId
                     )
+                },
+                onImagePickerClick = {
+                    imagePickerLauncher.launch("image/*")
+                },
+                onFilePickerClick = {
+                    filePickerLauncher.launch("*/*")
+                },
+                onVideoPickerClick = {
+                    videoPickerLauncher.launch("video/*")
+                },
+                onCameraClick = {
+                    val photoFile = java.io.File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                    cameraImageUri = androidx.core.content.FileProvider.getUriForFile(
+                        this@MainActivity,
+                        "${packageName}.fileprovider",
+                        photoFile
+                    )
+                    cameraImageUri?.let { uri ->
+                        cameraLauncher.launch(uri)
+                    }
+                },
+                imageUriToSend = imageUriToSend,
+                fileUriToSend = fileUriToSend,
+                videoUriToSend = videoUriToSend,
+                onImageSent = {
+                    imageUriToSend = null
+                    cameraImageUri = null
+                },
+                onFileSent = {
+                    fileUriToSend = null
+                },
+                onVideoSent = {
+                    videoUriToSend = null
                 },
                 modifier = Modifier.fillMaxSize()
             )

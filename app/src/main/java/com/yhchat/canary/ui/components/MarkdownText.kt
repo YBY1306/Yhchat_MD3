@@ -44,8 +44,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.provides
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.Placeholder
@@ -78,8 +82,7 @@ import com.hrm.latex.renderer.LatexAutoWrap
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
-import org.intellij.markdown.MarkdownElementTypes
-import org.intellij.markdown.MarkdownTokenTypes
+import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
@@ -95,10 +98,8 @@ import java.util.Collections
 /**
  * Markdown文本渲染组件
  *
- * 方案：
- * 1. 普通 Markdown 文本仍交给 Compose Rich Text 渲染
- * 2. Markdown 图片单独提取出来，用 Compose 自己渲染
- * 3. 这样可以精确控制图片宽度、请求头和点击预览行为
+ * Markdown 图片单独提取出来，用 Compose 自己渲染
+ * 这样可以精确控制图片宽度、请求头和点击预览行为
  */
 @Composable
 fun MarkdownText(
@@ -380,7 +381,7 @@ private fun MarkdownTextRun(
             highlightKeyword
         )
         Box(modifier = Modifier.fillMaxWidth()) {
-            IntelliJMarkdownText(
+            MikepenzMarkdownText(
                 markdown = highlightedMarkdown,
                 baseColor = latexConfig.color,
                 onLinkClicked = onLinkClicked,
@@ -397,7 +398,7 @@ private fun MarkdownTextRun(
             highlightKeyword
         )
         Box(modifier = Modifier.fillMaxWidth()) {
-            IntelliJMarkdownText(
+            MikepenzMarkdownText(
                 markdown = highlightedMarkdown,
                 baseColor = latexConfig.color,
                 onLinkClicked = onLinkClicked,
@@ -430,7 +431,7 @@ private fun MarkdownTextRun(
                             segment.content,
                             highlightKeyword
                         )
-                        IntelliJMarkdownText(
+                        MikepenzMarkdownText(
                             markdown = highlightedMarkdown,
                             baseColor = latexConfig.color,
                             onLinkClicked = onLinkClicked,
@@ -459,263 +460,90 @@ private fun MarkdownTextRun(
 }
 
 @Composable
-private fun IntelliJMarkdownText(
+private fun MikepenzMarkdownText(
     markdown: String,
     baseColor: Color,
     onLinkClicked: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val rootNode = remember(markdown) { MarkdownRendererCache.getMarkdownNode(markdown) }
-    val referenceLinks = remember(markdown, rootNode) {
-        MarkdownRendererCache.getReferenceLinks(markdown, rootNode)
-    }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        rootNode.children.forEach { node ->
-            RenderIntelliJMarkdownBlock(
-                markdown = markdown,
-                node = node,
-                baseColor = baseColor,
-                referenceLinks = referenceLinks,
-                onLinkClicked = onLinkClicked
-            )
-        }
-    }
-}
-
-@Composable
-private fun RenderIntelliJMarkdownBlock(
-    markdown: String,
-    node: ASTNode,
-    baseColor: Color,
-    referenceLinks: Map<String, String?>,
-    onLinkClicked: (String) -> Unit
-) {
-    when (node.type) {
-        MarkdownElementTypes.ATX_1,
-        MarkdownElementTypes.SETEXT_1 -> MarkdownBlockText(
-            markdown = markdown,
-            node = node,
-            baseColor = baseColor,
-            referenceLinks = referenceLinks,
-            onLinkClicked = onLinkClicked,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                color = baseColor,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 34.sp
-            )
-        )
-
-        MarkdownElementTypes.ATX_2,
-        MarkdownElementTypes.SETEXT_2 -> MarkdownBlockText(
-            markdown = markdown,
-            node = node,
-            baseColor = baseColor,
-            referenceLinks = referenceLinks,
-            onLinkClicked = onLinkClicked,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                color = baseColor,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 30.sp
-            )
-        )
-
-        MarkdownElementTypes.ATX_3,
-        MarkdownElementTypes.ATX_4,
-        MarkdownElementTypes.ATX_5,
-        MarkdownElementTypes.ATX_6 -> MarkdownBlockText(
-            markdown = markdown,
-            node = node,
-            baseColor = baseColor,
-            referenceLinks = referenceLinks,
-            onLinkClicked = onLinkClicked,
-            style = MaterialTheme.typography.titleMedium.copy(
-                color = baseColor,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 24.sp
-            )
-        )
-
-        MarkdownElementTypes.PARAGRAPH -> MarkdownBlockText(
-            markdown = markdown,
-            node = node,
-            baseColor = baseColor,
-            referenceLinks = referenceLinks,
-            onLinkClicked = onLinkClicked,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = baseColor,
-                lineHeight = 22.sp
-            )
-        )
-
-        MarkdownElementTypes.BLOCK_QUOTE -> Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(24.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(2.dp))
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                node.children.forEach { child ->
-                    RenderIntelliJMarkdownBlock(
-                        markdown = markdown,
-                        node = child,
-                        baseColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        referenceLinks = referenceLinks,
-                        onLinkClicked = onLinkClicked
-                    )
-                }
-            }
-        }
-
-        MarkdownElementTypes.UNORDERED_LIST,
-        MarkdownElementTypes.ORDERED_LIST -> MarkdownListBlock(
-            markdown = markdown,
-            node = node,
-            ordered = node.type == MarkdownElementTypes.ORDERED_LIST,
-            baseColor = baseColor,
-            referenceLinks = referenceLinks,
-            onLinkClicked = onLinkClicked
-        )
-
-        MarkdownElementTypes.CODE_FENCE,
-        MarkdownElementTypes.CODE_BLOCK -> CodeBlockComponent(
-            code = extractCodeBlockText(markdown, node),
-            language = extractCodeFenceLanguage(markdown, node)
-        )
-
-        MarkdownElementTypes.LINK_DEFINITION -> Unit
-
-        else -> {
-            if (node.children.isNotEmpty()) {
-                node.children.forEach { child ->
-                    RenderIntelliJMarkdownBlock(
-                        markdown = markdown,
-                        node = child,
-                        baseColor = baseColor,
-                        referenceLinks = referenceLinks,
-                        onLinkClicked = onLinkClicked
-                    )
-                }
-            } else {
-                MarkdownBlockText(
-                    markdown = markdown,
-                    node = node,
-                    baseColor = baseColor,
-                    referenceLinks = referenceLinks,
-                    onLinkClicked = onLinkClicked,
-                    style = MaterialTheme.typography.bodyMedium.copy(color = baseColor)
-                )
+    val uriHandler = remember(onLinkClicked) {
+        object : UriHandler {
+            override fun openUri(uri: String) {
+                onLinkClicked(uri)
             }
         }
     }
-}
-
-@Composable
-private fun MarkdownBlockText(
-    markdown: String,
-    node: ASTNode,
-    baseColor: Color,
-    referenceLinks: Map<String, String?>,
-    onLinkClicked: (String) -> Unit,
-    style: androidx.compose.ui.text.TextStyle
-) {
-    val linkTextStyle = TextLinkStyles(
-        style = SpanStyle(
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Medium,
-            textDecoration = TextDecoration.Underline
-        )
+    val bodyStyle = MaterialTheme.typography.bodyMedium.copy(
+        color = baseColor,
+        lineHeight = 22.sp
     )
-    val codeSpanStyle = style.toSpanStyle().copy(
-        fontFamily = FontFamily.Monospace,
-        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val colors = com.mikepenz.markdown.m3.markdownColor(text = baseColor)
+    val typography = com.mikepenz.markdown.m3.markdownTypography(
+        h1 = MaterialTheme.typography.headlineMedium.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 34.sp
+        ),
+        h2 = MaterialTheme.typography.headlineSmall.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 30.sp
+        ),
+        h3 = MaterialTheme.typography.titleMedium.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 24.sp
+        ),
+        h4 = MaterialTheme.typography.titleSmall.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 22.sp
+        ),
+        h5 = MaterialTheme.typography.titleSmall.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 22.sp
+        ),
+        h6 = MaterialTheme.typography.labelLarge.copy(
+            color = baseColor,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 20.sp
+        ),
+        text = bodyStyle,
+        paragraph = bodyStyle,
+        ordered = bodyStyle,
+        bullet = bodyStyle,
+        list = bodyStyle,
+        quote = bodyStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+        code = MaterialTheme.typography.bodySmall.copy(
+            color = baseColor,
+            fontFamily = FontFamily.Monospace,
+            lineHeight = 20.sp
+        ),
+        inlineCode = bodyStyle.copy(fontFamily = FontFamily.Monospace),
+        textLink = TextLinkStyles(
+            style = SpanStyle(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+                textDecoration = TextDecoration.Underline
+            )
+        ),
+        table = bodyStyle
     )
-    val annotatorSettings = remember(referenceLinks, linkTextStyle, codeSpanStyle, onLinkClicked) {
-        TableAnnotatorSettings(
-            linkTextSpanStyle = linkTextStyle,
-            codeSpanStyle = codeSpanStyle,
-            referenceLinks = referenceLinks,
-            linkInteractionListener = LinkInteractionListener { link ->
-                val url = (link as? LinkAnnotation.Url)?.url
-                if (!url.isNullOrBlank()) {
-                    onLinkClicked(url)
-                }
-            }
-        )
-    }
-    val annotatedText = remember(markdown, node.startOffset, node.endOffset, style, annotatorSettings) {
-        markdown.buildTableMarkdownAnnotatedString(
-            textNode = node,
-            style = style,
-            settings = annotatorSettings
-        )
-    }
-    if (annotatedText.text.isNotBlank()) {
-        BasicText(
-            text = annotatedText,
-            style = style,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
+    val annotator = com.mikepenz.markdown.model.markdownAnnotator(
+        config = com.mikepenz.markdown.model.markdownAnnotatorConfig(eolAsNewLine = true)
+    )
 
-@Composable
-private fun MarkdownListBlock(
-    markdown: String,
-    node: ASTNode,
-    ordered: Boolean,
-    baseColor: Color,
-    referenceLinks: Map<String, String?>,
-    onLinkClicked: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    CompositionLocalProvider(
+        LocalUriHandler provides uriHandler
     ) {
-        var itemIndex = 1
-        node.children
-            .filter { it.type == MarkdownElementTypes.LIST_ITEM }
-            .forEach { item ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Text(
-                        text = if (ordered) "${itemIndex++}." else "•",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = baseColor),
-                        modifier = Modifier.width(24.dp)
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val contentChildren = item.children.filterNot {
-                            it.type == MarkdownTokenTypes.WHITE_SPACE ||
-                                it.type == MarkdownTokenTypes.EOL ||
-                                it.type.name.contains("LIST", ignoreCase = true)
-                        }
-                        contentChildren.forEach { child ->
-                            RenderIntelliJMarkdownBlock(
-                                markdown = markdown,
-                                node = child,
-                                baseColor = baseColor,
-                                referenceLinks = referenceLinks,
-                                onLinkClicked = onLinkClicked
-                            )
-                        }
-                    }
-                }
-            }
+        MikepenzMarkdown(
+            content = markdown,
+            modifier = modifier,
+            colors = colors,
+            typography = typography,
+            annotator = annotator
+        )
     }
 }
 
@@ -851,34 +679,6 @@ private fun LatexInlineText(
         text = annotated,
         inlineContent = inlineContent
     )
-}
-
-private fun extractCodeBlockText(markdown: String, node: ASTNode): String {
-    val raw = node.getTextInNode(markdown).toString()
-    if (node.type != MarkdownElementTypes.CODE_FENCE) {
-        return raw.lines().joinToString("\n") { line ->
-            line.removePrefix("    ")
-        }.trim('\n')
-    }
-
-    val lines = raw.lines()
-    if (lines.size <= 2) return ""
-    return lines
-        .drop(1)
-        .dropLastWhile { it.trim().startsWith("```") || it.trim().startsWith("~~~") }
-        .joinToString("\n")
-        .trim('\n')
-}
-
-private fun extractCodeFenceLanguage(markdown: String, node: ASTNode): String? {
-    if (node.type != MarkdownElementTypes.CODE_FENCE) return null
-    val firstLine = node.getTextInNode(markdown).toString().lineSequence().firstOrNull().orEmpty()
-    return firstLine
-        .trim()
-        .removePrefix("```")
-        .removePrefix("~~~")
-        .trim()
-        .takeIf { it.isNotBlank() }
 }
 
 @Composable
@@ -1424,7 +1224,6 @@ private sealed interface MarkdownInlineSegment {
 private object MarkdownRendererCache {
     private const val SEGMENT_CACHE_SIZE = 256
     private const val TABLE_NODE_CACHE_SIZE = 192
-    private const val MARKDOWN_NODE_CACHE_SIZE = 256
     private const val INLINE_SEGMENT_CACHE_SIZE = 512
     private const val NORMALIZED_MARKDOWN_CACHE_SIZE = 256
     private const val TASK_RUN_CACHE_SIZE = 512
@@ -1435,7 +1234,6 @@ private object MarkdownRendererCache {
     private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
     private val tableNodeCache = createLruCache<String, ASTNode?>(TABLE_NODE_CACHE_SIZE)
-    private val markdownNodeCache = createLruCache<String, ASTNode>(MARKDOWN_NODE_CACHE_SIZE)
     private val parsedTableCache = createLruCache<String, ParsedMarkdownTable?>(TABLE_NODE_CACHE_SIZE)
     private val referenceLinksCache = createLruCache<String, Map<String, String?>>(TABLE_NODE_CACHE_SIZE)
     private val inlineSegmentsCache = createLruCache<String, List<MarkdownSegment>>(INLINE_SEGMENT_CACHE_SIZE)
@@ -1450,10 +1248,6 @@ private object MarkdownRendererCache {
 
     fun getSegments(markdown: String): List<MarkdownSegment> = segmentCache.cached(markdown) {
         parseMarkdownSegments(markdown)
-    }
-
-    fun getMarkdownNode(markdown: String): ASTNode = markdownNodeCache.cached(markdown) {
-        markdownTableParser.buildMarkdownTreeFromString(markdown)
     }
 
     fun getTaskRuns(content: String): List<TaskRun> = taskRunsCache.cached(content) {

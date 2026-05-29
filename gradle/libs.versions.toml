@@ -26,6 +26,7 @@ reorderable = "0.9.6"
 calvinReorderable = "3.1.0"
 ksoupHtml = "0.6.0"
 jetbrainsMarkdown = "0.7.3"
+mikepenzMarkdown = "0.41.0"
 latex = "1.4.5-kt2.1.0"
 
 [libraries]
@@ -69,6 +70,7 @@ reorderable = { group = "org.burnoutcrew.composereorderable", name = "reorderabl
 calvin-reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "calvinReorderable" }
 ksoup-html = { group = "com.mohamedrejeb.ksoup", name = "ksoup-html", version.ref = "ksoupHtml" }
 jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
+mikepenz-markdown-m3 = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-m3", version.ref = "mikepenzMarkdown" }
 latex-base = { group = "io.github.huarangmeng", name = "latex-base", version.ref = "latex" }
 latex-parser = { group = "io.github.huarangmeng", name = "latex-parser", version.ref = "latex" }
 latex-renderer = { group = "io.github.huarangmeng", name = "latex-renderer", version.ref = "latex" }

@@ -164,9 +164,7 @@ fun MessageItem(
                         }
                     }
                 } else null,
-                onLongClick = if (!isMultiSelectMode) {
-                    { showContextMenuDialog = true }
-                } else null
+                onLongClick = null
             ),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
     ) {

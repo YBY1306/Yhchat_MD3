@@ -168,7 +168,6 @@ dependencies {
     }
     
     // Markdown 渲染
-    implementation(libs.jetbrains.markdown)
     implementation(libs.mikepenz.markdown.m3)
     implementation(libs.latex.renderer)
 

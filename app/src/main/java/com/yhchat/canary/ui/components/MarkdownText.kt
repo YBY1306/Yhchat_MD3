@@ -13,20 +13,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,39 +54,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.hrm.latex.renderer.Latex
 import com.hrm.latex.renderer.LatexAutoWrap
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
-import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
-import org.intellij.markdown.ast.ASTNode
-import org.intellij.markdown.ast.getTextInNode
-import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
-import org.intellij.markdown.flavours.gfm.GFMElementTypes.ROW
-import org.intellij.markdown.flavours.gfm.GFMElementTypes.TABLE
-import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
-import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CELL
-import org.intellij.markdown.flavours.gfm.GFMTokenTypes.TABLE_SEPARATOR
-import org.intellij.markdown.parser.MarkdownParser
+import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import java.util.Collections
 
 
@@ -230,31 +211,6 @@ fun MarkdownText(
                         onClick = { url ->
                             onImageClick?.invoke(url) ?: run {
                                 previewImageUrl = url
-                            }
-                        }
-                    )
-                }
-
-                is MarkdownSegment.Table -> {
-                    MarkdownTableWithImages(
-                        tableMarkdown = segment.content,
-                        imageReferer = imageReferer,
-                        onImageClick = { url ->
-                            onImageClick?.invoke(url) ?: run {
-                                previewImageUrl = url
-                            }
-                        },
-                        onLinkClicked = { url ->
-                            try {
-                                // 先检查是否是云湖内链
-                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                } else {
-                                    // 非云湖内链，使用系统默认方式打开
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                    context.startActivity(intent)
-                                }
-                            } catch (_: Exception) {
                             }
                         }
                     )
@@ -576,42 +532,11 @@ private fun InlineMarkdownWithLatex(
                                             highlightKeyword
                                         )
                                     }
-                                    val linkTextStyle = TextLinkStyles(
-                                        style = SpanStyle(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Medium,
-                                            textDecoration = TextDecoration.Underline
-                                        )
-                                    )
-                                    val baseStyle = MaterialTheme.typography.bodyMedium.copy(
-                                        color = latexConfig.color,
-                                        lineHeight = 22.sp
-                                    )
-                                    val codeSpanStyle = baseStyle.toSpanStyle().copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                    )
-                                    val annotatorSettings = remember(linkTextStyle, codeSpanStyle, onLinkClicked) {
-                                        TableAnnotatorSettings(
-                                            linkTextSpanStyle = linkTextStyle,
-                                            codeSpanStyle = codeSpanStyle,
-                                            linkInteractionListener = LinkInteractionListener { link ->
-                                                val url = (link as? LinkAnnotation.Url)?.url
-                                                if (!url.isNullOrBlank()) {
-                                                    onLinkClicked(url)
-                                                }
-                                            }
-                                        )
-                                    }
-                                    val annotatedText = remember(highlighted, baseStyle, annotatorSettings) {
-                                        highlighted.buildTableMarkdownAnnotatedString(
-                                            style = baseStyle,
-                                            settings = annotatorSettings
-                                        )
-                                    }
-                                    BasicText(
-                                        text = annotatedText,
-                                        style = baseStyle
+                                    MikepenzMarkdownText(
+                                        markdown = highlighted,
+                                        baseColor = latexConfig.color,
+                                        onLinkClicked = onLinkClicked,
+                                        modifier = Modifier.wrapContentWidth()
                                     )
                                 }
                             }
@@ -783,431 +708,9 @@ private fun CodeBlockComponent(
     }
 }
 
-/**
- * 解析简单的 Markdown 格式并创建 AnnotatedString
- * 支持：加粗(**text**)、斜体(*text*)、删除线(~~text~~)、代码(`text`)
- */
-private fun parseSimpleMarkdown(text: String, baseColor: Color): androidx.compose.ui.text.AnnotatedString {
-    return buildAnnotatedString {
-        var currentIndex = 0
-
-        while (currentIndex < text.length) {
-            var matched = false
-            
-            for ((pattern, styleFactory) in simpleMarkdownPatterns) {
-                val match = pattern.find(text, currentIndex)
-                if (match != null && match.range.first == currentIndex) {
-                    // 添加匹配的文本并应用样式
-                    withStyle(styleFactory(baseColor)) {
-                        append(match.groupValues[1])
-                    }
-                    currentIndex = match.range.last + 1
-                    matched = true
-                    break
-                }
-            }
-            
-            if (!matched) {
-                // 没有匹配，添加普通字符
-                withStyle(SpanStyle(color = baseColor)) {
-                    append(text[currentIndex])
-                }
-                currentIndex++
-            }
-        }
-    }
-}
-
-@Composable
-private fun MarkdownTableWithImages(
-    tableMarkdown: String,
-    imageReferer: String?,
-    onImageClick: (String) -> Unit,
-    onLinkClicked: (String) -> Unit
-) {
-    val tableNode = remember(tableMarkdown) { MarkdownRendererCache.getTableNode(tableMarkdown) }
-    val parsedTable = remember(tableMarkdown) { MarkdownRendererCache.getParsedTable(tableMarkdown) }
-    val referenceLinks = remember(tableMarkdown, tableNode) {
-        MarkdownRendererCache.getReferenceLinks(tableMarkdown, tableNode)
-    }
-    val tableCellWidth = 160.dp
-    val tableCellPadding = 16.dp
-    val tableCornerSize = 8.dp
-    val astColumnCount = remember(tableNode) {
-        tableNode?.children
-            ?.firstOrNull { it.type == HEADER }
-            ?.children
-            ?.count { it.type == CELL }
-            ?: 0
-    }
-    val columnCount = when {
-        astColumnCount > 0 -> astColumnCount
-        parsedTable != null -> parsedTable.columnCount
-        else -> 0
-    }
-    if (columnCount <= 0) return
-
-    val tableWidth = columnCount * tableCellWidth
-    BoxWithConstraints(
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f),
-                RoundedCornerShape(tableCornerSize)
-            )
-    ) {
-        val scrollable = maxWidth <= tableWidth
-        Column(
-            modifier = if (scrollable) {
-                Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .requiredWidth(tableWidth)
-            } else {
-                Modifier.fillMaxWidth()
-            }
-        ) {
-            if (tableNode != null && astColumnCount > 0) {
-                tableNode.children.forEach { rowNode ->
-                    when (rowNode.type) {
-                        HEADER -> MarkdownAstTableRow(
-                            rowNode = rowNode,
-                            tableMarkdown = tableMarkdown,
-                            tableWidth = tableWidth,
-                            isHeader = true,
-                            tableCellPadding = tableCellPadding,
-                            referenceLinks = referenceLinks,
-                            imageReferer = imageReferer,
-                            onImageClick = onImageClick,
-                            onLinkClicked = onLinkClicked
-                        )
-
-                        ROW -> MarkdownAstTableRow(
-                            rowNode = rowNode,
-                            tableMarkdown = tableMarkdown,
-                            tableWidth = tableWidth,
-                            isHeader = false,
-                            tableCellPadding = tableCellPadding,
-                            referenceLinks = referenceLinks,
-                            imageReferer = imageReferer,
-                            onImageClick = onImageClick,
-                            onLinkClicked = onLinkClicked
-                        )
-
-                        TABLE_SEPARATOR -> MarkdownTableDivider()
-                    }
-                }
-            } else if (parsedTable != null) {
-                MarkdownParsedTableRow(
-                    cells = parsedTable.headerCells,
-                    tableWidth = tableWidth,
-                    alignments = parsedTable.alignments,
-                    isHeader = true,
-                    tableCellPadding = tableCellPadding,
-                    referenceLinks = referenceLinks,
-                    imageReferer = imageReferer,
-                    onImageClick = onImageClick,
-                    onLinkClicked = onLinkClicked
-                )
-                MarkdownTableDivider()
-
-                parsedTable.bodyRows.forEachIndexed { index, row ->
-                    MarkdownParsedTableRow(
-                        cells = row,
-                        tableWidth = tableWidth,
-                        alignments = parsedTable.alignments,
-                        isHeader = false,
-                        tableCellPadding = tableCellPadding,
-                        referenceLinks = referenceLinks,
-                        imageReferer = imageReferer,
-                        onImageClick = onImageClick,
-                        onLinkClicked = onLinkClicked
-                    )
-
-                    if (index != parsedTable.bodyRows.lastIndex) {
-                        MarkdownTableDivider()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MarkdownAstTableRow(
-    rowNode: ASTNode,
-    tableMarkdown: String,
-    tableWidth: Dp,
-    isHeader: Boolean,
-    tableCellPadding: Dp,
-    referenceLinks: Map<String, String?>,
-    imageReferer: String?,
-    onImageClick: (String) -> Unit,
-    onLinkClicked: (String) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .widthIn(min = tableWidth)
-            .then(if (isHeader) Modifier.height(IntrinsicSize.Max) else Modifier)
-    ) {
-        rowNode.children
-            .filter { it.type == CELL }
-            .forEach { cellNode ->
-                Column(
-                    modifier = Modifier
-                        .padding(tableCellPadding)
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    RenderMarkdownAstTableCell(
-                        tableMarkdown = tableMarkdown,
-                        cellNode = cellNode,
-                        isHeader = isHeader,
-                        referenceLinks = referenceLinks,
-                        imageReferer = imageReferer,
-                        onImageClick = onImageClick,
-                        onLinkClicked = onLinkClicked
-                    )
-                }
-            }
-    }
-}
-
-@Composable
-private fun MarkdownParsedTableRow(
-    cells: List<String>,
-    tableWidth: Dp,
-    alignments: List<MarkdownTableAlignment>,
-    isHeader: Boolean,
-    tableCellPadding: Dp,
-    referenceLinks: Map<String, String?>,
-    imageReferer: String?,
-    onImageClick: (String) -> Unit,
-    onLinkClicked: (String) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .widthIn(min = tableWidth)
-            .then(if (isHeader) Modifier.height(IntrinsicSize.Max) else Modifier)
-    ) {
-        repeat(cells.size) { index ->
-            val cellContent = cells.getOrNull(index).orEmpty()
-            val alignment = alignments.getOrNull(index) ?: MarkdownTableAlignment.Start
-            Column(
-                modifier = Modifier
-                    .padding(tableCellPadding)
-                    .weight(1f),
-                horizontalAlignment = alignment.horizontalAlignment,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                RenderMarkdownTableCell(
-                    cellContent = cellContent,
-                    referenceLinks = referenceLinks,
-                    imageReferer = imageReferer,
-                    onImageClick = onImageClick,
-                    onLinkClicked = onLinkClicked,
-                    isHeader = isHeader,
-                    alignment = alignment
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RenderMarkdownAstTableCell(
-    tableMarkdown: String,
-    cellNode: ASTNode,
-    isHeader: Boolean,
-    referenceLinks: Map<String, String?>,
-    imageReferer: String?,
-    onImageClick: (String) -> Unit,
-    onLinkClicked: (String) -> Unit,
-) {
-    val baseStyle = if (isHeader) {
-        MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold
-        )
-    } else {
-        MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-    val linkTextStyle = TextLinkStyles(
-        style = SpanStyle(
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Medium,
-            textDecoration = TextDecoration.Underline
-        )
-    )
-    val codeSpanStyle = baseStyle.toSpanStyle().copy(
-        fontFamily = FontFamily.Monospace,
-        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    )
-    val annotatorSettings = remember(referenceLinks, linkTextStyle, codeSpanStyle, onLinkClicked) {
-        TableAnnotatorSettings(
-            linkTextSpanStyle = linkTextStyle,
-            codeSpanStyle = codeSpanStyle,
-            referenceLinks = referenceLinks,
-            linkInteractionListener = LinkInteractionListener { link ->
-                val url = (link as? LinkAnnotation.Url)?.url
-                if (!url.isNullOrBlank()) {
-                    onLinkClicked(url)
-                }
-            }
-        )
-    }
-    val containsImage = remember(cellNode) { containsMarkdownImageNode(cellNode) }
-
-    if (!containsImage) {
-        val annotatedText = remember(
-            tableMarkdown,
-            cellNode.startOffset,
-            cellNode.endOffset,
-            baseStyle,
-            annotatorSettings
-        ) {
-            tableMarkdown.buildTableMarkdownAnnotatedString(
-                textNode = cellNode,
-                style = baseStyle,
-                settings = annotatorSettings
-            )
-        }
-        if (annotatedText.text.isNotBlank()) {
-            BasicText(
-                text = annotatedText,
-                style = baseStyle,
-                modifier = Modifier.fillMaxWidth()
-            )
-            return
-        }
-    }
-
-    RenderMarkdownTableCell(
-        cellContent = cellNode.getTextInNode(tableMarkdown).toString()
-            .trim()
-            .removePrefix("|")
-            .removeSuffix("|")
-            .trim(),
-        referenceLinks = referenceLinks,
-        imageReferer = imageReferer,
-        onImageClick = onImageClick,
-        onLinkClicked = onLinkClicked,
-        isHeader = isHeader,
-        alignment = MarkdownTableAlignment.Start
-    )
-}
-
-private fun containsMarkdownImageNode(node: ASTNode): Boolean {
-    if (node.type == org.intellij.markdown.MarkdownElementTypes.IMAGE) {
-        return true
-    }
-    return node.children.any(::containsMarkdownImageNode)
-}
-
-@Composable
-private fun RenderMarkdownTableCell(
-    cellContent: String,
-    referenceLinks: Map<String, String?>,
-    imageReferer: String?,
-    onImageClick: (String) -> Unit,
-    onLinkClicked: (String) -> Unit,
-    isHeader: Boolean,
-    alignment: MarkdownTableAlignment
-) {
-    val normalizedCellContent = remember(cellContent) { cellContent.trim() }
-    if (normalizedCellContent.isBlank()) return
-
-    val cellSegments = remember(normalizedCellContent) {
-        MarkdownRendererCache.getInlineSegments(normalizedCellContent)
-    }
-    val baseStyle = if (isHeader) {
-        MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-            textAlign = alignment.textAlign
-        )
-    } else {
-        MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = alignment.textAlign
-        )
-    }
-    val linkTextStyle = TextLinkStyles(
-        style = SpanStyle(
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Medium,
-            textDecoration = TextDecoration.Underline
-        )
-    )
-    val codeSpanStyle = baseStyle.toSpanStyle().copy(
-        fontFamily = FontFamily.Monospace,
-        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    )
-    val annotatorSettings = remember(referenceLinks, linkTextStyle, codeSpanStyle, onLinkClicked) {
-        TableAnnotatorSettings(
-            linkTextSpanStyle = linkTextStyle,
-            codeSpanStyle = codeSpanStyle,
-            referenceLinks = referenceLinks,
-            linkInteractionListener = LinkInteractionListener { link ->
-                val url = (link as? LinkAnnotation.Url)?.url
-                if (!url.isNullOrBlank()) {
-                    onLinkClicked(url)
-                }
-            }
-        )
-    }
-
-    cellSegments.forEach { segment ->
-        when (segment) {
-            is MarkdownSegment.Image -> {
-                MarkdownInlineImage(
-                    url = segment.url,
-                    alt = segment.alt,
-                    imageReferer = imageReferer,
-                    onClick = onImageClick
-                )
-            }
-
-            is MarkdownSegment.Text -> {
-                if (segment.content.isNotBlank()) {
-                    val annotatedText = segment.content.buildTableMarkdownAnnotatedString(
-                        style = baseStyle,
-                        settings = annotatorSettings
-                    )
-
-                    BasicText(
-                        text = if (annotatedText.text.isNotBlank()) {
-                            annotatedText
-                        } else {
-                            parseSimpleMarkdown(segment.content, MaterialTheme.colorScheme.onSurface)
-                        },
-                        style = baseStyle,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            else -> Unit
-        }
-    }
-}
-
-@Composable
-private fun MarkdownTableDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant)
-    )
-}
-
 private sealed interface MarkdownSegment {
     data class Text(val content: String) : MarkdownSegment
     data class Image(val url: String, val alt: String?) : MarkdownSegment
-    data class Table(val content: String) : MarkdownSegment
     data class HtmlTable(val content: String) : MarkdownSegment
     data class HtmlBlock(val content: String) : MarkdownSegment
     data class CodeBlock(val code: String, val language: String?) : MarkdownSegment
@@ -1222,7 +725,6 @@ private sealed interface MarkdownInlineSegment {
 
 private object MarkdownRendererCache {
     private const val SEGMENT_CACHE_SIZE = 256
-    private const val TABLE_NODE_CACHE_SIZE = 192
     private const val INLINE_SEGMENT_CACHE_SIZE = 512
     private const val NORMALIZED_MARKDOWN_CACHE_SIZE = 256
     private const val TASK_RUN_CACHE_SIZE = 512
@@ -1232,9 +734,6 @@ private object MarkdownRendererCache {
 
     private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
-    private val tableNodeCache = createLruCache<String, ASTNode?>(TABLE_NODE_CACHE_SIZE)
-    private val parsedTableCache = createLruCache<String, ParsedMarkdownTable?>(TABLE_NODE_CACHE_SIZE)
-    private val referenceLinksCache = createLruCache<String, Map<String, String?>>(TABLE_NODE_CACHE_SIZE)
     private val inlineSegmentsCache = createLruCache<String, List<MarkdownSegment>>(INLINE_SEGMENT_CACHE_SIZE)
     private val taskRunsCache = createLruCache<String, List<TaskRun>>(TASK_RUN_CACHE_SIZE)
     private val highlightedMarkdownCache = createLruCache<String, String>(HIGHLIGHT_CACHE_SIZE)
@@ -1271,21 +770,6 @@ private object MarkdownRendererCache {
     fun setDetailsExpanded(key: String, expanded: Boolean) {
         synchronized(detailsExpandedCache) {
             detailsExpandedCache[key] = expanded
-        }
-    }
-
-    fun getTableNode(tableMarkdown: String): ASTNode? = tableNodeCache.cached(tableMarkdown) {
-        parseMarkdownTableNode(tableMarkdown)
-    }
-
-    fun getParsedTable(tableMarkdown: String): ParsedMarkdownTable? = parsedTableCache.cached(tableMarkdown) {
-        parseMarkdownTableContent(tableMarkdown)
-    }
-
-    fun getReferenceLinks(tableMarkdown: String, tableNode: ASTNode?): Map<String, String?> {
-        if (tableNode == null) return emptyMap()
-        return referenceLinksCache.cached(tableMarkdown) {
-            buildReferenceLinkMap(tableNode, tableMarkdown)
         }
     }
 
@@ -1394,20 +878,12 @@ private fun parseMarkdownSegments(markdown: String): List<MarkdownSegment> {
                 continue
             }
 
-            val markdownTableBlock = extractMarkdownTableBlock(lines, i)
-            if (markdownTableBlock != null) {
-                segments += MarkdownSegment.Table(markdownTableBlock.content)
-                i = markdownTableBlock.nextIndex
-                continue
-            }
-
             val contentStart = i
             while (i < lines.size &&
                    !lines[i].trim().startsWith("```") &&
                    extractDetailsBlock(lines, i) == null &&
                    extractHtmlTableBlock(lines, i) == null &&
-                   extractHtmlDivBlock(lines, i) == null &&
-                   extractMarkdownTableBlock(lines, i) == null) {
+                   extractHtmlDivBlock(lines, i) == null) {
                 i++
             }
             
@@ -1605,11 +1081,6 @@ private fun extractImagesFromContent(content: String, segments: MutableList<Mark
     }
 }
 
-private data class MarkdownTableBlock(
-    val content: String,
-    val nextIndex: Int
-)
-
 private data class HtmlTableBlock(
     val prefix: String?,
     val table: String,
@@ -1623,10 +1094,6 @@ private data class HtmlDivBlock(
     val suffix: String?,
     val nextIndex: Int
 )
-
-private fun extractMarkdownTableBlock(lines: List<String>, startIndex: Int): MarkdownTableBlock? {
-    return extractMarkdownTableBlockFallback(lines, startIndex)
-}
 
 private fun extractHtmlTableBlock(lines: List<String>, startIndex: Int): HtmlTableBlock? {
     val startLine = lines.getOrNull(startIndex) ?: return null
@@ -1687,201 +1154,6 @@ private fun extractHtmlDivBlock(lines: List<String>, startIndex: Int): HtmlDivBl
 }
 
 private fun countRegexMatches(text: CharSequence, regex: Regex): Int = regex.findAll(text).count()
-
-private fun parseMarkdownTableNode(tableMarkdown: String): ASTNode? {
-    val rootNode = markdownTableParser.buildMarkdownTreeFromString(tableMarkdown)
-    return rootNode.children.firstOrNull { it.type == TABLE }
-}
-
-private data class ParsedMarkdownTable(
-    val headerCells: List<String>,
-    val alignments: List<MarkdownTableAlignment>,
-    val bodyRows: List<List<String>>
-) {
-    val columnCount: Int
-        get() = maxOf(
-            headerCells.size,
-            alignments.size,
-            bodyRows.maxOfOrNull { it.size } ?: 0
-        )
-}
-
-private fun parseMarkdownTableContent(tableMarkdown: String): ParsedMarkdownTable? {
-    val lines = tableMarkdown
-        .lines()
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-    if (lines.size < 2) return null
-
-    val headerCells = splitMarkdownTableRow(lines.first())
-    val separatorCells = splitMarkdownTableRow(lines[1])
-    if (headerCells.size < 2 || separatorCells.isEmpty()) return null
-    if (!separatorCells.all(::isMarkdownTableSeparatorCell)) return null
-
-    val columnCount = maxOf(headerCells.size, separatorCells.size)
-    val normalizedHeaders = headerCells.padToColumnCount(columnCount)
-    val alignments = separatorCells
-        .padToColumnCount(columnCount)
-        .map(::parseMarkdownTableAlignment)
-
-    val bodyRows = lines
-        .drop(2)
-        .map { splitMarkdownTableRow(it).padToColumnCount(columnCount) }
-        .filter { it.isNotEmpty() }
-
-    return ParsedMarkdownTable(
-        headerCells = normalizedHeaders,
-        alignments = alignments,
-        bodyRows = bodyRows
-    )
-}
-
-private fun splitMarkdownTableRow(row: String): List<String> {
-    val normalized = row.trim().removePrefix("|").removeSuffix("|")
-    if (normalized.isBlank()) return emptyList()
-
-    val cells = mutableListOf<String>()
-    val current = StringBuilder()
-    var escaped = false
-    var inCodeSpan = false
-
-    normalized.forEach { ch ->
-        when {
-            escaped -> {
-                current.append(ch)
-                escaped = false
-            }
-
-            ch == '\\' -> {
-                escaped = true
-            }
-
-            ch == '`' -> {
-                inCodeSpan = !inCodeSpan
-                current.append(ch)
-            }
-
-            ch == '|' && !inCodeSpan -> {
-                cells += current.toString().trim()
-                current.clear()
-            }
-
-            else -> current.append(ch)
-        }
-    }
-
-    cells += current.toString().trim()
-    return cells
-}
-
-private fun extractMarkdownTableBlockFallback(
-    lines: List<String>,
-    startIndex: Int
-): MarkdownTableBlock? {
-    if (!looksLikeMarkdownTableStart(lines, startIndex)) return null
-
-    val expectedColumnCount = splitMarkdownTableRow(lines[startIndex]).size
-    var endIndex = startIndex + 2
-    while (endIndex < lines.size && looksLikeMarkdownTableDataRow(lines[endIndex], expectedColumnCount)) {
-        endIndex++
-    }
-
-    val tableContent = lines.subList(startIndex, endIndex)
-        .joinToString("\n")
-        .trimEnd()
-    if (tableContent.isBlank()) return null
-
-    return MarkdownTableBlock(
-        content = tableContent,
-        nextIndex = endIndex
-    )
-}
-
-private fun looksLikeMarkdownTableStart(lines: List<String>, startIndex: Int): Boolean {
-    val headerLine = lines.getOrNull(startIndex)?.trim().orEmpty()
-    val separatorLine = lines.getOrNull(startIndex + 1)?.trim().orEmpty()
-    if (headerLine.isBlank() || separatorLine.isBlank()) return false
-    if (!containsTablePipe(headerLine) || !containsTablePipe(separatorLine)) return false
-
-    val headerCells = splitMarkdownTableRow(headerLine)
-    val separatorCells = splitMarkdownTableRow(separatorLine)
-    if (headerCells.size < 2 || separatorCells.size < 2) return false
-
-    return separatorCells.all(::isMarkdownTableSeparatorCell)
-}
-
-private fun looksLikeMarkdownTableDataRow(line: String, expectedColumnCount: Int): Boolean {
-    val trimmed = line.trim()
-    if (trimmed.isBlank() || !containsTablePipe(trimmed)) return false
-    val cells = splitMarkdownTableRow(trimmed)
-    return cells.size >= 2 && kotlin.math.abs(cells.size - expectedColumnCount) <= 1
-}
-
-private fun containsTablePipe(line: String): Boolean {
-    var escaped = false
-    var inCodeSpan = false
-
-    line.forEach { ch ->
-        when {
-            escaped -> escaped = false
-            ch == '\\' -> escaped = true
-            ch == '`' -> inCodeSpan = !inCodeSpan
-            ch == '|' && !inCodeSpan -> return true
-        }
-    }
-
-    return false
-}
-
-private fun List<String>.padToColumnCount(columnCount: Int): List<String> {
-    if (columnCount <= 0) return this
-    if (size >= columnCount) return take(columnCount)
-    return this + List(columnCount - size) { "" }
-}
-
-private fun isMarkdownTableSeparatorCell(cell: String): Boolean {
-    val trimmed = cell.trim()
-    if (trimmed.isEmpty()) return false
-    return trimmed.matches(Regex("^:?-{3,}:?$"))
-}
-
-private fun parseMarkdownTableAlignment(cell: String): MarkdownTableAlignment {
-    val trimmed = cell.trim()
-    return when {
-        trimmed.startsWith(":") && trimmed.endsWith(":") -> MarkdownTableAlignment.Center
-        trimmed.endsWith(":") -> MarkdownTableAlignment.End
-        else -> MarkdownTableAlignment.Start
-    }
-}
-
-private enum class MarkdownTableAlignment(
-    val horizontalAlignment: Alignment.Horizontal,
-    val textAlign: androidx.compose.ui.text.style.TextAlign
-) {
-    Start(Alignment.Start, androidx.compose.ui.text.style.TextAlign.Start),
-    Center(Alignment.CenterHorizontally, androidx.compose.ui.text.style.TextAlign.Center),
-    End(Alignment.End, androidx.compose.ui.text.style.TextAlign.End)
-}
-
-private val markdownTableParser = MarkdownParser(GFMFlavourDescriptor())
-
-private val simpleMarkdownPatterns = listOf<Pair<Regex, (Color) -> SpanStyle>>(
-    Regex("\\*\\*\\*(.+?)\\*\\*\\*") to { color ->
-        SpanStyle(color = color, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)
-    },
-    Regex("\\*\\*(.+?)\\*\\*") to { color ->
-        SpanStyle(color = color, fontWeight = FontWeight.Bold)
-    },
-    Regex("\\*(.+?)\\*") to { color ->
-        SpanStyle(color = color, fontStyle = FontStyle.Italic)
-    },
-    Regex("~~(.+?)~~") to { color ->
-        SpanStyle(color = color, textDecoration = TextDecoration.LineThrough)
-    },
-    Regex("`(.+?)`") to { _ ->
-        SpanStyle(fontFamily = FontFamily.Monospace, background = Color.Gray.copy(alpha = 0.2f))
-    }
-)
 
 private val htmlTableStartRegex = Regex("<table\\b[^>]*>", setOf(RegexOption.IGNORE_CASE))
 private val htmlTableEndRegex = Regex("</table>", setOf(RegexOption.IGNORE_CASE))

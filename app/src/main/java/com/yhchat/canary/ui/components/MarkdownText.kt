@@ -71,6 +71,10 @@ import com.hrm.latex.renderer.LatexAutoWrap
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
+import com.mikepenz.markdown.model.Input
+import com.mikepenz.markdown.model.MarkdownState
+import com.mikepenz.markdown.model.MarkdownStateImpl
+import com.mikepenz.markdown.model.ReferenceLinkHandler
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
@@ -93,7 +97,8 @@ fun MarkdownText(
     imageReferer: String? = "https://myapp.jwznb.com",
     enableHtmlRendering: Boolean = true,
     highlightKeyword: String = "",
-    enableTextSelection: Boolean = true
+    enableTextSelection: Boolean = true,
+    persistRenderState: Boolean = true
 ) {
     val context = LocalContext.current
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
@@ -143,6 +148,7 @@ fun MarkdownText(
                                                 latexConfig = latexConfig,
                                                 latexEnabled = latexEnabled,
                                                 highlightKeyword = highlightKeyword,
+                                                persistRenderState = persistRenderState,
                                                 onLinkClicked = { url ->
                                                     try {
                                                         if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -182,6 +188,7 @@ fun MarkdownText(
                                                         latexConfig = latexConfig,
                                                         latexEnabled = latexEnabled,
                                                         highlightKeyword = highlightKeyword,
+                                                        persistRenderState = persistRenderState,
                                                         onLinkClicked = { url ->
                                                             try {
                                                                 if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -330,6 +337,7 @@ private fun MarkdownTextRun(
     latexConfig: LatexConfig,
     latexEnabled: Boolean,
     highlightKeyword: String,
+    persistRenderState: Boolean,
     onLinkClicked: (String) -> Unit
 ) {
     if (!latexEnabled) {
@@ -342,6 +350,7 @@ private fun MarkdownTextRun(
                 markdown = highlightedMarkdown,
                 baseColor = latexConfig.color,
                 onLinkClicked = onLinkClicked,
+                persistRenderState = persistRenderState,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -359,6 +368,7 @@ private fun MarkdownTextRun(
                 markdown = highlightedMarkdown,
                 baseColor = latexConfig.color,
                 onLinkClicked = onLinkClicked,
+                persistRenderState = persistRenderState,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -392,6 +402,7 @@ private fun MarkdownTextRun(
                             markdown = highlightedMarkdown,
                             baseColor = latexConfig.color,
                             onLinkClicked = onLinkClicked,
+                            persistRenderState = persistRenderState,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -421,6 +432,7 @@ private fun MikepenzMarkdownText(
     markdown: String,
     baseColor: Color,
     onLinkClicked: (String) -> Unit,
+    persistRenderState: Boolean,
     modifier: Modifier = Modifier
 ) {
     val uriHandler = remember(onLinkClicked) {
@@ -492,19 +504,38 @@ private fun MikepenzMarkdownText(
     )
     val flavour = remember { GFMFlavourDescriptor() }
     val parser = remember(flavour) { MarkdownParser(flavour) }
+    val referenceLinkHandler = remember { PersistentReferenceLinkHandler() }
 
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
     ) {
-        MikepenzMarkdown(
-            content = markdown,
-            modifier = modifier,
-            colors = colors,
-            typography = typography,
-            flavour = flavour,
-            parser = parser,
-            annotator = annotator
-        )
+        if (persistRenderState) {
+            val markdownState = remember(markdown, flavour, parser, referenceLinkHandler) {
+                MarkdownRendererCache.getMarkdownState(
+                    content = markdown,
+                    flavour = flavour,
+                    parser = parser,
+                    referenceLinkHandler = referenceLinkHandler
+                )
+            }
+            MikepenzMarkdown(
+                markdownState = markdownState,
+                modifier = modifier,
+                colors = colors,
+                typography = typography,
+                annotator = annotator
+            )
+        } else {
+            MikepenzMarkdown(
+                content = markdown,
+                modifier = modifier,
+                colors = colors,
+                typography = typography,
+                flavour = flavour,
+                parser = parser,
+                annotator = annotator
+            )
+        }
     }
 }
 
@@ -542,6 +573,7 @@ private fun InlineMarkdownWithLatex(
                                         markdown = highlighted,
                                         baseColor = latexConfig.color,
                                         onLinkClicked = onLinkClicked,
+                                        persistRenderState = true,
                                         modifier = Modifier.wrapContentWidth()
                                     )
                                 }
@@ -737,6 +769,7 @@ private object MarkdownRendererCache {
     private const val HIGHLIGHT_CACHE_SIZE = 1024
     private const val DETAILS_STATE_CACHE_SIZE = 256
     private const val LATEX_SEGMENT_CACHE_SIZE = 1024
+    private const val MARKDOWN_STATE_CACHE_SIZE = 128
 
     private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
@@ -745,6 +778,7 @@ private object MarkdownRendererCache {
     private val highlightedMarkdownCache = createLruCache<String, String>(HIGHLIGHT_CACHE_SIZE)
     private val detailsExpandedCache = createLruCache<String, Boolean>(DETAILS_STATE_CACHE_SIZE)
     private val latexSegmentsCache = createLruCache<String, List<MarkdownInlineSegment>>(LATEX_SEGMENT_CACHE_SIZE)
+    private val markdownStateCache = createLruCache<String, MarkdownState>(MARKDOWN_STATE_CACHE_SIZE)
 
     fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
         processTaskLists(normalizeLoosePipeTables(normalizeHeadingSpacing(markdown)))
@@ -769,6 +803,24 @@ private object MarkdownRendererCache {
         splitLatexSegments(content)
     }
 
+    fun getMarkdownState(
+        content: String,
+        flavour: GFMFlavourDescriptor,
+        parser: MarkdownParser,
+        referenceLinkHandler: ReferenceLinkHandler
+    ): MarkdownState = markdownStateCache.cached(content) {
+        MarkdownStateImpl(
+            Input(
+                content = content,
+                lookupLinks = true,
+                flavour = flavour,
+                parser = parser,
+                referenceLinkHandler = referenceLinkHandler,
+                retainState = true
+            )
+        )
+    }
+
     fun getDetailsExpanded(key: String): Boolean = synchronized(detailsExpandedCache) {
         detailsExpandedCache[key] ?: false
     }
@@ -786,6 +838,18 @@ private object MarkdownRendererCache {
                 segments = this
             )
         }
+    }
+}
+
+private class PersistentReferenceLinkHandler : ReferenceLinkHandler {
+    private val links = Collections.synchronizedMap(mutableMapOf<String, String>())
+
+    override fun store(label: String, destination: String) {
+        links[label] = destination
+    }
+
+    override fun find(label: String): String? {
+        return links[label]
     }
 }
 

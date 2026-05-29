@@ -102,7 +102,8 @@ fun MessageContentView(
     onRecall: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
     onForward: (ChatMessage) -> Unit = {},
-    onMultiSelect: (() -> Unit)? = null
+    onMultiSelect: (() -> Unit)? = null,
+    isStreaming: Boolean = false
 ) {
     val textColor = if (isMyMessage) {
         MaterialTheme.colorScheme.onPrimaryContainer
@@ -562,6 +563,7 @@ fun MessageContentView(
                                 backgroundColor = Color.Transparent, // 使用透明背景，继承消息气泡背景
                                 onImageClick = onImageClick,
                                 enableTextSelection = false,
+                                persistRenderState = !isStreaming,
                                 modifier = Modifier
                                     .wrapContentWidth()
                             )

@@ -809,6 +809,7 @@ fun ChatScreen(
                             isHighlighted = message.msgId == highlightedMessageId,
                             isMultiSelectMode = isMultiSelectMode,
                             isSelected = selectedMessageIds.contains(message.msgId),
+                            isStreaming = isStreaming,
                             onSelectionToggle = { msgId ->
                                 selectedMessageIds = if (selectedMessageIds.contains(msgId)) {
                                     selectedMessageIds - msgId

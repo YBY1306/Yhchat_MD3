@@ -1124,19 +1124,23 @@ fun ConversationItem(
     }
     
     Surface(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 3.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         shape = RoundedCornerShape(14.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

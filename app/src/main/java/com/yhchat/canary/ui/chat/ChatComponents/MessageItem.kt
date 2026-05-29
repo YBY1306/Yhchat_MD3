@@ -108,7 +108,8 @@ fun MessageItem(
     groupOwnerId: String? = null,
     groupAdminIds: List<String> = emptyList(),
     isCollapsed: Boolean = false,
-    onToggleCollapse: (() -> Unit)? = null
+    onToggleCollapse: (() -> Unit)? = null,
+    isStreaming: Boolean = false
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -145,7 +146,6 @@ fun MessageItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp)
             .then(
                 if (isHighlighted) Modifier.background(
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
@@ -165,7 +165,8 @@ fun MessageItem(
                     }
                 } else null,
                 onLongClick = null
-            ),
+            )
+            .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
     ) {
         if (!isMyMessage) {
@@ -299,7 +300,8 @@ fun MessageItem(
                         onRecall = onRecall,
                         onPlusOne = onPlusOne,
                         onForward = onForward,
-                        onMultiSelect = onMultiSelect
+                        onMultiSelect = onMultiSelect,
+                        isStreaming = isStreaming
                     )
                 }
             }
@@ -750,7 +752,8 @@ fun AnimatedMessageItem(
     groupOwnerId: String? = null,
     groupAdminIds: List<String> = emptyList(),
     isCollapsed: Boolean = false,
-    onToggleCollapse: (() -> Unit)? = null
+    onToggleCollapse: (() -> Unit)? = null,
+    isStreaming: Boolean = false
 ) {
     val isNewMessage = remember(message.msgId) {
         val currentTime = System.currentTimeMillis()
@@ -809,7 +812,8 @@ fun AnimatedMessageItem(
                     groupOwnerId = groupOwnerId,
                     groupAdminIds = groupAdminIds,
                     isCollapsed = isCollapsed,
-                    onToggleCollapse = onToggleCollapse
+                    onToggleCollapse = onToggleCollapse,
+                    isStreaming = isStreaming
                 )
             }
         }
@@ -867,7 +871,8 @@ fun AnimatedMessageItem(
                     groupOwnerId = groupOwnerId,
                     groupAdminIds = groupAdminIds,
                     isCollapsed = isCollapsed,
-                    onToggleCollapse = onToggleCollapse
+                    onToggleCollapse = onToggleCollapse,
+                    isStreaming = isStreaming
                 )
             }
         }

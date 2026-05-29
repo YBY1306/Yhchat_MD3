@@ -54,45 +54,45 @@ fun MessageSelectionContainer(
     val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
         Modifier.appendTextContextMenuComponents {
             onQuote?.let { action ->
-                item(key = MENU_ITEM_QUOTE, label = "引用") {
+                item(key = MENU_ITEM_QUOTE, label = "引用") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onPlusOne?.let { action ->
-                item(key = MENU_ITEM_PLUS_ONE, label = "+1") {
+                item(key = MENU_ITEM_PLUS_ONE, label = "+1") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onEdit?.let { action ->
-                item(key = MENU_ITEM_EDIT, label = "编辑") {
+                item(key = MENU_ITEM_EDIT, label = "编辑") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onForward?.let { action ->
-                item(key = MENU_ITEM_FORWARD, label = "转发") {
+                item(key = MENU_ITEM_FORWARD, label = "转发") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onMultiSelect?.let { action ->
-                item(key = MENU_ITEM_MULTI_SELECT, label = "多选") {
+                item(key = MENU_ITEM_MULTI_SELECT, label = "多选") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onOpenInInternalBrowser?.let { action ->
-                item(key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, label = "在内置浏览器中打开") {
+                item(key = MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, label = "在内置浏览器中打开") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
             onDelete?.let { action ->
-                item(key = MENU_ITEM_DELETE, label = "撤回") {
+                item(key = MENU_ITEM_DELETE, label = "撤回") { session ->
                     action()
-                    it.close()
+                    session.close()
                 }
             }
         }

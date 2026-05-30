@@ -60,6 +60,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MessageContent
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpec
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.looksLikeA2UiJson
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiSpec
 import com.yhchat.canary.ui.community.PostDetailActivity

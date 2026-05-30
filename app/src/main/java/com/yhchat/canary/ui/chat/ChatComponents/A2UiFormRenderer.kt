@@ -79,11 +79,12 @@ private fun A2UiSpec.preferredSurfaceWidthDp(): Int {
 }
 
 private fun Number.toPositiveInt(): Int? {
-    return when (this) {
+    val value = when (this) {
         is Int -> this
         is Long -> this.toInt()
         is Float -> this.toInt()
         is Double -> this.toInt()
         else -> toString().toIntOrNull()
-    }.takeIf { it > 0 }
+    } ?: return null
+    return value.takeIf { it > 0 }
 }

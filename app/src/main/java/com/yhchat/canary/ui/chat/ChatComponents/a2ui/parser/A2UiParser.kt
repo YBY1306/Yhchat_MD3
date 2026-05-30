@@ -12,6 +12,7 @@ import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiPaintElement
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiPieChartSlice
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiPieDataSlice
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpec
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpacing
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiValue
 import org.json.JSONArray
 import org.json.JSONObject
@@ -132,6 +133,8 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         size = safeOptNumber(componentObject, "size"),
         width = safeOptNumber(componentObject, "width"),
         height = safeOptNumber(componentObject, "height"),
+        margin = parseA2UiSpacing(componentObject.opt("margin")),
+        padding = parseA2UiSpacing(componentObject.opt("padding")),
         min = safeOptNumber(componentObject, "min"),
         max = safeOptNumber(componentObject, "max"),
         name = componentObject.optString("name").takeIf { it.isNotBlank() },
@@ -159,6 +162,39 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
             }
         }
     )
+}
+
+private fun parseA2UiSpacing(rawValue: Any?): A2UiSpacing? {
+    return when (rawValue) {
+        null, JSONObject.NULL -> null
+        is Number -> A2UiSpacing(start = rawValue, top = rawValue, end = rawValue, bottom = rawValue)
+        is JSONObject -> {
+            val all = safeOptNumber(rawValue, "all")
+                ?: safeOptNumber(rawValue, "value")
+            val horizontal = safeOptNumber(rawValue, "horizontal")
+            val vertical = safeOptNumber(rawValue, "vertical")
+            val start = safeOptNumber(rawValue, "start")
+                ?: safeOptNumber(rawValue, "left")
+                ?: horizontal
+                ?: all
+            val end = safeOptNumber(rawValue, "end")
+                ?: safeOptNumber(rawValue, "right")
+                ?: horizontal
+                ?: all
+            val top = safeOptNumber(rawValue, "top")
+                ?: vertical
+                ?: all
+            val bottom = safeOptNumber(rawValue, "bottom")
+                ?: vertical
+                ?: all
+            if (start == null && top == null && end == null && bottom == null) {
+                null
+            } else {
+                A2UiSpacing(start = start, top = top, end = end, bottom = bottom)
+            }
+        }
+        else -> null
+    }
 }
 
 // Helper function to safely get number from JSONObject (for API < 33 compatibility)

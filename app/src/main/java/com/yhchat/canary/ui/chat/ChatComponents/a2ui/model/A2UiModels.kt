@@ -60,6 +60,8 @@ internal data class A2UiComponent(
     val size: Number? = null,
     val width: Number? = null,
     val height: Number? = null,
+    val margin: A2UiSpacing? = null,
+    val padding: A2UiSpacing? = null,
     val min: Number? = null,
     val max: Number? = null,
     val name: String? = null,
@@ -96,6 +98,13 @@ internal fun Number?.toHeightDp(): Dp {
 internal data class A2UiOption(
     val label: String,
     val value: Any?
+)
+
+internal data class A2UiSpacing(
+    val start: Number? = null,
+    val top: Number? = null,
+    val end: Number? = null,
+    val bottom: Number? = null
 )
 
 internal sealed interface A2UiChildren {

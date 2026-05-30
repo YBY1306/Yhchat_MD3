@@ -451,13 +451,12 @@ fun MessageContentView(
                         }
                     } else {
                         // 使用 A2UiFormRenderer 解析和渲染 A2UI 消息
-                        val filtered = remember(text) { text.replace(Regex("```json\\s*\\n?|```\\s*\\n?"), "") }
-                        val a2UiSpec = remember(filtered) { parseA2UiSpec(filtered) }
+                        val a2UiSpecs = remember(text) { parseA2UiSpecsBySurface(text) }
 
-                        if (a2UiSpec != null) {
+                        if (a2UiSpecs.isNotEmpty()) {
                             // 提取A2UI JSON之外的文本内容
-                            val (beforeText, afterText) = remember(filtered) {
-                                extractTextAroundA2UiJson(filtered)
+                            val (beforeText, afterText) = remember(text) {
+                                extractTextAroundA2UiJson(text)
                             }
 
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -473,10 +472,15 @@ fun MessageContentView(
                                 }
 
                                 // 显示A2UI表单
-                                A2UiFormMessage(
-                                    spec = a2UiSpec,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                a2UiSpecs.forEachIndexed { index, spec ->
+                                    if (index > 0) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                    }
+                                    A2UiFormMessage(
+                                        spec = spec,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
 
                                 // 显示A2UI JSON之后的文本
                                 if (afterText.isNotBlank()) {
@@ -1464,13 +1468,42 @@ private fun extractA2UiJsonMessages(rawText: String): List<String> {
     return objects
 }
 
+private fun parseA2UiSpecsBySurface(rawText: String): List<A2UiSpec> {
+    val messages = extractA2UiJsonMessages(rawText)
+    if (messages.isEmpty()) return emptyList()
+
+    val grouped = linkedMapOf<String, MutableList<String>>()
+    val anonymous = mutableListOf<String>()
+    messages.forEach { message ->
+        val surfaceId = extractA2UiSurfaceId(message)
+        if (surfaceId.isNullOrBlank()) {
+            anonymous += message
+        } else {
+            grouped.getOrPut(surfaceId) { mutableListOf() } += message
+        }
+    }
+
+    return buildList {
+        grouped.values.forEach { surfaceMessages ->
+            parseA2UiSpec(surfaceMessages.joinToString(separator = "\n"))?.let(::add)
+        }
+        if (anonymous.isNotEmpty()) {
+            parseA2UiSpec(anonymous.joinToString(separator = "\n"))?.let(::add)
+        }
+    }
+}
+
+private fun extractA2UiSurfaceId(rawText: String): String? {
+    val json = runCatching { JSONObject(rawText) }.getOrNull() ?: return null
+    return json.optJSONObject("createSurface")?.optString("surfaceId")
+        ?: json.optJSONObject("updateComponents")?.optString("surfaceId")
+        ?: json.optJSONObject("updateDataModel")?.optString("surfaceId")
+        ?: json.optJSONObject("deleteSurface")?.optString("surfaceId")
+}
+
 private fun resolveA2UiSurfaceId(messages: List<String>): String? {
     messages.forEach { raw ->
-        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
-        val surfaceId = json.optJSONObject("createSurface")?.optString("surfaceId")
-            ?: json.optJSONObject("updateComponents")?.optString("surfaceId")
-            ?: json.optJSONObject("updateDataModel")?.optString("surfaceId")
-            ?: json.optJSONObject("deleteSurface")?.optString("surfaceId")
+        val surfaceId = extractA2UiSurfaceId(raw)
         if (!surfaceId.isNullOrBlank()) {
             return surfaceId
         }

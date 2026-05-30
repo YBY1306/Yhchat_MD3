@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -98,6 +100,7 @@ import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.verticalArrangeme
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiChildren
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiComponent
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpec
+import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpacing
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiValue
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.toDp
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.toHeightDp
@@ -125,12 +128,13 @@ internal fun RenderA2UiComponent(
 ) {
     val component = spec.components[componentId] ?: return
     val context = LocalContext.current
+    val baseModifier = modifier.applyA2UiLayout(component)
 
     val componentType = component.component.lowercase(Locale.ROOT)
     when {
         componentType == "column" -> {
             Column(
-                modifier = modifier,
+                modifier = baseModifier,
                 verticalArrangement = verticalArrangementFor(component.justify),
                 horizontalAlignment = horizontalAlignmentFor(component.align)
             ) {
@@ -147,7 +151,7 @@ internal fun RenderA2UiComponent(
 
         componentType == "row" -> {
             Row(
-                modifier = modifier.fillMaxWidth(),
+                modifier = baseModifier,
                 horizontalArrangement = horizontalArrangementFor(component.justify),
                 verticalAlignment = verticalAlignmentFor(component.align)
             ) {
@@ -165,12 +169,12 @@ internal fun RenderA2UiComponent(
         componentType == "list" -> {
             val direction = component.direction?.lowercase(Locale.ROOT)
             if (direction == "horizontal" || direction == "row") {
-                Row(
-                    modifier = modifier.fillMaxWidth(),
+                FlowRow(
+                    modifier = baseModifier,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = verticalAlignmentFor(component.align)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    RenderA2UiRowChildren(
+                    RenderA2UiFlowRowChildren(
                         component = component,
                         spec = spec,
                         dataModel = dataModel,
@@ -181,7 +185,7 @@ internal fun RenderA2UiComponent(
                 }
             } else {
                 Column(
-                    modifier = modifier.fillMaxWidth(),
+                    modifier = baseModifier,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = horizontalAlignmentFor(component.align)
                 ) {
@@ -199,7 +203,7 @@ internal fun RenderA2UiComponent(
 
         componentType == "card" || componentType == "container" -> {
             Card(
-                modifier = modifier.fillMaxWidth(),
+                modifier = modifier.applyA2UiLayout(component, includePadding = false),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -207,7 +211,7 @@ internal fun RenderA2UiComponent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .then(component.padding?.toPaddingModifier() ?: Modifier.padding(12.dp)),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     component.child?.let { childId ->
@@ -235,6 +239,8 @@ internal fun RenderA2UiComponent(
                 "favorite", "heart" -> Icons.Filled.Favorite
                 "home" -> Icons.Filled.Home
                 "info" -> Icons.Filled.Info
+                "morevert", "more_vert", "more" -> Icons.Filled.MoreVert
+                "notifications", "notification", "bell" -> Icons.Filled.Notifications
                 "person", "user" -> Icons.Filled.Person
                 "search" -> Icons.Filled.Search
                 "settings" -> Icons.Filled.Settings
@@ -245,7 +251,7 @@ internal fun RenderA2UiComponent(
             Icon(
                 imageVector = imageVector,
                 contentDescription = component.name,
-                modifier = modifier.size(component.size?.toDp() ?: 24.dp),
+                modifier = baseModifier.size(component.size?.toDp() ?: 24.dp),
                 tint = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
             )
         }
@@ -261,9 +267,9 @@ internal fun RenderA2UiComponent(
             
             // 在 Row 内使用 wrapContentWidth，在 Column 内使用 fillMaxWidth
             val textModifier = if (parentAxis == "row") {
-                modifier.wrapContentWidth()
+                baseModifier.wrapContentWidth()
             } else {
-                modifier.fillMaxWidth()
+                baseModifier.fillMaxWidth()
             }
             
             val resolvedText = resolveA2UiValue(
@@ -339,7 +345,7 @@ internal fun RenderA2UiComponent(
                 val shape = if (isAvatar) CircleShape else RoundedCornerShape(12.dp)
                 
                 Box(
-                    modifier = modifier
+                    modifier = baseModifier
                         .then(
                             if (parentAxis == "row" || isAvatar) {
                                 Modifier.size(imageSize)
@@ -407,9 +413,9 @@ internal fun RenderA2UiComponent(
             
             // 按钮在 Column 内应该自动适配宽度，在 Row 内应该自动适配宽度
             val buttonModifier = if (parentAxis == "row") {
-                modifier.wrapContentWidth()
+                baseModifier.wrapContentWidth()
             } else {
-                Modifier.wrapContentWidth()
+                baseModifier.wrapContentWidth()
             }
             
             when {
@@ -621,7 +627,7 @@ internal fun RenderA2UiComponent(
                         onDataModelChange(valuePath, newValue)
                     }
                 },
-                modifier = modifier
+                modifier = baseModifier
                     .then(
                         if (parentAxis == "row") {
                             Modifier.width(200.dp) // 在行布局中使用固定宽度
@@ -705,7 +711,7 @@ internal fun RenderA2UiComponent(
                 component.multiple == true ||
                 displayStyle == "checkbox"
             Column(
-                modifier = modifier.fillMaxWidth(),
+                modifier = baseModifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!label.isNullOrBlank()) {
@@ -817,7 +823,7 @@ internal fun RenderA2UiComponent(
 
             if (triggerId != null) {
                 Box(
-                    modifier = modifier.clickable { visible = true }
+                    modifier = baseModifier.clickable { visible = true }
                 ) {
                     RenderA2UiComponent(
                         componentId = triggerId,
@@ -866,7 +872,7 @@ internal fun RenderA2UiComponent(
             val min = component.min?.toFloat() ?: 0f
             val max = component.max?.toFloat() ?: 100f
             
-            Column(modifier = modifier.fillMaxWidth()) {
+            Column(modifier = baseModifier.fillMaxWidth()) {
                 component.label?.let {
                     Text(
                         text = resolveA2UiValue(spec, dataModel, it, scopePath)?.toString().orEmpty(),
@@ -894,7 +900,7 @@ internal fun RenderA2UiComponent(
                     playerId = component.id,
                     url = url,
                     description = description,
-                    modifier = modifier
+                    modifier = baseModifier
                 )
             }
         }
@@ -910,7 +916,7 @@ internal fun RenderA2UiComponent(
                     fit = component.fit ?: "contain",
                     width = component.width.toDp(),
                     height = component.height.toHeightDp(),
-                    modifier = modifier
+                    modifier = baseModifier
                 )
             }
         }
@@ -920,7 +926,7 @@ internal fun RenderA2UiComponent(
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
 
             Column(
-                modifier = modifier
+                modifier = baseModifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -942,7 +948,7 @@ internal fun RenderA2UiComponent(
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
 
             Column(
-                modifier = modifier
+                modifier = baseModifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -964,7 +970,7 @@ internal fun RenderA2UiComponent(
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
 
             Column(
-                modifier = modifier
+                modifier = baseModifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -987,7 +993,7 @@ internal fun RenderA2UiComponent(
             val title = resolveA2UiValue(spec, dataModel, component.title, scopePath)?.toString()
             
             Column(
-                modifier = modifier
+                modifier = baseModifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -1028,7 +1034,7 @@ internal fun RenderA2UiComponent(
                 height = component.height.toHeightDp(),
                 backgroundColor = bgColor,
                 elements = elements,
-                modifier = modifier
+                modifier = baseModifier
             )
         }
 
@@ -1040,7 +1046,7 @@ internal fun RenderA2UiComponent(
             val activeTabIndex = (if (activeTabPath != null) initialActiveTabIndex else localActiveTabIndex)
                 .coerceIn(0, tabs.lastIndex.coerceAtLeast(0))
             
-            Column(modifier = modifier.fillMaxWidth()) {
+            Column(modifier = baseModifier.fillMaxWidth()) {
                 if (tabs.isNotEmpty()) {
                     YhScrollableTabRow(
                         selectedTabIndex = activeTabIndex,
@@ -1110,19 +1116,46 @@ internal fun RenderA2UiComponent(
             if (component.variant == "circular") {
                 CircularProgressIndicator(
                     progress = { progress },
-                    modifier = modifier.size(40.dp),
+                    modifier = baseModifier.size(40.dp),
                     color = color
                 )
             } else {
                 LinearProgressIndicator(
                     progress = { progress },
-                    modifier = modifier.fillMaxWidth(),
+                    modifier = baseModifier.fillMaxWidth(),
                     color = color
                 )
             }
         }
     }
 }
+
+private fun Modifier.applyA2UiLayout(component: A2UiComponent, includePadding: Boolean = true): Modifier {
+    return this
+        .then(component.margin?.toPaddingModifier() ?: Modifier)
+        .then(
+            when {
+                component.width != null && component.height != null -> Modifier
+                    .width(component.width.toDp())
+                    .height(component.height.toHeightDp())
+                component.width != null -> Modifier.width(component.width.toDp())
+                component.height != null -> Modifier.height(component.height.toHeightDp())
+                else -> Modifier
+            }
+        )
+        .then(if (includePadding) component.padding?.toPaddingModifier() ?: Modifier else Modifier)
+}
+
+private fun A2UiSpacing.toPaddingModifier(): Modifier {
+    return Modifier.padding(
+        start = start.toSpacingDp(),
+        top = top.toSpacingDp(),
+        end = end.toSpacingDp(),
+        bottom = bottom.toSpacingDp()
+    )
+}
+
+private fun Number?.toSpacingDp() = this?.toDp() ?: 0.dp
 
 @Composable
 private fun RenderA2UiListChildren(

@@ -361,6 +361,9 @@ class MainActivity : BaseActivity() {
                                                             }
                                                         },
                                                         onMenuClick = { },
+                                                        onProfileClick = {
+                                                            currentScreen = "profile"
+                                                        },
                                                         tokenRepository = tokenRepository,
                                                         viewModel = conversationViewModel,
                                                         navigationState = navigationState
@@ -805,9 +808,9 @@ class MainActivity : BaseActivity() {
                                 ) {
                                         when (navItem.id) {
                                         "conversation" -> {
-                                            ConversationScreen(
-                                                token = token,
-                                                userId = userId,
+                                                ConversationScreen(
+                                                    token = token,
+                                                    userId = userId,
                                                     onConversationClick = { chatId, chatType, chatName, avatarUrl ->
                                                         launchChatActivity(
                                                             chatId = chatId,
@@ -817,12 +820,15 @@ class MainActivity : BaseActivity() {
                                                             userId = userId
                                                         )
                                                     },
-                                                onSearchClick = {
-                                                    if (isInitialized) {
-                                                        currentScreen = "search"
+                                                    onSearchClick = {
+                                                        if (isInitialized) {
+                                                            currentScreen = "search"
                                                         }
                                                     },
                                                     onMenuClick = { },
+                                                    onProfileClick = {
+                                                        currentScreen = "profile"
+                                                    },
                                                     tokenRepository = tokenRepository,
                                                     viewModel = conversationViewModel,
                                                     navigationState = navigationState

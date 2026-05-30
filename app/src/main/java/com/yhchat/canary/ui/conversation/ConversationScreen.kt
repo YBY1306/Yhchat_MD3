@@ -18,6 +18,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -98,6 +99,7 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 import com.yhchat.canary.R
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.ChatType
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.StickyItem
@@ -127,6 +129,7 @@ fun ConversationScreen(
     onConversationClick: (String, Int, String, String?) -> Unit, // chatId, chatType, chatName, avatarUrl
     onSearchClick: () -> Unit,
     onMenuClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
     tokenRepository: TokenRepository? = null,
     viewModel: ConversationViewModel = viewModel(),
     modifier: Modifier = Modifier,
@@ -191,6 +194,18 @@ fun ConversationScreen(
     
     // 检测安卓版本
     val isLowAndroidVersion = remember { android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.O_MR1 }
+
+    // 顶栏左侧自己的头像（来自 UserRepository.getUserProfile）
+    var myAvatarUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(token) {
+        if (token.isBlank()) return@LaunchedEffect
+        runCatching {
+            val userRepo = RepositoryFactory.getUserRepository(context)
+            userRepo.getUserProfile().onSuccess { profile ->
+                myAvatarUrl = profile.avatarUrl
+            }
+        }
+    }
 
     // 防止安卓8及以下自动聚焦 - 多层防护
     LaunchedEffect(Unit) {
@@ -371,72 +386,86 @@ fun ConversationScreen(
                     label = "SearchBarHorizontalPadding"
                 )
 
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    // 左侧：自己的头像 + 主题色环（外径与搜索输入框一致：48dp）
+                    val avatarOuterSize = 48.dp
+                    val avatarRingWidth = 2.dp
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .size(avatarOuterSize)
+                            .clip(CircleShape)
+                            .border(avatarRingWidth, MaterialTheme.colorScheme.primary, CircleShape)
+                            .clickable(onClick = onProfileClick),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (!isSearchActive && layoutShowTitle) {
-                            Text(
-                                text = "云湖",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        if (!isSearchActive && layoutShowAddButton) {
-                            IconButton(onClick = { showAddMenuBottomSheet = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "添加",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
+                        val avatarUrl72 = remember(myAvatarUrl) {
+                            val url = myAvatarUrl
+                            if (url.isNullOrBlank()) {
+                                url
+                            } else if (url.contains("?")) {
+                                url
+                            } else {
+                                url + "?imageView2/2/w/72/h/72"
                             }
                         }
+                        val avatarRequest = remember(avatarUrl72) {
+                            avatarUrl72?.let { url ->
+                                ImageRequest.Builder(context)
+                                    .data(url)
+                                    .addHeader("Referer", "https://myapp.jwznb.com")
+                                    .crossfade(true)
+                                    .build()
+                            }
+                        }
+                        AsyncImage(
+                            model = avatarRequest,
+                            contentDescription = "我的头像",
+                            modifier = Modifier
+                                .size(avatarOuterSize - avatarRingWidth * 2)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
+                        )
                     }
 
-                    if (layoutShowSearch || isSearchActive) {
-                        Box(
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    // 中间：搜索输入框（48dp高）
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(
+                                vertical = searchBarVerticalPadding,
+                                horizontal = searchBarHorizontalPadding.coerceAtMost(6.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    vertical = searchBarVerticalPadding,
-                                    horizontal = searchBarHorizontalPadding
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(searchBackgroundColor)
-                                    .clickable {
-                                        if (isTextFieldEnabled) {
-                                            isManuallyActivated = true
-                                            isSearchActive = true
-                                            coroutineScope.launch {
-                                                kotlinx.coroutines.delay(100)
-                                                try {
-                                                    searchFocusRequester.requestFocus()
-                                                } catch (_: Exception) {}
-                                            }
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(searchBackgroundColor)
+                                .clickable {
+                                    if (isTextFieldEnabled) {
+                                        isManuallyActivated = true
+                                        isSearchActive = true
+                                        coroutineScope.launch {
+                                            kotlinx.coroutines.delay(100)
+                                            try {
+                                                searchFocusRequester.requestFocus()
+                                            } catch (_: Exception) {}
                                         }
                                     }
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                                }
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                                 Icon(
                                     imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
                                     contentDescription = "搜索",
@@ -543,6 +572,18 @@ fun ConversationScreen(
                                     }
                                 }
                             }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 右侧：加号按钮
+                    if (!isSearchActive && layoutShowAddButton) {
+                        IconButton(onClick = { showAddMenuBottomSheet = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "添加",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }

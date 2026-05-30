@@ -6,7 +6,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -103,7 +102,6 @@ import com.yhchat.canary.data.model.ChatType
 import com.yhchat.canary.data.model.Conversation
 import com.yhchat.canary.data.model.StickyItem
 import com.yhchat.canary.data.repository.TokenRepository
-import com.yhchat.canary.ui.components.ChatSharedElementState
 import com.yhchat.canary.ui.components.ConversationMenuDialog
 import com.yhchat.canary.ui.components.observeScrollForNavigation
 import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
@@ -121,7 +119,7 @@ import java.util.Locale
 /**
  * 会话列表界面
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
     token: String,
@@ -132,8 +130,7 @@ fun ConversationScreen(
     tokenRepository: TokenRepository? = null,
     viewModel: ConversationViewModel = viewModel(),
     modifier: Modifier = Modifier,
-    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null,
-    sharedElementState: ChatSharedElementState? = null
+    navigationState: com.yhchat.canary.ui.components.ScrollAwareNavigationState? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val conversations by viewModel.conversations.collectAsState()
@@ -595,7 +592,6 @@ fun ConversationScreen(
                     ) { conversation ->
                         ConversationItem(
                             conversation = conversation,
-                            sharedElementState = sharedElementState,
                             onClick = {
                                 viewModel.markConversationAsRead(conversation.chatId)
                                 onConversationClick(
@@ -795,7 +791,6 @@ fun ConversationScreen(
                                         ) { stickyItem ->
                                             StickyConversationCard(
                                                 stickyItem = stickyItem,
-                                                sharedElementState = sharedElementState,
                                                 onClick = {
                                                     viewModel.markConversationAsRead(stickyItem.chatId)
                                                     
@@ -856,7 +851,6 @@ fun ConversationScreen(
                                 
                                 ConversationItem(
                                     conversation = conversation,
-                                    sharedElementState = sharedElementState,
                                     onClick = {
                                         viewModel.markConversationAsRead(chatId)
                                         
@@ -1110,13 +1104,12 @@ private fun AddMenuBottomSheetContent(
 /**
  * 会话项
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ConversationItem(
     conversation: Conversation,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    sharedElementState: ChatSharedElementState? = null
+    onLongClick: () -> Unit
 ) {
     val avatarUrl72 = remember(conversation.avatarUrl) {
         val url = conversation.avatarUrl
@@ -1184,18 +1177,6 @@ fun ConversationItem(
                     contentDescription = "头像",
                     modifier = Modifier
                         .size(44.dp)
-                        .then(
-                            sharedElementState?.let { state ->
-                                with(state.scope) {
-                                    Modifier.sharedElementWithCallerManagedVisibility(
-                                        sharedContentState = rememberSharedContentState(
-                                            key = state.key("avatar", conversation.chatId)
-                                        ),
-                                        visible = state.isActiveFor(conversation.chatId)
-                                    )
-                                }
-                            } ?: Modifier
-                        )
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
@@ -1229,19 +1210,7 @@ fun ConversationItem(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.then(
-                                sharedElementState?.let { state ->
-                                    with(state.scope) {
-                                        Modifier.sharedElementWithCallerManagedVisibility(
-                                            sharedContentState = rememberSharedContentState(
-                                                key = state.key("title", conversation.chatId)
-                                            ),
-                                            visible = state.isActiveFor(conversation.chatId)
-                                        )
-                                    }
-                                } ?: Modifier
-                            )
+                            overflow = TextOverflow.Ellipsis
                         )
                         
                         // 认证标识
@@ -1434,14 +1403,13 @@ fun ChatTypeIcon(chatType: Int) {
 /**
  * 置顶会话卡片 - 小尺寸横向滑动样式
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StickyConversationCard(
     stickyItem: StickyItem,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
-    modifier: Modifier = Modifier,
-    sharedElementState: ChatSharedElementState? = null
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -1468,18 +1436,6 @@ fun StickyConversationCard(
             contentDescription = null,
             modifier = Modifier
                 .size(48.dp)
-                .then(
-                    sharedElementState?.let { state ->
-                        with(state.scope) {
-                            Modifier.sharedElementWithCallerManagedVisibility(
-                                sharedContentState = rememberSharedContentState(
-                                    key = state.key("avatar", stickyItem.chatId)
-                                ),
-                                visible = state.isActiveFor(stickyItem.chatId)
-                            )
-                        }
-                    } ?: Modifier
-                )
                 .clip(CircleShape),
             contentScale = ContentScale.Crop,
             error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)

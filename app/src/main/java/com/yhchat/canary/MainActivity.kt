@@ -7,8 +7,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,7 +39,6 @@ import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.ui.chat.ChatScreen
 import com.yhchat.canary.ui.community.*
 import com.yhchat.canary.ui.components.AdaptiveNavigationBar
-import com.yhchat.canary.ui.components.ChatSharedElementState
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
@@ -164,7 +161,6 @@ class MainActivity : BaseActivity() {
         )
     }
     
-    @OptIn(ExperimentalSharedTransitionApi::class)
     @Composable
     private fun MainContent() {
         val context = LocalContext.current
@@ -250,14 +246,6 @@ class MainActivity : BaseActivity() {
             }
         }
         
-
-        SharedTransitionLayout {
-        val sharedElementState = ChatSharedElementState(
-            scope = this,
-            selectedChatId = if (currentScreen == "chat") currentChatId else splitChatId,
-            visible = true
-        )
-
         when {
             !isLoggedIn -> {
                 // 未登录，显示登录界面
@@ -278,7 +266,6 @@ class MainActivity : BaseActivity() {
                     currentChatType = currentChatType,
                     currentChatName = currentChatName,
                     currentChatAvatarUrl = currentChatAvatarUrl,
-                    sharedElementState = sharedElementState,
                     userId = userId,
                     onBackClick = { currentScreen = "conversation" }
                 )
@@ -387,8 +374,7 @@ class MainActivity : BaseActivity() {
                                                         onMenuClick = { },
                                                         tokenRepository = tokenRepository,
                                                         viewModel = conversationViewModel,
-                                                        navigationState = navigationState,
-                                                        sharedElementState = sharedElementState
+                                                        navigationState = navigationState
                                                     )
                                                 }
                                                 
@@ -444,7 +430,6 @@ class MainActivity : BaseActivity() {
                                                                 chatType = splitChatType,
                                                                 chatName = splitChatName,
                                                                 chatAvatarUrl = splitChatAvatarUrl,
-                                                                sharedElementState = sharedElementState,
                                                                 userId = userId,
                                                                 isLargeScreen = true,
                                                                 onBackClick = {
@@ -849,8 +834,7 @@ class MainActivity : BaseActivity() {
                                                     onMenuClick = { },
                                                     tokenRepository = tokenRepository,
                                                     viewModel = conversationViewModel,
-                                                    navigationState = navigationState,
-                                                    sharedElementState = sharedElementState
+                                                    navigationState = navigationState
                                                 )
                                             }
                                             "community" -> {
@@ -931,7 +915,6 @@ class MainActivity : BaseActivity() {
                 }
             }
         }
-        }
     }
     
     /**
@@ -943,7 +926,6 @@ class MainActivity : BaseActivity() {
         currentChatType: Int,
         currentChatName: String,
         currentChatAvatarUrl: String?,
-        sharedElementState: ChatSharedElementState,
         userId: String,
         onBackClick: () -> Unit
     ) {
@@ -984,7 +966,6 @@ class MainActivity : BaseActivity() {
                 chatType = currentChatType,
                 chatName = currentChatName,
                 chatAvatarUrl = currentChatAvatarUrl,
-                sharedElementState = sharedElementState,
                 userId = userId,
                 onBackClick = onBackClick,
                 onAvatarClick = { userId, userName, chatType, _ ->

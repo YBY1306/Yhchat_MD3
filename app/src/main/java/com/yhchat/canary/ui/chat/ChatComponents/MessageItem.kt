@@ -164,7 +164,11 @@ fun MessageItem(
                         }
                     }
                 } else null,
-                onLongClick = null
+                onLongClick = {
+                    if (!isMultiSelectMode) {
+                        showContextMenuDialog = true
+                    }
+                }
             )
             .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
@@ -233,7 +237,19 @@ fun MessageItem(
                             bottomStart = 16.dp,
                             bottomEnd = 16.dp
                         )
-                    ),
+                    )
+                    // Long-press anywhere inside the bubble (including padding/empty area) to open context menu.
+                    // This does not handle normal taps, so inner links/buttons keep working.
+                    .pointerInput(message.msgId, isMultiSelectMode) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val longPress = awaitLongPressOrCancellation(down.id)
+                            if (longPress != null && !isMultiSelectMode) {
+                                showContextMenuDialog = true
+                            }
+                            waitForUpOrCancellation()
+                        }
+                    },
                 color = bubbleColor,
                 tonalElevation = if (isMyMessage) 0.dp else 2.dp
             ) {

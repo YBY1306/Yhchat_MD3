@@ -92,6 +92,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -363,37 +364,40 @@ fun ConversationScreen(
                 animationSpec = tween(durationMillis = 260),
                 shrinkTowards = Alignment.Top
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(top = 6.dp)
         ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+                    containerColor = Color.Transparent
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
                 val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
                 val searchBarVerticalPadding by animateDpAsState(
-                    targetValue = if (isSearchActive) 2.dp else 8.dp,
+                    targetValue = if (isSearchActive) 0.dp else 4.dp,
                     label = "SearchBarVerticalPadding"
                 )
                 val searchBarHorizontalPadding by animateDpAsState(
-                    targetValue = if (isSearchActive) 4.dp else 12.dp,
+                    targetValue = if (isSearchActive) 4.dp else 8.dp,
                     label = "SearchBarHorizontalPadding"
                 )
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 左侧：自己的头像 + 主题色环（外径与搜索输入框一致：48dp）
-                    val avatarOuterSize = 48.dp
+                    val avatarOuterSize = 24.dp
                     val avatarRingWidth = 2.dp
                     Box(
                         modifier = Modifier
@@ -410,7 +414,7 @@ fun ConversationScreen(
                             } else if (url.contains("?")) {
                                 url
                             } else {
-                                url + "?imageView2/2/w/72/h/72"
+                                url + "?imageView2/2/w/150/h/150"
                             }
                         }
                         val avatarRequest = remember(avatarUrl72) {
@@ -433,7 +437,7 @@ fun ConversationScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     // 中间：搜索输入框（48dp高）
                     Box(

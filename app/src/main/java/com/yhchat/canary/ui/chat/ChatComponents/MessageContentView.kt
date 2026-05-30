@@ -137,6 +137,15 @@ fun MessageContentView(
                     if (showHtmlRawText) {
                         // 显示HTML原文 - 使用MessageSelectionContainer
                         MessageSelectionContainer(
+                            onCopyAll = {
+                                // best-effort: copy raw html text
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("message", htmlContent)
+                                clipboard.setPrimaryClip(clip)
+                            },
+                            onFreeCopy = {
+                                // free copy UI is implemented by MessageContextMenu; keep container hook for parity
+                            },
                             onQuote = { onQuote(message.msgId, htmlContent) },
                             onForward = { onForward(message) },
                             onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
@@ -157,31 +166,20 @@ fun MessageContentView(
                             )
                         }
                     } else {
-                        MessageSelectionContainer(
-                            onQuote = { onQuote(message.msgId, htmlContent) },
-                            onForward = { onForward(message) },
-                            onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
-                                { onEdit(message) }
-                            } else null,
-                            onDelete = if (isMyMessage) {
-                                { onRecall(message.msgId) }
-                            } else null,
-                            onPlusOne = { onPlusOne(message) },
-                            onMultiSelect = onMultiSelect,
-                            onOpenInInternalBrowser = openHtmlInInternalBrowser
-                        ) {
-                            HtmlTextMessage(
-                                html = htmlContent,
-                                modifier = Modifier.fillMaxWidth(),
-                                color = textColor,
-                                style = MaterialTheme.typography.bodyMedium,
-                                onImageClick = onImageClick,
-                                onUriClick = { url ->
-                                    UnifiedLinkHandler.handleLink(context, url)
-                                },
-                                useAdvancedRenderer = true
-                            )
-                        }
+                        // NOTE: don't wrap rich HTML renderer with SelectionContainer.
+                        // SelectionContainer competes for pointer input and can make <a> clicks flaky.
+                        // Keep HTML links clickable; long-press actions are available via the message context menu.
+                        HtmlTextMessage(
+                            html = htmlContent,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            onImageClick = onImageClick,
+                            onUriClick = { url ->
+                                UnifiedLinkHandler.handleLink(context, url)
+                            },
+                            useAdvancedRenderer = true
+                        )
                     }
                 }
             }

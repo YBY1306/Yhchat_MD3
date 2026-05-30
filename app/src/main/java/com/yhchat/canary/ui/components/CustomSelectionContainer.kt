@@ -32,13 +32,27 @@ fun MessageSelectionContainer(
     onPlusOne: (() -> Unit)? = null,
     onForward: (() -> Unit)? = null,
     onMultiSelect: (() -> Unit)? = null,
+    onCopyAll: (() -> Unit)? = null,
+    onFreeCopy: (() -> Unit)? = null,
     onOpenInInternalBrowser: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
     val defaultToolbar = LocalTextToolbar.current
     
-    val customToolbar = remember(view, defaultToolbar, onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
+    val customToolbar = remember(
+        view,
+        defaultToolbar,
+        onQuote,
+        onEdit,
+        onDelete,
+        onPlusOne,
+        onForward,
+        onMultiSelect,
+        onCopyAll,
+        onFreeCopy,
+        onOpenInInternalBrowser
+    ) {
         CustomTextToolbar(
             view = view,
             defaultToolbar = defaultToolbar,
@@ -48,12 +62,34 @@ fun MessageSelectionContainer(
             onPlusOne = onPlusOne,
             onForward = onForward,
             onMultiSelect = onMultiSelect,
+            onCopyAll = onCopyAll,
+            onFreeCopy = onFreeCopy,
             onOpenInInternalBrowser = onOpenInInternalBrowser
         )
     }
     
-    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onOpenInInternalBrowser) {
+    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onCopyAll, onFreeCopy, onOpenInInternalBrowser) {
         Modifier.appendTextContextMenuComponents {
+            onCopyAll?.let { action ->
+                item(
+                    key = MENU_ITEM_COPY_ALL,
+                    label = "复制全部",
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
+            }
+            onFreeCopy?.let { action ->
+                item(
+                    key = MENU_ITEM_FREE_COPY,
+                    label = "自由复制",
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
+            }
             onQuote?.let { action ->
                 item(
                     key = MENU_ITEM_QUOTE,
@@ -143,6 +179,8 @@ private const val MENU_ITEM_FORWARD = 1004
 private const val MENU_ITEM_MULTI_SELECT = 1005
 private const val MENU_ITEM_DELETE = 1006
 private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
+private const val MENU_ITEM_COPY_ALL = 1008
+private const val MENU_ITEM_FREE_COPY = 1009
 
 /**
  * 自定义文本工具栏
@@ -156,6 +194,8 @@ private class CustomTextToolbar(
     private val onPlusOne: (() -> Unit)?,
     private val onForward: (() -> Unit)?,
     private val onMultiSelect: (() -> Unit)?,
+    private val onCopyAll: (() -> Unit)?,
+    private val onFreeCopy: (() -> Unit)?,
     private val onOpenInInternalBrowser: (() -> Unit)?
 ) : TextToolbar {
     
@@ -198,6 +238,16 @@ private class CustomTextToolbar(
                 onSelectAllRequested?.let {
                     menu.add(0, android.R.id.selectAll, 1, "全选")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
+
+                // 补齐：复制全部 / 自由复制（对应上下文弹窗能力）
+                onCopyAll?.let {
+                    menu.add(0, MENU_ITEM_COPY_ALL, 2, "复制全部")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+                }
+                onFreeCopy?.let {
+                    menu.add(0, MENU_ITEM_FREE_COPY, 3, "自由复制")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
                 // 添加自定义操作
@@ -251,6 +301,16 @@ private class CustomTextToolbar(
                     android.R.id.selectAll -> {
                         selectAllCallback?.invoke()
                         false // 不关闭菜单
+                    }
+                    MENU_ITEM_COPY_ALL -> {
+                        onCopyAll?.invoke()
+                        mode.finish()
+                        true
+                    }
+                    MENU_ITEM_FREE_COPY -> {
+                        onFreeCopy?.invoke()
+                        mode.finish()
+                        true
                     }
                     MENU_ITEM_QUOTE -> {
                         onQuote?.invoke()

@@ -62,6 +62,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -142,6 +146,7 @@ fun MessageItem(
     }
 
     var tagsExpanded by remember(message.msgId) { mutableStateOf(false) }
+    val rowInteractionSource = remember(message.msgId) { MutableInteractionSource() }
 
     Row(
         modifier = modifier
@@ -162,14 +167,22 @@ fun MessageItem(
                     Modifier
                 }
             )
+            .indication(rowInteractionSource, LocalIndication.current)
             .pointerInput(message.msgId, isMultiSelectMode) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    val press = PressInteraction.Press(down.position)
+                    rowInteractionSource.tryEmit(press)
                     val longPress = awaitLongPressOrCancellation(down.id)
                     if (longPress != null && !isMultiSelectMode) {
                         showContextMenuDialog = true
                     }
-                    waitForUpOrCancellation()
+                    val up = waitForUpOrCancellation()
+                    if (up == null) {
+                        rowInteractionSource.tryEmit(PressInteraction.Cancel(press))
+                    } else {
+                        rowInteractionSource.tryEmit(PressInteraction.Release(press))
+                    }
                 }
             }
             .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp),

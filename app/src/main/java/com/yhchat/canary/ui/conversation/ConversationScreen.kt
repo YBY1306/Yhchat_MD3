@@ -367,7 +367,7 @@ fun ConversationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 6.dp)
+                .padding(top = 5.dp)
         ) {
             Card(
                 modifier = Modifier
@@ -452,8 +452,8 @@ fun ConversationScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(searchBackgroundColor)
                                 .clickable {
                                     if (isTextFieldEnabled) {
@@ -470,38 +470,38 @@ fun ConversationScreen(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Icon(
-                                    imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
-                                    contentDescription = "搜索",
-                                    tint = onSearchColor,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable(enabled = isSearchActive) {
-                                            if (searchQuery.isNotEmpty()) {
-                                                searchQuery = ""
-                                                searchViewModel.clearSearch()
-                                            } else {
+                            Icon(
+                                imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
+                                contentDescription = "搜索",
+                                tint = onSearchColor,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable(enabled = isSearchActive) {
+                                        if (searchQuery.isNotEmpty()) {
+                                            searchQuery = ""
+                                            searchViewModel.clearSearch()
+                                        } else {
                                                 isSearchActive = false
                                                 isManuallyActivated = false
                                                 focusManager.clearFocus()
                                             }
                                         }
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "搜索会话、联系人...",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = onSearchColor.copy(alpha = 0.6f),
-                                            maxLines = 1
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = searchQuery,
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "搜索会话、联系人...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = onSearchColor.copy(alpha = 0.6f),
+                                        maxLines = 1
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
                                         onValueChange = {
                                             if (isManuallyActivated) {
                                                 searchQuery = it
@@ -566,7 +566,7 @@ fun ConversationScreen(
                                             isManuallyActivated = false
                                             focusManager.clearFocus()
                                         },
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(18.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Clear,

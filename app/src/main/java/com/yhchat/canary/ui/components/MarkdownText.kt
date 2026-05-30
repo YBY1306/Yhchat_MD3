@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CheckBox
@@ -155,6 +156,7 @@ fun MarkdownText(
                                                 latexEnabled = latexEnabled,
                                                 highlightKeyword = highlightKeyword,
                                                 persistRenderState = persistRenderState,
+                                                enableTextSelection = enableTextSelection,
                                                 onLinkClicked = { url ->
                                                     try {
                                                         if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -195,6 +197,7 @@ fun MarkdownText(
                                                         latexEnabled = latexEnabled,
                                                         highlightKeyword = highlightKeyword,
                                                         persistRenderState = persistRenderState,
+                                                        enableTextSelection = enableTextSelection,
                                                         onLinkClicked = { url ->
                                                             try {
                                                                 if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
@@ -344,21 +347,32 @@ private fun MarkdownTextRun(
     latexEnabled: Boolean,
     highlightKeyword: String,
     persistRenderState: Boolean,
+    enableTextSelection: Boolean,
     onLinkClicked: (String) -> Unit
 ) {
+    val maybeSelection: @Composable (@Composable () -> Unit) -> Unit = { body ->
+        if (enableTextSelection) {
+            SelectionContainer { body() }
+        } else {
+            body()
+        }
+    }
+
     if (!latexEnabled) {
         val highlightedMarkdown = MarkdownRendererCache.getHighlightedMarkdown(
             content,
             highlightKeyword
         )
-        Box(modifier = Modifier.fillMaxWidth()) {
-            MikepenzMarkdownText(
-                markdown = highlightedMarkdown,
-                baseColor = latexConfig.color,
-                onLinkClicked = onLinkClicked,
-                persistRenderState = persistRenderState,
-                modifier = Modifier.fillMaxWidth()
-            )
+        maybeSelection {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                MikepenzMarkdownText(
+                    markdown = highlightedMarkdown,
+                    baseColor = latexConfig.color,
+                    onLinkClicked = onLinkClicked,
+                    persistRenderState = persistRenderState,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         return
     }
@@ -369,14 +383,16 @@ private fun MarkdownTextRun(
             content,
             highlightKeyword
         )
-        Box(modifier = Modifier.fillMaxWidth()) {
-            MikepenzMarkdownText(
-                markdown = highlightedMarkdown,
-                baseColor = latexConfig.color,
-                onLinkClicked = onLinkClicked,
-                persistRenderState = persistRenderState,
-                modifier = Modifier.fillMaxWidth()
-            )
+        maybeSelection {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                MikepenzMarkdownText(
+                    markdown = highlightedMarkdown,
+                    baseColor = latexConfig.color,
+                    onLinkClicked = onLinkClicked,
+                    persistRenderState = persistRenderState,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         return
     }
@@ -387,6 +403,7 @@ private fun MarkdownTextRun(
             segments = latexSegments,
             latexConfig = latexConfig,
             highlightKeyword = highlightKeyword,
+            enableTextSelection = enableTextSelection,
             onLinkClicked = onLinkClicked
         )
         return
@@ -404,13 +421,15 @@ private fun MarkdownTextRun(
                             segment.content,
                             highlightKeyword
                         )
-                        MikepenzMarkdownText(
-                            markdown = highlightedMarkdown,
-                            baseColor = latexConfig.color,
-                            onLinkClicked = onLinkClicked,
-                            persistRenderState = persistRenderState,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        maybeSelection {
+                            MikepenzMarkdownText(
+                                markdown = highlightedMarkdown,
+                                baseColor = latexConfig.color,
+                                onLinkClicked = onLinkClicked,
+                                persistRenderState = persistRenderState,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 
@@ -584,9 +603,17 @@ private fun InlineMarkdownWithLatex(
     segments: List<MarkdownInlineSegment>,
     latexConfig: LatexConfig,
     highlightKeyword: String,
+    enableTextSelection: Boolean,
     onLinkClicked: (String) -> Unit
 ) {
     val lines = remember(segments) { splitInlineSegmentsByLine(segments) }
+    val maybeSelection: @Composable (@Composable () -> Unit) -> Unit = { body ->
+        if (enableTextSelection) {
+            SelectionContainer { body() }
+        } else {
+            body()
+        }
+    }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -608,13 +635,15 @@ private fun InlineMarkdownWithLatex(
                                             highlightKeyword
                                         )
                                     }
-                                    MikepenzMarkdownText(
-                                        markdown = highlighted,
-                                        baseColor = latexConfig.color,
-                                        onLinkClicked = onLinkClicked,
-                                        persistRenderState = true,
-                                        modifier = Modifier.wrapContentWidth()
-                                    )
+                                    maybeSelection {
+                                        MikepenzMarkdownText(
+                                            markdown = highlighted,
+                                            baseColor = latexConfig.color,
+                                            onLinkClicked = onLinkClicked,
+                                            persistRenderState = true,
+                                            modifier = Modifier.wrapContentWidth()
+                                        )
+                                    }
                                 }
                             }
 

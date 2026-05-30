@@ -304,7 +304,8 @@ private fun HtmlGenericNode(
                 text = rendered.first,
                 style = rendered.second,
                 onClick = { offset ->
-                    rendered.first.getStringAnnotations("URL", offset, offset)
+                    // end is exclusive; use offset+1 to hit the annotation range
+                    rendered.first.getStringAnnotations("URL", offset, offset + 1)
                         .firstOrNull()
                         ?.let { onLinkClick?.invoke(it.item) }
                 }
@@ -339,7 +340,8 @@ private fun RenderInlineFlow(
             text = annotated,
             style = style,
             onClick = { offset ->
-                annotated.getStringAnnotations("URL", offset, offset)
+                // end is exclusive; use offset+1 to hit the annotation range
+                annotated.getStringAnnotations("URL", offset, offset + 1)
                     .firstOrNull()
                     ?.let { onLinkClick?.invoke(it.item) }
             }

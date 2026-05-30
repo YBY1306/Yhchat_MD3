@@ -152,24 +152,26 @@ fun MessageItem(
                     RoundedCornerShape(8.dp)
                 ) else Modifier
             )
-            .combinedClickable(
-                onClick = { if (isMultiSelectMode) onSelectionToggle?.invoke() },
-                onDoubleClick = if (!isMultiSelectMode) {
-                    {
-                        val textToCopy = message.content.text ?: ""
-                        if (textToCopy.isNotEmpty()) {
-                            val clip = android.content.ClipData.newPlainText("message", textToCopy)
-                            clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } else null,
-                onLongClick = {
-                    if (!isMultiSelectMode) {
-                        showContextMenuDialog = true
-                    }
+            // Do not handle normal taps here, otherwise it will intercept inner clickable content
+            // (e.g. HTML <a> buttons). Long-press is implemented via pointerInput to open the
+            // context menu without consuming regular clicks.
+            .then(
+                if (isMultiSelectMode) {
+                    Modifier.combinedClickable(onClick = { onSelectionToggle?.invoke() })
+                } else {
+                    Modifier
                 }
             )
+            .pointerInput(message.msgId, isMultiSelectMode) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val longPress = awaitLongPressOrCancellation(down.id)
+                    if (longPress != null && !isMultiSelectMode) {
+                        showContextMenuDialog = true
+                    }
+                    waitForUpOrCancellation()
+                }
+            }
             .padding(end = if (isMyMessage) 8.dp else 0.dp, start = if (isMyMessage) 0.dp else 8.dp),
         horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
     ) {

@@ -80,6 +80,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+// systemBars is an extension property; keep it imported so WindowInsets.systemBars resolves.
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -114,7 +116,6 @@ fun CommunityTabScreen(
     // 大屏分屏导航回调（null=使用默认Activity导航）
     onBoardNavigate: ((boardId: Int, boardName: String) -> Unit)? = null,
     onMyPostsNavigate: (() -> Unit)? = null,
-    onRecommendPostsNavigate: (() -> Unit)? = null,
     onMyCollectPostsNavigate: (() -> Unit)? = null,
     onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
@@ -314,7 +315,6 @@ fun CommunityTabScreen(
                             context = context,
                             onBoardNavigate = onBoardNavigate,
                             onMyPostsNavigate = onMyPostsNavigate,
-                            onRecommendPostsNavigate = onRecommendPostsNavigate,
                             onMyCollectPostsNavigate = onMyCollectPostsNavigate,
                             onBlockedUsersNavigate = onBlockedUsersNavigate,
                         )
@@ -676,14 +676,12 @@ fun MoreTabContent(
     context: android.content.Context,
     onBoardNavigate: ((boardId: Int, boardName: String) -> Unit)? = null,
     onMyPostsNavigate: (() -> Unit)? = null,
-    onRecommendPostsNavigate: (() -> Unit)? = null,
     onMyCollectPostsNavigate: (() -> Unit)? = null,
     onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
     // 读取布局设置
     val layoutPrefs = remember { context.getSharedPreferences("layout_settings", android.content.Context.MODE_PRIVATE) }
     val showMyPosts = remember { layoutPrefs.getBoolean("community_more_my_posts", true) }
-    val showRecommend = remember { layoutPrefs.getBoolean("community_more_recommend", true) }
     val showCollect = remember { layoutPrefs.getBoolean("community_more_collect", true) }
     val showBlocked = remember { layoutPrefs.getBoolean("community_more_blocked", true) }
     val showCreateBoard = remember { layoutPrefs.getBoolean("community_more_create_board", true) }

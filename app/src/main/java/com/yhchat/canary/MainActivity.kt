@@ -191,7 +191,7 @@ class MainActivity : BaseActivity() {
         var splitChatAvatarUrl by rememberSaveable { mutableStateOf<String?>(null) }
         
         // 大屏社区分屏状态
-        var communityPanelType by rememberSaveable { mutableStateOf("") } // "", "board", "post", "myposts", "recommend", "collect", "blocked"
+        var communityPanelType by rememberSaveable { mutableStateOf("") } // "", "board", "post", "myposts", "collect", "blocked"
         var communityBoardId by rememberSaveable { mutableStateOf(0) }
         var communityBoardName by rememberSaveable { mutableStateOf("") }
         var communityPostId by rememberSaveable { mutableStateOf(0) }
@@ -524,10 +524,6 @@ class MainActivity : BaseActivity() {
                                                             communityPanelType = "myposts"
                                                             communityPrevType = ""
                                                         },
-                                                        onRecommendPostsNavigate = {
-                                                            communityPanelType = "recommend"
-                                                            communityPrevType = ""
-                                                        },
                                                         onMyCollectPostsNavigate = {
                                                             communityPanelType = "collect"
                                                             communityPrevType = ""
@@ -607,10 +603,6 @@ class MainActivity : BaseActivity() {
                                                                                 communityPanelType = "myposts"
                                                                                 communityPrevType = ""
                                                                             }
-                                                                            "recommend" -> {
-                                                                                communityPanelType = "recommend"
-                                                                                communityPrevType = ""
-                                                                            }
                                                                             "collect" -> {
                                                                                 communityPanelType = "collect"
                                                                                 communityPrevType = ""
@@ -638,26 +630,6 @@ class MainActivity : BaseActivity() {
                                                                 },
                                                                 onPostNavigate = { postId, postTitle ->
                                                                     communityPrevType = "myposts"
-                                                                    communityPostId = postId
-                                                                    communityPostTitle = postTitle
-                                                                    communityPanelType = "post"
-                                                                }
-                                                            )
-                                                        }
-                                                        "recommend" -> {
-                                                            val moreCommunityVm: CommunityViewModel = viewModel(key = "split_more_community") {
-                                                                CommunityViewModel(
-                                                                    communityRepository = RepositoryFactory.getCommunityRepository(this@MainActivity)
-                                                                )
-                                                            }
-                                                            RecommendPostsScreen(
-                                                                token = token,
-                                                                viewModel = moreCommunityVm,
-                                                                onBackClick = {
-                                                                    communityPanelType = ""
-                                                                },
-                                                                onPostNavigate = { postId, postTitle ->
-                                                                    communityPrevType = "recommend"
                                                                     communityPostId = postId
                                                                     communityPostTitle = postTitle
                                                                     communityPanelType = "post"

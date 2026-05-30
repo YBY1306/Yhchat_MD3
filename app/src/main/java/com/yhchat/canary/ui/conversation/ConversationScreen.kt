@@ -393,11 +393,11 @@ fun ConversationScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 左侧：自己的头像 + 主题色环（外径与搜索输入框一致：48dp）
-                    val avatarOuterSize = 24.dp
+                    // 左侧：自己的头像 + 主题色环（外径与搜索输入框一致）
+                    val avatarOuterSize = 36.dp
                     val avatarRingWidth = 2.dp
                     Box(
                         modifier = Modifier

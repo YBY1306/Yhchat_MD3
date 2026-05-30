@@ -537,7 +537,10 @@ internal fun parseA2UiPaintElements(rawElements: List<Map<String, Any?>>?): List
 
 private fun Any?.asStringAnyMapOrNull(): Map<String, Any?>? {
     val rawMap = this as? Map<*, *> ?: return null
-    return rawMap.entries.associateNotNull { (key, value) ->
-        (key as? String)?.let { it to value }
+    val result = linkedMapOf<String, Any?>()
+    rawMap.forEach { entry ->
+        val key = entry.key as? String ?: return@forEach
+        result[key] = entry.value
     }
+    return result
 }

@@ -281,7 +281,7 @@ private fun ZoomableImagePage(
     val painter = rememberAsyncImagePainter(
         model = imageRequest
     )
-    val transformableState = rememberTransformableState { zoomChange, panChange, _, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
         val previousScale = scale
         val newScale = (scale * zoomChange).coerceIn(1f, 5f)
         if (newScale <= 1f) {

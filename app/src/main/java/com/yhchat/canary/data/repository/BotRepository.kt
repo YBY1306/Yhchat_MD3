@@ -9,6 +9,8 @@ import com.yhchat.canary.data.model.BotLlmGroup
 import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingData
+import com.yhchat.canary.data.model.BotUsageRemoveFollowerRequest
+import com.yhchat.canary.data.model.BotUsageRemoveGroupRequest
 import com.yhchat.canary.data.model.StickyOperationRequest
 import com.yhchat.canary.proto.bot.list_follower
 import com.yhchat.canary.proto.bot.list_follower_send
@@ -603,7 +605,7 @@ class BotRepository @Inject constructor(
     suspend fun removeBotFollower(botId: String, userId: String): Result<Unit> {
         return try {
             val token = tokenRepository.getTokenSync()
-                ?: return Result.failure(Exception("鏈櫥褰?"))
+                ?: return Result.failure(Exception("Not logged in"))
             val response = apiService.removeBotFollower(
                 token = token,
                 request = BotUsageRemoveFollowerRequest(botId = botId, userId = userId)
@@ -612,10 +614,10 @@ class BotRepository @Inject constructor(
             if (response.isSuccessful && body?.code == 1) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception(body?.message ?: "绉婚櫎澶辫触"))
+                Result.failure(Exception(body?.message ?: "Remove failed"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "绉婚櫎鏈哄櫒浜轰娇鐢ㄧ敤鎴峰け璐?, e)
+            Log.e(TAG, "Remove bot follower failed", e)
             Result.failure(e)
         }
     }
@@ -623,7 +625,7 @@ class BotRepository @Inject constructor(
     suspend fun removeBotGroup(botId: String, groupId: String): Result<Unit> {
         return try {
             val token = tokenRepository.getTokenSync()
-                ?: return Result.failure(Exception("鏈櫥褰?"))
+                ?: return Result.failure(Exception("Not logged in"))
             val response = apiService.removeBotGroup(
                 token = token,
                 request = BotUsageRemoveGroupRequest(botId = botId, groupId = groupId)
@@ -632,10 +634,10 @@ class BotRepository @Inject constructor(
             if (response.isSuccessful && body?.code == 1) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception(body?.message ?: "绉婚櫎澶辫触"))
+                Result.failure(Exception(body?.message ?: "Remove failed"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "绉婚櫎鏈哄櫒浜哄姞鍏ョ兢鑱婂け璐?, e)
+            Log.e(TAG, "Remove bot group failed", e)
             Result.failure(e)
         }
     }

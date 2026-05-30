@@ -13,14 +13,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,19 +42,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,8 +67,10 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.group.GroupInfoActivity
+import com.yhchat.canary.ui.bot.viewmodel.BotUsageListViewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
+import kotlinx.coroutines.flow.collectLatest
 
 class BotUsageListActivity : BaseActivity() {
     companion object {
@@ -116,15 +119,24 @@ private fun BotUsageListRoute(
     val context = LocalContext.current
     val viewModel: BotUsageListViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val userListState = rememberLazyListState()
+    val groupListState = rememberLazyListState()
 
     LaunchedEffect(botId) {
         viewModel.attach(context)
         viewModel.start(botId, botName)
     }
 
-    LaunchedEffect(uiState.refreshKey) {
-        if (uiState.needsRefresh) {
-            viewModel.loadCurrentPage(botId)
+    LaunchedEffect(uiState.selectedTab, uiState.users.size, uiState.groups.size) {
+        val listState = if (uiState.selectedTab == 0) userListState else groupListState
+        snapshotFlow {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            Triple(lastVisible, total, listState.isScrollInProgress)
+        }.collectLatest { (lastVisible, total, scrolling) ->
+            if (scrolling && total > 0 && lastVisible >= total - 3) {
+                viewModel.loadMore(botId)
+            }
         }
     }
 
@@ -133,6 +145,7 @@ private fun BotUsageListRoute(
     val currentLoadingMore = if (uiState.selectedTab == 0) uiState.loadingMoreUsers else uiState.loadingMoreGroups
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = {
@@ -204,6 +217,7 @@ private fun BotUsageListRoute(
                 }
             } else {
                 LazyColumn(
+                    state = if (uiState.selectedTab == 0) userListState else groupListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)

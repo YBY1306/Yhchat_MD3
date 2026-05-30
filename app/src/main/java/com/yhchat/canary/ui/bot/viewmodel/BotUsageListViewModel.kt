@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.BotRepository
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,8 +47,6 @@ data class BotUsageListUiState(
     val userPage: Int = 1,
     val groupPage: Int = 1,
     val keywordByTab: Map<Int, String> = emptyMap(),
-    val refreshKey: Long = 0L,
-    val needsRefresh: Boolean = false,
     val pendingRemoval: PendingRemoval? = null,
     val toastMessage: String? = null
 )
@@ -57,7 +54,6 @@ data class BotUsageListUiState(
 class BotUsageListViewModel : ViewModel() {
     private lateinit var botRepository: BotRepository
     private var botId: String = ""
-    private var initJob: Job? = null
 
     private val _uiState = MutableStateFlow(BotUsageListUiState())
     val uiState: StateFlow<BotUsageListUiState> = _uiState.asStateFlow()
@@ -117,16 +113,20 @@ class BotUsageListViewModel : ViewModel() {
     }
 
     fun loadCurrentPage(botId: String) {
-        when (_uiState.value.selectedTab) {
-            0 -> loadUsers(botId, refresh = true)
-            1 -> loadGroups(botId, refresh = true)
+        viewModelScope.launch {
+            when (_uiState.value.selectedTab) {
+                0 -> loadUsers(botId, refresh = true)
+                1 -> loadGroups(botId, refresh = true)
+            }
         }
     }
 
     fun loadMore(botId: String) {
-        when (_uiState.value.selectedTab) {
-            0 -> loadUsers(botId, refresh = false)
-            1 -> loadGroups(botId, refresh = false)
+        viewModelScope.launch {
+            when (_uiState.value.selectedTab) {
+                0 -> loadUsers(botId, refresh = false)
+                1 -> loadGroups(botId, refresh = false)
+            }
         }
     }
 
@@ -159,12 +159,13 @@ class BotUsageListViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             pendingRemoval = null,
-                            toastMessage = "已踢出",
-                            refreshKey = it.refreshKey + 1,
-                            needsRefresh = true
+                            toastMessage = "已踢出"
                         )
                     }
-                    loadCurrentPage(botId)
+                    when (_uiState.value.selectedTab) {
+                        0 -> loadUsers(botId, refresh = true)
+                        1 -> loadGroups(botId, refresh = true)
+                    }
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -191,84 +192,80 @@ class BotUsageListViewModel : ViewModel() {
         }
     }
 
-    private fun loadUsers(botId: String, refresh: Boolean) {
-        viewModelScope.launch {
-            val current = _uiState.value
-            if (!refresh && (current.loadingMoreUsers || !current.hasMoreUsers)) return@launch
-            if (refresh) {
-                _uiState.update { it.copy(loadingMoreUsers = false, userPage = 1, users = emptyList(), hasMoreUsers = true) }
-            } else {
-                _uiState.update { it.copy(loadingMoreUsers = true) }
-            }
-            val nextPage = if (refresh) 1 else current.userPage + 1
-            val keyword = current.keywordByTab[0].orEmpty()
-            botRepository.getBotFollowerList(botId = botId, page = nextPage, size = 20, keywords = keyword).fold(
-                onSuccess = { resp ->
-                    val mapped = resp.userList.map {
-                        BotUsageUser(
-                            userId = it.userId,
-                            name = it.name,
-                            avatarUrl = it.avatarUrl,
-                            isVip = it.isVip == 1
-                        )
-                    }
-                    _uiState.update {
-                        it.copy(
-                            users = if (refresh) mapped else it.users + mapped,
-                            userCount = resp.total,
-                            userPage = nextPage,
-                            hasMoreUsers = mapped.size >= 20,
-                            loadingMoreUsers = false,
-                            error = null
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(loadingMoreUsers = false, error = error.message)
-                    }
-                }
-            )
+    private suspend fun loadUsers(botId: String, refresh: Boolean) {
+        val current = _uiState.value
+        if (!refresh && (current.loadingMoreUsers || !current.hasMoreUsers)) return
+        if (refresh) {
+            _uiState.update { it.copy(loadingMoreUsers = false, userPage = 1, users = emptyList(), hasMoreUsers = true) }
+        } else {
+            _uiState.update { it.copy(loadingMoreUsers = true) }
         }
+        val nextPage = if (refresh) 1 else current.userPage + 1
+        val keyword = current.keywordByTab[0].orEmpty()
+        botRepository.getBotFollowerList(botId = botId, page = nextPage, size = 20, keywords = keyword).fold(
+            onSuccess = { resp ->
+                val mapped = resp.userList.map {
+                    BotUsageUser(
+                        userId = it.userId,
+                        name = it.name,
+                        avatarUrl = it.avatarUrl,
+                        isVip = it.isVip == 1
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        users = if (refresh) mapped else it.users + mapped,
+                        userCount = resp.total,
+                        userPage = nextPage,
+                        hasMoreUsers = mapped.size >= 20,
+                        loadingMoreUsers = false,
+                        error = null
+                    )
+                }
+            },
+            onFailure = { error ->
+                _uiState.update {
+                    it.copy(loadingMoreUsers = false, error = error.message)
+                }
+            }
+        )
     }
 
-    private fun loadGroups(botId: String, refresh: Boolean) {
-        viewModelScope.launch {
-            val current = _uiState.value
-            if (!refresh && (current.loadingMoreGroups || !current.hasMoreGroups)) return@launch
-            if (refresh) {
-                _uiState.update { it.copy(loadingMoreGroups = false, groupPage = 1, groups = emptyList(), hasMoreGroups = true) }
-            } else {
-                _uiState.update { it.copy(loadingMoreGroups = true) }
-            }
-            val nextPage = if (refresh) 1 else current.groupPage + 1
-            val keyword = current.keywordByTab[1].orEmpty()
-            botRepository.getBotJoinGroupList(botId = botId, page = nextPage, size = 20, keywords = keyword).fold(
-                onSuccess = { resp ->
-                    val mapped = resp.groupList.map {
-                        BotUsageGroup(
-                            groupId = it.id,
-                            name = it.name,
-                            avatarUrl = it.avatarUrl
-                        )
-                    }
-                    _uiState.update {
-                        it.copy(
-                            groups = if (refresh) mapped else it.groups + mapped,
-                            groupCount = resp.total,
-                            groupPage = nextPage,
-                            hasMoreGroups = mapped.size >= 20,
-                            loadingMoreGroups = false,
-                            error = null
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(loadingMoreGroups = false, error = error.message)
-                    }
-                }
-            )
+    private suspend fun loadGroups(botId: String, refresh: Boolean) {
+        val current = _uiState.value
+        if (!refresh && (current.loadingMoreGroups || !current.hasMoreGroups)) return
+        if (refresh) {
+            _uiState.update { it.copy(loadingMoreGroups = false, groupPage = 1, groups = emptyList(), hasMoreGroups = true) }
+        } else {
+            _uiState.update { it.copy(loadingMoreGroups = true) }
         }
+        val nextPage = if (refresh) 1 else current.groupPage + 1
+        val keyword = current.keywordByTab[1].orEmpty()
+        botRepository.getBotJoinGroupList(botId = botId, page = nextPage, size = 20, keywords = keyword).fold(
+            onSuccess = { resp ->
+                val mapped = resp.groupList.map {
+                    BotUsageGroup(
+                        groupId = it.id,
+                        name = it.name,
+                        avatarUrl = it.avatarUrl
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        groups = if (refresh) mapped else it.groups + mapped,
+                        groupCount = resp.total,
+                        groupPage = nextPage,
+                        hasMoreGroups = mapped.size >= 20,
+                        loadingMoreGroups = false,
+                        error = null
+                    )
+                }
+            },
+            onFailure = { error ->
+                _uiState.update {
+                    it.copy(loadingMoreGroups = false, error = error.message)
+                }
+            }
+        )
     }
 }

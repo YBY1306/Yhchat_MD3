@@ -662,7 +662,7 @@ class UserRepository @Inject constructor(
                 mobile = mobile,
                 captcha = captcha,
                 deviceId = deviceId,
-                platform = "android"
+                platform = "yhchat canary 21.7 dev"
             )
             val response = apiService.verificationLogin(request)
             println("API响应状态: ${response.code()}")
@@ -691,7 +691,7 @@ class UserRepository @Inject constructor(
                 email = email,
                 password = password,
                 deviceId = deviceId,
-                platform = "android"
+                platform = "yhchat canary 21.7 dev"
             )
             val response = apiService.emailLogin(request)
             println("邮箱登录API响应状态: ${response.code()}")

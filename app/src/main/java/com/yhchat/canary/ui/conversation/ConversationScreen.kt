@@ -812,7 +812,7 @@ fun ConversationScreen(
                         CircularProgressIndicator()
                     }
                 } else {
-                    val pagedConversations by viewModel.pagedConversations.collectAsState()
+                    val allConversations by viewModel.conversations.collectAsState()
                     
                     LazyColumn(
                         state = listState,
@@ -885,7 +885,7 @@ fun ConversationScreen(
                         // 普通会话列表 - 受布局设置控制
                         if (layoutShowConversationList) {
                             items(
-                                items = pagedConversations,
+                                items = allConversations,
                                 key = { conversation -> "conversation_${conversation.chatId}" },
                                 contentType = { "conversation" }
                             ) { conversation ->
@@ -910,7 +910,7 @@ fun ConversationScreen(
                                     }
                                 )
                             }
-                            if (pagedConversations.isEmpty()) {
+                            if (allConversations.isEmpty()) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -943,7 +943,7 @@ fun ConversationScreen(
                             }
                         }
                         // 加载更多提示
-                        if (uiState.isLoading && pagedConversations.isNotEmpty()) {
+                        if (uiState.isLoading && allConversations.isNotEmpty()) {
                             item {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -953,15 +953,6 @@ fun ConversationScreen(
                                 }
                             }
                         }
-                    }
-                    // 触底自动加载更多
-                    LaunchedEffect(pagedConversations, listState) {
-                        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-                            .collect { lastIndex ->
-                                if (lastIndex == pagedConversations.lastIndex && !uiState.isLoading) {
-                                    viewModel.loadMoreConversations()
-                                }
-                            }
                     }
                 }
             }

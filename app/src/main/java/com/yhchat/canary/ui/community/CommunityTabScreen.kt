@@ -391,7 +391,8 @@ fun CommunityTabScreen(
                                 if (offset.x <= size.width * 0.5f && drawerState.currentValue == DrawerValue.Closed) {
                                     openDrawer()
                                 }
-                            }
+                            },
+                            onHorizontalDrag = { _, _ -> }
                         )
                     }
             )

@@ -30,14 +30,6 @@ class ConversationViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
-    // 分页参数
-    private val pageSize = 20
-    private var currentPage = 1
-    private var hasMore = true
-    private val _pagedConversations = MutableStateFlow<List<Conversation>>(emptyList())
-    val pagedConversations: StateFlow<List<Conversation>> = _pagedConversations.asStateFlow()
-    private var allLoadedConversations: List<Conversation> = emptyList()
-
     init {
         observeWebSocketMessages()
         
@@ -86,14 +78,9 @@ class ConversationViewModel @Inject constructor(
     fun loadConversations(token: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            currentPage = 1
-            hasMore = true
             conversationRepository.getConversations()
                 .onSuccess { conversationList ->
                     _conversations.value = conversationList
-                    allLoadedConversations = conversationList
-                    _pagedConversations.value = conversationList.take(pageSize)
-                    hasMore = conversationList.size > pageSize
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     // 缓存到本地数据库
                     cacheRepository.cacheConversations(conversationList)
@@ -102,9 +89,6 @@ class ConversationViewModel @Inject constructor(
                     val cachedConversations = cacheRepository.getCachedConversationsSync()
                     if (cachedConversations.isNotEmpty()) {
                         _conversations.value = cachedConversations
-                        allLoadedConversations = cachedConversations
-                        _pagedConversations.value = cachedConversations.take(pageSize)
-                        hasMore = cachedConversations.size > pageSize
                         _uiState.value = _uiState.value.copy(isLoading = false)
                     } else {
                         _uiState.value = _uiState.value.copy(
@@ -116,25 +100,6 @@ class ConversationViewModel @Inject constructor(
         }
     }
 
-    fun loadMoreConversations() {
-        if (!hasMore || _uiState.value.isLoading) return
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            val nextPage = currentPage + 1
-            val from = (nextPage - 1) * pageSize
-            val to = (nextPage * pageSize).coerceAtMost(allLoadedConversations.size)
-            if (from < to) {
-                val more = allLoadedConversations.subList(0, to)
-                _pagedConversations.value = more
-                currentPage = nextPage
-                hasMore = to < allLoadedConversations.size
-            } else {
-                hasMore = false
-            }
-            _uiState.value = _uiState.value.copy(isLoading = false)
-        }
-    }
-    
     /**
      * 观察WebSocket会话更新
      */
@@ -242,10 +207,7 @@ class ConversationViewModel @Inject constructor(
             _conversations.value = currentConversations
             
             // 同步更新分页显示的会话列表
-            allLoadedConversations = currentConversations
-            _pagedConversations.value = currentConversations.take(currentPage * pageSize)
-            
-            Log.d("ConversationViewModel", "Updated conversation list, total: ${currentConversations.size}, displayed: ${_pagedConversations.value.size}")
+            Log.d("ConversationViewModel", "Updated conversation list, total: ${currentConversations.size}")
         }
     }
     
@@ -266,8 +228,6 @@ class ConversationViewModel @Inject constructor(
             _conversations.value = currentConversations
             
             // 同步更新分页显示的会话列表
-            allLoadedConversations = currentConversations
-            _pagedConversations.value = currentConversations.take(currentPage * pageSize)
         }
     }
     
@@ -447,8 +407,6 @@ class ConversationViewModel @Inject constructor(
 
         _conversations.value = updatedConversations
         allLoadedConversations = updatedConversations
-        _pagedConversations.value = updatedConversations.take(currentPage * pageSize)
-
         viewModelScope.launch {
             runCatching {
                 cacheRepository.markConversationAsRead(chatId)

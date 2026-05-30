@@ -176,7 +176,7 @@ fun ConversationScreen(
     var showAddMenuBottomSheet by rememberSaveable { mutableStateOf(false) }
     
     // 布局设置
-    val layoutShowTitle by rememberBooleanPreference("layout_settings", "conversation_show_title", true)
+    val layoutShowAvatar by rememberBooleanPreference("layout_settings", "conversation_show_title", true)
     val layoutShowSearch by rememberBooleanPreference("layout_settings", "conversation_show_search", true)
     val layoutShowAddButton by rememberBooleanPreference("layout_settings", "conversation_show_add", true)
     val layoutShowUnreadBadge by rememberBooleanPreference("layout_settings", "conversation_show_unread_badge", true)
@@ -396,112 +396,114 @@ fun ConversationScreen(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 左侧：自己的头像 + 主题色环（外径与搜索输入框一致）
-                    val avatarOuterSize = 36.dp
-                    val avatarRingWidth = 2.dp
-                    Box(
-                        modifier = Modifier
-                            .size(avatarOuterSize)
-                            .clip(CircleShape)
-                            .border(avatarRingWidth, MaterialTheme.colorScheme.primary, CircleShape)
-                            .clickable(onClick = onProfileClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val avatarUrl72 = remember(myAvatarUrl) {
-                            val url = myAvatarUrl
-                            if (url.isNullOrBlank()) {
-                                url
-                            } else if (url.contains("?")) {
-                                url
-                            } else {
-                                url + "?imageView2/2/w/150/h/150"
-                            }
-                        }
-                        val avatarRequest = remember(avatarUrl72) {
-                            avatarUrl72?.let { url ->
-                                ImageRequest.Builder(context)
-                                    .data(url)
-                                    .addHeader("Referer", "https://myapp.jwznb.com")
-                                    .crossfade(true)
-                                    .build()
-                            }
-                        }
-                        AsyncImage(
-                            model = avatarRequest,
-                            contentDescription = "我的头像",
+                    if (layoutShowAvatar) {
+                        val avatarOuterSize = 36.dp
+                        val avatarRingWidth = 2.dp
+                        Box(
                             modifier = Modifier
-                                .size(avatarOuterSize - avatarRingWidth * 2)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
-                        )
+                                .size(avatarOuterSize)
+                                .clip(CircleShape)
+                                .border(avatarRingWidth, MaterialTheme.colorScheme.primary, CircleShape)
+                                .clickable(onClick = onProfileClick),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val avatarUrl72 = remember(myAvatarUrl) {
+                                val url = myAvatarUrl
+                                if (url.isNullOrBlank()) {
+                                    url
+                                } else if (url.contains("?")) {
+                                    url
+                                } else {
+                                    url + "?imageView2/2/w/150/h/150"
+                                }
+                            }
+                            val avatarRequest = remember(avatarUrl72) {
+                                avatarUrl72?.let { url ->
+                                    ImageRequest.Builder(context)
+                                        .data(url)
+                                        .addHeader("Referer", "https://myapp.jwznb.com")
+                                        .crossfade(true)
+                                        .build()
+                                }
+                            }
+                            AsyncImage(
+                                model = avatarRequest,
+                                contentDescription = "我的头像",
+                                modifier = Modifier
+                                    .size(avatarOuterSize - avatarRingWidth * 2)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
                     // 中间：搜索输入框
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(
-                                vertical = searchBarVerticalPadding,
-                                horizontal = searchBarHorizontalPadding.coerceAtMost(6.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
+                    if (layoutShowSearch) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(36.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(searchBackgroundColor)
-                                .clickable {
-                                    if (isTextFieldEnabled) {
-                                        isManuallyActivated = true
-                                        isSearchActive = true
-                                        coroutineScope.launch {
-                                            kotlinx.coroutines.delay(100)
-                                            try {
-                                                searchFocusRequester.requestFocus()
-                                            } catch (_: Exception) {}
+                                .weight(1f)
+                                .padding(
+                                    vertical = searchBarVerticalPadding,
+                                    horizontal = searchBarHorizontalPadding.coerceAtMost(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(searchBackgroundColor)
+                                    .clickable {
+                                        if (isTextFieldEnabled) {
+                                            isManuallyActivated = true
+                                            isSearchActive = true
+                                            coroutineScope.launch {
+                                                kotlinx.coroutines.delay(100)
+                                                try {
+                                                    searchFocusRequester.requestFocus()
+                                                } catch (_: Exception) {}
+                                            }
                                         }
                                     }
-                                }
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
-                                contentDescription = "搜索",
-                                tint = onSearchColor,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable(enabled = isSearchActive) {
-                                        if (searchQuery.isNotEmpty()) {
-                                            searchQuery = ""
-                                            searchViewModel.clearSearch()
-                                        } else {
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isSearchActive) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = onSearchColor,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable(enabled = isSearchActive) {
+                                            if (searchQuery.isNotEmpty()) {
+                                                searchQuery = ""
+                                                searchViewModel.clearSearch()
+                                            } else {
                                                 isSearchActive = false
                                                 isManuallyActivated = false
                                                 focusManager.clearFocus()
                                             }
                                         }
                                 )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        text = "搜索会话、联系人...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = onSearchColor.copy(alpha = 0.6f),
-                                        maxLines = 1
-                                    )
-                                }
-                                BasicTextField(
-                                    value = searchQuery,
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "搜索会话、联系人...",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = onSearchColor.copy(alpha = 0.6f),
+                                            maxLines = 1
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = searchQuery,
                                         onValueChange = {
                                             if (isManuallyActivated) {
                                                 searchQuery = it
@@ -576,6 +578,9 @@ fun ConversationScreen(
                                     }
                                 }
                             }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))

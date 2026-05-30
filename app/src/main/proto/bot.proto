@@ -64,9 +64,9 @@ message board {
 
 // 获取机器人使用的用户列表
 message list_follower_send {
-    Data data = 1;
-    string bot_id = 2; // 机器人ID
-    string keywords = 3; // 搜索关键词
+    Data data = 2;
+    string bot_id = 3; // 机器人ID
+    string keywords = 4; // 搜索关键词
 
     message Data {
         int32 size = 1; // 分页大小
@@ -89,9 +89,9 @@ message list_follower {
 
 // 获取机器人加入的群聊列表
 message list_join_group_send {
-    Data data = 1;
-    string bot_id = 2; // 机器人ID
-    string keywords = 3; // 搜索关键词
+    Data data = 2;
+    string bot_id = 3; // 机器人ID
+    string keywords = 4; // 搜索关键词
 
     message Data {
         int32 size = 1; // 分页大小

@@ -58,7 +58,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Tablet
-import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Whatshot
@@ -178,7 +177,7 @@ private fun ConversationLayoutSettingsGroup(context: Context) {
     val prefs = remember { context.getSharedPreferences("layout_settings", Context.MODE_PRIVATE) }
     val displayPrefs = remember { context.getSharedPreferences("display_settings", Context.MODE_PRIVATE) }
     
-    var showTitle by remember { mutableStateOf(prefs.getBoolean("conversation_show_title", true)) }
+    var showAvatar by remember { mutableStateOf(prefs.getBoolean("conversation_show_title", true)) }
     var showSearchBox by remember { mutableStateOf(prefs.getBoolean("conversation_show_search", true)) }
     var showAddButton by remember { mutableStateOf(prefs.getBoolean("conversation_show_add", true)) }
     var showUnreadBadge by remember { mutableStateOf(prefs.getBoolean("conversation_show_unread_badge", true)) }
@@ -193,12 +192,12 @@ private fun ConversationLayoutSettingsGroup(context: Context) {
         items = listOf(
             {
                 SettingsSwitchItem(
-                    icon = Icons.Default.Title,
-                    title = "\"云湖\"标题",
-                    subtitle = if (showTitle) "显示标题，搜索栏在标题右侧" else "隐藏标题，搜索栏自动扩展",
-                    checked = showTitle,
+                    icon = Icons.Default.Person,
+                    title = "头像显示",
+                    subtitle = if (showAvatar) "显示顶部左侧头像" else "隐藏顶部左侧头像",
+                    checked = showAvatar,
                     onCheckedChange = {
-                        showTitle = it
+                        showAvatar = it
                         prefs.edit().putBoolean("conversation_show_title", it).apply()
                     }
                 )

@@ -47,9 +47,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MonetizationOn
@@ -68,6 +68,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
@@ -692,7 +693,7 @@ fun PostBottomActionBarDuo3(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Comment,
+                        imageVector = Icons.AutoMirrored.Filled.Comment,
                         contentDescription = "评论",
                         modifier = Modifier.size(18.dp)
                     )
@@ -853,7 +854,7 @@ fun CommentItem(
                         modifier = Modifier.clickable { onReplyClick(comment.id) }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Comment,
+                            imageVector = Icons.AutoMirrored.Filled.Comment,
                             contentDescription = "回复",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
@@ -1868,6 +1869,7 @@ fun ArticleLinkText(
         }
     }
     
+    @Suppress("DEPRECATION")
     ClickableText(
         text = annotatedString,
         style = style.copy(color = MaterialTheme.colorScheme.onSurface), // 确保使用正确的主题颜色
@@ -2020,7 +2022,10 @@ private fun CommunityReportDialog(
                         placeholder = { Text("请选择举报原因") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = true
+                            ),
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonMenuExpanded)
                         }

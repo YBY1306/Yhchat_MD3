@@ -133,6 +133,7 @@ fun HtmlWebView(
                 setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
                 
                 webViewClient = object : WebViewClient() {
+                    @Suppress("DEPRECATION")
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                         url?.let {
                             // 处理 yunhu:// 和 yhfx 分享链接

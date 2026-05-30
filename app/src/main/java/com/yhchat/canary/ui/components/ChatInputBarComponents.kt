@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
@@ -190,7 +190,7 @@ fun AttachmentMenu(
                 text = { Text("Markdown") },
                 onClick = { onMarkdownClick.invoke() },
                 leadingIcon = {
-                    Icon(Icons.Default.Article, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
                 },
                 trailingIcon = if (selectedMessageType == 3) {
                     { Icon(Icons.Default.Check, contentDescription = null) }
@@ -230,7 +230,7 @@ fun AttachmentMenu(
                 text = { Text("默认Markdown") },
                 onClick = { onDefaultMessageTypeChange.invoke(3) },
                 leadingIcon = {
-                    Icon(Icons.Default.Article, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
                 },
                 trailingIcon = if (defaultMessageType == 3) {
                     { Icon(Icons.Default.Check, contentDescription = null) }

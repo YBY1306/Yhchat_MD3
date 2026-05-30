@@ -69,6 +69,7 @@ fun LinkText(
         }
     }
     
+    @Suppress("DEPRECATION")
     ClickableText(
         text = annotatedString,
         modifier = modifier,

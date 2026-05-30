@@ -297,6 +297,7 @@ private fun ParamVariableDialog(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION")
 @Composable
 private fun BotLlmSettingsScreen(
     botId: String,

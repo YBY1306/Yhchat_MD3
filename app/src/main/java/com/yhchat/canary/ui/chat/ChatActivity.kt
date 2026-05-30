@@ -92,6 +92,7 @@ class ChatActivity : BaseActivity() {
     private var fileUriToSend by mutableStateOf<android.net.Uri?>(null)
     private var videoUriToSend by mutableStateOf<android.net.Uri?>(null)
     
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

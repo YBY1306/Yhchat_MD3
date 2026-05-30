@@ -73,14 +73,6 @@ class ChatBackgroundViewModel : ViewModel() {
                 }
 
                 val qiniuData = tokenResponse.body()!!.data
-                if (qiniuData == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isUploading = false,
-                        error = "获取上传token失败: 返回数据为空"
-                    )
-                    return@launch
-                }
-
                 val uploadToken = qiniuData.token
 
                 ImageUploadUtil.uploadImage(context, imageUri, uploadToken).fold(

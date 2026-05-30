@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.os.Environment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,8 +32,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -307,7 +308,7 @@ fun ShareDialog(
                                 )
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Divider()
+                                HorizontalDivider()
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
                                 // 云湖内链
@@ -403,11 +404,7 @@ private suspend fun saveShareImage(context: Context, imageUrl: String): Boolean 
                     }
                     
                     // 通知系统扫描新文件
-                    context.sendBroadcast(
-                        Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-                            data = android.net.Uri.fromFile(file)
-                        }
-                    )
+                    MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null)
                     true
                 }
                 

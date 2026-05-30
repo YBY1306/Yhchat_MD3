@@ -296,7 +296,9 @@ fun UserDetailScreen(
         val window = activity?.window ?: return@SideEffect
 
         // 设置 system bars 颜色
+        @Suppress("DEPRECATION")
         window.statusBarColor = navigationBarColor.toArgb()
+        @Suppress("DEPRECATION")
         window.navigationBarColor = navigationBarColor.toArgb()
 
         // 设置图标颜色：浅色主题用深色图标；深色主题用浅色图标

@@ -2,6 +2,7 @@ package com.yhchat.canary.ui.components
 
 import android.content.Context
 import android.content.Intent
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
@@ -280,7 +281,7 @@ private fun ZoomableImagePage(
     val painter = rememberAsyncImagePainter(
         model = imageRequest
     )
-    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+    val transformableState = rememberTransformableState { zoomChange, panChange, _, _ ->
         val previousScale = scale
         val newScale = (scale * zoomChange).coerceIn(1f, 5f)
         if (newScale <= 1f) {
@@ -593,7 +594,8 @@ private fun downloadImageToGallery(context: Context, imageUrl: String) {
             }
             connection.connect()
 
-            val extFromType = extensionForContentType(connection.contentType)
+            val contentType = connection.contentType ?: "image/*"
+            val extFromType = extensionForContentType(contentType)
             val rawName = imageUrl.substringAfterLast("/", "")
                 .substringBefore("?")
                 .substringBefore("#")
@@ -620,10 +622,7 @@ private fun downloadImageToGallery(context: Context, imageUrl: String) {
                 }
             }
 
-            val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-                data = Uri.fromFile(targetFile)
-            }
-            context.sendBroadcast(mediaScanIntent)
+            MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), arrayOf(contentType), null)
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "图片已保存到相册", Toast.LENGTH_SHORT).show()

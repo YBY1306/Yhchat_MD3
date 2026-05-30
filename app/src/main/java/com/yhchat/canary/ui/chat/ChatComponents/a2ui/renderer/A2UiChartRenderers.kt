@@ -685,7 +685,7 @@ internal fun A2UiCustomPaint(
                                         val controlY = points[i].y
                                         val endX = (points[i].x + points[i + 1].x) / 2
                                         val endY = (points[i].y + points[i + 1].y) / 2
-                                        path.quadraticBezierTo(controlX, controlY, endX, endY)
+                                        path.quadraticTo(controlX, controlY, endX, endY)
                                     }
                                     // Draw to last point
                                     path.lineTo(points.last().x, points.last().y)

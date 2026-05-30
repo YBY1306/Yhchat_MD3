@@ -20,7 +20,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
@@ -159,10 +158,8 @@ class GroupRepository @Inject constructor(
                 .setId(botId)
                 .build()
 
-            val requestBody = RequestBody.create(
-                "application/x-protobuf".toMediaTypeOrNull(),
-                request.toByteArray()
-            )
+            val requestBody = request.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
 
             val response = apiService.getBotInstructionListProto(token, requestBody)
 
@@ -735,10 +732,8 @@ class GroupRepository @Inject constructor(
                 .setGroupId(groupId)
                 .build()
             
-            val requestBody = RequestBody.create(
-                "application/x-protobuf".toMediaTypeOrNull(),
-                request.toByteArray()
-            )
+            val requestBody = request.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
             val response = apiService.getGroupBotList(token, requestBody)
             
@@ -805,10 +800,8 @@ class GroupRepository @Inject constructor(
                 .setGroupId(groupId)
                 .build()
             
-            val requestBody = RequestBody.create(
-                "application/x-protobuf".toMediaTypeOrNull(),
-                request.toByteArray()
-            )
+            val requestBody = request.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
             val response = apiService.getGroupBotList(token, requestBody)
             
@@ -955,10 +948,8 @@ class GroupRepository @Inject constructor(
                 .setGroupId(groupId)
                 .build()
             
-            val requestBody = RequestBody.create(
-                "application/x-protobuf".toMediaTypeOrNull(),
-                request.toByteArray()
-            )
+            val requestBody = request.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
             val response = apiService.getGroupBotList(token, requestBody)
             
@@ -1153,10 +1144,8 @@ class GroupRepository @Inject constructor(
                 .setCategoryId(categoryId)
                 .build()
             
-            val requestBody = RequestBody.create(
-                "application/x-protobuf".toMediaTypeOrNull(),
-                request.toByteArray()
-            )
+            val requestBody = request.toByteArray()
+                .toRequestBody("application/x-protobuf".toMediaTypeOrNull())
             
             Log.d(tag, "🏗️ 创建群聊: name=$name")
             val response = apiService.createGroup(token, requestBody)
@@ -1185,5 +1174,4 @@ class GroupRepository @Inject constructor(
         }
     }
 }
-
 

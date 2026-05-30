@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.yhchat.canary.service.FileDownloadService
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -25,6 +27,7 @@ sealed class DownloadState {
 object DownloadManager {
     private val _downloadStates: SnapshotStateMap<String, DownloadState> = mutableStateMapOf()
     val downloadStates: SnapshotStateMap<String, DownloadState> = _downloadStates
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     
     private val downloadIds = mutableMapOf<String, String>() // fileUrl -> downloadId
     
@@ -68,7 +71,7 @@ object DownloadManager {
                     downloadIds.remove(fileUrl)
                     
                     // 5秒后自动清除错误状态
-                    GlobalScope.launch {
+                    scope.launch {
                         delay(5000)
                         _downloadStates.remove(fileUrl)
                     }
@@ -79,7 +82,7 @@ object DownloadManager {
                     downloadIds.remove(fileUrl)
                     
                     // 3秒后自动清除取消状态
-                    GlobalScope.launch {
+                    scope.launch {
                         delay(3000)
                         _downloadStates.remove(fileUrl)
                     }

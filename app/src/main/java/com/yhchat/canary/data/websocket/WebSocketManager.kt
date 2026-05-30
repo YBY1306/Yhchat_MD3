@@ -6,6 +6,7 @@ import com.yhchat.canary.data.repository.ConversationRepository
 import com.yhchat.canary.data.repository.MessageRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,6 +20,7 @@ import javax.inject.Singleton
  * 负责处理收到的消息并更新本地数据
  */
 @Singleton
+@OptIn(FlowPreview::class)
 class WebSocketManager @Inject constructor(
     private val webSocketService: WebSocketService,
     private val messageRepository: MessageRepository,

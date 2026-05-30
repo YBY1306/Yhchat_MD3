@@ -124,6 +124,7 @@ class CreatePostActivity : ComponentActivity() {
     }
 
     @Composable
+    @Suppress("DEPRECATION")
     private fun SetSystemNavigationBarColor() {
         val isLightTheme = !isSystemInDarkTheme()
         // 获取 TopAppBar 的背景颜色

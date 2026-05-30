@@ -57,7 +57,7 @@ data class ChatUiState(
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val messageRepository: MessageRepository,
     private val tokenRepository: TokenRepository,
     private val webSocketManager: WebSocketManager,

@@ -103,7 +103,7 @@ class TtsManager(private val context: Context) {
                 _progress.value = 1f
             }
             
-            @Deprecated("Deprecated in Java")
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun onError(utteranceId: String?) {
                 _isPlaying.value = false
                 _error.value = ERROR_PLAY_FAILED
@@ -175,7 +175,7 @@ class TtsManager(private val context: Context) {
                     }
                 }
                 
-                @Deprecated("Deprecated in Java")
+                @Suppress("OVERRIDE_DEPRECATION")
                 override fun onError(utteranceId: String?) {
                     onError(ERROR_SYNTHESIS_FAILED)
                 }

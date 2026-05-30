@@ -182,7 +182,11 @@ class BlocklistRepository(context: Context) {
                     userName = userJson.optString("userName", ""),
                     reason = userJson.optString("reason", ""),
                     blockedTime = userJson.optLong("blockedTime", System.currentTimeMillis()),
-                    avatarUrl = userJson.optString("avatarUrl", null)
+                    avatarUrl = if (userJson.has("avatarUrl") && !userJson.isNull("avatarUrl")) {
+                        userJson.optString("avatarUrl")
+                    } else {
+                        null
+                    }
                 )
                 importedUsers.add(blockedUser)
             }
@@ -196,4 +200,3 @@ class BlocklistRepository(context: Context) {
         }
     }
 }
-

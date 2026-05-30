@@ -1,8 +1,8 @@
 package com.yhchat.canary.ui.chat.ChatComponents
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.os.Environment
 import android.view.View
 import android.view.ViewGroup
@@ -310,9 +310,7 @@ private fun SenderNameAndTagsForScreenshot(
     message: ChatMessage
 ) {
     val tags = message.sender.tag ?: emptyList()
-    // 从消息中获取发送者权限信息（如果有的话）
-    val memberPermission = null // TODO: 需要根据实际数据结构获取权限信息
-    
+     
     Column(
         modifier = Modifier
             .wrapContentWidth()
@@ -342,35 +340,6 @@ private fun SenderNameAndTagsForScreenshot(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
-                }
-            }
-
-            when (memberPermission) {
-                100 -> {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFF9800)
-                    ) {
-                        Text(
-                            text = "群主",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-                2 -> {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFF2196F3)
-                    ) {
-                        Text(
-                            text = "管理员",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
                 }
             }
 
@@ -452,11 +421,7 @@ suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean =
                 java.io.FileOutputStream(file).use { outputStream ->
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
                 }
-                context.sendBroadcast(
-                    Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-                        data = android.net.Uri.fromFile(file)
-                    }
-                )
+                MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), arrayOf("image/png"), null)
                 true
             }
         } catch (e: Exception) {

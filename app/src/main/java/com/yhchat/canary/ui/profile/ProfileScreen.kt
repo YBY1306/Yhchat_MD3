@@ -50,6 +50,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -1139,7 +1140,10 @@ private fun UserDataEditBottomSheet(
                         enabled = !saveUserDataState.isLoading,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !saveUserDataState.isLoading
+                            )
                             .fillMaxWidth()
                     )
                     DropdownMenu(
@@ -1171,7 +1175,10 @@ private fun UserDataEditBottomSheet(
                         enabled = !saveUserDataState.isLoading,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !saveUserDataState.isLoading
+                            )
                             .fillMaxWidth()
                     )
                     DropdownMenu(
@@ -1203,7 +1210,10 @@ private fun UserDataEditBottomSheet(
                         enabled = !saveUserDataState.isLoading,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !saveUserDataState.isLoading
+                            )
                             .fillMaxWidth()
                     )
                     DropdownMenu(

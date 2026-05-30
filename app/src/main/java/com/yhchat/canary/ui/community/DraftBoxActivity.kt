@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
@@ -105,6 +105,7 @@ class DraftBoxActivity : ComponentActivity() {
     }
     
     @Composable
+    @Suppress("DEPRECATION")
     private fun SetSystemNavigationBarColor() {
         val isLightTheme = !isSystemInDarkTheme()
         // 获取 TopAppBar 的背景颜色
@@ -159,7 +160,7 @@ fun DraftBoxScreen(
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回"
                     )
                 }

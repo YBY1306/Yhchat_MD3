@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -258,7 +258,7 @@ private fun BotManagementScreen(
                     
                     // 进入聊天
                     ManagementOption(
-                        icon = Icons.Default.Chat,
+                        icon = Icons.AutoMirrored.Filled.Chat,
                         title = "进入聊天",
                         subtitle = "与机器人对话",
                         onClick = {

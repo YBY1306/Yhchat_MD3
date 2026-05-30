@@ -140,10 +140,10 @@ private fun parseA2UiComponent(componentObject: JSONObject): A2UiComponent? {
         progressValue = componentObject.optDouble("value").toFloat().takeIf { !componentObject.isNull("value") }
             ?: componentObject.optDouble("progress").toFloat().takeIf { !componentObject.isNull("progress") },
         elements = componentObject.optJSONArray("elements")?.let { arr ->
-            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it).asStringAnyMapOrNull() } }
         },
         tabs = componentObject.optJSONArray("tabs")?.let { arr ->
-            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it) as? Map<String, Any?> } }
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { jsonToKotlin(it).asStringAnyMapOrNull() } }
         },
         poster = parseA2UiValue(componentObject.opt("poster")),
         fit = componentObject.optString("fit").takeIf { it.isNotBlank() },
@@ -186,7 +186,7 @@ private fun parseA2UiAction(actionObject: JSONObject?): A2UiAction? {
         } else {
             A2UiEvent(
                 name = name,
-                context = (jsonToKotlin(eventObject.optJSONObject("context")) as? Map<String, Any?>).orEmpty()
+                context = jsonToKotlin(eventObject.optJSONObject("context")).asStringAnyMapOrNull().orEmpty()
             )
         }
     }
@@ -522,7 +522,7 @@ internal fun parseA2UiPaintElements(rawElements: List<Map<String, Any?>>?): List
     
     return rawElements.mapNotNull { element ->
         val type = element["type"]?.toString()?.lowercase(Locale.ROOT) ?: return@mapNotNull null
-        val properties = element["properties"] as? Map<String, Any?> ?: emptyMap()
+        val properties = element["properties"].asStringAnyMapOrNull().orEmpty()
         
         A2UiPaintElement(
             type = type,
@@ -532,5 +532,12 @@ internal fun parseA2UiPaintElements(rawElements: List<Map<String, Any?>>?): List
             fillColor = element["fillColor"]?.toString(),
             style = element["style"]?.toString()
         )
+    }
+}
+
+private fun Any?.asStringAnyMapOrNull(): Map<String, Any?>? {
+    val rawMap = this as? Map<*, *> ?: return null
+    return rawMap.entries.associateNotNull { (key, value) ->
+        (key as? String)?.let { it to value }
     }
 }

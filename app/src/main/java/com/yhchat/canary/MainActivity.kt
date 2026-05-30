@@ -110,6 +110,7 @@ class MainActivity : BaseActivity() {
         SideEffect {
             runCatching {
                 // 设置系统导航栏背景色
+                @Suppress("DEPRECATION")
                 window.navigationBarColor = navigationBarColor.toArgb()
             }
             

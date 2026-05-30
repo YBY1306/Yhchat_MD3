@@ -129,7 +129,7 @@ private fun DownloadTaskCard(task: WebDAVDownloadTask) {
             )
             if (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.QUEUED) {
                 LinearProgressIndicator(
-                    progress = task.progress,
+                    progress = { task.progress },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(

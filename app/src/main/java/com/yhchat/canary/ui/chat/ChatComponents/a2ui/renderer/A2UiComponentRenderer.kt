@@ -412,7 +412,6 @@ internal fun RenderA2UiComponent(
                 is A2UiValue.Path -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
                 is A2UiValue.Function -> resolveA2UiValue(spec, dataModel, rawLabel, scopePath)?.toString().orEmpty()
                 null -> ""
-                else -> rawLabel.toString()
             }
             val valuePath = resolveBoundPath(component.value, scopePath)
             val currentValue = resolveA2UiValue(spec, dataModel, component.value, scopePath)?.toString().orEmpty()

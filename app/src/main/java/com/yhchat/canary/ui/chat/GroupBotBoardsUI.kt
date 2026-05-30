@@ -148,7 +148,10 @@ fun BotLlmParamsDialog(
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(
+                                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                        enabled = true
+                                    )
                             )
                             ExposedDropdownMenu(
                                 expanded = expanded,
@@ -196,6 +199,7 @@ fun GroupBotBoardsSection(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     val botsWithBoards = remember(groupBots, groupBotBoards) {
         groupBots.filter { bot ->

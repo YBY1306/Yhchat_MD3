@@ -17,7 +17,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class NavigationRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val sharedPreferences: SharedPreferences = 
         context.getSharedPreferences("navigation_config", Context.MODE_PRIVATE)

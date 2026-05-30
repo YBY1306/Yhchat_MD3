@@ -60,7 +60,12 @@ class InstructionPreviewActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        val instruction = intent.getSerializableExtra(EXTRA_INSTRUCTION) as? BotInstruction ?: run {
+        val instruction = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getSerializableExtra(EXTRA_INSTRUCTION, BotInstruction::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getSerializableExtra(EXTRA_INSTRUCTION) as? BotInstruction
+        } ?: run {
             finish()
             return
         }

@@ -405,8 +405,8 @@ fun MessageItem(
         MessageContextMenu(
             message = message,
             showRecall = when (conversationChatType) {
-                2 -> message.msgDeleteTime == null
-                1, 3 -> isMyMessage && message.msgDeleteTime == null
+                2 -> true
+                1, 3 -> isMyMessage
                 else -> false
             },
             onDismiss = { showContextMenuDialog = false },

@@ -29,10 +29,15 @@ object PermissionUtils {
             true
         } else {
             // Android 9 及以下需要存储权限
-            ContextCompat.checkSelfPermission(
+            val hasWritePermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
+            val hasReadPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+            hasWritePermission && hasReadPermission
         }
     }
     
@@ -43,7 +48,10 @@ object PermissionUtils {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             ActivityCompat.requestPermissions(
                 activity,
-                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                arrayOf(
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ),
                 REQUEST_STORAGE_PERMISSION
             )
         }
@@ -93,6 +101,7 @@ object PermissionUtils {
         // 存储权限（Android 9 及以下）
         if (!hasStoragePermission(activity)) {
             permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         
         // 通知权限（Android 13+）

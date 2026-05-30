@@ -20,6 +20,7 @@ object ApiClient {
     private const val WEB_BASE_URL = "https://chat-web-go.jwzhd.com/"
     
     private val gson: Gson by lazy {
+        @Suppress("DEPRECATION")
         GsonBuilder()
             .setLenient()
             .create()

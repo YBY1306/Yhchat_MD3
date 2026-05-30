@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -138,7 +139,10 @@ fun ReportDialog(
                         readOnly = true,
                         label = { Text("举报原因") },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !uiState.isLoading
+                            )
                             .fillMaxWidth(),
                         enabled = !uiState.isLoading,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonMenuExpanded) },
@@ -307,14 +311,6 @@ class ReportViewModel : ViewModel() {
                 }
                 
                 val qiniuData = tokenResponse.body()!!.data
-                if (qiniuData == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "获取上传token失败: 数据为空"
-                    )
-                    return@launch
-                }
-                
                 val uploadToken = qiniuData.token
                 
                 // 2. 上传图片到七牛

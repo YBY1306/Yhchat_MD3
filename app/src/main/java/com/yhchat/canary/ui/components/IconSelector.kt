@@ -1,15 +1,19 @@
 package com.yhchat.canary.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
@@ -28,7 +32,6 @@ import androidx.compose.material.icons.filled.FilePresent
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
@@ -36,7 +39,6 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
@@ -50,13 +52,11 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -70,9 +70,9 @@ object IconSelector {
     
     // 聊天相关图标
     val chatIcons = listOf(
-        "Chat" to Icons.Filled.Chat,
+        "Chat" to Icons.AutoMirrored.Filled.Chat,
         "Forum" to Icons.Filled.Forum,
-        "Message" to Icons.Filled.Message,
+        "Message" to Icons.AutoMirrored.Filled.Message,
         "ChatBubble" to Icons.Filled.ChatBubble,
         "ChatBubbleOutline" to Icons.Filled.ChatBubbleOutline,
         "Sms" to Icons.Filled.Sms,
@@ -91,7 +91,7 @@ object IconSelector {
         "LocationOn" to Icons.Filled.LocationOn,
         "Home" to Icons.Filled.Home,
         "Explore" to Icons.Filled.Explore,
-        "TrendingUp" to Icons.Filled.TrendingUp,
+        "TrendingUp" to Icons.AutoMirrored.Filled.TrendingUp,
         "Star" to Icons.Filled.Star,
         "Favorite" to Icons.Filled.Favorite,
         "ThumbUp" to Icons.Filled.ThumbUp
@@ -117,7 +117,7 @@ object IconSelector {
         "Share" to Icons.Filled.Share,
         "Download" to Icons.Filled.Download,
         "Upload" to Icons.Filled.Upload,
-        "Send" to Icons.Filled.Send,
+        "Send" to Icons.AutoMirrored.Filled.Send,
         "AttachFile" to Icons.Filled.AttachFile,
         "Image" to Icons.Filled.Image,
         "Photo" to Icons.Filled.Photo,
@@ -132,8 +132,8 @@ object IconSelector {
         "Menu" to Icons.Filled.Menu,
         "MoreVert" to Icons.Filled.MoreVert,
         "MoreHoriz" to Icons.Filled.MoreHoriz,
-        "ArrowBack" to Icons.Filled.ArrowBack,
-        "ArrowForward" to Icons.Filled.ArrowForward,
+        "ArrowBack" to Icons.AutoMirrored.Filled.ArrowBack,
+        "ArrowForward" to Icons.AutoMirrored.Filled.ArrowForward,
         "Close" to Icons.Filled.Close,
         "Check" to Icons.Filled.Check,
         "Cancel" to Icons.Filled.Cancel
@@ -145,7 +145,7 @@ object IconSelector {
         "Error" to Icons.Filled.Error,
         "Warning" to Icons.Filled.Warning,
         "Info" to Icons.Filled.Info,
-        "Help" to Icons.Filled.Help,
+        "Help" to Icons.AutoMirrored.Filled.Help,
         "QuestionMark" to Icons.Filled.QuestionMark,
         "Done" to Icons.Filled.Done,
         "DoneAll" to Icons.Filled.DoneAll,

@@ -1134,7 +1134,11 @@ private fun parseFormData(formJson: String?): List<FormItem> {
                         else -> null
                     },
                     selectIndex = if (itemObj.has("selectIndex")) itemObj.optInt("selectIndex") else null,
-                    selectValue = itemObj.optString("selectValue", null)
+                    selectValue = if (itemObj.has("selectValue") && !itemObj.isNull("selectValue")) {
+                        itemObj.optString("selectValue")
+                    } else {
+                        null
+                    }
                 )
             )
         }

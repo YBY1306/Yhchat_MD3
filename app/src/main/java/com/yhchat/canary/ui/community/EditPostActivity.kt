@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -106,6 +106,7 @@ class EditPostActivity : ComponentActivity() {
     }
 
     @Composable
+    @Suppress("DEPRECATION")
     private fun SetSystemNavigationBarColor() {
         val isLightTheme = !isSystemInDarkTheme()
         // 获取 TopAppBar 的背景颜色
@@ -245,7 +246,7 @@ fun EditPostScreen(
                         }
                     }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
                         )
                     }

@@ -3,7 +3,7 @@ package com.yhchat.canary.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
 /**
  * 安全的Token存储管理器
@@ -25,14 +25,16 @@ class SecureTokenStorage(context: Context) {
         var encrypted = false
         encryptedPrefs = try {
             // 创建或获取主密钥
-            val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
             
             // 创建加密的SharedPreferences
             encrypted = true
             EncryptedSharedPreferences.create(
-                PREFS_NAME,
-                masterKeyAlias,
                 context,
+                PREFS_NAME,
+                masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )

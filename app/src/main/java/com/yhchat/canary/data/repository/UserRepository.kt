@@ -361,7 +361,7 @@ class UserRepository @Inject constructor(
             println("搜索API响应体: ${response.body()}")
             if (response.isSuccessful) {
                 val searchResponse = response.body()
-                if (searchResponse?.code == 1 && searchResponse.data != null) {
+                if (searchResponse?.code == 1) {
                     Result.success(searchResponse.data)
                 } else {
                     Result.failure(Exception(searchResponse?.msg ?: "搜索失败"))

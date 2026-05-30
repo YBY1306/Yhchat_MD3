@@ -12,7 +12,7 @@ import javax.inject.Singleton
 @Singleton
 class AccountRepository @Inject constructor(
     private val savedAccountDao: SavedAccountDao,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val secureStorage: SecureTokenStorage by lazy {
         SecureTokenStorage(context)

@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Star
@@ -179,7 +179,7 @@ fun CommunityPostCard(
                     isActive = post.isLiked == "1"
                 )
                 StatItem(
-                    icon = Icons.Default.Comment,
+                    icon = Icons.AutoMirrored.Filled.Comment,
                     count = post.commentNum,
                     isActive = false
                 )

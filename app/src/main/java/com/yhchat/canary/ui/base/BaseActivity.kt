@@ -12,6 +12,7 @@ import androidx.core.view.WindowCompat
  */
 abstract class BaseActivity : ComponentActivity() {
     
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         // 在super.onCreate之前应用字体设置
         applyFontScale()
@@ -26,6 +27,7 @@ abstract class BaseActivity : ComponentActivity() {
     /**
      * 应用字体大小设置
      */
+    @Suppress("DEPRECATION")
     private fun applyFontScale() {
         val prefs = getSharedPreferences("display_settings", Context.MODE_PRIVATE)
         val fontScale = prefs.getFloat("font_scale", 100f)

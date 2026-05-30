@@ -46,7 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "yhchat_database"
                 )
-                    .fallbackToDestructiveMigration() // 版本升级时重建数据库
+                    .fallbackToDestructiveMigration(dropAllTables = true) // 版本升级时重建数据库
                     .build()
                     
                 INSTANCE = instance

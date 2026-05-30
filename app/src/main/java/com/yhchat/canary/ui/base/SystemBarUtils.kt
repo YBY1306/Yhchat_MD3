@@ -20,6 +20,7 @@ object SystemBarUtils {
     /**
      * 设置系统导航栏为透明，并适配深色/浅色主题
      */
+    @Suppress("DEPRECATION")
     fun setupTransparentSystemBars(activity: Activity) {
         // 全局开启沉浸式，系统手势条区域透明
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
@@ -31,6 +32,7 @@ object SystemBarUtils {
      * Compose 版本：设置系统导航栏颜色，让手势线自动适配应用主题
      */
     @Composable
+    @Suppress("DEPRECATION")
     fun SetSystemNavigationBarColor(activity: Activity) {
         // 导航栏背景设为透明，让手势条区域完全透明
         val navigationBarColor = androidx.compose.ui.graphics.Color.Transparent
@@ -71,6 +73,7 @@ object SystemBarUtils {
     }
 
     @Composable
+    @Suppress("DEPRECATION")
     fun ApplyNavigationBarColor(activity: Activity, color: ComposeColor, darkIcons: Boolean) {
         val isLightTheme = !isSystemInDarkTheme()
 

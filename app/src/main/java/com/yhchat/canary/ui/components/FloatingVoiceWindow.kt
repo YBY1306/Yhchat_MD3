@@ -230,7 +230,7 @@ fun FloatingVoiceWindow(
         initTimeout = false
         
         // 设置15秒超时保护
-        timeoutJob = kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
+        timeoutJob = scope.launch {
             kotlinx.coroutines.delay(15000)
             if (isInitializing) {
                 Log.e("FloatingVoiceWindow", "⏰ TTS初始化超时（15秒）")
@@ -452,7 +452,7 @@ fun FloatingVoiceWindow(
                     onTabSelected = { selectedTab = it }
                 )
                 
-                Divider()
+                HorizontalDivider()
                 
                 // 内容区域
                 when (selectedTab) {
@@ -989,7 +989,7 @@ fun TTSTab(
                         
                         // 快速尝试其他引擎（如果有多个可用引擎）
                         if (availableTtsEngines.size > 1) {
-                            Divider()
+                            HorizontalDivider()
                             Text(
                                 text = "快速尝试其他引擎:",
                                 style = MaterialTheme.typography.labelSmall,
@@ -1038,7 +1038,7 @@ fun TTSTab(
         // 进度条
         if (isPlaying && progress > 0) {
             LinearProgressIndicator(
-                progress = progress,
+                progress = { progress },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -1340,7 +1340,7 @@ fun TtsEngineSelector(
             
             // 引擎选择区域（展开时显示）
             if (showEngineSelector) {
-                Divider()
+                HorizontalDivider()
                 
                 // 自动识别的引擎列表
                 Text(
@@ -1460,7 +1460,7 @@ fun TtsEngineSelector(
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
-                Divider()
+                HorizontalDivider()
                 
                 // 自定义引擎包名输入
                 Column(
@@ -1830,7 +1830,7 @@ suspend fun synthesizeTTS(
                 onProgress(1.0f)
             }
             
-            @Deprecated("Deprecated in Java")
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun onError(utteranceId: String?) {
                 Log.e("FloatingVoiceWindow", "TTS合成失败")
                 synthesisComplete = true
@@ -1952,7 +1952,7 @@ fun playTTS(
             onComplete()
         }
         
-        @Deprecated("Deprecated in Java")
+        @Suppress("OVERRIDE_DEPRECATION")
         override fun onError(utteranceId: String?) {
             Log.e("FloatingVoiceWindow", "TTS播放出错")
             onComplete()

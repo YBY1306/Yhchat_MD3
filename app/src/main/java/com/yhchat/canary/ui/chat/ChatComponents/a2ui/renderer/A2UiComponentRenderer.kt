@@ -22,7 +22,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -150,6 +162,41 @@ internal fun RenderA2UiComponent(
             }
         }
 
+        componentType == "list" -> {
+            val direction = component.direction?.lowercase(Locale.ROOT)
+            if (direction == "horizontal" || direction == "row") {
+                Row(
+                    modifier = modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = verticalAlignmentFor(component.align)
+                ) {
+                    RenderA2UiRowChildren(
+                        component = component,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath,
+                        parentAlign = component.align ?: parentAlign,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            } else {
+                Column(
+                    modifier = modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = horizontalAlignmentFor(component.align)
+                ) {
+                    RenderA2UiListChildren(
+                        component = component,
+                        spec = spec,
+                        dataModel = dataModel,
+                        scopePath = scopePath,
+                        parentAlign = component.align ?: parentAlign,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            }
+        }
+
         componentType == "card" || componentType == "container" -> {
             Card(
                 modifier = modifier.fillMaxWidth(),
@@ -175,6 +222,32 @@ internal fun RenderA2UiComponent(
                     }
                 }
             }
+        }
+
+        componentType == "icon" -> {
+            val iconName = component.name?.lowercase(Locale.ROOT).orEmpty()
+            val imageVector = when (iconName) {
+                "shoppingcart", "shopping_cart", "cart" -> Icons.Filled.ShoppingCart
+                "add", "plus" -> Icons.Filled.Add
+                "check", "done" -> Icons.Filled.Check
+                "close", "cancel" -> Icons.Filled.Close
+                "delete", "trash" -> Icons.Filled.Delete
+                "favorite", "heart" -> Icons.Filled.Favorite
+                "home" -> Icons.Filled.Home
+                "info" -> Icons.Filled.Info
+                "person", "user" -> Icons.Filled.Person
+                "search" -> Icons.Filled.Search
+                "settings" -> Icons.Filled.Settings
+                "star" -> Icons.Filled.Star
+                "warning", "alert" -> Icons.Filled.Warning
+                else -> Icons.Filled.Info
+            }
+            Icon(
+                imageVector = imageVector,
+                contentDescription = component.name,
+                modifier = modifier.size(component.size?.toDp() ?: 24.dp),
+                tint = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+            )
         }
 
         componentType == "text" || componentType == "label" || componentType == "paragraph" || componentType == "markdown" -> {
@@ -963,13 +1036,14 @@ internal fun RenderA2UiComponent(
             val tabs = component.tabs ?: emptyList()
             val activeTabPath = resolveBoundPath(component.activeTab, scopePath)
             val initialActiveTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
-            var localActiveTabIndex by remember(component.id, scopePath) { mutableStateOf(initialActiveTabIndex) }
-            val activeTabIndex = if (activeTabPath != null) initialActiveTabIndex else localActiveTabIndex
+            var localActiveTabIndex by rememberSaveable(component.id, scopePath) { mutableStateOf(initialActiveTabIndex) }
+            val activeTabIndex = (if (activeTabPath != null) initialActiveTabIndex else localActiveTabIndex)
+                .coerceIn(0, tabs.lastIndex.coerceAtLeast(0))
             
             Column(modifier = modifier.fillMaxWidth()) {
                 if (tabs.isNotEmpty()) {
                     YhScrollableTabRow(
-                        selectedTabIndex = activeTabIndex.coerceIn(0, tabs.lastIndex),
+                        selectedTabIndex = activeTabIndex,
                         edgePadding = 0.dp,
                         containerColor = Color.Transparent
                     ) {
@@ -1051,6 +1125,81 @@ internal fun RenderA2UiComponent(
 }
 
 @Composable
+private fun RenderA2UiListChildren(
+    component: A2UiComponent,
+    spec: A2UiSpec,
+    dataModel: Map<String, Any?>,
+    scopePath: String?,
+    parentAlign: String?,
+    onDataModelChange: (String, Any?) -> Unit
+) {
+    when (val children = component.children) {
+        is A2UiChildren.Static -> {
+            children.ids.filter { spec.components.containsKey(it) }.forEach { childId ->
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = Modifier.fillMaxWidth(),
+                    scopePath = scopePath,
+                    parentAxis = "column",
+                    parentAlign = parentAlign,
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+
+        is A2UiChildren.Template -> {
+            val resolved = getValueAtPath(dataModel, combineScopePath(scopePath, children.path))
+            when (resolved) {
+                is List<*> -> {
+                    resolved.forEachIndexed { index, _ ->
+                        RenderA2UiComponent(
+                            componentId = children.componentId,
+                            spec = spec,
+                            dataModel = dataModel,
+                            modifier = Modifier.fillMaxWidth(),
+                            scopePath = combineScopePath(scopePath, "${children.path.trim('/')}/$index"),
+                            parentAxis = "column",
+                            parentAlign = parentAlign,
+                            onDataModelChange = onDataModelChange
+                        )
+                    }
+                }
+
+                is Map<*, *> -> {
+                    RenderA2UiComponent(
+                        componentId = children.componentId,
+                        spec = spec,
+                        dataModel = dataModel,
+                        modifier = Modifier.fillMaxWidth(),
+                        scopePath = combineScopePath(scopePath, children.path),
+                        parentAxis = "column",
+                        parentAlign = parentAlign,
+                        onDataModelChange = onDataModelChange
+                    )
+                }
+            }
+        }
+
+        null -> {
+            component.child?.takeIf { spec.components.containsKey(it) }?.let { childId ->
+                RenderA2UiComponent(
+                    componentId = childId,
+                    spec = spec,
+                    dataModel = dataModel,
+                    modifier = Modifier.fillMaxWidth(),
+                    scopePath = scopePath,
+                    parentAxis = "column",
+                    parentAlign = parentAlign,
+                    onDataModelChange = onDataModelChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ColumnScope.RenderA2UiColumnChildren(
     component: A2UiComponent,
     spec: A2UiSpec,
@@ -1061,7 +1210,7 @@ private fun ColumnScope.RenderA2UiColumnChildren(
 ) {
     when (val children = component.children) {
         is A2UiChildren.Static -> {
-            children.ids.forEachIndexed { index, childId ->
+            children.ids.filter { spec.components.containsKey(it) }.forEachIndexed { index, childId ->
                 if (index > 0) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -1143,7 +1292,7 @@ private fun RowScope.RenderA2UiRowChildren(
 ) {
     when (val children = component.children) {
         is A2UiChildren.Static -> {
-            children.ids.forEach { childId ->
+            children.ids.filter { spec.components.containsKey(it) }.forEach { childId ->
                 val childComponent = spec.components[childId]
                 val weightModifier = childComponent?.weight
                     ?.let { Modifier.weight(it.toFloat(), fill = false) }
@@ -1223,7 +1372,7 @@ private fun RenderA2UiFlowRowChildren(
 ) {
     when (val children = component.children) {
         is A2UiChildren.Static -> {
-            children.ids.forEach { childId ->
+            children.ids.filter { spec.components.containsKey(it) }.forEach { childId ->
                 RenderA2UiComponent(
                     componentId = childId,
                     spec = spec,

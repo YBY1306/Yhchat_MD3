@@ -147,6 +147,15 @@ fun observeScrollForNavigation(listState: LazyListState, navigationState: Scroll
     var previousScrollOffset by remember { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
     
     LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        // Avoid "auto show" caused by overscroll rebound or list settling when the user
+        // is no longer actively scrolling. This keeps bars hidden at the bottom/end unless
+        // the user actually scrolls up.
+        if (!listState.isScrollInProgress) {
+            previousIndex = listState.firstVisibleItemIndex
+            previousScrollOffset = listState.firstVisibleItemScrollOffset
+            return@LaunchedEffect
+        }
+
         val currentIndex = listState.firstVisibleItemIndex
         val currentScrollOffset = listState.firstVisibleItemScrollOffset
         

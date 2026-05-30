@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,7 +78,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +92,8 @@ import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.ui.community.CommunityPostCard
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
+import com.yhchat.canary.ui.components.ScrollAwareNavigationState
+import com.yhchat.canary.ui.components.observeScrollForNavigation
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
@@ -108,6 +110,7 @@ fun CommunityTabScreen(
     token: String,
     modifier: Modifier = Modifier,
     viewModel: CommunityViewModel = viewModel(),
+    navigationState: ScrollAwareNavigationState? = null,
     // 大屏分屏导航回调（null=使用默认Activity导航）
     onBoardNavigate: ((boardId: Int, boardName: String) -> Unit)? = null,
     onMyPostsNavigate: (() -> Unit)? = null,
@@ -116,10 +119,10 @@ fun CommunityTabScreen(
     onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     // 获取布局设置
     val showHotTab by rememberBooleanPreference("layout_settings", "community_show_hot", true)
     val showAllTab by rememberBooleanPreference("layout_settings", "community_show_all", true)
@@ -166,6 +169,12 @@ fun CommunityTabScreen(
     fun openDrawer() {
         coroutineScope.launch {
             drawerState.open()
+        }
+    }
+
+    fun closeDrawer() {
+        coroutineScope.launch {
+            drawerState.close()
         }
     }
 
@@ -323,12 +332,14 @@ fun CommunityTabScreen(
             ) {
                 DrawerBody()
             }
-        }
+        },
+        gesturesEnabled = true
     ) {
         androidx.compose.material3.Scaffold(
             modifier = modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
                     navigationIcon = {
                         IconButton(onClick = { openDrawer() }) {
                             Icon(
@@ -370,6 +381,7 @@ fun CommunityTabScreen(
                 feedType = selectedFeed,
                 hotState = hotPostListState,
                 latestState = latestPostListState,
+                navigationState = navigationState,
                 onRefreshHot = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) },
                 onRefreshLatest = { viewModel.refreshLatestPostList(token) },
                 onLoadMoreHot = { viewModel.loadMoreRecommendPosts(token) },
@@ -385,16 +397,6 @@ fun CommunityTabScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .pointerInput(drawerState) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { offset ->
-                                if (offset.x <= size.width * 0.5f && drawerState.currentValue == DrawerValue.Closed) {
-                                    openDrawer()
-                                }
-                            },
-                            onHorizontalDrag = { _, _ -> }
-                        )
-                    }
             )
         }
     }
@@ -452,6 +454,7 @@ private fun CommunityFeedScreen(
     feedType: String,
     hotState: RecommendPostListState,
     latestState: CommunityPostListState,
+    navigationState: ScrollAwareNavigationState? = null,
     onRefreshHot: () -> Unit,
     onRefreshLatest: () -> Unit,
     onLoadMoreHot: () -> Unit,
@@ -461,6 +464,10 @@ private fun CommunityFeedScreen(
 ) {
     val listState = rememberLazyListState()
     val pullState = rememberPullToRefreshState()
+
+    if (navigationState != null) {
+        observeScrollForNavigation(listState, navigationState)
+    }
 
     LaunchedEffect(token, feedType) {
         if (token.isNotEmpty()) {
@@ -745,25 +752,6 @@ fun MoreTabContent(
                             onMyPostsNavigate()
                         } else {
                             val intent = Intent(context, MyPostsActivity::class.java).apply {
-                                putExtra("token", token)
-                            }
-                            context.startActivity(intent)
-                        }
-                    }
-                )
-            }
-        }
-        if (showRecommend) {
-            add {
-                SettingsItemCell(
-                    icon = Icons.Default.ThumbUp,
-                    title = "查看推荐文章",
-                    subtitle = "浏览社区推荐文章列表",
-                    onClick = {
-                        if (onRecommendPostsNavigate != null) {
-                            onRecommendPostsNavigate()
-                        } else {
-                            val intent = Intent(context, RecommendPostsActivity::class.java).apply {
                                 putExtra("token", token)
                             }
                             context.startActivity(intent)

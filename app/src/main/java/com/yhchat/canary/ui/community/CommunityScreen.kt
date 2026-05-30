@@ -18,7 +18,7 @@ fun CommunityScreen(
     CommunityTabScreen(
         token = token,
         viewModel = viewModel,
-        modifier = modifier
+        modifier = modifier,
+        navigationState = navigationState
     )
 }
-

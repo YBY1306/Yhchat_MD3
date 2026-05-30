@@ -121,7 +121,7 @@ fun CommunityPostCard(
                         }
                     }
                     Text(
-                        text = post.createTimeText,
+                        text = post.displayCreateTimeText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

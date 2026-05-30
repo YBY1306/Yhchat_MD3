@@ -1,6 +1,9 @@
 package com.yhchat.canary.data.model
 
 import com.google.gson.annotations.SerializedName
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 社区分区
@@ -108,7 +111,7 @@ data class CommunityPost(
     val senderAvatar: String,
     
     @SerializedName("createTimeText")
-    val createTimeText: String,
+    val createTimeText: String = "",
     
     @SerializedName("group")
     val group: CommunityGroup?,
@@ -130,7 +133,28 @@ data class CommunityPost(
     
     @SerializedName("isVip")
     val isVip: Int
-)
+) {
+    val displayCreateTimeText: String
+        get() = formatCommunityTimeText(createTimeText, createTime)
+}
+
+private fun formatCommunityTimeText(createTimeText: String, createTime: Long): String {
+    if (createTimeText.isNotBlank()) return createTimeText
+    if (createTime <= 0L) return ""
+
+    val millis = if (createTime < 1_000_000_000_000L) createTime * 1000L else createTime
+    val date = Date(millis)
+    val now = Date()
+    val diffMillis = now.time - date.time
+    val diffHours = diffMillis / (1000L * 60L * 60L)
+
+    return when {
+        diffHours < 1L -> "刚刚"
+        diffHours < 24L -> "${diffHours}小时"
+        diffHours < 24L * 7L -> "${diffHours / 24L}天前"
+        else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
+    }
+}
 
 /**
  * 社区群组

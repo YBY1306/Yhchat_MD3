@@ -143,12 +143,6 @@
         </activity>
 
         <activity
-            android:name=".ui.community.RecommendPostsActivity"
-            android:exported="false"
-            android:label="推荐文章"
-            android:theme="@style/Theme.YhchatCanary" />
-
-        <activity
             android:name=".ui.community.BoardDetailActivity"
             android:exported="true"
             android:label="云湖社区"

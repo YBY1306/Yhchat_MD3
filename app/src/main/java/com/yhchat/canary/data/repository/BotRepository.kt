@@ -10,6 +10,10 @@ import com.yhchat.canary.data.model.BotLlmRefParamItem
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingData
 import com.yhchat.canary.data.model.StickyOperationRequest
+import com.yhchat.canary.proto.bot.list_follower
+import com.yhchat.canary.proto.bot.list_follower_send
+import com.yhchat.canary.proto.bot.list_join_group
+import com.yhchat.canary.proto.bot.list_join_group_send
 import com.yhchat.canary.proto.bot.board
 import com.yhchat.canary.proto.bot.board_send
 import com.yhchat.canary.proto.bot.bot_info
@@ -223,7 +227,97 @@ class BotRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    suspend fun getBotFollowerList(
+        botId: String,
+        page: Int = 1,
+        size: Int = 20,
+        keywords: String = ""
+    ): Result<list_follower> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val request = list_follower_send.newBuilder()
+                .setBotId(botId)
+                .setKeywords(keywords)
+                .setData(
+                    list_follower_send.Data.newBuilder()
+                        .setPage(page)
+                        .setSize(size)
+                        .build()
+                )
+                .build()
+
+            val response = apiService.getBotFollowerList(
+                token = token,
+                body = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
+            )
+
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("请求失败: ${response.code()} ${response.message()}"))
+            }
+
+            val responseBody = response.body()?.bytes()
+                ?: return Result.failure(Exception("响应数据为空"))
+
+            val result = list_follower.parseFrom(responseBody)
+            if (result.status.code != 1) {
+                return Result.failure(Exception(result.status.msg.ifBlank { "获取使用用户列表失败" }))
+            }
+
+            Result.success(result)
+        } catch (e: Exception) {
+            Log.e(TAG, "获取机器人使用用户列表失败", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBotJoinGroupList(
+        botId: String,
+        page: Int = 1,
+        size: Int = 20,
+        keywords: String = ""
+    ): Result<list_join_group> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("未登录"))
+
+            val request = list_join_group_send.newBuilder()
+                .setBotId(botId)
+                .setKeywords(keywords)
+                .setData(
+                    list_join_group_send.Data.newBuilder()
+                        .setPage(page)
+                        .setSize(size)
+                        .build()
+                )
+                .build()
+
+            val response = apiService.getBotJoinGroupList(
+                token = token,
+                body = request.toByteArray().toRequestBody("application/x-protobuf".toMediaType())
+            )
+
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("请求失败: ${response.code()} ${response.message()}"))
+            }
+
+            val responseBody = response.body()?.bytes()
+                ?: return Result.failure(Exception("响应数据为空"))
+
+            val result = list_join_group.parseFrom(responseBody)
+            if (result.status.code != 1) {
+                return Result.failure(Exception(result.status.msg.ifBlank { "获取加入群聊列表失败" }))
+            }
+
+            Result.success(result)
+        } catch (e: Exception) {
+            Log.e(TAG, "获取机器人加入群聊列表失败", e)
+            Result.failure(e)
+        }
+    }
+
     /**
      * 获取我创建的机器人列表
      */
@@ -503,6 +597,45 @@ class BotRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "创建机器人失败", e)
+            Result.failure(e)
+        }
+    }
+    suspend fun removeBotFollower(botId: String, userId: String): Result<Unit> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("鏈櫥褰?"))
+            val response = apiService.removeBotFollower(
+                token = token,
+                request = BotUsageRemoveFollowerRequest(botId = botId, userId = userId)
+            )
+            val body = response.body()
+            if (response.isSuccessful && body?.code == 1) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(body?.message ?: "绉婚櫎澶辫触"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "绉婚櫎鏈哄櫒浜轰娇鐢ㄧ敤鎴峰け璐?, e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeBotGroup(botId: String, groupId: String): Result<Unit> {
+        return try {
+            val token = tokenRepository.getTokenSync()
+                ?: return Result.failure(Exception("鏈櫥褰?"))
+            val response = apiService.removeBotGroup(
+                token = token,
+                request = BotUsageRemoveGroupRequest(botId = botId, groupId = groupId)
+            )
+            val body = response.body()
+            if (response.isSuccessful && body?.code == 1) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(body?.message ?: "绉婚櫎澶辫触"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "绉婚櫎鏈哄櫒浜哄姞鍏ョ兢鑱婂け璐?, e)
             Result.failure(e)
         }
     }

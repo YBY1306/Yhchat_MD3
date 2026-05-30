@@ -62,6 +62,55 @@ message board {
     }
 }
 
+// 获取机器人使用的用户列表
+message list_follower_send {
+    Data data = 1;
+    string bot_id = 2; // 机器人ID
+    string keywords = 3; // 搜索关键词
+
+    message Data {
+        int32 size = 1; // 分页大小
+        int32 page = 2; // 页数
+    }
+}
+
+message list_follower {
+    Status status = 1;
+    repeated User user = 2;
+    int32 total = 3;
+
+    message User {
+        string user_id = 1; // 用户ID
+        string name = 2; // 用户名
+        string avatar_url = 4; // 头像URL
+        int32 is_vip = 6; // 是否为vip用户
+    }
+}
+
+// 获取机器人加入的群聊列表
+message list_join_group_send {
+    Data data = 1;
+    string bot_id = 2; // 机器人ID
+    string keywords = 3; // 搜索关键词
+
+    message Data {
+        int32 size = 1; // 分页大小
+        int32 page = 2; // 页数
+    }
+}
+
+message list_join_group {
+    Status status = 1;
+    repeated Group group = 2;
+    int32 total = 3;
+
+    message Group {
+        string id = 1;
+        string name = 2;
+        string avatar_url = 3;
+    }
+}
+
 // 创建机器人
 message create_bot_send {
     string name = 2;                // 机器人名称
@@ -84,4 +133,3 @@ message bot_stop_send {
     string bot_id = 2;              // 机器人ID
     int64 operation = 3;            // 操作类型：0-启用机器人，1-停用机器人
 }
-

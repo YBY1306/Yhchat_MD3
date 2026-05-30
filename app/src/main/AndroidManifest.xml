@@ -426,6 +426,12 @@
             android:theme="@style/Theme.YhchatCanary" />
 
         <activity
+            android:name=".ui.bot.BotUsageListActivity"
+            android:exported="false"
+            android:label="使用列表"
+            android:theme="@style/Theme.YhchatCanary" />
+
+        <activity
             android:name=".ui.bot.BotWsTestActivity"
             android:exported="false"
             android:label="事件测试"

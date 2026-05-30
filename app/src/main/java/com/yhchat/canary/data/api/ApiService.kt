@@ -8,6 +8,8 @@ import com.yhchat.canary.data.model.AgreeApplyRequest
 import com.yhchat.canary.data.model.ApiStatus
 import com.yhchat.canary.data.model.BaseResponse
 import com.yhchat.canary.data.model.BotIdRequest
+import com.yhchat.canary.data.model.BotUsageRemoveFollowerRequest
+import com.yhchat.canary.data.model.BotUsageRemoveGroupRequest
 import com.yhchat.canary.data.model.BotLlmRefParamsResponse
 import com.yhchat.canary.data.model.BotLlmSaveRequest
 import com.yhchat.canary.data.model.BotLlmSettingListResponse
@@ -386,6 +388,36 @@ interface ApiService {
         @Header("token") token: String,
         @Body body: okhttp3.RequestBody
     ): Response<okhttp3.ResponseBody>
+
+    /**
+     * 获取机器人使用的用户列表 - ProtoBuf
+     */
+    @POST("v1/bot/follower-list")
+    suspend fun getBotFollowerList(
+        @Header("token") token: String,
+        @Body body: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
+    /**
+     * 获取机器人加入的群聊列表 - ProtoBuf
+     */
+    @POST("v1/bot/join-group-list")
+    suspend fun getBotJoinGroupList(
+        @Header("token") token: String,
+        @Body body: okhttp3.RequestBody
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("v1/bot/remove-follower")
+    suspend fun removeBotFollower(
+        @Header("token") token: String,
+        @Body request: BotUsageRemoveFollowerRequest
+    ): Response<ApiStatus>
+
+    @POST("v1/bot/remove-group")
+    suspend fun removeBotGroup(
+        @Header("token") token: String,
+        @Body request: BotUsageRemoveGroupRequest
+    ): Response<ApiStatus>
     
 
     /**

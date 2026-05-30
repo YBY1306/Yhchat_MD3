@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -88,21 +89,198 @@ fun ChatTopAppBar(
     } else {
         true // 小屏模式下总是显示返回按钮
     }
-    
-    TopAppBar(
-        title = {
+
+    val avatarModel = remember(context, avatarUrl, chatType) {
+        avatarUrl?.takeIf { it.isNotBlank() }?.let { url ->
+            if (chatType == 3) {
+                ImageUtils.createBotImageRequest(context, url)
+            } else {
+                ImageUtils.createAvatarImageRequest(context, url)
+            }
+        }
+    }
+
+    val onTitleAreaClick = remember(context, chatId, chatType, safeChatName) {
+        {
+            when (chatType) {
+                1 -> {
+                    com.yhchat.canary.ui.user.UserDetailActivity.start(
+                        context = context,
+                        userId = chatId,
+                        userName = safeChatName
+                    )
+                }
+                2 -> {
+                    val intent = Intent(context, com.yhchat.canary.ui.group.GroupInfoActivity::class.java)
+                    intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_ID, chatId)
+                    intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_NAME, safeChatName)
+                    context.startActivity(intent)
+                }
+                3 -> {
+                    com.yhchat.canary.ui.bot.BotDetailActivity.start(
+                        context = context,
+                        botId = chatId,
+                        botName = safeChatName,
+                        chatType = chatType
+                    )
+                }
+            }
+        }
+    }
+
+    // When the back button is hidden (usually on large screens), Material3 TopAppBar still applies
+    // a fixed title inset reserved for the navigation icon, leaving an empty gap. Use a custom bar
+    // so the avatar/title can truly align to the left edge.
+    if (!shouldShowBackButton) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            modifier = modifier
+        ) {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val avatarModel = remember(context, avatarUrl, chatType) {
-                    avatarUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                        if (chatType == 3) {
-                            ImageUtils.createBotImageRequest(context, url)
-                        } else {
-                            ImageUtils.createAvatarImageRequest(context, url)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(onClick = onTitleAreaClick)
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = avatarModel,
+                            contentDescription = "会话头像",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = com.yhchat.canary.R.drawable.ic_person)
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = safeChatName,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (chatType == 2 && uiState.groupMemberCount > 0) {
+                                Text(
+                                    text = "${uiState.groupMemberCount} 人",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                            if (chatType == 3) {
+                                val botInfo = uiState.botInfo
+                                if (botInfo != null) {
+                                    Text(
+                                        text = "${botInfo.data.headcount} 人使用",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showLiveButton) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            LiveWaveButton(onClick = onLiveClick)
                         }
                     }
                 }
+
+                if (showRefreshButton) {
+                    IconButton(onClick = onRefreshClick) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "刷新消息"
+                        )
+                    }
+                }
+                if (showTtsButton) {
+                    IconButton(onClick = onTtsClick) {
+                        Icon(
+                            imageVector = Icons.Default.RecordVoiceOver,
+                            contentDescription = "文字转语音",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                if (chatType == 1) {
+                    IconButton(onClick = {
+                        android.util.Log.d("ChatTopAppBar", "Opening user detail: chatId=$chatId, chatName=$chatName")
+                        com.yhchat.canary.ui.user.UserDetailActivity.start(
+                            context = context,
+                            userId = chatId,
+                            userName = safeChatName
+                        )
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "用户详情"
+                        )
+                    }
+                }
+                if (chatType == 2) {
+                    IconButton(onClick = {
+                        android.util.Log.d("ChatTopAppBar", "Opening group info: chatId=$chatId, chatName=$chatName")
+                        val intent = Intent(context, com.yhchat.canary.ui.group.GroupInfoActivity::class.java)
+                        intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_ID, chatId)
+                        intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_NAME, safeChatName)
+                        context.startActivity(intent)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "群聊详情"
+                        )
+                    }
+                }
+                if (chatType == 3) {
+                    IconButton(onClick = {
+                        android.util.Log.d("ChatTopAppBar", "Opening bot detail: chatId=$chatId, chatName=$chatName")
+                        com.yhchat.canary.ui.bot.BotDetailActivity.start(
+                            context = context,
+                            botId = chatId,
+                            botName = safeChatName,
+                            chatType = chatType
+                        )
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "机器人信息"
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    TopAppBar(
+        title = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onTitleAreaClick)
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 AsyncImage(
                     model = avatarModel,
                     contentDescription = "会话头像",
@@ -151,14 +329,11 @@ fun ChatTopAppBar(
             }
         },
         navigationIcon = {
-            // 根据设置和屏幕尺寸决定是否显示返回按钮
-            if (shouldShowBackButton) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
-                }
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "返回"
+                )
             }
         },
         actions = {

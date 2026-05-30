@@ -259,17 +259,6 @@ class MainActivity : BaseActivity() {
                     }
                 )
             }
-            currentScreen == "chat" -> {
-                // 显示聊天界面
-                ShowChatScreen(
-                    currentChatId = currentChatId,
-                    currentChatType = currentChatType,
-                    currentChatName = currentChatName,
-                    currentChatAvatarUrl = currentChatAvatarUrl,
-                    userId = userId,
-                    onBackClick = { currentScreen = "conversation" }
-                )
-            }
             else -> {
                 // 主界面
                 var currentPageItem by rememberSaveable { mutableStateOf(currentScreen) }
@@ -815,20 +804,22 @@ class MainActivity : BaseActivity() {
                                         .alpha(pagerAlpha)
                                 ) {
                                         when (navItem.id) {
-                                            "conversation" -> {
-                                                ConversationScreen(
-                                                    token = token,
-                                                    userId = userId,
+                                        "conversation" -> {
+                                            ConversationScreen(
+                                                token = token,
+                                                userId = userId,
                                                     onConversationClick = { chatId, chatType, chatName, avatarUrl ->
-                                                        currentChatId = chatId
-                                                        currentChatType = chatType
-                                                        currentChatName = chatName
-                                                        currentChatAvatarUrl = avatarUrl
-                                                        currentScreen = "chat"
+                                                        launchChatActivity(
+                                                            chatId = chatId,
+                                                            chatType = chatType,
+                                                            chatName = chatName,
+                                                            avatarUrl = avatarUrl,
+                                                            userId = userId
+                                                        )
                                                     },
-                                                    onSearchClick = {
-                                                        if (isInitialized) {
-                                                            currentScreen = "search"
+                                                onSearchClick = {
+                                                    if (isInitialized) {
+                                                        currentScreen = "search"
                                                         }
                                                     },
                                                     onMenuClick = { },
@@ -881,11 +872,13 @@ class MainActivity : BaseActivity() {
                                                 currentScreen = "conversation"
                                             },
                                             onItemClick = { chatId, chatType, chatName ->
-                                                currentChatId = chatId
-                                                currentChatType = chatType
-                                                currentChatName = chatName
-                                                currentChatAvatarUrl = null
-                                                currentScreen = "chat"
+                                                launchChatActivity(
+                                                    chatId = chatId,
+                                                    chatType = chatType,
+                                                    chatName = chatName,
+                                                    avatarUrl = null,
+                                                    userId = userId
+                                                )
                                             },
                                             viewModel = searchViewModel,
                                             modifier = Modifier.fillMaxSize()
@@ -1018,11 +1011,19 @@ class MainActivity : BaseActivity() {
     /**
      * 启动聊天Activity（辅助方法）
      */
-    private fun launchChatActivity(chatId: String, chatType: Int, chatName: String) {
+    private fun launchChatActivity(
+        chatId: String,
+        chatType: Int,
+        chatName: String,
+        avatarUrl: String? = null,
+        userId: String? = null
+    ) {
         startActivity(Intent(this, com.yhchat.canary.ui.chat.ChatActivity::class.java).apply {
             putExtra("chatId", chatId)
             putExtra("chatType", chatType)
             putExtra("chatName", chatName)
+            putExtra("avatarUrl", avatarUrl)
+            putExtra("userId", userId)
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         })
     }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -33,6 +34,7 @@ class ChatActivity : BaseActivity() {
     private var chatType by mutableStateOf(1)
     private var chatName by mutableStateOf("")
     private var chatAvatarUrl by mutableStateOf<String?>(null)
+    private var currentUserId by mutableStateOf("")
     
     // 搜索跳转参数
     private var searchTargetMsgId by mutableStateOf<String?>(null)
@@ -147,7 +149,7 @@ class ChatActivity : BaseActivity() {
                             chatName = chatName,
                             chatAvatarUrl = chatAvatarUrl,
                             enableAnimations = enableAnimations,
-                            userId = "",
+                            userId = currentUserId,
                             onBackClick = { finish() },
                             onAvatarClick = { userId, userName, chatType, currentUserPermission -> 
                                 if (chatType != 3) {
@@ -229,6 +231,7 @@ class ChatActivity : BaseActivity() {
         val newChatType = intent.getIntExtra("chatType", 1)
         val newChatName = intent.getStringExtra("chatName") ?: ""
         val newChatAvatarUrl = intent.getStringExtra("avatarUrl")
+        val newUserId = intent.getStringExtra("userId")
         
         // 读取搜索跳转参数
         val newSearchTargetMsgId = intent.getStringExtra("searchTargetMsgId")
@@ -242,6 +245,8 @@ class ChatActivity : BaseActivity() {
         chatType = newChatType
         chatName = newChatName
         chatAvatarUrl = newChatAvatarUrl
+        currentUserId = newUserId?.takeIf { it.isNotBlank() }
+            ?: RepositoryFactory.getTokenRepository(this).getUserIdSync().orEmpty()
         searchTargetMsgId = newSearchTargetMsgId
         searchTargetMsgSeq = newSearchTargetMsgSeq
         launchedFromBubble = intent.getBooleanExtra("fromBubble", false)

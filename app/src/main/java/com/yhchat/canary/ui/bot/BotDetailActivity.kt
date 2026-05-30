@@ -294,7 +294,7 @@ private fun BotDetailScreen(
 
                 SheetActionItem(
                     icon = Icons.Default.Search,
-                    title = "账号信息",
+                    title = "机器人信息",
                     onClick = {
                         showMoreSheet = false
                         showBotInfoDialog = true
@@ -631,7 +631,7 @@ private fun BotDetailContent(
                             onClick = onShowInfo,
                             shape = RoundedCornerShape(18.dp)
                         ) {
-                            Text("账号信息")
+                            Text("机器人信息")
                         }
                         Icon(
                             imageVector = if (botInfo.data.isStop == 0L) Icons.Default.CheckCircle else Icons.Default.Cancel,

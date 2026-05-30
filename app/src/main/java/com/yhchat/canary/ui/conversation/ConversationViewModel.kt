@@ -406,7 +406,6 @@ class ConversationViewModel @Inject constructor(
         }
 
         _conversations.value = updatedConversations
-        allLoadedConversations = updatedConversations
         viewModelScope.launch {
             runCatching {
                 cacheRepository.markConversationAsRead(chatId)

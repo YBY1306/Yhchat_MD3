@@ -40,6 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -574,7 +575,7 @@ private fun FriendRequestDetailBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = null
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -585,73 +586,79 @@ private fun FriendRequestDetailBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.95f)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "申请/邀请详情",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                TextButton(onClick = onDismiss) { Text("关闭") }
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "申请/邀请详情",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
             ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            model = ImageUtils.createAvatarImageRequest(
-                                context = LocalContext.current,
-                                url = item.avatar
-                            ),
-                            contentDescription = item.name,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.name.ifBlank { "未知用户" },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(
+                                model = ImageUtils.createAvatarImageRequest(
+                                    context = LocalContext.current,
+                                    url = item.avatar
+                                ),
+                                contentDescription = item.name,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
-                            Text(
-                                text = item.receiverName.ifBlank { "ID: ${item.requestId}" },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.name.ifBlank { "未知用户" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = item.receiverName.ifBlank { "ID: ${item.requestId}" },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    InfoLine(label = "请求ID", value = item.requestId.toString())
-                    InfoLine(label = "申请添加的会话ID", value = item.targetId)
-                    InfoLine(label = "处理结果", value = item.result.toString())
-                    if (item.inviteAtStr.isNotBlank()) {
-                        InfoLine(label = "时间", value = item.inviteAtStr)
-                    }
-                    InfoLine(label = "备注", value = item.note)
-                    if (item.processorName.isNotBlank()) {
-                        InfoLine(label = "处理者", value = item.processorName)
+                        InfoLine(label = "请求ID", value = item.requestId.toString())
+                        InfoLine(label = "申请添加的会话ID", value = item.targetId)
+                        InfoLine(label = "处理结果", value = item.result.toString())
+                        if (item.inviteAtStr.isNotBlank()) {
+                            InfoLine(label = "时间", value = item.inviteAtStr)
+                        }
+                        InfoLine(label = "备注", value = item.note)
+                        if (item.processorName.isNotBlank()) {
+                            InfoLine(label = "处理者", value = item.processorName)
+                        }
                     }
                 }
             }

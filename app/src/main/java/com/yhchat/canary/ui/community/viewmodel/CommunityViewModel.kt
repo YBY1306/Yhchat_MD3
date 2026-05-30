@@ -49,6 +49,9 @@ class CommunityViewModel @Inject constructor(
 
     private val _recommendPostListState = MutableStateFlow(RecommendPostListState())
     val recommendPostListState: StateFlow<RecommendPostListState> = _recommendPostListState.asStateFlow()
+
+    private val _latestPostListState = MutableStateFlow(CommunityPostListState())
+    val latestPostListState: StateFlow<CommunityPostListState> = _latestPostListState.asStateFlow()
     
     // 文章详情状态
     private val _postDetailState = MutableStateFlow(PostDetailState())
@@ -135,6 +138,66 @@ class CommunityViewModel @Inject constructor(
         val current = _recommendPostListState.value
         if (current.isLoading || !current.hasMore) return
         loadRecommendPostList(token, page = current.currentPage + 1, isRefresh = false)
+    }
+
+    fun loadLatestPostList(token: String, page: Int = 1, isRefresh: Boolean = false) {
+        viewModelScope.launch {
+            if (isRefresh) {
+                _latestPostListState.value = _latestPostListState.value.copy(
+                    isRefreshing = true,
+                    isLoading = false,
+                    error = null
+                )
+            } else {
+                _latestPostListState.value = _latestPostListState.value.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    error = null
+                )
+            }
+
+            communityRepository.getPostList(
+                token = token,
+                baId = 0,
+                typ = 4,
+                size = 20,
+                page = page
+            ).fold(
+                onSuccess = { response ->
+                    val newPosts = if (page == 1) {
+                        response.data.posts
+                    } else {
+                        _latestPostListState.value.posts + response.data.posts
+                    }
+                    _latestPostListState.value = _latestPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        posts = newPosts,
+                        total = response.data.total,
+                        currentPage = page,
+                        hasMore = newPosts.size < response.data.total,
+                        error = null
+                    )
+                },
+                onFailure = { error ->
+                    _latestPostListState.value = _latestPostListState.value.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = error.message ?: "加载最新文章失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun loadMoreLatestPosts(token: String) {
+        val current = _latestPostListState.value
+        if (current.isLoading || !current.hasMore) return
+        loadLatestPostList(token, page = current.currentPage + 1, isRefresh = false)
+    }
+
+    fun refreshLatestPostList(token: String) {
+        loadLatestPostList(token, page = 1, isRefresh = true)
     }
 
     /**
@@ -827,6 +890,7 @@ class CommunityViewModel @Inject constructor(
         _collectPostListState.value = _collectPostListState.value.copy(error = null)
         _postListState.value = _postListState.value.copy(error = null)
         _recommendPostListState.value = _recommendPostListState.value.copy(error = null)
+        _latestPostListState.value = _latestPostListState.value.copy(error = null)
         _postDetailState.value = _postDetailState.value.copy(error = null)
         _commentListState.value = _commentListState.value.copy(error = null)
     }
@@ -839,6 +903,17 @@ data class RecommendPostListState(
     val total: Int = 0,
     val currentPage: Int = 1,
     val hasMore: Boolean = false,
+    val error: String? = null
+)
+
+data class CommunityPostListState(
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val posts: List<CommunityPost> = emptyList(),
+    val total: Int = 0,
+    val currentPage: Int = 1,
+    val hasMore: Boolean = false,
+    val boardId: Int? = null,
     val error: String? = null
 )
 
@@ -858,16 +933,6 @@ data class BoardListState(
 /**
  * 社区文章列表状态
  */
-data class CommunityPostListState(
-    val isLoading: Boolean = false,
-    val posts: List<CommunityPost> = emptyList(),
-    val total: Int = 0,
-    val currentPage: Int = 1,
-    val hasMore: Boolean = false,
-    val boardId: Int? = null,
-    val error: String? = null
-)
-
 /**
  * 我的文章列表状态
  */

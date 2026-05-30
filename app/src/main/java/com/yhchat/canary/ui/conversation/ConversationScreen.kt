@@ -439,7 +439,7 @@ fun ConversationScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // 中间：搜索输入框（48dp高）
+                    // 中间：搜索输入框
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -452,7 +452,7 @@ fun ConversationScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(24.dp)
+                                .height(36.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(searchBackgroundColor)
                                 .clickable {

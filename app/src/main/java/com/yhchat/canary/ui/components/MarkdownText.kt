@@ -313,7 +313,8 @@ fun MarkdownText(
                 is MarkdownSegment.CodeBlock -> {
                     CodeBlockComponent(
                         code = segment.code,
-                        language = segment.language
+                        language = segment.language,
+                        enableTextSelection = enableTextSelection
                     )
                 }
 
@@ -778,7 +779,8 @@ private fun MarkdownInlineImage(
 @Composable
 private fun CodeBlockComponent(
     code: String,
-    language: String?
+    language: String?,
+    enableTextSelection: Boolean
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -830,18 +832,25 @@ private fun CodeBlockComponent(
             }
             
             // 代码内容
-            Text(
-                text = code,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    lineHeight = 20.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(scrollState)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+            val codeText: @Composable () -> Unit = {
+                Text(
+                    text = code,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 20.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(scrollState)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+            if (enableTextSelection) {
+                SelectionContainer { codeText() }
+            } else {
+                codeText()
+            }
         }
     }
 }

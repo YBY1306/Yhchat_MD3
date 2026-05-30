@@ -94,6 +94,7 @@ import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiHexColor
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiPaintElements
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiPieSlices
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseColor
+import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.ImageViewer
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -176,7 +177,7 @@ internal fun RenderA2UiComponent(
             }
         }
 
-        componentType == "text" || componentType == "label" || componentType == "paragraph" -> {
+        componentType == "text" || componentType == "label" || componentType == "paragraph" || componentType == "markdown" -> {
             val effectiveAlign = component.align ?: parentAlign
             val textAlign = when (effectiveAlign) {
                 "center" -> TextAlign.Center
@@ -192,18 +193,35 @@ internal fun RenderA2UiComponent(
                 modifier.fillMaxWidth()
             }
             
-            Text(
-                text = resolveA2UiValue(
-                    spec,
-                    dataModel,
-                    component.text ?: component.label ?: component.description,
-                    scopePath
-                )?.toString().orEmpty(),
-                modifier = textModifier,
-                style = textStyleFor(component.variant ?: component.usageHint),
-                color = textColorFor(component.variant ?: component.usageHint),
-                textAlign = textAlign
-            )
+            val resolvedText = resolveA2UiValue(
+                spec,
+                dataModel,
+                component.text ?: component.label ?: component.description,
+                scopePath
+            )?.toString().orEmpty()
+
+            val renderAsMarkdown = componentType == "markdown" ||
+                component.variant?.equals("markdown", ignoreCase = true) == true ||
+                component.usageHint?.equals("markdown", ignoreCase = true) == true
+
+            if (renderAsMarkdown) {
+                MarkdownText(
+                    markdown = resolvedText,
+                    modifier = textModifier,
+                    textColor = textColorFor(component.variant ?: component.usageHint),
+                    backgroundColor = Color.Transparent,
+                    enableTextSelection = false,
+                    persistRenderState = true
+                )
+            } else {
+                Text(
+                    text = resolvedText,
+                    modifier = textModifier,
+                    style = textStyleFor(component.variant ?: component.usageHint),
+                    color = textColorFor(component.variant ?: component.usageHint),
+                    textAlign = textAlign
+                )
+            }
         }
 
         componentType == "image" -> {
@@ -945,7 +963,9 @@ internal fun RenderA2UiComponent(
         componentType == "tabview" || componentType == "tabs" -> {
             val tabs = component.tabs ?: emptyList()
             val activeTabPath = resolveBoundPath(component.activeTab, scopePath)
-            val activeTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
+            val initialActiveTabIndex = (resolveA2UiValue(spec, dataModel, component.activeTab, scopePath) as? Number)?.toInt() ?: 0
+            var localActiveTabIndex by remember(component.id, scopePath) { mutableStateOf(initialActiveTabIndex) }
+            val activeTabIndex = if (activeTabPath != null) initialActiveTabIndex else localActiveTabIndex
             
             Column(modifier = modifier.fillMaxWidth()) {
                 if (tabs.isNotEmpty()) {
@@ -960,6 +980,8 @@ internal fun RenderA2UiComponent(
                                 onClick = {
                                     if (activeTabPath != null) {
                                         onDataModelChange(activeTabPath, index)
+                                    } else {
+                                        localActiveTabIndex = index
                                     }
                                 },
                                 text = { Text(tabMap["label"]?.toString() ?: "Tab ${index + 1}") }

@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,9 +36,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +53,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -57,6 +62,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -66,13 +72,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,6 +90,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.community.CommunityPostCard
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.settings.SettingsCustomItem
@@ -106,6 +116,9 @@ fun CommunityTabScreen(
     onBlockedUsersNavigate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
     
     // 获取布局设置
     val showHotTab by rememberBooleanPreference("layout_settings", "community_show_hot", true)
@@ -117,6 +130,10 @@ fun CommunityTabScreen(
     val boardListState by viewModel.boardListState.collectAsState()
     val followingBoardListState by viewModel.followingBoardListState.collectAsState()
     val allBoardListState by viewModel.allBoardListState.collectAsState()
+    val hotPostListState by viewModel.recommendPostListState.collectAsState()
+    val latestPostListState by viewModel.latestPostListState.collectAsState()
+
+    var selectedFeed by rememberSaveable { mutableStateOf("热门") }
     
     // 根据布局设置过滤可见的Tab
     val allTabs = listOf(
@@ -139,190 +156,502 @@ fun CommunityTabScreen(
         }
     }
     
-    // 监听标签选择变化，使用协程作用域获得更好的控制
-    val coroutineScope = rememberCoroutineScope()
-    
     // 监听标签选择变化
     LaunchedEffect(selectedTab) {
         if (selectedTab != pagerState.currentPage) {
             pagerState.animateScrollToPage(selectedTab)
         }
     }
-    
-    Column(
-        modifier = modifier.fillMaxSize()
+
+    fun openDrawer() {
+        coroutineScope.launch {
+            drawerState.open()
+        }
+    }
+
+    @Composable
+    fun DrawerBody() {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            YhSecondaryTabRow(
+                selectedTabIndex = selectedTab,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = {
+                            selectedTab = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .padding(horizontal = 4.dp),
+                        text = {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    )
+                }
+            }
+
+            LaunchedEffect(token) {
+                if (token.isNotEmpty()) {
+                    viewModel.loadBoardList(token)
+                    viewModel.loadFollowingBoardList(token)
+                    viewModel.loadAllBoardList(token)
+                    viewModel.loadCreatedBoardList(token)
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val currentTabTitle = tabTitles.getOrNull(page) ?: ""
+                when (currentTabTitle) {
+                    "热门" -> {
+                        val pullToRefreshState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            isRefreshing = boardListState.isRefreshing,
+                            onRefresh = { viewModel.refreshBoardList(token) },
+                            state = pullToRefreshState
+                        ) {
+                            BoardListContent(
+                                boards = boardListState.boards,
+                                isLoading = boardListState.isLoading,
+                                error = boardListState.error,
+                                onBoardClick = { board ->
+                                    if (onBoardNavigate != null) {
+                                        onBoardNavigate(board.id, board.name)
+                                    } else {
+                                        val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                            putExtra("board_id", board.id)
+                                            putExtra("board_name", board.name)
+                                            putExtra("token", token)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    "全部" -> {
+                        val pullToRefreshState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            isRefreshing = allBoardListState.isRefreshing,
+                            onRefresh = { viewModel.refreshAllBoardList(token) },
+                            state = pullToRefreshState
+                        ) {
+                            BoardListContent(
+                                boards = allBoardListState.boards,
+                                isLoading = allBoardListState.isLoading,
+                                error = allBoardListState.error,
+                                onBoardClick = { board ->
+                                    if (onBoardNavigate != null) {
+                                        onBoardNavigate(board.id, board.name)
+                                    } else {
+                                        val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                            putExtra("board_id", board.id)
+                                            putExtra("board_name", board.name)
+                                            putExtra("token", token)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    "关注" -> {
+                        val pullToRefreshState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            isRefreshing = followingBoardListState.isRefreshing,
+                            onRefresh = { viewModel.refreshFollowingBoardList(token) },
+                            state = pullToRefreshState
+                        ) {
+                            BoardListContent(
+                                boards = followingBoardListState.boards,
+                                isLoading = followingBoardListState.isLoading,
+                                error = followingBoardListState.error,
+                                onBoardClick = { board ->
+                                    if (onBoardNavigate != null) {
+                                        onBoardNavigate(board.id, board.name)
+                                    } else {
+                                        val intent = Intent(context, BoardDetailActivity::class.java).apply {
+                                            putExtra("board_id", board.id)
+                                            putExtra("board_name", board.name)
+                                            putExtra("token", token)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    "更多" -> {
+                        MoreTabContent(
+                            token = token,
+                            viewModel = viewModel,
+                            context = context,
+                            onBoardNavigate = onBoardNavigate,
+                            onMyPostsNavigate = onMyPostsNavigate,
+                            onRecommendPostsNavigate = onRecommendPostsNavigate,
+                            onMyCollectPostsNavigate = onMyCollectPostsNavigate,
+                            onBlockedUsersNavigate = onBlockedUsersNavigate,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(0.92f)
+            ) {
+                DrawerBody()
+            }
+        }
     ) {
-        // 顶部应用栏
-        TopAppBar(
-            title = {
-                Text(
-                    text = "社区",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+        androidx.compose.material3.Scaffold(
+            modifier = modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = { openDrawer() }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "打开侧边栏"
+                            )
+                        }
+                    },
+                    title = {
+                        Text(
+                            text = "社区",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    actions = {
+                        FeedToggleRow(
+                            selected = selectedFeed,
+                            onSelectedChange = { selectedFeed = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = {
+                            val intent = Intent(context, SearchActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "全局搜索"
+                            )
+                        }
+                    }
                 )
-            },
-            actions = {
-                // 全局搜索按钮
-                IconButton(onClick = {
-                    // 跳转到搜索Activity
-                    val intent = Intent(context, SearchActivity::class.java).apply {
+            }
+        ) { paddingValues ->
+            CommunityFeedScreen(
+                token = token,
+                feedType = selectedFeed,
+                hotState = hotPostListState,
+                latestState = latestPostListState,
+                onRefreshHot = { viewModel.loadRecommendPostList(token, page = 1, isRefresh = true) },
+                onRefreshLatest = { viewModel.refreshLatestPostList(token) },
+                onLoadMoreHot = { viewModel.loadMoreRecommendPosts(token) },
+                onLoadMoreLatest = { viewModel.loadMoreLatestPosts(token) },
+                onPostClick = { post ->
+                    val intent = Intent(context, PostDetailActivity::class.java).apply {
+                        putExtra("post_id", post.id)
+                        putExtra("post_title", post.title)
                         putExtra("token", token)
                     }
                     context.startActivity(intent)
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "全局搜索"
-                    )
-                }
-            }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .pointerInput(drawerState) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { offset ->
+                                if (offset.x <= size.width * 0.5f && drawerState.currentValue == DrawerValue.Closed) {
+                                    openDrawer()
+                                }
+                            }
+                        )
+                    }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeedToggleRow(
+    selected: String,
+    onSelectedChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FeedToggleChip(
+            text = "热门",
+            selected = selected == "热门",
+            onClick = { onSelectedChange("热门") }
         )
-        
-        // 标签选择栏
-        YhSecondaryTabRow(
-            selectedTabIndex = selectedTab,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary
+        Spacer(modifier = Modifier.width(6.dp))
+        FeedToggleChip(
+            text = "最新",
+            selected = selected == "最新",
+            onClick = { onSelectedChange("最新") }
+        )
+    }
+}
+
+@Composable
+private fun FeedToggleChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun CommunityFeedScreen(
+    token: String,
+    feedType: String,
+    hotState: RecommendPostListState,
+    latestState: CommunityPostListState,
+    onRefreshHot: () -> Unit,
+    onRefreshLatest: () -> Unit,
+    onLoadMoreHot: () -> Unit,
+    onLoadMoreLatest: () -> Unit,
+    onPostClick: (CommunityPost) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    val pullState = rememberPullToRefreshState()
+
+    LaunchedEffect(token, feedType) {
+        if (token.isNotEmpty()) {
+            if (feedType == "最新") {
+                if (latestState.posts.isEmpty() && !latestState.isLoading) {
+                    onRefreshLatest()
+                }
+            } else {
+                if (hotState.posts.isEmpty() && !hotState.isLoading) {
+                    onRefreshHot()
+                }
+            }
+        }
+    }
+
+    if (feedType == "最新") {
+        LaunchedEffect(latestState.posts.size, latestState.hasMore, latestState.isLoading) {
+            snapshotFlow {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val total = listState.layoutInfo.totalItemsCount
+                Triple(lastVisible, total, latestState.hasMore)
+            }.collect { (lastVisible, total, hasMore) ->
+                if (hasMore && !latestState.isLoading && total > 0 && lastVisible >= total - 3) {
+                    onLoadMoreLatest()
+                }
+            }
+        }
+        PullToRefreshBox(
+            isRefreshing = latestState.isRefreshing,
+            onRefresh = { onRefreshLatest() },
+            state = pullState,
+            modifier = modifier
         ) {
-            tabTitles.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { 
-                        selectedTab = index
-                        // 立即滚动到选中页面，不等待LaunchedEffect
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 4.dp),
-                    text = {
+            when {
+                latestState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            text = latestState.error ?: "加载失败",
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
-                )
+                }
+
+                latestState.posts.isEmpty() && latestState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(latestState.posts, key = { it.id }) { post ->
+                            CommunityPostCard(
+                                post = post,
+                                onClick = { onPostClick(post) }
+                            )
+                        }
+
+                        if (latestState.posts.isNotEmpty() && latestState.hasMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
+                        }
+
+                        if (latestState.posts.isEmpty() && !latestState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "暂无最新文章",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        
-        // 预加载数据
-        LaunchedEffect(token) {
-            if (token.isNotEmpty()) {
-                viewModel.loadBoardList(token)
-                viewModel.loadFollowingBoardList(token)
-                viewModel.loadAllBoardList(token)
-                viewModel.loadCreatedBoardList(token)
+    } else {
+        LaunchedEffect(hotState.posts.size, hotState.hasMore, hotState.isLoading) {
+            snapshotFlow {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val total = listState.layoutInfo.totalItemsCount
+                Triple(lastVisible, total, hotState.hasMore)
+            }.collect { (lastVisible, total, hasMore) ->
+                if (hasMore && !hotState.isLoading && total > 0 && lastVisible >= total - 3) {
+                    onLoadMoreHot()
+                }
             }
         }
-        
-        // 页面内容 - 根据可见的Tab标题动态显示内容
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            // 获取当前页面对应的Tab标题
-            val currentTabTitle = tabTitles.getOrNull(page) ?: ""
-            
-            when (currentTabTitle) {
-                "热门" -> {
-                    // 分区列表
-                    val pullToRefreshState = rememberPullToRefreshState()
-                    PullToRefreshBox(
-                        isRefreshing = boardListState.isRefreshing,
-                        onRefresh = { viewModel.refreshBoardList(token) },
-                        state = pullToRefreshState
+        PullToRefreshBox(
+            isRefreshing = hotState.isRefreshing,
+            onRefresh = { onRefreshHot() },
+            state = pullState,
+            modifier = modifier
+        ) {
+            when {
+                hotState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        BoardListContent(
-                            boards = boardListState.boards,
-                            isLoading = boardListState.isLoading,
-                            error = boardListState.error,
-                            onBoardClick = { board ->
-                                if (onBoardNavigate != null) {
-                                    onBoardNavigate(board.id, board.name)
-                                } else {
-                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                        putExtra("board_id", board.id)
-                                        putExtra("board_name", board.name)
-                                        putExtra("token", token)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            }
+                        Text(
+                            text = hotState.error ?: "加载失败",
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
-                "全部" -> {
-                    // 全部分区
-                    val pullToRefreshState = rememberPullToRefreshState()
-                    PullToRefreshBox(
-                        isRefreshing = allBoardListState.isRefreshing,
-                        onRefresh = { viewModel.refreshAllBoardList(token) },
-                        state = pullToRefreshState
+
+                hotState.posts.isEmpty() && hotState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        BoardListContent(
-                            boards = allBoardListState.boards,
-                            isLoading = allBoardListState.isLoading,
-                            error = allBoardListState.error,
-                            onBoardClick = { board ->
-                                if (onBoardNavigate != null) {
-                                    onBoardNavigate(board.id, board.name)
-                                } else {
-                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                        putExtra("board_id", board.id)
-                                        putExtra("board_name", board.name)
-                                        putExtra("token", token)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            }
-                        )
+                        CircularProgressIndicator()
                     }
                 }
-                "关注" -> {
-                    // 关注分区
-                    val pullToRefreshState = rememberPullToRefreshState()
-                    PullToRefreshBox(
-                        isRefreshing = followingBoardListState.isRefreshing,
-                        onRefresh = { viewModel.refreshFollowingBoardList(token) },
-                        state = pullToRefreshState
+
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        BoardListContent(
-                            boards = followingBoardListState.boards,
-                            isLoading = followingBoardListState.isLoading,
-                            error = followingBoardListState.error,
-                            onBoardClick = { board ->
-                                if (onBoardNavigate != null) {
-                                    onBoardNavigate(board.id, board.name)
-                                } else {
-                                    val intent = Intent(context, BoardDetailActivity::class.java).apply {
-                                        putExtra("board_id", board.id)
-                                        putExtra("board_name", board.name)
-                                        putExtra("token", token)
-                                    }
-                                    context.startActivity(intent)
+                        items(hotState.posts, key = { it.id }) { post ->
+                            CommunityPostCard(
+                                post = post,
+                                onClick = { onPostClick(post) }
+                            )
+                        }
+
+                        if (hotState.posts.isNotEmpty() && hotState.hasMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
                                 }
                             }
-                        )
+                        }
+
+                        if (hotState.posts.isEmpty() && !hotState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "暂无热门文章",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
-                }
-                "更多" -> {
-                    // 更多页面
-                    MoreTabContent(
-                        token = token,
-                        viewModel = viewModel,
-                        context = context,
-                        onBoardNavigate = onBoardNavigate,
-                        onMyPostsNavigate = onMyPostsNavigate,
-                        onRecommendPostsNavigate = onRecommendPostsNavigate,
-                        onMyCollectPostsNavigate = onMyCollectPostsNavigate,
-                        onBlockedUsersNavigate = onBlockedUsersNavigate,
-                    )
                 }
             }
         }

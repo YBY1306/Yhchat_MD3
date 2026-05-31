@@ -217,6 +217,11 @@ fun htmlToAnnotatedStringWithImages(
                     }
                 }
 
+                if (lowerName == "br") {
+                    builder.append('\n')
+                    return
+                }
+
                 val href = if (lowerName == "a") attributes["href"] else null
                 tagStack.add(TagInfo(lowerName, style, start, href))
             }

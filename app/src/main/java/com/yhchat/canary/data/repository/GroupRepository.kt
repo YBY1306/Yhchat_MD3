@@ -624,6 +624,52 @@ class GroupRepository @Inject constructor(
     }
     
     /**
+     * 转让群主
+     * POST /v1/group/transfer-group
+     */
+    suspend fun transferGroupOwner(
+        groupId: String,
+        userId: String
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        Log.d(tag, "👑 Transferring group owner: groupId=$groupId, userId=$userId")
+        val token = tokenRepository?.getTokenSync()
+        if (token.isNullOrEmpty()) {
+            Log.e(tag, "❌ No token available")
+            return@withContext Result.failure(Exception("未登录"))
+        }
+
+        return@withContext try {
+            val requestBody = """{"groupId":"$groupId","userId":"$userId"}"""
+                .toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$baseUrl/v1/group/transfer-group")
+                .addHeader("token", token)
+                .post(requestBody)
+                .build()
+
+            Log.d(tag, "📤 Sending transfer group owner request...")
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                val responseText = response.body?.string()
+                Log.d(tag, "✅ Group owner transferred successfully: $responseText")
+                Result.success(true)
+            } else {
+                Log.e(tag, "❌ HTTP error: ${response.code}")
+                Result.failure(Exception("转让群主失败: ${response.code}"))
+            }
+        } catch (e: IOException) {
+            Log.e(tag, "Network error", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(tag, "Unknown error", e)
+            Result.failure(e)
+        }
+    }
+
+    
+    /**
      * 禁言群成员
      * POST /v1/group/gag-member
      * @param gagTime 禁言时间: 0-取消禁言, 600-10分钟, 3600-1小时, 21600-6小时, 43200-12小时, 1-永久禁言
@@ -1174,4 +1220,3 @@ class GroupRepository @Inject constructor(
         }
     }
 }
-

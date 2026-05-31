@@ -349,5 +349,30 @@ class GroupInfoViewModel @Inject constructor(
             )
         }
     }
-}
 
+    /**
+     * 转让群主
+     */
+    fun transferGroupOwner(groupId: String, userId: String) {
+        viewModelScope.launch {
+            Log.d(tag, "Transferring group owner: groupId=$groupId, userId=$userId")
+
+            groupRepository.transferGroupOwner(groupId, userId).fold(
+                onSuccess = {
+                    Log.d(tag, "✅ Group owner transferred successfully")
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "已转让群主"
+                    )
+                    loadGroupInfo(groupId)
+                    loadGroupMembers(groupId)
+                },
+                onFailure = { error ->
+                    Log.e(tag, "❌ Failed to transfer group owner", error)
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message ?: "转让群主失败"
+                    )
+                }
+            )
+        }
+    }
+}

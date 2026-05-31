@@ -123,7 +123,7 @@ private fun HtmlFlexNode(
                 when (child) {
                     is HtmlNode.Text -> {
                         val text = normalizeHtmlText(child.text, inheritedText.whiteSpace)
-                        if (text.isNotBlank()) {
+                        if (text.hasRenderableHtmlText()) {
                             Text(text = text, style = inheritedText.toComposeTextStyle())
                         }
                     }
@@ -150,7 +150,7 @@ private fun HtmlFlexNode(
 
             if (textNodes.isNotEmpty()) {
                 val (annotated, style) = buildInlineAnnotated(textNodes, inheritedText)
-                if (annotated.text.isNotBlank()) {
+                if (annotated.text.hasRenderableHtmlText()) {
                     @Suppress("DEPRECATION")
                     ClickableText(
                         text = annotated,
@@ -337,7 +337,7 @@ private fun RenderInlineFlow(
         if (inlineBuffer.isEmpty()) return
         val (annotated, style) = buildInlineAnnotated(inlineBuffer.toList(), inheritedText)
         inlineBuffer.clear()
-        if (annotated.text.isBlank() && !annotated.text.contains('\n')) return
+        if (!annotated.text.hasRenderableHtmlText()) return
         @Suppress("DEPRECATION")
         ClickableText(
             text = annotated,

@@ -192,6 +192,7 @@ fun GroupMembersScreen(
                         onRemoveMember = { userId -> viewModel.removeMember(groupId, userId) },
                         onGagMember = { userId, gagTime -> viewModel.gagMember(groupId, userId, gagTime) },
                         onSetMemberRole = { userId, userLevel -> viewModel.setMemberRole(groupId, userId, userLevel) },
+                        onTransferGroupOwner = { userId -> viewModel.transferGroupOwner(groupId, userId) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -228,6 +229,7 @@ private fun GroupMembersContent(
     onRemoveMember: (String) -> Unit = {},
     onGagMember: (String, Int) -> Unit = { _, _ -> },
     onSetMemberRole: (String, Int) -> Unit = { _, _ -> },
+    onTransferGroupOwner: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -278,7 +280,8 @@ private fun GroupMembersContent(
                     groupId = groupId,
                     onRemoveMember = onRemoveMember,
                     onGagMember = onGagMember,
-                    onSetMemberRole = onSetMemberRole
+                    onSetMemberRole = onSetMemberRole,
+                    onTransferGroupOwner = onTransferGroupOwner
                 )
             }
             
@@ -336,14 +339,17 @@ private fun MemberItem(
     groupId: String = "",
     onRemoveMember: ((String) -> Unit)? = null,
     onGagMember: ((String, Int) -> Unit)? = null,
-    onSetMemberRole: ((String, Int) -> Unit)? = null
+    onSetMemberRole: ((String, Int) -> Unit)? = null,
+    onTransferGroupOwner: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var showGagDialog by remember { mutableStateOf(false) }
+    var showTransferOwnerDialog by remember { mutableStateOf(false) }
     
     // 判断是否显示管理菜单：除了群主外的所有成员都显示
     val showAdminMenu = member.permissionLevel < 100
+    val canTransferGroupOwner = currentUserPermission >= 100 && member.permissionLevel < 100
     
     Card(
         modifier = Modifier
@@ -485,6 +491,16 @@ private fun MemberItem(
                                 }
                             )
                         }
+
+                        if (canTransferGroupOwner) {
+                            DropdownMenuItem(
+                                text = { Text("转让群主") },
+                                onClick = {
+                                    showMenu = false
+                                    showTransferOwnerDialog = true
+                                }
+                            )
+                        }
                         
                         DropdownMenuItem(
                             text = { Text("踢出群聊") },
@@ -515,6 +531,29 @@ private fun MemberItem(
                 showGagDialog = false
             },
             onDismiss = { showGagDialog = false }
+        )
+    }
+
+    if (showTransferOwnerDialog) {
+        AlertDialog(
+            onDismissRequest = { showTransferOwnerDialog = false },
+            title = { Text("转让群主") },
+            text = { Text("确认将群主转让给 ${member.name} 吗？转让后你将不再是群主。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showTransferOwnerDialog = false
+                        onTransferGroupOwner?.invoke(member.userId)
+                    }
+                ) {
+                    Text("确认转让")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTransferOwnerDialog = false }) {
+                    Text("取消")
+                }
+            }
         )
     }
 }

@@ -257,9 +257,19 @@ internal fun normalizeHtmlText(text: String, whiteSpace: String?): String {
     if (text.isEmpty()) return text
     return when (whiteSpace?.lowercase()) {
         "pre", "pre-wrap" -> text.replace("\r\n", "\n").replace('\r', '\n')
-        "nowrap" -> text.replace(Regex("[\\t\\n\\r]+"), " ")
-        else -> text.replace(Regex("[\\t\\n\\r ]+"), " ")
+        "nowrap" -> text
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .replace(Regex("[\\t\\n]+"), " ")
+        else -> text
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .replace(Regex("[\\t ]+"), " ")
     }
+}
+
+internal fun String.hasRenderableHtmlText(): Boolean {
+    return any { char -> char == '\u00A0' || char == '\n' || !char.isWhitespace() }
 }
 
 internal fun positiveInt(value: String?, fallback: Int = 1): Int {

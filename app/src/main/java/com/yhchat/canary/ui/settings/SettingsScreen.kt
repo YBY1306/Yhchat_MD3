@@ -1920,7 +1920,7 @@ private fun LongMessageAutoCollapseSettingItem(
     SettingsSwitchItem(
         icon = Icons.Default.UnfoldLess,
         title = "长文自动折叠",
-        subtitle = if (autoCollapse) "消息超过800字时自动折叠为一行预览" else "总是直接展开显示长消息",
+        subtitle = if (autoCollapse) "文本/Markdown 超过800字、HTML超过1500字时自动折叠" else "总是直接展开显示长消息",
         checked = autoCollapse,
         onCheckedChange = { checked ->
             autoCollapse = checked

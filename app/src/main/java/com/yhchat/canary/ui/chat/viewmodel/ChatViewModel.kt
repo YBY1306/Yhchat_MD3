@@ -138,7 +138,8 @@ class ChatViewModel @Inject constructor(
     private fun shouldAutoCollapseMessage(message: ChatMessage): Boolean {
         if (!autoCollapseLongMessages) return false
         val text = message.content.text ?: return false
-        if (text.length < 800) return false
+        val collapseThreshold = if (message.contentType == 8) 1500 else 800
+        if (text.length < collapseThreshold) return false
         return collapsibleContentTypes.contains(message.contentType)
     }
 

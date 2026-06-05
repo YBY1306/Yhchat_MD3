@@ -237,7 +237,7 @@ fun GroupInfoScreenRoot(
             chatName = groupName,
             onDismiss = { showReportDialog = false },
             onSuccess = {
-                android.widget.Toast.makeText(context, "涓炬姤宸叉彁浜?, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "涓炬姤宸叉彁浜?", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -248,7 +248,7 @@ fun GroupInfoScreenRoot(
             groupName = groupName,
             onDismiss = { showInviteDialog = false },
             onSuccess = {
-                android.widget.Toast.makeText(context, "閭€璇峰凡鍙戦€?, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "閭€璇峰凡鍙戦€?", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -262,7 +262,7 @@ fun GroupInfoScreenRoot(
                         val userRepository = RepositoryFactory.getUserRepository(context)
                         userRepository.deleteFriend(groupId, 2).fold(
                             onSuccess = { _: Boolean ->
-                                android.widget.Toast.makeText(context, "宸查€€鍑虹兢鑱?, android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "宸查€€鍑虹兢鑱?", android.widget.Toast.LENGTH_SHORT).show()
                                 onBackClick()
                             },
                             onFailure = { error: Throwable ->
@@ -350,8 +350,8 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.People,
-                            title = "缇ゆ垚鍛?,
-                            subtitle = "${groupInfo.memberCount} 鍚嶆垚鍛?,
+                            title = "缇ゆ垚鍛?",
+                            subtitle = "${groupInfo.memberCount} 鍚嶆垚鍛?",
                             onClick = {
                                 GroupMembersActivity.start(
                                     context = context,
@@ -364,8 +364,8 @@ private fun GroupInfoContent(
                     {
                         GroupSwitchSettingsItem(
                             icon = Icons.Default.NotificationsOff,
-                            title = "鍏嶆墦鎵?,
-                            subtitle = if (isNoNotify) "宸插紑鍚? else "宸插叧闂?,
+                            title = "鍏嶆墦鎵?",
+                            subtitle = if (isNoNotify) "宸插紑鍚?" else "宸插叧闂?",
                             checked = isNoNotify,
                             enabled = !isSettingNoNotify,
                             showLoading = isSettingNoNotify,
@@ -400,7 +400,7 @@ private fun GroupInfoContent(
         if (groupInfo.introduction.isNotBlank()) {
             item {
                 SettingsGroup(
-                    title = "缇よ亰绠€浠?,
+                    title = "缇よ亰绠€浠?",
                     items = listOf(
                         {
                             SettingsCustomItem {
@@ -416,7 +416,7 @@ private fun GroupInfoContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "鍙洿鎺ラ暱鎸夐€夋嫨骞跺鍒?,
+                                            text = "鍙洿鎺ラ暱鎸夐€夋嫨骞跺鍒?",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -489,8 +489,8 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Person,
-                            title = "鎴戠殑缇ゆ樀绉?,
-                            subtitle = groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?,
+                            title = "鎴戠殑缇ゆ樀绉?",
+                            subtitle = groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?",
                             onClick = {
                                 nicknameInput = groupInfo.myGroupNickname.orEmpty()
                                 showNicknameDialog = true
@@ -522,7 +522,7 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Folder,
-                            title = "缇ょ綉鐩?,
+                            title = "缇ょ綉鐩?",
                             subtitle = "鏌ョ湅缇ゆ枃浠跺拰鍏变韩鍐呭",
                             onClick = {
                                 com.yhchat.canary.ui.disk.GroupDiskActivity.start(context, groupId, groupName)
@@ -532,7 +532,7 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.PersonAdd,
-                            title = "閭€璇峰ソ鍙?,
+                            title = "閭€璇峰ソ鍙?",
                             subtitle = "閭€璇峰叾浠栬仈绯讳汉鍔犲叆鏈兢",
                             onClick = onInviteClick
                         )
@@ -541,7 +541,7 @@ private fun GroupInfoContent(
                         SettingsItemCell(
                             icon = Icons.Default.Settings,
                             title = "缇よ亰璁剧疆",
-                            subtitle = "缂栬緫缇や俊鎭€佹潈闄愬拰绠＄悊椤?,
+                            subtitle = "缂栬緫缇や俊鎭€佹潈闄愬拰绠＄悊椤?",
                             onClick = {
                                 val intent = android.content.Intent(context, GroupSettingsActivity::class.java)
                                 intent.putExtra(GroupSettingsActivity.EXTRA_GROUP_ID, groupId)
@@ -553,7 +553,7 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.AutoMirrored.Filled.ExitToApp,
-                            title = "閫€鍑虹兢鑱?,
+                            title = "閫€鍑虹兢鑱?",
                             subtitle = "绂诲紑褰撳墠缇よ亰",
                             onClick = onExitClick,
                             isDestructive = true
@@ -567,11 +567,11 @@ private fun GroupInfoContent(
     if (showNicknameDialog) {
         AlertDialog(
             onDismissRequest = { if (!isUpdatingNickname) showNicknameDialog = false },
-            title = { Text("璁剧疆鎴戠殑缇ゆ樀绉?) },
+            title = { Text("璁剧疆鎴戠殑缇ゆ樀绉?") },
             text = {
                 Column {
                     Text(
-                        text = "褰撳墠鏄电О: ${groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?}",
+                        text = "褰撳墠鏄电О: ${groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -579,7 +579,7 @@ private fun GroupInfoContent(
                     OutlinedTextField(
                         value = nicknameInput,
                         onValueChange = { nicknameInput = it },
-                        label = { Text("缇ゆ樀绉?) },
+                        label = { Text("缇ゆ樀绉?") },
                         enabled = !isUpdatingNickname,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -596,7 +596,7 @@ private fun GroupInfoContent(
                                 withContext(Dispatchers.Main) {
                                     result.fold(
                                         onSuccess = {
-                                            android.widget.Toast.makeText(context, "缇ゆ樀绉颁慨鏀规垚鍔?, android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "缇ゆ樀绉颁慨鏀规垚鍔?", android.widget.Toast.LENGTH_SHORT).show()
                                             isUpdatingNickname = false
                                             showNicknameDialog = false
                                             onRefresh()
@@ -638,7 +638,7 @@ private fun GroupInfoContent(
             }
         )
     }
-
+    
     previewImageUrl?.let { imageUrl ->
         com.yhchat.canary.ui.components.ImageViewer(
             imageUrl = imageUrl,
@@ -666,7 +666,7 @@ private fun GroupHeaderSettingsItem(
                     context = LocalContext.current,
                     url = groupInfo.avatarUrl
                 ),
-                contentDescription = "缇ゅご鍍?,
+                contentDescription = "缇ゅご鍍?",
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
@@ -696,7 +696,7 @@ private fun GroupHeaderSettingsItem(
                     modifier = Modifier.clickable(onClick = onCopyGroupId)
                 )
                 Text(
-                    text = "${groupInfo.memberCount} 鍚嶆垚鍛?,
+                    text = "${groupInfo.memberCount} 鍚嶆垚鍛?",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -776,13 +776,13 @@ fun ExitGroupDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "閫€鍑虹兢鑱?,
+                text = "閫€鍑虹兢鑱?",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Text("纭畾瑕侀€€鍑虹兢鑱娿€?groupName銆嶅悧锛?)
+            Text("纭畾瑕侀€€鍑虹兢鑱娿€?groupName銆嶅悧锛?")
         },
         confirmButton = {
             Button(
@@ -791,7 +791,7 @@ fun ExitGroupDialog(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("閫€鍑?, color = MaterialTheme.colorScheme.onError)
+                Text("閫€鍑?", color = MaterialTheme.colorScheme.onError)
             }
         },
         dismissButton = {

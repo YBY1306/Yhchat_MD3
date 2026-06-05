@@ -804,5 +804,5 @@ fun ExitGroupDialog(
 
 private fun formatGroupUnbanTime(timestamp: Long?): String {
     if (timestamp == null || timestamp <= 0L) return "未设置"
-    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp * 1000L))
 }

@@ -1262,10 +1262,17 @@ class ChatViewModel @Inject constructor(
                 it.sender.chatType == 3 && it.chatId == event.chatId
             }?.sender
 
-            val baseSender = senderOverride
-                ?: latestKnownSender
-                ?: resolveGroupBotSender(event.recvId)
-                ?: buildDefaultBotSender(event.recvId, event.chatId)
+            val baseSender = if (currentChatType == 3) {
+                // 机器人私聊的流式消息，sender 必须固定为 botId，不能用 recvId 兜底。
+                senderOverride
+                    ?: latestKnownSender
+                    ?: buildDefaultBotSender(event.chatId, event.recvId)
+            } else {
+                senderOverride
+                    ?: latestKnownSender
+                    ?: resolveGroupBotSender(event.recvId)
+                    ?: buildDefaultBotSender(event.chatId, event.recvId)
+            }
 
             val initialContent = buildString {
                 val cached = streamingMessages[event.msgId].orEmpty()
@@ -1304,7 +1311,17 @@ class ChatViewModel @Inject constructor(
             val baseContent = streamingMessages[event.msgId] ?: existingMessage.content.text.orEmpty()
             val accumulatedContent = baseContent + event.content
             streamingMessages[event.msgId] = accumulatedContent
-            streamingMessageSenders.putIfAbsent(event.msgId, existingMessage.sender)
+            val resolvedSender = if (currentChatType == 3) {
+                senderOverride
+                    ?: existingMessage.sender.takeIf { it.chatType == 3 && it.chatId == event.chatId }
+                    ?: buildDefaultBotSender(event.chatId, event.recvId)
+            } else {
+                senderOverride
+                    ?: existingMessage.sender.takeIf { it.chatType == 3 && it.chatId == event.chatId }
+                    ?: resolveGroupBotSender(event.recvId)
+                    ?: buildDefaultBotSender(event.chatId, event.recvId)
+            }
+            streamingMessageSenders.putIfAbsent(event.msgId, resolvedSender)
 
             val resolvedContentType = when {
                 existingMessage.contentType == 14 -> 14
@@ -1313,6 +1330,11 @@ class ChatViewModel @Inject constructor(
             }
 
             val updatedMessage = existingMessage.copy(
+                sender = if (existingMessage.sender.chatType == 3 && existingMessage.sender.chatId != event.chatId) {
+                    resolvedSender
+                } else {
+                    existingMessage.sender
+                },
                 contentType = resolvedContentType,
                 content = existingMessage.content.copy(text = accumulatedContent)
             )
@@ -1337,11 +1359,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun buildDefaultBotSender(recvId: String?, chatId: String): com.yhchat.canary.data.model.MessageSender {
+    private fun buildDefaultBotSender(chatId: String, recvId: String?): com.yhchat.canary.data.model.MessageSender {
         val botInfo = uiState.value.botInfo?.data
         val resolvedName = botInfo?.name?.takeIf { it.isNotBlank() } ?: "机器人"
         val resolvedAvatar = botInfo?.avatarUrl.orEmpty()
-        val resolvedChatId = recvId?.takeIf { it.isNotBlank() } ?: chatId
+        // 机器人会话里，发送者始终应是 botId 本身；recvId 只是消息接收者，不能拿来当 sender。
+        val resolvedChatId = chatId.takeIf { it.isNotBlank() } ?: recvId.orEmpty()
         return com.yhchat.canary.data.model.MessageSender(
             chatId = resolvedChatId,
             chatType = 3,

@@ -590,7 +590,9 @@ class UserRepository @Inject constructor(
                         ownerId = group.createBy,
                         limitedMsgType = "",
                         avatarId = group.avatarId.toLong(),
-                        recommendation = null
+                        recommendation = null,
+                        unbanTimestamp = if (group.unbanTimestamp > 0L) group.unbanTimestamp else null,
+                        banReason = group.banReason.takeIf { it.isNotBlank() }
                     )
                     Result.success(groupDetail)
                 } else {

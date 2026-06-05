@@ -333,7 +333,9 @@ class GroupRepository @Inject constructor(
                 recommendation = data.recommandation,
                 myGroupNickname = data.myGroupNickname.takeIf { it.isNotEmpty() },
                 groupCode = data.groupCode.takeIf { it.isNotEmpty() },
-                autoDeleteMessage = data.autoDeleteMessage
+                autoDeleteMessage = data.autoDeleteMessage,
+                unbanTimestamp = if (data.unbanTimestamp > 0L) data.unbanTimestamp else null,
+                banReason = data.banReason.takeIf { it.isNotBlank() }
             )
 
             Log.d(

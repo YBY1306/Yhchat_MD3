@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.group
+﻿package com.yhchat.canary.ui.group
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
@@ -74,9 +74,7 @@ import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
 import com.yhchat.canary.ui.settings.SettingsItemCell
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers`r`nimport kotlinx.coroutines.launch`r`nimport kotlinx.coroutines.withContext`r`nimport java.text.SimpleDateFormat`r`nimport java.util.Date`r`nimport java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,7 +116,7 @@ fun GroupInfoScreenRoot(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "群聊详情",
+                                text = "缇よ亰璇︽儏",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -128,7 +126,7 @@ fun GroupInfoScreenRoot(
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回"
+                                contentDescription = "杩斿洖"
                             )
                         }
                     },
@@ -136,7 +134,7 @@ fun GroupInfoScreenRoot(
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "群聊设置"
+                                contentDescription = "缇よ亰璁剧疆"
                             )
                         }
                     },
@@ -164,13 +162,13 @@ fun GroupInfoScreenRoot(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = uiState.error ?: "加载失败",
+                                text = uiState.error ?: "鍔犺浇澶辫触",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = { viewModel.loadGroupInfo(groupId) }) {
-                                Text("重试")
+                                Text("閲嶈瘯")
                             }
                         }
                     }
@@ -234,7 +232,7 @@ fun GroupInfoScreenRoot(
             chatName = groupName,
             onDismiss = { showReportDialog = false },
             onSuccess = {
-                android.widget.Toast.makeText(context, "举报已提交", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "涓炬姤宸叉彁浜?, android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -245,7 +243,7 @@ fun GroupInfoScreenRoot(
             groupName = groupName,
             onDismiss = { showInviteDialog = false },
             onSuccess = {
-                android.widget.Toast.makeText(context, "邀请已发送", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "閭€璇峰凡鍙戦€?, android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -259,15 +257,15 @@ fun GroupInfoScreenRoot(
                         val userRepository = RepositoryFactory.getUserRepository(context)
                         userRepository.deleteFriend(groupId, 2).fold(
                             onSuccess = { _: Boolean ->
-                                android.widget.Toast.makeText(context, "已退出群聊", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "宸查€€鍑虹兢鑱?, android.widget.Toast.LENGTH_SHORT).show()
                                 onBackClick()
                             },
                             onFailure = { error: Throwable ->
-                                android.widget.Toast.makeText(context, "退出失败：${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "閫€鍑哄け璐ワ細${error.message}", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         )
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "退出失败：${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "閫€鍑哄け璐ワ細${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
                 showExitGroupDialog = false
@@ -329,7 +327,7 @@ private fun GroupInfoContent(
     ) {
         item {
             SettingsGroup(
-                title = "群聊",
+                title = "缇よ亰",
                 items = listOf(
                     {
                         GroupHeaderSettingsItem(
@@ -339,7 +337,7 @@ private fun GroupInfoContent(
                                 val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                 val clip = android.content.ClipData.newPlainText("groupId", groupInfo.groupId)
                                 clipboardManager.setPrimaryClip(clip)
-                                android.widget.Toast.makeText(context, "已复制群聊ID", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "宸插鍒剁兢鑱奍D", android.widget.Toast.LENGTH_SHORT).show()
                             },
                             onShareClick = onShareClick
                         )
@@ -347,8 +345,8 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.People,
-                            title = "群成员",
-                            subtitle = "${groupInfo.memberCount} 名成员",
+                            title = "缇ゆ垚鍛?,
+                            subtitle = "${groupInfo.memberCount} 鍚嶆垚鍛?,
                             onClick = {
                                 GroupMembersActivity.start(
                                     context = context,
@@ -361,8 +359,8 @@ private fun GroupInfoContent(
                     {
                         GroupSwitchSettingsItem(
                             icon = Icons.Default.NotificationsOff,
-                            title = "免打扰",
-                            subtitle = if (isNoNotify) "已开启" else "已关闭",
+                            title = "鍏嶆墦鎵?,
+                            subtitle = if (isNoNotify) "宸插紑鍚? else "宸插叧闂?,
                             checked = isNoNotify,
                             enabled = !isSettingNoNotify,
                             showLoading = isSettingNoNotify,
@@ -377,12 +375,12 @@ private fun GroupInfoContent(
                                         noNotify = if (checked) 1 else 0
                                     ).fold(
                                         onSuccess = {
-                                            android.widget.Toast.makeText(context, "设置成功", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "璁剧疆鎴愬姛", android.widget.Toast.LENGTH_SHORT).show()
                                             onRefresh()
                                         },
                                         onFailure = { error ->
                                             isNoNotify = !checked
-                                            android.widget.Toast.makeText(context, "设置失败：${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "璁剧疆澶辫触锛?{error.message}", android.widget.Toast.LENGTH_SHORT).show()
                                         }
                                     )
                                     isSettingNoNotify = false
@@ -397,7 +395,7 @@ private fun GroupInfoContent(
         if (groupInfo.introduction.isNotBlank()) {
             item {
                 SettingsGroup(
-                    title = "群聊简介",
+                    title = "缇よ亰绠€浠?,
                     items = listOf(
                         {
                             SettingsCustomItem {
@@ -413,7 +411,7 @@ private fun GroupInfoContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "可直接长按选择并复制",
+                                            text = "鍙洿鎺ラ暱鎸夐€夋嫨骞跺鍒?,
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -440,23 +438,54 @@ private fun GroupInfoContent(
             }
         }
 
+        if (!groupInfo.banReason.isNullOrBlank() || groupInfo.unbanTimestamp != null) {
+            item {
+                SettingsGroup(
+                    title = "封禁信息",
+                    items = listOf(
+                        {
+                            SettingsCustomItem {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "封禁原因: ${groupInfo.banReason?.takeIf { it.isNotBlank() } ?: "未设置"}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "解禁时间: ${formatGroupUnbanTime(groupInfo.unbanTimestamp)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    )
+                )
+            }
+        }
+
         item {
             SettingsGroup(
-                title = "功能",
+                title = "鍔熻兘",
                 items = listOf(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Search,
-                            title = "搜索聊天记录",
-                            subtitle = "按关键词查找当前群的历史消息",
+                            title = "鎼滅储鑱婂ぉ璁板綍",
+                            subtitle = "鎸夊叧閿瘝鏌ユ壘褰撳墠缇ょ殑鍘嗗彶娑堟伅",
                             onClick = onSearchChatClick
                         )
                     },
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Person,
-                            title = "我的群昵称",
-                            subtitle = groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "未设置",
+                            title = "鎴戠殑缇ゆ樀绉?,
+                            subtitle = groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?,
                             onClick = {
                                 nicknameInput = groupInfo.myGroupNickname.orEmpty()
                                 showNicknameDialog = true
@@ -466,16 +495,16 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Report,
-                            title = "举报群聊",
-                            subtitle = "提交违规举报",
+                            title = "涓炬姤缇よ亰",
+                            subtitle = "鎻愪氦杩濊涓炬姤",
                             onClick = onReportClick
                         )
                     },
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Wallpaper,
-                            title = "设置聊天背景",
-                            subtitle = "单独设置这个群的聊天背景",
+                            title = "璁剧疆鑱婂ぉ鑳屾櫙",
+                            subtitle = "鍗曠嫭璁剧疆杩欎釜缇ょ殑鑱婂ぉ鑳屾櫙",
                             onClick = {
                                 com.yhchat.canary.ui.background.ChatBackgroundActivity.start(
                                     context,
@@ -488,8 +517,8 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Folder,
-                            title = "群网盘",
-                            subtitle = "查看群文件和共享内容",
+                            title = "缇ょ綉鐩?,
+                            subtitle = "鏌ョ湅缇ゆ枃浠跺拰鍏变韩鍐呭",
                             onClick = {
                                 com.yhchat.canary.ui.disk.GroupDiskActivity.start(context, groupId, groupName)
                             }
@@ -498,16 +527,16 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.Default.PersonAdd,
-                            title = "邀请好友",
-                            subtitle = "邀请其他联系人加入本群",
+                            title = "閭€璇峰ソ鍙?,
+                            subtitle = "閭€璇峰叾浠栬仈绯讳汉鍔犲叆鏈兢",
                             onClick = onInviteClick
                         )
                     },
                     {
                         SettingsItemCell(
                             icon = Icons.Default.Settings,
-                            title = "群聊设置",
-                            subtitle = "编辑群信息、权限和管理项",
+                            title = "缇よ亰璁剧疆",
+                            subtitle = "缂栬緫缇や俊鎭€佹潈闄愬拰绠＄悊椤?,
                             onClick = {
                                 val intent = android.content.Intent(context, GroupSettingsActivity::class.java)
                                 intent.putExtra(GroupSettingsActivity.EXTRA_GROUP_ID, groupId)
@@ -519,8 +548,8 @@ private fun GroupInfoContent(
                     {
                         SettingsItemCell(
                             icon = Icons.AutoMirrored.Filled.ExitToApp,
-                            title = "退出群聊",
-                            subtitle = "离开当前群聊",
+                            title = "閫€鍑虹兢鑱?,
+                            subtitle = "绂诲紑褰撳墠缇よ亰",
                             onClick = onExitClick,
                             isDestructive = true
                         )
@@ -533,11 +562,11 @@ private fun GroupInfoContent(
     if (showNicknameDialog) {
         AlertDialog(
             onDismissRequest = { if (!isUpdatingNickname) showNicknameDialog = false },
-            title = { Text("设置我的群昵称") },
+            title = { Text("璁剧疆鎴戠殑缇ゆ樀绉?) },
             text = {
                 Column {
                     Text(
-                        text = "当前昵称: ${groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "未设置"}",
+                        text = "褰撳墠鏄电О: ${groupInfo.myGroupNickname?.takeIf { it.isNotBlank() } ?: "鏈缃?}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -545,7 +574,7 @@ private fun GroupInfoContent(
                     OutlinedTextField(
                         value = nicknameInput,
                         onValueChange = { nicknameInput = it },
-                        label = { Text("群昵称") },
+                        label = { Text("缇ゆ樀绉?) },
                         enabled = !isUpdatingNickname,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -562,20 +591,20 @@ private fun GroupInfoContent(
                                 withContext(Dispatchers.Main) {
                                     result.fold(
                                         onSuccess = {
-                                            android.widget.Toast.makeText(context, "群昵称修改成功", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "缇ゆ樀绉颁慨鏀规垚鍔?, android.widget.Toast.LENGTH_SHORT).show()
                                             isUpdatingNickname = false
                                             showNicknameDialog = false
                                             onRefresh()
                                         },
                                         onFailure = { error ->
-                                            android.widget.Toast.makeText(context, "修改失败: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "淇敼澶辫触: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
                                             isUpdatingNickname = false
                                         }
                                     )
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    android.widget.Toast.makeText(context, "修改失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, "淇敼澶辫触: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                     isUpdatingNickname = false
                                 }
                             }
@@ -590,7 +619,7 @@ private fun GroupInfoContent(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("确定")
+                        Text("纭畾")
                     }
                 }
             },
@@ -599,7 +628,7 @@ private fun GroupInfoContent(
                     onClick = { showNicknameDialog = false },
                     enabled = !isUpdatingNickname
                 ) {
-                    Text("取消")
+                    Text("鍙栨秷")
                 }
             }
         )
@@ -632,7 +661,7 @@ private fun GroupHeaderSettingsItem(
                     context = LocalContext.current,
                     url = groupInfo.avatarUrl
                 ),
-                contentDescription = "群头像",
+                contentDescription = "缇ゅご鍍?,
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
@@ -662,7 +691,7 @@ private fun GroupHeaderSettingsItem(
                     modifier = Modifier.clickable(onClick = onCopyGroupId)
                 )
                 Text(
-                    text = "${groupInfo.memberCount} 名成员",
+                    text = "${groupInfo.memberCount} 鍚嶆垚鍛?,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -671,7 +700,7 @@ private fun GroupHeaderSettingsItem(
             IconButton(onClick = onShareClick) {
                 Icon(
                     imageVector = Icons.Default.Share,
-                    contentDescription = "分享群聊",
+                    contentDescription = "鍒嗕韩缇よ亰",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -742,13 +771,13 @@ fun ExitGroupDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "退出群聊",
+                text = "閫€鍑虹兢鑱?,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Text("确定要退出群聊「$groupName」吗？")
+            Text("纭畾瑕侀€€鍑虹兢鑱娿€?groupName銆嶅悧锛?)
         },
         confirmButton = {
             Button(
@@ -757,13 +786,18 @@ fun ExitGroupDialog(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("退出", color = MaterialTheme.colorScheme.onError)
+                Text("閫€鍑?, color = MaterialTheme.colorScheme.onError)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text("鍙栨秷")
             }
         }
     )
+}
+
+private fun formatGroupUnbanTime(timestamp: Long?): String {
+    if (timestamp == null || timestamp <= 0L) return "未设置"
+    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 }

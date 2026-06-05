@@ -1520,7 +1520,9 @@ data class GroupDetail(
     val recommendation: Int? = null,
     val myGroupNickname: String? = null,
     val groupCode: String? = null,
-    val autoDeleteMessage: Long = 0L
+    val autoDeleteMessage: Long = 0L,
+    val unbanTimestamp: Long? = null,
+    val banReason: String? = null
 )
 
 /**
@@ -1719,4 +1721,3 @@ data class MenuButton(
     val menuAction: Int, // 操作类型
     val select: String = "" // 选择的选项,在选择按钮的时候也作为状态,选中为1,未选中为0
 )
-

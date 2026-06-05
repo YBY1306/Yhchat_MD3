@@ -346,7 +346,7 @@ fun MessageItem(
                         onRecall = onRecall,
                         onPlusOne = onPlusOne,
                         onForward = onForward,
-                        onFavorite = favoriteMessage,
+                        onFavorite = { _ -> favoriteMessage() },
                         onMultiSelect = onMultiSelect,
                         isStreaming = isStreaming
                     )

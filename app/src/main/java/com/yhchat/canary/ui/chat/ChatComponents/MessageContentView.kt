@@ -103,6 +103,7 @@ fun MessageContentView(
     onRecall: (String) -> Unit = {},
     onPlusOne: (ChatMessage) -> Unit = {},
     onForward: (ChatMessage) -> Unit = {},
+    onFavorite: (ChatMessage) -> Unit = {},
     onMultiSelect: (() -> Unit)? = null,
     isStreaming: Boolean = false
 ) {
@@ -156,6 +157,7 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
+                            onFavorite = { onFavorite(message) },
                             onMultiSelect = onMultiSelect,
                             onOpenInInternalBrowser = openHtmlInInternalBrowser
                         ) {
@@ -441,6 +443,7 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
+                            onFavorite = { onFavorite(message) },
                             onMultiSelect = onMultiSelect
                         ) {
                             Text(
@@ -505,6 +508,7 @@ fun MessageContentView(
                                     { onRecall(message.msgId) }
                                 } else null,
                                 onPlusOne = { onPlusOne(message) },
+                                onFavorite = { onFavorite(message) },
                                 onMultiSelect = onMultiSelect
                             ) {
                                 Text(
@@ -533,6 +537,7 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
+                            onFavorite = { onFavorite(message) },
                             onMultiSelect = onMultiSelect
                         ) {
                             Text(
@@ -554,6 +559,7 @@ fun MessageContentView(
                                 { onRecall(message.msgId) }
                             } else null,
                             onPlusOne = { onPlusOne(message) },
+                            onFavorite = { onFavorite(message) },
                             onMultiSelect = onMultiSelect
                         ) {
                             MarkdownText(
@@ -739,20 +745,21 @@ fun MessageContentView(
                 // 其他类型消息，显示文本内容
                 content.text?.let { text ->
                     // 使用自定义SelectionContainer，在文本选择菜单中添加消息操作
-                    MessageSelectionContainer(
-                        onQuote = if (message.contentType in listOf(1, 3, 8)) {
-                            { onQuote(message.msgId, text) }
-                        } else null,
-                        onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
-                            { onEdit(message) }
-                        } else null,
-                        onDelete = when (conversationChatType) {
-                            2 -> if (message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
-                            1, 3 -> if (isMyMessage && message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
-                            else -> null
-                        },
-                        onPlusOne = { onPlusOne(message) }
-                    ) {
+                            MessageSelectionContainer(
+                                onQuote = if (message.contentType in listOf(1, 3, 8)) {
+                                    { onQuote(message.msgId, text) }
+                                } else null,
+                                onEdit = if (message.contentType in listOf(1, 3, 8) && isMyMessage) {
+                                    { onEdit(message) }
+                                } else null,
+                                onDelete = when (conversationChatType) {
+                                    2 -> if (message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
+                                    1, 3 -> if (isMyMessage && message.msgDeleteTime == null) {{ onRecall(message.msgId) }} else null
+                                    else -> null
+                                },
+                                onPlusOne = { onPlusOne(message) },
+                                onFavorite = { onFavorite(message) }
+                            ) {
                         val containsExpressionToken = text.contains("[.") && text.contains("]")
                         val containsLink = LinkDetector.containsLink(text)
                         if (showInlineExpressions && (containsExpressionToken || containsLink)) {

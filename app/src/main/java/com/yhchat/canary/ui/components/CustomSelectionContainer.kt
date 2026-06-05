@@ -34,6 +34,7 @@ fun MessageSelectionContainer(
     onMultiSelect: (() -> Unit)? = null,
     onCopyAll: (() -> Unit)? = null,
     onFreeCopy: (() -> Unit)? = null,
+    onFavorite: (() -> Unit)? = null,
     onOpenInInternalBrowser: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -51,6 +52,7 @@ fun MessageSelectionContainer(
         onMultiSelect,
         onCopyAll,
         onFreeCopy,
+        onFavorite,
         onOpenInInternalBrowser
     ) {
         CustomTextToolbar(
@@ -64,11 +66,12 @@ fun MessageSelectionContainer(
             onMultiSelect = onMultiSelect,
             onCopyAll = onCopyAll,
             onFreeCopy = onFreeCopy,
+            onFavorite = onFavorite,
             onOpenInInternalBrowser = onOpenInInternalBrowser
         )
     }
     
-    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onCopyAll, onFreeCopy, onOpenInInternalBrowser) {
+    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onCopyAll, onFreeCopy, onFavorite, onOpenInInternalBrowser) {
         Modifier.appendTextContextMenuComponents {
             onCopyAll?.let { action ->
                 item(
@@ -130,6 +133,16 @@ fun MessageSelectionContainer(
                     close()
                 }
             }
+            onFavorite?.let { action ->
+                item(
+                    key = MENU_ITEM_FAVORITE,
+                    label = "收藏",
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action()
+                    close()
+                }
+            }
             onMultiSelect?.let { action ->
                 item(
                     key = MENU_ITEM_MULTI_SELECT,
@@ -181,6 +194,7 @@ private const val MENU_ITEM_DELETE = 1006
 private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
 private const val MENU_ITEM_COPY_ALL = 1008
 private const val MENU_ITEM_FREE_COPY = 1009
+private const val MENU_ITEM_FAVORITE = 1010
 
 /**
  * 自定义文本工具栏
@@ -196,6 +210,7 @@ private class CustomTextToolbar(
     private val onMultiSelect: (() -> Unit)?,
     private val onCopyAll: (() -> Unit)?,
     private val onFreeCopy: (() -> Unit)?,
+    private val onFavorite: (() -> Unit)?,
     private val onOpenInInternalBrowser: (() -> Unit)?
 ) : TextToolbar {
     
@@ -270,19 +285,24 @@ private class CustomTextToolbar(
                     menu.add(0, MENU_ITEM_FORWARD, 13, "转发")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
+
+                onFavorite?.let {
+                    menu.add(0, MENU_ITEM_FAVORITE, 14, "收藏")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
                 
                 onMultiSelect?.let {
-                    menu.add(0, MENU_ITEM_MULTI_SELECT, 14, "多选")
+                    menu.add(0, MENU_ITEM_MULTI_SELECT, 15, "多选")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
 
                 onOpenInInternalBrowser?.let {
-                    menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 15, "在内置浏览器中打开")
+                    menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 16, "在内置浏览器中打开")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
                 onDelete?.let {
-                    menu.add(0, MENU_ITEM_DELETE, 16, "撤回")
+                    menu.add(0, MENU_ITEM_DELETE, 17, "撤回")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
@@ -329,6 +349,11 @@ private class CustomTextToolbar(
                     }
                     MENU_ITEM_FORWARD -> {
                         onForward?.invoke()
+                        mode.finish()
+                        true
+                    }
+                    MENU_ITEM_FAVORITE -> {
+                        onFavorite?.invoke()
                         mode.finish()
                         true
                     }

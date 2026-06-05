@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.AlertDialog
@@ -63,6 +64,7 @@ fun MessageContextMenu(
     onSaveAudio: (() -> Unit)? = null,
     onSpeechToText: (() -> Unit)? = null,  // 语音转文字
     onPlusOne: (() -> Unit)? = null,  // +1 复制发送同样消息
+    onFavorite: (() -> Unit)? = null,  // 收藏消息到本地
     onMultiSelect: (() -> Unit)? = null,  // 多选
     onOpenInInternalBrowser: (() -> Unit)? = null
 ) {
@@ -292,6 +294,27 @@ fun MessageContextMenu(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("+1", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+
+                if (onFavorite != null) {
+                    TextButton(
+                        onClick = onFavorite,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "收藏",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("收藏")
                         }
                     }
                 }

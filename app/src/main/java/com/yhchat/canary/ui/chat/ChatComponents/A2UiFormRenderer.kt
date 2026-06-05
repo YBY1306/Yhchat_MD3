@@ -65,7 +65,7 @@ internal fun A2UiFormMessage(
 
 private fun A2UiSpec.preferredSurfaceWidthDp(): Int {
     val explicitRootWidth = resolveRootComponentId(components)
-        ?.let { components[it]?.width?.toPositiveInt() }
+        ?.let { rootId -> components[rootId]?.width?.toPositiveInt() }
     if (explicitRootWidth != null) return explicitRootWidth
 
     val hasDesktopRows = components.values.any { component ->
@@ -84,7 +84,7 @@ private fun Number.toPositiveInt(): Int? {
         is Long -> this.toInt()
         is Float -> this.toInt()
         is Double -> this.toInt()
-        else -> toString().toIntOrNull()
+        else -> this.toString().toIntOrNull()
     } ?: return null
     return value.takeIf { it > 0 }
 }

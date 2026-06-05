@@ -75,8 +75,11 @@ import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.webview.WebViewActivity
+import com.yhchat.canary.utils.FavoriteMessageStore
 import com.yhchat.canary.utils.UnifiedLinkHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -122,6 +125,18 @@ fun MessageItem(
 
     var showFreeCopyDialog by remember { mutableStateOf(false) }
     var freeCopyText by remember { mutableStateOf("") }
+    val favoriteMessage: () -> Unit = {
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                FavoriteMessageStore.saveMessage(message)
+            }
+            Toast.makeText(
+                context,
+                if (result.isSuccess) "已收藏" else "收藏失败：${result.exceptionOrNull()?.message ?: "未知错误"}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
     val openHtmlInInternalBrowser = remember(message.msgId, message.content.text) {
         {
             message.content.text?.takeIf { it.isNotBlank() }?.let { html ->
@@ -331,6 +346,7 @@ fun MessageItem(
                         onRecall = onRecall,
                         onPlusOne = onPlusOne,
                         onForward = onForward,
+                        onFavorite = favoriteMessage,
                         onMultiSelect = onMultiSelect,
                         isStreaming = isStreaming
                     )
@@ -490,6 +506,10 @@ fun MessageItem(
             } else null,
             onPlusOne = {
                 onPlusOne(message)
+                showContextMenuDialog = false
+            },
+            onFavorite = {
+                favoriteMessage()
                 showContextMenuDialog = false
             },
             onMultiSelect = {

@@ -74,7 +74,12 @@ import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
 import com.yhchat.canary.ui.settings.SettingsItemCell
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
-import kotlinx.coroutines.Dispatchers`r`nimport kotlinx.coroutines.launch`r`nimport kotlinx.coroutines.withContext`r`nimport java.text.SimpleDateFormat`r`nimport java.util.Date`r`nimport java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

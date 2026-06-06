@@ -24,9 +24,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +40,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhTopBar
 
 /**
  * 文章列表界面
@@ -69,14 +68,9 @@ fun PostListScreen(
             modifier = Modifier.fillMaxSize()
         ) {
         // 顶部应用栏
-        TopAppBar(
-            title = {
-                Text(
-                    text = boardName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
+        YhTopBar(
+            title = boardName,
+            large = false,
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
@@ -97,13 +91,11 @@ fun PostListScreen(
         
         // 错误提示
         error?.let { errorMessage ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = errorMessage,
@@ -130,7 +122,7 @@ fun PostListScreen(
             // 加载更多按钮
             if (posts.isNotEmpty()) {
                 item {
-                    Button(
+                    YhButton(
                         onClick = onLoadMore,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -194,11 +186,11 @@ fun PostItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

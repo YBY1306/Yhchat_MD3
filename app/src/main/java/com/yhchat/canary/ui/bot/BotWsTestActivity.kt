@@ -25,19 +25,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +49,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -204,19 +203,11 @@ private fun BotWsTestScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(text = "事件测试", fontWeight = FontWeight.Bold)
-                        Text(
-                            text = "$botName · $botId",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            YhTopBar(
+                title = "事件测试",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -239,7 +230,7 @@ private fun BotWsTestScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = wsUrl,
                     onValueChange = { wsUrl = it },
                     modifier = Modifier.weight(1f),
@@ -250,18 +241,11 @@ private fun BotWsTestScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                val buttonColors = if (isConnected) {
-                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                } else {
-                    ButtonDefaults.buttonColors()
-                }
-
-                Button(
+                YhButton(
                     onClick = {
                         if (isConnected) disconnect() else connect()
                     },
-                    enabled = !isConnecting,
-                    colors = buttonColors
+                    enabled = !isConnecting
                 ) {
                     if (isConnecting) {
                         CircularProgressIndicator(

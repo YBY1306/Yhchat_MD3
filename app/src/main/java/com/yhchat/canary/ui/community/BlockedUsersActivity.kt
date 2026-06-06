@@ -21,20 +21,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +42,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BlockedUser
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -102,17 +100,12 @@ fun BlockedUsersScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "屏蔽用户",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "屏蔽用户",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -132,13 +125,11 @@ fun BlockedUsersScreen(
         ) {
             // 错误提示
             blockedUsersState.error?.let { error ->
-                Card(
+                YhCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
                         text = error,
@@ -176,7 +167,7 @@ fun BlockedUsersScreen(
                 // 加载更多按钮
                 if (blockedUsersState.users.isNotEmpty() && blockedUsersState.hasMore) {
                     item {
-                        Button(
+                        YhButton(
                             onClick = { viewModel.loadMoreBlockedUsers(token) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -232,12 +223,12 @@ fun BlockedUsersScreen(
     
     // 取消屏蔽错误提示
     unblockState.error?.let { error ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { viewModel.resetUnblockState() },
             title = { Text("错误") },
             text = { Text(error) },
             confirmButton = {
-                TextButton(onClick = { viewModel.resetUnblockState() }) {
+                YhTextButton(onClick = { viewModel.resetUnblockState() }) {
                     Text("确定")
                 }
             }
@@ -256,11 +247,11 @@ fun BlockedUserItem(
     isUnblocking: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -295,12 +286,9 @@ fun BlockedUserItem(
                 )
             }
             
-            Button(
+            YhButton(
                 onClick = onUnblockClick,
-                enabled = !isUnblocking,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                enabled = !isUnblocking
             ) {
                 if (isUnblocking) {
                     CircularProgressIndicator(

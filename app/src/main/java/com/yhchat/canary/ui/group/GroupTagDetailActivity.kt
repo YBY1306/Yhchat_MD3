@@ -28,24 +28,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +47,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.GroupMemberInfo
 import com.yhchat.canary.data.repository.TagMemberInfo
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -128,39 +125,23 @@ fun GroupTagDetailScreen(
         viewModel.loadGroupMembers(groupId)
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(tagName, fontWeight = FontWeight.Bold)
-                        if (uiState.total > 0) {
-                            Text(
-                                text = "${uiState.total}位成员",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
+            YhTopBar(
+                title = if (uiState.total > 0) "$tagName · ${uiState.total}位成员" else tagName,
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.openAddMemberDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
+            YhFloatingActionButton(onClick = { viewModel.openAddMemberDialog() }) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "添加成员"
@@ -175,7 +156,7 @@ fun GroupTagDetailScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -191,7 +172,7 @@ fun GroupTagDetailScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadMembers(groupId, tagId) }) {
+                        YhButton(onClick = { viewModel.loadMembers(groupId, tagId) }) {
                             Text("重试")
                         }
                     }
@@ -247,22 +228,17 @@ fun GroupTagDetailScreen(
         }
 
         uiState.pendingRemoveMember?.let { pendingMember ->
-            AlertDialog(
+            YhAlertDialog(
                 onDismissRequest = { viewModel.dismissRemoveMemberDialog() },
                 title = { Text("移除标签") },
                 text = { Text("确定要将 ${pendingMember.name} 从该标签中移除吗？") },
                 confirmButton = {
-                    Button(
-                        onClick = { viewModel.confirmRemoveMember(tagId, groupId) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
+                    YhButton(onClick = { viewModel.confirmRemoveMember(tagId, groupId) }) {
                         Text("移除")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.dismissRemoveMemberDialog() }) {
+                    YhTextButton(onClick = { viewModel.dismissRemoveMemberDialog() }) {
                         Text("取消")
                     }
                 }
@@ -296,13 +272,13 @@ fun AddMemberToTagDialog(
                  member.userId.contains(searchQuery)
         }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
                 Text("添加成员到标签")
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
                     placeholder = { Text("搜索成员...") },
@@ -322,7 +298,7 @@ fun AddMemberToTagDialog(
             ) {
                 when {
                     isLoadingGroupMembers -> {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -339,14 +315,13 @@ fun AddMemberToTagDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(availableMembers) { member ->
-                                Card(
+                                YhCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
                                             onAddMember(member.userId)
                                             onDismiss()
-                                        },
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                        }
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -423,9 +398,9 @@ fun AddMemberToTagDialog(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isLoadingMoreGroupMembers) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                            YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                                         } else {
-                                            TextButton(
+                                            YhTextButton(
                                                 onClick = onLoadMoreGroupMembers
                                             ) {
                                                 Text("加载更多")
@@ -441,7 +416,7 @@ fun AddMemberToTagDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -455,11 +430,10 @@ fun TagMemberCard(
     onRemoveClick: () -> Unit
 ) {
 
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -530,7 +504,7 @@ fun TagMemberCard(
             }
             
             // 移除按钮
-            IconButton(onClick = onRemoveClick) {
+            YhIconButton(onClick = onRemoveClick) {
                 Icon(
                     imageVector = Icons.Default.PersonRemove,
                     contentDescription = "移除标签",

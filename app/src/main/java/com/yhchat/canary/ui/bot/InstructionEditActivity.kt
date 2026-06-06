@@ -24,9 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,11 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +49,12 @@ import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.BotInstruction
 import com.yhchat.canary.data.model.BotInstructionRequest
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.launch
 
@@ -245,15 +244,11 @@ fun InstructionEditScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        text = if (isEdit) "编辑指令 - $botName" else "创建指令 - $botName",
-                        fontWeight = FontWeight.Bold
-                    ) 
-                },
+            YhTopBar(
+                title = if (isEdit) "编辑指令 - $botName" else "创建指令 - $botName",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -263,7 +258,7 @@ fun InstructionEditScreen(
                     }
                 },
                 actions = {
-                    Button(
+                    YhButton(
                         onClick = { saveInstruction() },
                         enabled = !isSaving && !isLoading
                     ) {
@@ -310,7 +305,7 @@ fun InstructionEditScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = onBackClick) {
+                            YhButton(onClick = onBackClick) {
                                 Text("返回")
                             }
                         }
@@ -326,9 +321,9 @@ fun InstructionEditScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // 基本信息卡片
-                        Card(
+                        YhCard(
                             modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            cornerRadius = 12.dp
                         ) {
                             Column(
                                 modifier = Modifier
@@ -343,7 +338,7 @@ fun InstructionEditScreen(
                                 )
                                 
                                 // 指令名称
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = name,
                                     onValueChange = { name = it },
                                     label = { Text("指令名称") },
@@ -352,7 +347,7 @@ fun InstructionEditScreen(
                                 )
                                 
                                 // 指令描述
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = desc,
                                     onValueChange = { desc = it },
                                     label = { Text("指令描述") },
@@ -392,7 +387,7 @@ fun InstructionEditScreen(
                                 
                                 // 对于普通指令和自定义输入指令，显示额外字段
                                 if (instructionType == 1 || instructionType == 5) {
-                                    OutlinedTextField(
+                                    YhOutlinedTextField(
                                         value = hintText,
                                         onValueChange = { hintText = it },
                                         label = { Text("输入框提示文字") },
@@ -401,7 +396,7 @@ fun InstructionEditScreen(
                                         singleLine = true
                                     )
                                     
-                                    OutlinedTextField(
+                                    YhOutlinedTextField(
                                         value = defaultText,
                                         onValueChange = { defaultText = it },
                                         label = { Text("输入框默认文字") },
@@ -414,9 +409,9 @@ fun InstructionEditScreen(
                         
                         // 自定义字段配置（仅自定义输入指令）
                         if (instructionType == 5) {
-                            Card(
+                            YhCard(
                                 modifier = Modifier.fillMaxWidth(),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                cornerRadius = 12.dp
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -499,11 +494,10 @@ private fun CustomFieldEditCard(
     onUpdate: (InstructionFormField) -> Unit,
     onRemove: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        cornerRadius = 12.dp
     ) {
         Column(
             modifier = Modifier
@@ -530,7 +524,7 @@ private fun CustomFieldEditCard(
                 }
             }
             
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = field.label,
                 onValueChange = { onUpdate(field.copy(label = it)) },
                 label = { Text("字段标签") },
@@ -540,7 +534,7 @@ private fun CustomFieldEditCard(
             )
             
             if (field.type.supportsPlaceholder) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = field.placeholder,
                     onValueChange = { onUpdate(field.copy(placeholder = it)) },
                     label = { Text("占位文本") },
@@ -550,7 +544,7 @@ private fun CustomFieldEditCard(
             }
             
             if (field.type.requiresOptions) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = field.options,
                     onValueChange = { onUpdate(field.copy(options = it)) },
                     label = { Text("选项（使用 # 分隔）") },
@@ -569,13 +563,13 @@ private fun CustomFieldEditCard(
                 ) {
                     Text("默认状态")
                     val checked = field.defaultValue == "1"
-                    Switch(
+                    YhSwitch(
                         checked = checked,
                         onCheckedChange = { onUpdate(field.copy(defaultValue = if (it) "1" else "0")) }
                     )
                 }
             } else if (field.type.supportsDefault) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = field.defaultValue,
                     onValueChange = { onUpdate(field.copy(defaultValue = it)) },
                     label = { Text("默认值") },

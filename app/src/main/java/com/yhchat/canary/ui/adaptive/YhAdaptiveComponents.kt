@@ -17,18 +17,29 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
@@ -37,6 +48,9 @@ import com.yhchat.canary.BuildConfig
 
 val isMiuixUi: Boolean
     get() = BuildConfig.UI_STYLE == "miuix"
+
+private val LocalYhMiuixScrollBehavior =
+    compositionLocalOf<top.yukonga.miuix.kmp.basic.ScrollBehavior?> { null }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,14 +63,17 @@ fun YhScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.Scaffold(
-            modifier = modifier,
-            containerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background,
-            topBar = topBar,
-            bottomBar = bottomBar,
-            contentWindowInsets = contentWindowInsets,
-            content = content
-        )
+        val scrollBehavior = top.yukonga.miuix.kmp.basic.MiuixScrollBehavior()
+        CompositionLocalProvider(LocalYhMiuixScrollBehavior provides scrollBehavior) {
+            top.yukonga.miuix.kmp.basic.Scaffold(
+                modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                containerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background,
+                topBar = topBar,
+                bottomBar = bottomBar,
+                contentWindowInsets = contentWindowInsets,
+                content = content
+            )
+        }
     } else {
         androidx.compose.material3.Scaffold(
             modifier = modifier,
@@ -174,20 +191,23 @@ fun YhTopBar(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     if (isMiuixUi) {
+        val scrollBehavior = LocalYhMiuixScrollBehavior.current
         if (large) {
             top.yukonga.miuix.kmp.basic.TopAppBar(
                 title = title,
                 largeTitle = title,
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                scrollBehavior = scrollBehavior
             )
         } else {
             top.yukonga.miuix.kmp.basic.SmallTopAppBar(
                 title = title,
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                scrollBehavior = scrollBehavior
             )
         }
     } else {
@@ -229,20 +249,23 @@ fun YhTopAppBar(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     if (isMiuixUi) {
+        val scrollBehavior = LocalYhMiuixScrollBehavior.current
         if (large) {
             top.yukonga.miuix.kmp.basic.TopAppBar(
                 title = "",
                 largeTitle = "",
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                scrollBehavior = scrollBehavior
             )
         } else {
             top.yukonga.miuix.kmp.basic.SmallTopAppBar(
                 title = "",
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                scrollBehavior = scrollBehavior
             )
         }
     } else if (large) {
@@ -450,6 +473,394 @@ fun YhTextButton(
 }
 
 @Composable
+fun YhTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.TextButton(
+            text = text,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        TextButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled
+        ) {
+            Text(text)
+        }
+    }
+}
+
+@Composable
+fun YhIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.IconButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            content = content
+        )
+    } else {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun YhCheckbox(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.Checkbox(
+            state = if (checked) ToggleableState.On else ToggleableState.Off,
+            onClick = onCheckedChange?.let { { it(!checked) } },
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+fun YhRadioButton(
+    selected: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.RadioButton(
+            selected = selected,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+fun YhSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.Slider(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier,
+            enabled = enabled,
+            valueRange = valueRange,
+            onValueChangeFinished = onValueChangeFinished,
+            showKeyPoints = steps > 0
+        )
+    } else {
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier,
+            enabled = enabled,
+            valueRange = valueRange,
+            steps = steps,
+            onValueChangeFinished = onValueChangeFinished
+        )
+    }
+}
+
+@Composable
+fun YhHorizontalDivider(
+    modifier: Modifier = Modifier,
+    thickness: Dp = 1.dp,
+    color: Color = MaterialTheme.colorScheme.outlineVariant
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.HorizontalDivider(
+            modifier = modifier,
+            thickness = thickness,
+            color = color
+        )
+    } else {
+        HorizontalDivider(
+            modifier = modifier,
+            thickness = thickness,
+            color = color
+        )
+    }
+}
+
+@Composable
+fun YhCircularProgressIndicator(
+    modifier: Modifier = Modifier,
+    progress: Float? = null,
+    strokeWidth: Dp = 4.dp
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.CircularProgressIndicator(
+            modifier = modifier,
+            progress = progress,
+            strokeWidth = strokeWidth
+        )
+    } else {
+        if (progress == null) {
+            CircularProgressIndicator(
+                modifier = modifier,
+                strokeWidth = strokeWidth
+            )
+        } else {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = modifier,
+                strokeWidth = strokeWidth
+            )
+        }
+    }
+}
+
+@Composable
+fun YhLinearProgressIndicator(
+    modifier: Modifier = Modifier,
+    progress: Float? = null
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.LinearProgressIndicator(
+            modifier = modifier,
+            progress = progress
+        )
+    } else {
+        if (progress == null) {
+            LinearProgressIndicator(modifier = modifier)
+        } else {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = modifier
+            )
+        }
+    }
+}
+
+@Composable
+fun YhSmallTitle(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.SmallTitle(
+            text = text,
+            modifier = modifier
+        )
+    } else {
+        Text(
+            text = text,
+            modifier = modifier.padding(start = 16.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+fun YhCheckboxItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.preference.CheckboxPreference(
+            title = title,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            summary = subtitle,
+            enabled = enabled
+        )
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled && onCheckedChange != null) {
+                    onCheckedChange?.invoke(!checked)
+                }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            YhCheckbox(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun YhRadioItem(
+    title: String,
+    selected: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.preference.RadioButtonPreference(
+            title = title,
+            selected = selected,
+            onClick = onClick,
+            modifier = modifier,
+            summary = subtitle,
+            enabled = enabled
+        )
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled && onClick != null) { onClick?.invoke() }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            YhRadioButton(
+                selected = selected,
+                onClick = onClick,
+                enabled = enabled
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun YhTabRow(
+    tabs: List<String>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.TabRow(
+            tabs = tabs,
+            selectedTabIndex = selectedTabIndex,
+            onTabSelected = onTabSelected,
+            modifier = modifier
+        )
+    } else {
+        androidx.compose.material3.SecondaryTabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = modifier
+        ) {
+            tabs.forEachIndexed { index, title ->
+                androidx.compose.material3.Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { onTabSelected(index) },
+                    text = { Text(title) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun YhSearchInputField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "",
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.InputField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onSearch = onSearch,
+            expanded = false,
+            onExpandedChange = {},
+            modifier = modifier,
+            label = label,
+            enabled = enabled,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon
+        )
+    } else {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = modifier,
+            enabled = enabled,
+            singleLine = true,
+            label = if (label.isNotBlank()) {
+                { Text(label) }
+            } else {
+                null
+            },
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon
+        )
+    }
+}
+
+@Composable
 fun YhOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -508,6 +919,7 @@ fun YhOutlinedTextField(
     singleLine: Boolean = false,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    isError: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default
 ) {
@@ -545,6 +957,7 @@ fun YhOutlinedTextField(
             singleLine = singleLine,
             minLines = minLines,
             maxLines = maxLines,
+            isError = isError,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions
         )

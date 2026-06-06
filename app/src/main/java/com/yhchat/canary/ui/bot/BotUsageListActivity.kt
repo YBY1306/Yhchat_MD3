@@ -30,9 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,12 +37,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +58,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.group.GroupInfoActivity
 import com.yhchat.canary.ui.bot.viewmodel.BotUsageListViewModel
@@ -144,20 +143,12 @@ private fun BotUsageListRoute(
     val currentItems = if (uiState.selectedTab == 0) uiState.users else uiState.groups
     val currentLoadingMore = if (uiState.selectedTab == 0) uiState.loadingMoreUsers else uiState.loadingMoreGroups
 
-    Scaffold(
+    YhScaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(text = "$botName 使用列表", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = "用户 ${uiState.userCount} · 群聊 ${uiState.groupCount}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            YhTopBar(
+                title = "$botName 使用列表",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -189,7 +180,7 @@ private fun BotUsageListRoute(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = currentKeyword,
                 onValueChange = { viewModel.updateKeyword(botId, it) },
                 modifier = Modifier
@@ -279,17 +270,17 @@ private fun BotUsageListRoute(
     }
 
     uiState.pendingRemoval?.let { pending ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { viewModel.dismissRemoval() },
             title = { Text("确认踢出") },
             text = { Text("确定要踢出 ${pending.displayName} 吗？") },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmRemoval(botId) }) {
+                YhTextButton(onClick = { viewModel.confirmRemoval(botId) }) {
                     Text("踢出")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissRemoval() }) {
+                YhTextButton(onClick = { viewModel.dismissRemoval() }) {
                     Text("取消")
                 }
             }
@@ -314,11 +305,10 @@ private fun UsageUserItem(
     onKick: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 16.dp,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
@@ -371,11 +361,10 @@ private fun UsageGroupItem(
     onKick: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 16.dp,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier

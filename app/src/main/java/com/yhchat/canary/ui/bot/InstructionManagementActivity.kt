@@ -27,18 +27,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.BotInstruction
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class InstructionManagementActivity : ComponentActivity() {
@@ -115,10 +114,11 @@ fun InstructionManagementScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("$botName - 指令管理", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "$botName - 指令管理",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -169,7 +169,7 @@ fun InstructionManagementScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadInstructions(botId) }) {
+                            YhButton(onClick = { viewModel.loadInstructions(botId) }) {
                                 Text("重试")
                             }
                         }
@@ -190,7 +190,7 @@ fun InstructionManagementScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { 
+                            YhButton(onClick = {
                                 InstructionEditActivity.start(context, botId, botName, null)
                             }) {
                                 Icon(Icons.Default.Add, contentDescription = null)
@@ -235,9 +235,9 @@ fun InstructionListItem(
     onPreview: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier

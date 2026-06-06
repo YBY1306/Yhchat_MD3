@@ -17,31 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,10 +45,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.user.UserDetailActivity
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupMembersScreen(
     groupId: String,
@@ -87,9 +81,9 @@ fun GroupMembersScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
+            YhTopAppBar(
                 title = { 
                     if (!isSearching) {
                         Column {
@@ -104,23 +98,17 @@ fun GroupMembersScreen(
                             )
                         }
                     } else {
-                        TextField(
+                        YhOutlinedTextField(
                             value = searchKeyword,
                             onValueChange = { searchKeyword = it },
                             placeholder = { Text("搜索群成员...") },
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                            )
+                            singleLine = true
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         if (isSearching) {
                             isSearching = false
                             searchKeyword = ""
@@ -137,17 +125,14 @@ fun GroupMembersScreen(
                 },
                 actions = {
                     if (!isSearching) {
-                        IconButton(onClick = { isSearching = true }) {
+                        YhIconButton(onClick = { isSearching = true }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "搜索"
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         }
     ) { padding ->
@@ -158,7 +143,7 @@ fun GroupMembersScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -175,7 +160,7 @@ fun GroupMembersScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadGroupInfo(groupId) }) {
+                        YhButton(onClick = { viewModel.loadGroupInfo(groupId) }) {
                             Text("重试")
                         }
                     }
@@ -268,7 +253,7 @@ private fun GroupMembersContent(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             }
         } else {
@@ -298,7 +283,7 @@ private fun GroupMembersContent(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
@@ -351,18 +336,13 @@ private fun MemberItem(
     val showAdminMenu = member.permissionLevel < 100
     val canTransferGroupOwner = currentUserPermission >= 100 && member.permissionLevel < 100
     
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
                 // 点击成员卡片跳转到用户详情页
                 UserDetailActivity.start(context = context, userId = member.userId, userName = member.name, groupId = groupId)
-            },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            }
     ) {
         Row(
             modifier = Modifier
@@ -460,7 +440,7 @@ private fun MemberItem(
             // 管理菜单（除了群主外的所有成员都显示）
             if (showAdminMenu) {
                 Box {
-                    IconButton(onClick = { showMenu = true }) {
+                    YhIconButton(onClick = { showMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "管理"
@@ -535,12 +515,12 @@ private fun MemberItem(
     }
 
     if (showTransferOwnerDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showTransferOwnerDialog = false },
             title = { Text("转让群主") },
             text = { Text("确认将群主转让给 ${member.name} 吗？转让后你将不再是群主。") },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         showTransferOwnerDialog = false
                         onTransferGroupOwner?.invoke(member.userId)
@@ -550,7 +530,7 @@ private fun MemberItem(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showTransferOwnerDialog = false }) {
+                YhTextButton(onClick = { showTransferOwnerDialog = false }) {
                     Text("取消")
                 }
             }
@@ -576,7 +556,7 @@ private fun GroupMemberGagDialog(
         1 to "永久禁言"
     )
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("禁言 $memberName") },
         text = {
@@ -585,7 +565,7 @@ private fun GroupMemberGagDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 gagOptions.forEach { (gagTime, label) ->
-                    TextButton(
+                    YhTextButton(
                         onClick = { onConfirm(gagTime) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -596,7 +576,7 @@ private fun GroupMemberGagDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

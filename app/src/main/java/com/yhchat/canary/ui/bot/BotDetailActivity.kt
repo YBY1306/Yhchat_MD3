@@ -30,6 +30,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.HtmlWebView
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
@@ -136,17 +143,11 @@ private fun BotDetailScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = if (showCollapsedTitle) uiState.botInfo?.data?.name ?: botName else "",
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
+            YhTopBar(
+                title = if (showCollapsedTitle) uiState.botInfo?.data?.name ?: botName else "",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -159,8 +160,7 @@ private fun BotDetailScreen(
                     IconButton(onClick = { showMoreSheet = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                }
             )
         }
     ) { paddingValues ->
@@ -198,7 +198,7 @@ private fun BotDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
-                        Button(
+                        YhButton(
                             onClick = {
                                 viewModel.loadBotDetail(botId)
                                 viewModel.loadBoardInfo(botId, chatType)
@@ -374,10 +374,10 @@ private fun BotDetailScreen(
                         if (uiState.isSettingNoNotify) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Switch(
+                            YhSwitch(
                                 checked = uiState.isNoNotify,
                                 onCheckedChange = { checked ->
-                                    if (uiState.isSettingNoNotify) return@Switch
+                                    if (uiState.isSettingNoNotify) return@YhSwitch
                                     viewModel.setNoNotify(botId, checked)
                                 },
                                 enabled = !uiState.isSettingNoNotify
@@ -407,7 +407,7 @@ private fun BotDetailScreen(
     
     // 删除机器人确认对话框
     if (showDeleteDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = {
                 Text(
@@ -420,20 +420,17 @@ private fun BotDetailScreen(
                 Text("确定要删除机器人「$botName」吗？")
             },
             confirmButton = {
-                Button(
+                YhButton(
                     onClick = {
                         showDeleteDialog = false
                         viewModel.deleteBot(botId)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.onError)
+                    Text("删除", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                YhTextButton(onClick = { showDeleteDialog = false }) {
                     Text("取消")
                 }
             }
@@ -441,7 +438,7 @@ private fun BotDetailScreen(
     }
 
     if (showClearContextDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = {
                 if (!uiState.isClearingContext) {
                     showClearContextDialog = false
@@ -458,7 +455,7 @@ private fun BotDetailScreen(
                 Text("确定要清空机器人「$botName」的上下文吗？此操作会移除历史对话上下文。")
             },
             confirmButton = {
-                Button(
+                YhButton(
                     onClick = {
                         viewModel.clearBotContext(botId)
                         showClearContextDialog = false
@@ -473,7 +470,7 @@ private fun BotDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = { if (!uiState.isClearingContext) showClearContextDialog = false }
                 ) {
                     Text("取消")
@@ -556,12 +553,10 @@ private fun BotDetailContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
-                )
+                cornerRadius = 28.dp,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
             ) {
                 Column(
                     modifier = Modifier
@@ -616,7 +611,7 @@ private fun BotDetailContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Button(
+                        YhButton(
                             onClick = onPrimaryAction,
                             shape = RoundedCornerShape(18.dp),
                             enabled = !isCheckingAddressBook && !isAddingBot
@@ -778,9 +773,9 @@ private fun BotInfoSectionCard(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp)
+        cornerRadius = 24.dp
     ) {
         Column(
             modifier = Modifier
@@ -803,10 +798,10 @@ private fun BotInfoDialog(
     botInfo: bot_info,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("确定")
             }
         },

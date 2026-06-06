@@ -32,23 +32,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +47,16 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.api.GroupTag
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -131,12 +128,13 @@ fun GroupTagManagementScreen(
         viewModel.loadTags(groupId)
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("标签管理", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "标签管理",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -145,12 +143,12 @@ fun GroupTagManagementScreen(
                 },
                 actions = {
                     if (uiState.hasPendingSort) {
-                        TextButton(
+                        YhTextButton(
                             onClick = { viewModel.submitTagSort(groupId) },
                             enabled = !uiState.isSorting
                         ) {
                             if (uiState.isSorting) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -159,17 +157,11 @@ fun GroupTagManagementScreen(
                             }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showCreateDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
+            YhFloatingActionButton(onClick = { viewModel.showCreateDialog() }) {
                 Icon(Icons.Default.Add, contentDescription = "创建标签")
             }
         }
@@ -181,7 +173,7 @@ fun GroupTagManagementScreen(
         ) {
             when {
                 uiState.isLoading && uiState.tags.isEmpty() -> {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -197,7 +189,7 @@ fun GroupTagManagementScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadTags(groupId) }) {
+                        YhButton(onClick = { viewModel.loadTags(groupId) }) {
                             Text("重试")
                         }
                     }
@@ -269,22 +261,17 @@ fun GroupTagManagementScreen(
     }
 
     uiState.pendingDeleteTag?.let { pendingTag ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = viewModel::dismissDeleteTagDialog,
             title = { Text("删除标签") },
             text = { Text("确定要删除标签 ${pendingTag.tag} 吗？") },
             confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmDeleteTag(groupId) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
+                YhButton(onClick = { viewModel.confirmDeleteTag(groupId) }) {
                     Text("删除")
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteTagDialog) {
+                YhTextButton(onClick = viewModel::dismissDeleteTagDialog) {
                     Text("取消")
                 }
             }
@@ -301,11 +288,10 @@ private fun ReorderableCollectionItemScope.TagCard(
     elevation: androidx.compose.ui.unit.Dp = 2.dp
 ) {
 
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -356,7 +342,7 @@ private fun ReorderableCollectionItemScope.TagCard(
             }
             
             // 操作按钮
-            IconButton(onClick = onEditClick) {
+            YhIconButton(onClick = onEditClick) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "编辑",
@@ -364,7 +350,7 @@ private fun ReorderableCollectionItemScope.TagCard(
                 )
             }
             
-            IconButton(onClick = onDeleteClick) {
+            YhIconButton(onClick = onDeleteClick) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "删除",
@@ -396,7 +382,7 @@ fun TagEditDialog(
         "#FFC107", "#FF9800", "#FF5722", "#795548"
     )
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = if (!isSaving) onDismiss else { {} },
         title = { Text(if (tag != null) "编辑标签" else "创建标签") },
         text = {
@@ -404,7 +390,7 @@ fun TagEditDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = tagName,
                     onValueChange = onTagNameChange,
                     label = { Text("标签名称") },
@@ -413,7 +399,7 @@ fun TagEditDialog(
                     singleLine = true
                 )
                 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = tagDesc,
                     onValueChange = onTagDescChange,
                     label = { Text("标签描述（可选）") },
@@ -462,7 +448,7 @@ fun TagEditDialog(
 
                     val isCustomColorInvalid = tagColor.isNotBlank() && !isValidColorValue(tagColor)
 
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = tagColor,
                         onValueChange = { onTagColorChange(normalizeColorToRgbHex(it)) },
                         label = { Text("自定义颜色值") },
@@ -493,15 +479,14 @@ fun TagEditDialog(
         },
         confirmButton = {
             val canSubmit = !isSaving && tagName.isNotBlank() && isValidColorValue(tagColor)
-            Button(
+            YhButton(
                 onClick = onConfirm,
                 enabled = canSubmit
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        strokeWidth = 2.dp
                     )
                 } else {
                     Text(if (tag != null) "保存" else "创建")
@@ -509,7 +494,7 @@ fun TagEditDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            YhTextButton(
                 onClick = onDismiss,
                 enabled = !isSaving
             ) {

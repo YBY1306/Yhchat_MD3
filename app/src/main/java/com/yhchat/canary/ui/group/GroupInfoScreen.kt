@@ -32,21 +32,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wallpaper
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +57,15 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
@@ -81,7 +78,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupInfoScreenRoot(
     groupId: String,
@@ -107,28 +103,14 @@ fun GroupInfoScreenRoot(
     }
 
     YhchatCanaryTheme {
-        Scaffold(
+        YhScaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = groupName,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "群聊详情",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
+                YhTopBar(
+                    title = groupName,
+                    large = false,
                     navigationIcon = {
-                        IconButton(onClick = onBackClick) {
+                        YhIconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回"
@@ -136,16 +118,13 @@ fun GroupInfoScreenRoot(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onSettingsClick) {
+                        YhIconButton(onClick = onSettingsClick) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "群聊设置"
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    }
                 )
             }
         ) { padding ->
@@ -156,7 +135,7 @@ fun GroupInfoScreenRoot(
             ) {
                 when {
                     uiState.isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        YhCircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
 
                     uiState.error != null -> {
@@ -172,7 +151,7 @@ fun GroupInfoScreenRoot(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadGroupInfo(groupId) }) {
+                            YhButton(onClick = { viewModel.loadGroupInfo(groupId) }) {
                                 Text("重试")
                             }
                         }
@@ -565,7 +544,7 @@ private fun GroupInfoContent(
     }
 
     if (showNicknameDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { if (!isUpdatingNickname) showNicknameDialog = false },
             title = { Text("设置我的群昵称") },
             text = {
@@ -576,7 +555,7 @@ private fun GroupInfoContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = nicknameInput,
                         onValueChange = { nicknameInput = it },
                         label = { Text("群昵称") },
@@ -586,7 +565,7 @@ private fun GroupInfoContent(
                 }
             },
             confirmButton = {
-                Button(
+                YhButton(
                     onClick = {
                         isUpdatingNickname = true
                         scope.launch(Dispatchers.IO) {
@@ -618,10 +597,9 @@ private fun GroupInfoContent(
                     enabled = !isUpdatingNickname
                 ) {
                     if (isUpdatingNickname) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            strokeWidth = 2.dp
                         )
                     } else {
                         Text("确定")
@@ -629,7 +607,7 @@ private fun GroupInfoContent(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = { showNicknameDialog = false },
                     enabled = !isUpdatingNickname
                 ) {
@@ -702,7 +680,7 @@ private fun GroupHeaderSettingsItem(
                 )
             }
 
-            IconButton(onClick = onShareClick) {
+            YhIconButton(onClick = onShareClick) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "分享群聊",
@@ -751,12 +729,12 @@ private fun GroupSwitchSettingsItem(
             }
             Spacer(modifier = Modifier.width(8.dp))
             if (showLoading) {
-                CircularProgressIndicator(
+                YhCircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp
                 )
             } else {
-                Switch(
+                YhSwitch(
                     checked = checked,
                     onCheckedChange = if (enabled) onCheckedChange else null,
                     enabled = enabled
@@ -772,7 +750,7 @@ fun ExitGroupDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -785,17 +763,12 @@ fun ExitGroupDialog(
             Text("确定要退出群聊「$groupName」吗？")
         },
         confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("退出", color = MaterialTheme.colorScheme.onError)
+            YhButton(onClick = onConfirm) {
+                Text("退出")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

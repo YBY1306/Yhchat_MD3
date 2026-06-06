@@ -15,10 +15,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import com.yhchat.canary.BuildConfig
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberFloatPreference
 import com.yhchat.canary.ui.components.rememberIntPreference
 import com.yhchat.canary.ui.components.rememberStringPreference
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
 
 private val DarkColorScheme = darkColorScheme(
     primary = ChatPrimaryDark,
@@ -127,8 +131,25 @@ fun YhchatCanaryTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
-            content = content
-        )
+            typography = Typography
+        ) {
+            if (BuildConfig.UI_STYLE == "miuix") {
+                val miuixMode = when (themeMode) {
+                    "light" -> ColorSchemeMode.Light
+                    "dark" -> ColorSchemeMode.Dark
+                    else -> ColorSchemeMode.System
+                }
+                val controller = ThemeController(
+                    miuixMode,
+                    keyColor = customPrimaryColor ?: ChatPrimary
+                )
+                MiuixTheme(
+                    controller = controller,
+                    content = content
+                )
+            } else {
+                content()
+            }
+        }
     }
 }

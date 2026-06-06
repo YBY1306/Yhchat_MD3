@@ -116,7 +116,8 @@ fun MessageItem(
     groupAdminIds: List<String> = emptyList(),
     isCollapsed: Boolean = false,
     onToggleCollapse: (() -> Unit)? = null,
-    isStreaming: Boolean = false
+    isStreaming: Boolean = false,
+    enableContextMenu: Boolean = true
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -189,7 +190,7 @@ fun MessageItem(
                     val press = PressInteraction.Press(down.position)
                     rowInteractionSource.tryEmit(press)
                     val longPress = awaitLongPressOrCancellation(down.id)
-                    if (longPress != null && !isMultiSelectMode) {
+                    if (longPress != null && !isMultiSelectMode && enableContextMenu) {
                         showContextMenuDialog = true
                     }
                     val up = waitForUpOrCancellation()
@@ -274,7 +275,7 @@ fun MessageItem(
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val longPress = awaitLongPressOrCancellation(down.id)
-                            if (longPress != null && !isMultiSelectMode) {
+                            if (longPress != null && !isMultiSelectMode && enableContextMenu) {
                                 showContextMenuDialog = true
                             }
                             waitForUpOrCancellation()
@@ -336,7 +337,7 @@ fun MessageItem(
                         modifier = Modifier.padding(12.dp),
                         onImageClick = { imageUrl -> onImageClick(imageUrl) },
                         onLongClick = {
-                            if (!isMultiSelectMode) {
+                            if (!isMultiSelectMode && enableContextMenu) {
                                 showContextMenuDialog = true
                             }
                         },
@@ -804,7 +805,8 @@ fun AnimatedMessageItem(
     groupAdminIds: List<String> = emptyList(),
     isCollapsed: Boolean = false,
     onToggleCollapse: (() -> Unit)? = null,
-    isStreaming: Boolean = false
+    isStreaming: Boolean = false,
+    enableContextMenu: Boolean = true
 ) {
     val isNewMessage = remember(message.msgId) {
         val currentTime = System.currentTimeMillis()
@@ -864,7 +866,8 @@ fun AnimatedMessageItem(
                     groupAdminIds = groupAdminIds,
                     isCollapsed = isCollapsed,
                     onToggleCollapse = onToggleCollapse,
-                    isStreaming = isStreaming
+                    isStreaming = isStreaming,
+                    enableContextMenu = enableContextMenu
                 )
             }
         }
@@ -923,7 +926,8 @@ fun AnimatedMessageItem(
                     groupAdminIds = groupAdminIds,
                     isCollapsed = isCollapsed,
                     onToggleCollapse = onToggleCollapse,
-                    isStreaming = isStreaming
+                    isStreaming = isStreaming,
+                    enableContextMenu = enableContextMenu
                 )
             }
         }

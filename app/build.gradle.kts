@@ -2,16 +2,15 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    id("com.google.protobuf") version "0.9.5"
+    id("com.google.protobuf") version "0.10.0"
 }
 
 android {
     namespace = "com.yhchat.canary"
-    compileSdk = 36
+    compileSdk = 37
     val baseVersionName = "21.7"
     val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
         ?.trim()
@@ -37,7 +36,7 @@ android {
     defaultConfig {
         applicationId = "com.yhchat.canary"
         minSdk = 23
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -75,16 +74,25 @@ android {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "false")
+            buildConfigField("String", "UI_STYLE", "\"md3\"")
         }
         create("withPlayer") {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "true")
             buildConfigField("boolean", "WITH_LIVE", "false")
+            buildConfigField("String", "UI_STYLE", "\"md3\"")
         }
         create("withLive") {
             dimension = "player"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "true")
+            buildConfigField("String", "UI_STYLE", "\"md3\"")
+        }
+        create("miuix") {
+            dimension = "player"
+            buildConfigField("boolean", "WITH_PLAYER", "false")
+            buildConfigField("boolean", "WITH_LIVE", "false")
+            buildConfigField("String", "UI_STYLE", "\"miuix\"")
         }
     }
 
@@ -107,7 +115,7 @@ ksp {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.28.3"
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
     }
     generateProtoTasks {
         all().forEach { task ->
@@ -126,10 +134,12 @@ protobuf {
 dependencies {
     add("withPlayerImplementation", project(":player"))
     add("withLiveImplementation", project(":live"))
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.0")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:${libs.versions.lifecycleRuntimeKtx.get()}")
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -139,7 +149,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material:material")
 
-    implementation(libs.reorderable)
     implementation(libs.calvin.reorderable)
 
     implementation("androidx.documentfile:documentfile:1.0.1")
@@ -180,8 +189,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-text-google-fonts")
     
     // Protobuf - 只使用Lite版本避免冲突
-    implementation("com.google.protobuf:protobuf-javalite:4.28.3")
-    implementation("com.google.protobuf:protobuf-kotlin-lite:4.28.3")
+    implementation("com.google.protobuf:protobuf-javalite:${libs.versions.protobuf.get()}")
+    implementation("com.google.protobuf:protobuf-kotlin-lite:${libs.versions.protobuf.get()}")
     
     // 导航
     implementation(libs.androidx.navigation.compose)

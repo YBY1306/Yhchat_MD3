@@ -38,22 +38,14 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -70,6 +62,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -275,10 +273,11 @@ private fun SavedAudiosScreen(
         "已保存的语音"
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            YhTopBar(
+                title = topBarTitle,
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = {
                         if (uiState.selectionMode) {
@@ -308,14 +307,14 @@ private fun SavedAudiosScreen(
                             Icon(Icons.Default.Done, contentDescription = "完成")
                         }
                     } else {
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 viewModel.requestImportAudioPicker()
                             }
                         ) {
                             Text("导入音频")
                         }
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 viewModel.requestTreePicker()
                             }
@@ -323,10 +322,7 @@ private fun SavedAudiosScreen(
                             Text("授权文件夹")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
         }
     ) { innerPadding ->
@@ -346,11 +342,11 @@ private fun SavedAudiosScreen(
                 } else {
                     android.Manifest.permission.READ_EXTERNAL_STORAGE
                 }
-                TextButton(onClick = { requestReadPermissionLauncher.launch(readPermission) }) {
+                YhTextButton(onClick = { requestReadPermissionLauncher.launch(readPermission) }) {
                     Text("授权")
                 }
             }
-            return@Scaffold
+            return@YhScaffold
         }
 
         PullToRefreshBox(
@@ -418,18 +414,18 @@ private fun SavedAudiosScreen(
 
     if (uiState.renameTarget != null) {
         val target = uiState.renameTarget
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = viewModel::dismissRenameDialog,
             title = { Text("重命名") },
             text = {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = uiState.renameText,
                     onValueChange = viewModel::updateRenameText,
                     singleLine = true
                 )
             },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         viewModel.confirmRename()
                     }
@@ -438,18 +434,18 @@ private fun SavedAudiosScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissRenameDialog) { Text("取消") }
+                YhTextButton(onClick = viewModel::dismissRenameDialog) { Text("取消") }
             }
         )
     }
 
     if (uiState.confirmDeleteIds.isNotEmpty()) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = viewModel::dismissDeleteDialog,
             title = { Text("删除") },
             text = { Text("确定删除选中的语音吗？") },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         viewModel.confirmDelete()
                     }
@@ -458,7 +454,7 @@ private fun SavedAudiosScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteDialog) { Text("取消") }
+                YhTextButton(onClick = viewModel::dismissDeleteDialog) { Text("取消") }
             }
         )
     }
@@ -486,17 +482,15 @@ private fun SavedAudioCard(
         formatDateTime(item.dateAddedSeconds)
     }
 
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        cornerRadius = 16.dp,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

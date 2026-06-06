@@ -25,22 +25,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +47,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class BotSettingsActivity : BaseActivity() {
@@ -120,10 +119,11 @@ private fun BotSettingsScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(text = "$botName 设置", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "$botName 设置",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -149,9 +149,9 @@ private fun BotSettingsScreen(
                 }
 
                 // Token 区域
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -169,7 +169,7 @@ private fun BotSettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedTextField(
+                            YhOutlinedTextField(
                                 value = uiState.token,
                                 onValueChange = { },
                                 modifier = Modifier.weight(1f),
@@ -197,7 +197,7 @@ private fun BotSettingsScreen(
                             
                             Spacer(modifier = Modifier.width(8.dp))
                             
-                            OutlinedButton(
+                            YhOutlinedButton(
                                 onClick = { viewModel.resetBotToken(botId) },
                                 enabled = !uiState.isLoading
                             ) {
@@ -210,9 +210,9 @@ private fun BotSettingsScreen(
                 }
                 
                 // Webhook 订阅地址区域
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -269,7 +269,7 @@ private fun BotSettingsScreen(
                         }
 
                         if (uiState.callbackMode == 0) {
-                            OutlinedTextField(
+                            YhOutlinedTextField(
                                 value = uiState.webhookUrl,
                                 onValueChange = { viewModel.updateWebhookUrl(it) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -278,7 +278,7 @@ private fun BotSettingsScreen(
                                 enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             )
                         } else {
-                            OutlinedTextField(
+                            YhOutlinedTextField(
                                 value = wsSubscribeUrl,
                                 onValueChange = { },
                                 modifier = Modifier.fillMaxWidth(),
@@ -308,7 +308,7 @@ private fun BotSettingsScreen(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedButton(
+                            YhOutlinedButton(
                                 onClick = {
                                     BotWsTestActivity.start(
                                         context = context,
@@ -325,7 +325,7 @@ private fun BotSettingsScreen(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            Button(
+                            YhButton(
                                 onClick = { viewModel.saveWebhook(botId) },
                                 enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             ) {
@@ -346,9 +346,9 @@ private fun BotSettingsScreen(
                 }
                 
                 // 恢复订阅链接按钮
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -369,7 +369,7 @@ private fun BotSettingsScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         
-                        Button(
+                        YhButton(
                             onClick = { viewModel.resetBotLink(botId) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !uiState.isResettingLink && !uiState.isLoading
@@ -390,9 +390,9 @@ private fun BotSettingsScreen(
                 }
 
                 // 订阅设置
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(text = "事件订阅", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -421,9 +421,9 @@ private fun BotSettingsScreen(
                     }
                 }
 
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -463,9 +463,9 @@ private fun BotSettingsScreen(
                 }
                 
                 // 机器人指令列表
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -573,6 +573,6 @@ private fun SubscriptionSwitch(title: String, checked: Boolean, onCheckedChange:
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = title, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        YhSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

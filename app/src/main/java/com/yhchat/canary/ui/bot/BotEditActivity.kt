@@ -27,19 +27,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +48,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.components.ImageUtils
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class BotEditActivity : ComponentActivity() {
@@ -141,15 +140,11 @@ private fun BotEditScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "编辑机器人",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "编辑机器人",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -199,10 +194,9 @@ private fun BotEditScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 头像区域
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -285,10 +279,9 @@ private fun BotEditScreen(
                 }
                 
                 // 基本信息卡片
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -303,7 +296,7 @@ private fun BotEditScreen(
                         )
                         
                         // 机器人ID（只读）
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = botId,
                             onValueChange = {},
                             label = { Text("机器人ID") },
@@ -313,7 +306,7 @@ private fun BotEditScreen(
                         )
                         
                         // 头像URL
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = uiState.avatarUrl,
                             onValueChange = { viewModel.updateAvatarUrl(it) },
                             label = { Text("头像URL") },
@@ -322,7 +315,7 @@ private fun BotEditScreen(
                         )
                         
                         // 机器人名称
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = uiState.nickname,
                             onValueChange = { viewModel.updateNickname(it) },
                             label = { Text("机器人名称") },
@@ -331,7 +324,7 @@ private fun BotEditScreen(
                         )
                         
                         // 机器人简介
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = uiState.introduction,
                             onValueChange = { viewModel.updateIntroduction(it) },
                             label = { Text("机器人简介") },
@@ -343,10 +336,9 @@ private fun BotEditScreen(
                 }
                 
                 // 隐私设置卡片
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    cornerRadius = 12.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -380,7 +372,7 @@ private fun BotEditScreen(
                                 )
                             }
                             
-                            Switch(
+                            YhSwitch(
                                 checked = uiState.isPrivate,
                                 onCheckedChange = { viewModel.updatePrivate(it) }
                             )

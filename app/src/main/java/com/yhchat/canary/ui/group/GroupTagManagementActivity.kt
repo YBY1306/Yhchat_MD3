@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -61,11 +62,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yhchat.canary.data.api.GroupTag
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
-import org.burnoutcrew.reorderable.ItemPosition
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.Locale
 
 @AndroidEntryPoint
@@ -123,12 +122,10 @@ fun GroupTagManagementScreen(
     onTagClick: (GroupTag) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val reorderableState = rememberReorderableLazyListState(
-        onMove = { from: ItemPosition, to: ItemPosition ->
-            viewModel.moveTag(from.index, to.index)
-        }
-    )
-    val listState = reorderableState.listState
+    val listState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        viewModel.moveTag(from.index, to.index)
+    }
     
     LaunchedEffect(groupId) {
         viewModel.loadTags(groupId)
@@ -227,9 +224,7 @@ fun GroupTagManagementScreen(
 
                     LazyColumn(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .reorderable(reorderableState)
-                            .detectReorderAfterLongPress(reorderableState),
+                            .fillMaxSize(),
                         state = listState,
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -298,7 +293,7 @@ fun GroupTagManagementScreen(
 }
 
 @Composable
-fun TagCard(
+private fun ReorderableCollectionItemScope.TagCard(
     tag: GroupTag,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
@@ -321,7 +316,8 @@ fun TagCard(
             Icon(
                 imageVector = Icons.Default.Menu,
                 contentDescription = "拖拽排序",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.draggableHandle()
             )
 
             Spacer(modifier = Modifier.width(12.dp))

@@ -48,6 +48,12 @@ import com.yhchat.canary.data.repository.UserRepository
 import com.yhchat.canary.data.websocket.ConnectionState
 import com.yhchat.canary.data.websocket.WebSocketService
 import com.yhchat.canary.service.AudioPlayerService
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhListItem
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitchItem
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
@@ -78,6 +84,12 @@ fun SettingsScreen(
     // 聊天界面动画偏好
     val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
     var enableChatAnimations by remember { mutableStateOf(chatPrefs.getBoolean("enable_chat_animations", true)) }
+    var enableMessageListDragAnimation by remember {
+        mutableStateOf(chatPrefs.getBoolean("enable_message_list_drag_animation", true))
+    }
+    var enableChatContextMenu by remember {
+        mutableStateOf(chatPrefs.getBoolean("enable_chat_context_menu", true))
+    }
 
     // 获取用户信息
     var userEmail by remember { mutableStateOf("") }
@@ -102,17 +114,12 @@ fun SettingsScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
-    Scaffold(
+    YhScaffold(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
-                title = {
-                    Text(
-                        text = "设置",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
+            YhTopBar(
+                title = "设置",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -121,14 +128,8 @@ fun SettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-                scrollBehavior = scrollBehavior
             )
-        },
-        contentWindowInsets = WindowInsets.safeDrawing
+        }
     ) { innerPadding ->
         // 设置项列表
         LazyColumn(
@@ -175,6 +176,42 @@ fun SettingsScreen(
                                 onCheckedChange = { checked ->
                                     enableChatAnimations = checked
                                     chatPrefs.edit().putBoolean("enable_chat_animations", checked).apply()
+                                }
+                            )
+                        },
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.DragHandle,
+                                title = "消息列表拖拽动画",
+                                subtitle = if (enableMessageListDragAnimation) {
+                                    "启用聊天消息列表的位置变化动画"
+                                } else {
+                                    "禁用聊天消息列表的位置变化动画"
+                                },
+                                checked = enableMessageListDragAnimation,
+                                onCheckedChange = { checked ->
+                                    enableMessageListDragAnimation = checked
+                                    chatPrefs.edit()
+                                        .putBoolean("enable_message_list_drag_animation", checked)
+                                        .apply()
+                                }
+                            )
+                        },
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.MoreVert,
+                                title = "聊天上下文弹窗",
+                                subtitle = if (enableChatContextMenu) {
+                                    "长按消息时显示默认消息操作弹窗"
+                                } else {
+                                    "禁用长按消息的默认消息操作弹窗"
+                                },
+                                checked = enableChatContextMenu,
+                                onCheckedChange = { checked ->
+                                    enableChatContextMenu = checked
+                                    chatPrefs.edit()
+                                        .putBoolean("enable_chat_context_menu", checked)
+                                        .apply()
                                 }
                             )
                         }
@@ -1968,7 +2005,19 @@ fun SettingsGroup(
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
-    
+
+    if (isMiuixUi) {
+        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (!title.isNullOrEmpty()) {
+                top.yukonga.miuix.kmp.basic.SmallTitle(text = title)
+            }
+            YhCard(modifier = Modifier.fillMaxWidth()) {
+                items.forEach { item -> item() }
+            }
+        }
+        return
+    }
+
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (!title.isNullOrEmpty()) {
             Text(
@@ -2017,7 +2066,16 @@ fun SettingsItemCell(
     onClick: () -> Unit,
     isDestructive: Boolean = false
 ) {
-    SettingsCustomItem(onClick = onClick) {
+    if (isMiuixUi) {
+        YhListItem(
+            icon = icon,
+            title = title,
+            subtitle = subtitle,
+            onClick = onClick,
+            isDestructive = isDestructive
+        )
+    } else {
+        SettingsCustomItem(onClick = onClick) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2054,6 +2112,7 @@ fun SettingsItemCell(
             )
         }
     }
+    }
 }
 
 /**
@@ -2068,7 +2127,17 @@ fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     isError: Boolean = false
 ) {
-    SettingsCustomItem(onClick = { onCheckedChange(!checked) }) {
+    if (isMiuixUi) {
+        YhSwitchItem(
+            icon = icon,
+            title = title,
+            subtitle = subtitle,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            isError = isError
+        )
+    } else {
+        SettingsCustomItem(onClick = { onCheckedChange(!checked) }) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2104,6 +2173,7 @@ fun SettingsSwitchItem(
                 onCheckedChange = null // Handled by parent click
             )
         }
+    }
     }
 }
 

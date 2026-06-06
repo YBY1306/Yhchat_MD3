@@ -21,6 +21,10 @@ jobs:
             gradle_task: assembleStandardRelease
             artifact_name: apk-standard
             asset_name: app-standard-release.apk
+          - flavor: miuix
+            gradle_task: assembleMiuixRelease
+            artifact_name: apk-miuix
+            asset_name: app-miuix-release.apk
           - flavor: withPlayer
             gradle_task: assembleWithPlayerRelease
             artifact_name: apk-withPlayer
@@ -154,6 +158,7 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           TAG_NAME="build-${{ steps.commit.outputs.hash }}"
           STANDARD_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-standard-release.apk"
+          MIUIX_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-miuix-release.apk"
           WITH_PLAYER_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withPlayer-release.apk"
           WITH_LIVE_APK_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/app-withLive-release.apk"
           BEFORE_SHA="${{ github.event.before }}"
@@ -186,6 +191,7 @@ jobs:
 
           ## Build Variants
           - **Standard**: [app-standard-release.apk](${STANDARD_APK_URL})
+          - **Miuix**: [app-miuix-release.apk](${MIUIX_APK_URL})
           - **WithPlayer**: [app-withPlayer-release.apk](${WITH_PLAYER_APK_URL})
           - **WithLive**: [app-withLive-release.apk](${WITH_LIVE_APK_URL})
 

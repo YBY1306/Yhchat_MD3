@@ -19,23 +19,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeviceHub
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,6 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.DeviceInfo
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -102,17 +100,12 @@ fun OnlineDevicesScreen(
         deviceViewModel.loadOnlineDevices()
     }
     
-    Scaffold(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "在线设备",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "在线设备",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -144,13 +137,11 @@ fun OnlineDevicesScreen(
         ) {
             // 错误提示
             deviceState.error?.let { error ->
-                Card(
+                YhCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
                         text = error,
@@ -219,14 +210,14 @@ fun OnlineDevicesScreen(
     
     // 错误对话框
     deviceState.error?.let { error ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = {
                 deviceViewModel.clearError()
             },
             title = { Text("加载失败") },
             text = { Text(error) },
             confirmButton = {
-                TextButton(onClick = {
+                YhTextButton(onClick = {
                     deviceViewModel.clearError()
                 }) {
                     Text("确定")
@@ -244,10 +235,9 @@ fun DeviceItem(
     device: DeviceInfo,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(12.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier

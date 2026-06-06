@@ -340,6 +340,16 @@ fun ChatScreen(
     val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
     val showRefreshButton by rememberBooleanPreference("layout_settings", "chat_show_refresh_button", true)
     val hideTopAppBar by rememberBooleanPreference("layout_settings", "chat_hide_top_app_bar", false)
+    val enableMessageListDragAnimation by rememberBooleanPreference(
+        "chat_settings",
+        "enable_message_list_drag_animation",
+        true
+    )
+    val enableChatContextMenu by rememberBooleanPreference(
+        "chat_settings",
+        "enable_chat_context_menu",
+        true
+    )
 
     // 读取内容设置：是否允许发送空文本消息
     val isSendTextAllowEmptySetting = context.getSharedPreferences("send_text_settings", Context.MODE_PRIVATE) .getBoolean("send_text_allow_empty", false)//英语不好不知道起什么变量名
@@ -775,7 +785,7 @@ fun ChatScreen(
                         val isStreaming = viewModel.isMessageStreaming(message.msgId)
                         val itemModifier = if (isStreaming) {
                             Modifier.fillMaxWidth()
-                        } else if (!enableAnimations) {
+                        } else if (!enableAnimations || !enableMessageListDragAnimation) {
                             Modifier.fillMaxWidth()
                         } else {
                             Modifier
@@ -812,6 +822,7 @@ fun ChatScreen(
                             isMultiSelectMode = isMultiSelectMode,
                             isSelected = selectedMessageIds.contains(message.msgId),
                             isStreaming = isStreaming,
+                            enableContextMenu = enableChatContextMenu,
                             onSelectionToggle = { msgId ->
                                 selectedMessageIds = if (selectedMessageIds.contains(msgId)) {
                                     selectedMessageIds - msgId

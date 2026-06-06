@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -28,10 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -136,14 +135,9 @@ fun HtmlSettingsScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "HTML设置",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
+        YhTopBar(
+            title = "HTML设置",
+            large = false,
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
@@ -153,7 +147,7 @@ fun HtmlSettingsScreen(
                 }
             },
             actions = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         // 重置
                         enableJavaScript = true
@@ -199,7 +193,7 @@ fun HtmlSettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Switch(
+                                YhSwitch(
                                     checked = enableJavaScript,
                                     onCheckedChange = { 
                                         enableJavaScript = it
@@ -227,7 +221,7 @@ fun HtmlSettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Switch(
+                                YhSwitch(
                                     checked = allowZoom,
                                     onCheckedChange = { 
                                         allowZoom = it
@@ -255,7 +249,7 @@ fun HtmlSettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Switch(
+                                YhSwitch(
                                     checked = loadImages,
                                     onCheckedChange = { 
                                         loadImages = it
@@ -346,11 +340,9 @@ fun HtmlSettingsScreen(
             
             // 说明信息
             item {
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -385,9 +377,9 @@ private fun HtmlSettingsCard(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 16.dp
     ) {
         Column(
             modifier = Modifier

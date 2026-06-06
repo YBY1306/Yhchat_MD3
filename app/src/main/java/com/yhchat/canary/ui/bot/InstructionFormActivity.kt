@@ -21,8 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -33,13 +31,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +50,11 @@ import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -169,22 +167,11 @@ fun InstructionFormScreen(
     
     var isSending by remember { mutableStateOf(false) }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "/${instruction.name}",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = instruction.desc.takeIf { it.isNotEmpty() } ?: "填写表单",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            YhTopBar(
+                title = "/${instruction.name}",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
@@ -224,10 +211,7 @@ fun InstructionFormScreen(
                             Icon(Icons.AutoMirrored.Filled.Send, "发送")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         }
     ) { padding ->
@@ -243,10 +227,8 @@ fun InstructionFormScreen(
         ) {
             // 表单说明
             if (instruction.hintText.isNotEmpty()) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                    )
+                YhCard(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                 ) {
                     Text(
                         text = instruction.hintText,
@@ -281,9 +263,8 @@ fun FormFieldComponent(
     value: FormFieldValue?,
     onValueChange: (FormFieldValue) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    YhCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -334,7 +315,7 @@ fun FormFieldComponent(
                 
                 "input" -> {
                     // 输入框
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = value?.value ?: "",
                         onValueChange = { newValue ->
                             onValueChange(
@@ -360,7 +341,7 @@ fun FormFieldComponent(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         Text("开启")
-                        Switch(
+                        YhSwitch(
                             checked = isChecked,
                             onCheckedChange = { checked ->
                                 onValueChange(
@@ -378,7 +359,7 @@ fun FormFieldComponent(
                 
                 "textarea" -> {
                     // 多行输入框
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = value?.value ?: "",
                         onValueChange = { newValue ->
                             onValueChange(
@@ -410,7 +391,7 @@ fun FormFieldComponent(
                         expanded = expanded,
                         onExpandedChange = { expanded = it }
                     ) {
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = selectedValue,
                             onValueChange = {},
                             readOnly = true,

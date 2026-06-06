@@ -18,8 +18,6 @@ import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.ImageViewer
 
@@ -52,14 +51,13 @@ fun CommunityPostCard(
 ) {
     var showImageViewer by remember(post.senderAvatar) { mutableStateOf(false) }
 
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { onClick() },
                 onLongClick = { onLongClick() }
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,21 +26,14 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -133,15 +130,11 @@ private fun BotManagementScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "管理机器人",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "管理机器人",
+                large = false,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -163,11 +156,9 @@ private fun BotManagementScreen(
         ) {
             // 错误提示
             if (uiState.error != null) {
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
                         text = uiState.error ?: "",
@@ -178,10 +169,9 @@ private fun BotManagementScreen(
             }
             
             // 机器人基本信息卡片
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
+                cornerRadius = 12.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -204,10 +194,9 @@ private fun BotManagementScreen(
             }
             
             // 管理选项卡片
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
+                cornerRadius = 12.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -286,10 +275,9 @@ private fun BotManagementScreen(
             }
             
             // 机器人控制卡片
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
+                cornerRadius = 12.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -308,19 +296,10 @@ private fun BotManagementScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // 停用/启用机器人按钮
-                        Button(
+                        YhButton(
                             onClick = { viewModel.toggleBotStop(botId) },
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isStoppingBot && !uiState.isLoading && !uiState.isDeletingBot,
-                            colors = if (uiState.botIsStop) {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            }
+                            enabled = !uiState.isStoppingBot && !uiState.isLoading && !uiState.isDeletingBot
                         ) {
                             if (uiState.isStoppingBot) {
                                 CircularProgressIndicator(
@@ -336,13 +315,10 @@ private fun BotManagementScreen(
                         }
                         
                         // 删除机器人按钮
-                        OutlinedButton(
+                        YhOutlinedButton(
                             onClick = { viewModel.deleteBot(botId) },
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isDeletingBot && !uiState.isLoading && !uiState.isStoppingBot,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
+                            enabled = !uiState.isDeletingBot && !uiState.isLoading && !uiState.isStoppingBot
                         ) {
                             if (uiState.isDeletingBot) {
                                 CircularProgressIndicator(

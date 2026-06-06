@@ -59,7 +59,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -77,10 +76,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-// systemBars is an extension property; keep it imported so WindowInsets.systemBars resolves.
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +87,8 @@ import coil.request.ImageRequest
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.ui.community.CommunityPostCard
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.components.ScrollAwareNavigationState
 import com.yhchat.canary.ui.components.observeScrollForNavigation
@@ -334,11 +331,12 @@ fun CommunityTabScreen(
         },
         gesturesEnabled = true
     ) {
-        androidx.compose.material3.Scaffold(
+        YhScaffold(
             modifier = modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
+                YhTopBar(
+                    title = "社区",
+                    large = false,
                     navigationIcon = {
                         IconButton(onClick = { openDrawer() }) {
                             Icon(
@@ -346,13 +344,6 @@ fun CommunityTabScreen(
                                 contentDescription = "打开侧边栏"
                             )
                         }
-                    },
-                    title = {
-                        Text(
-                            text = "社区",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
                     },
                     actions = {
                         FeedToggleRow(

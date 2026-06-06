@@ -15,7 +15,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +38,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTextButton
@@ -149,7 +161,7 @@ private fun BotDetailScreen(
                 title = if (showCollapsedTitle) uiState.botInfo?.data?.name ?: botName else "",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -157,7 +169,7 @@ private fun BotDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showMoreSheet = true }) {
+                    YhIconButton(onClick = { showMoreSheet = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                     }
                 }
@@ -172,7 +184,7 @@ private fun BotDetailScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             }
             uiState.error != null -> {
@@ -282,7 +294,8 @@ private fun BotDetailScreen(
     
     // MoreBottomSheet
     if (showMoreSheet) {
-        ModalBottomSheet(
+        YhBottomSheet(
+            show = true,
             onDismissRequest = { showMoreSheet = false }
         ) {
             Column(
@@ -372,7 +385,7 @@ private fun BotDetailScreen(
                     },
                     trailingContent = {
                         if (uiState.isSettingNoNotify) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            YhCircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
                             YhSwitch(
                                 checked = uiState.isNoNotify,
@@ -390,7 +403,7 @@ private fun BotDetailScreen(
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
                 SheetActionItem(
                     icon = Icons.Default.Delete,
@@ -463,7 +476,7 @@ private fun BotDetailScreen(
                     enabled = !uiState.isClearingContext
                 ) {
                     if (uiState.isClearingContext) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        YhCircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         Text("清空")
                     }
@@ -528,7 +541,7 @@ private fun SheetActionItem(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     )
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+    YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 }
 
 @Composable
@@ -617,12 +630,12 @@ private fun BotDetailContent(
                             enabled = !isCheckingAddressBook && !isAddingBot
                         ) {
                             if (isCheckingAddressBook || isAddingBot) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                YhCircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
                                 Text(if (isInAddressBook) "进入聊天" else "添加")
                             }
                         }
-                        OutlinedButton(
+                        YhOutlinedButton(
                             onClick = onShowInfo,
                             shape = RoundedCornerShape(18.dp)
                         ) {
@@ -752,9 +765,9 @@ private fun BotDetailContent(
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                            YhCircularProgressIndicator(modifier = Modifier.size(32.dp))
                             Text(
                                 "加载看板信息中...",
                                 style = MaterialTheme.typography.bodyMedium,

@@ -33,20 +33,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material.icons.filled.Web
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +60,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.R
 import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -102,34 +99,26 @@ fun ChatSearchScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // 顶部搜索栏
-        TopAppBar(
-            title = {
-                Text(
-                    text = "搜索聊天记录",
-                    fontWeight = FontWeight.Medium
-                )
-            },
+        YhTopBar(
+            title = "搜索聊天记录",
+            large = false,
             navigationIcon = {
-                IconButton(onClick = onBackClick) {
+                YhIconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回"
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            }
         )
         
         // 搜索输入框
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                .padding(16.dp)
         ) {
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = searchQuery,
                 onValueChange = { 
                     searchQuery = it
@@ -146,7 +135,7 @@ fun ChatSearchScreen(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(
+                        YhIconButton(
                             onClick = { 
                                 searchQuery = ""
                             }
@@ -158,11 +147,7 @@ fun ChatSearchScreen(
                         }
                     }
                 },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
+                singleLine = true
             )
         }
         
@@ -181,7 +166,7 @@ fun ChatSearchScreen(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CircularProgressIndicator()
+                            YhCircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "搜索中...",
@@ -212,7 +197,7 @@ fun ChatSearchScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
+                            YhButton(
                                 onClick = { 
                                     viewModel.clearError()
                                     if (searchQuery.isNotBlank()) {
@@ -305,7 +290,7 @@ fun ChatSearchScreen(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                                     }
                                 } else {
                                     // 使用lastTimestamp作为key，当时间戳更新时触发加载更多
@@ -337,11 +322,10 @@ fun SearchMessageItem(
     searchQuery: String,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
@@ -672,12 +656,11 @@ fun MessageDetailDialog(
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            cornerRadius = 16.dp
         ) {
             Column(
                 modifier = Modifier
@@ -695,7 +678,7 @@ fun MessageDetailDialog(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = onDismiss) {
+                    YhIconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "关闭"

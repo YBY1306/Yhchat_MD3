@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.adaptive
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -37,6 +39,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.state.ToggleableState
@@ -59,6 +62,7 @@ fun YhScaffold(
     containerColor: Color = MaterialTheme.colorScheme.background,
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
     contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -71,7 +75,19 @@ fun YhScaffold(
                 topBar = topBar,
                 bottomBar = bottomBar,
                 contentWindowInsets = contentWindowInsets,
-                content = content
+                content = { paddingValues ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        content(paddingValues)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(paddingValues)
+                                .padding(16.dp)
+                        ) {
+                            floatingActionButton()
+                        }
+                    }
+                }
             )
         }
     } else {
@@ -80,6 +96,7 @@ fun YhScaffold(
             containerColor = containerColor,
             topBar = topBar,
             bottomBar = bottomBar,
+            floatingActionButton = floatingActionButton,
             contentWindowInsets = contentWindowInsets,
             content = content
         )
@@ -429,6 +446,7 @@ fun YhButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
     content: @Composable RowScope.() -> Unit
 ) {
     if (isMiuixUi) {
@@ -443,6 +461,7 @@ fun YhButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            shape = shape,
             content = content
         )
     }
@@ -865,12 +884,14 @@ fun YhOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
     content: @Composable RowScope.() -> Unit
 ) {
     YhButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
+        shape = shape,
         content = content
     )
 }
@@ -915,6 +936,7 @@ fun YhOutlinedTextField(
     label: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     supportingText: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     singleLine: Boolean = false,
     minLines: Int = 1,
@@ -953,6 +975,7 @@ fun YhOutlinedTextField(
             label = label,
             placeholder = placeholder,
             supportingText = supportingText,
+            leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             singleLine = singleLine,
             minLines = minLines,

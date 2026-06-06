@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RectangleShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -193,30 +193,19 @@ fun RowScope.YhNavigationBarItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.NavigationBarItem(
-            selected = selected,
-            onClick = onClick,
-            icon = icon,
-            label = label,
-            modifier = modifier,
-            enabled = enabled
-        )
-    } else {
-        NavigationBarItem(
-            selected = selected,
-            onClick = onClick,
-            icon = {
-                androidx.compose.material3.Icon(
-                    imageVector = icon,
-                    contentDescription = label
-                )
-            },
-            label = { Text(label) },
-            modifier = modifier,
-            enabled = enabled
-        )
-    }
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = {
+            androidx.compose.material3.Icon(
+                imageVector = icon,
+                contentDescription = label
+            )
+        },
+        label = { Text(label) },
+        modifier = modifier,
+        enabled = enabled
+    )
 }
 
 @Composable
@@ -248,25 +237,14 @@ fun YhFloatingNavigationBarItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem(
-            selected = selected,
-            onClick = onClick,
-            icon = icon,
-            label = label,
-            modifier = modifier,
-            enabled = enabled
-        )
-    } else {
-        Row(
-            modifier = modifier
-                .clickable(enabled = enabled, onClick = onClick)
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            androidx.compose.material3.Icon(icon, contentDescription = label)
-            Text(label, modifier = Modifier.padding(start = 8.dp))
-        }
+    Row(
+        modifier = modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        androidx.compose.material3.Icon(icon, contentDescription = label)
+        Text(label, modifier = Modifier.padding(start = 8.dp))
     }
 }
 

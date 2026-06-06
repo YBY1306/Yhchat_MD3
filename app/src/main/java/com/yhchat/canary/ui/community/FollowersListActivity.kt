@@ -26,23 +26,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +50,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -134,9 +133,9 @@ private fun FollowersListScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
+            YhTopAppBar(
                 title = {
                     if (!isSearching) {
                         Column {
@@ -153,23 +152,17 @@ private fun FollowersListScreen(
                             )
                         }
                     } else {
-                        TextField(
+                        YhOutlinedTextField(
                             value = searchKeyword,
                             onValueChange = { searchKeyword = it },
                             placeholder = { Text("搜索关注者...") },
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                            )
+                            singleLine = true
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             if (isSearching) {
                                 isSearching = false
@@ -188,14 +181,11 @@ private fun FollowersListScreen(
                 },
                 actions = {
                     if (!isSearching) {
-                        IconButton(onClick = { isSearching = true }) {
+                        YhIconButton(onClick = { isSearching = true }) {
                             Icon(imageVector = Icons.Default.Search, contentDescription = "搜索")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         }
     ) { padding ->
@@ -206,7 +196,7 @@ private fun FollowersListScreen(
         ) {
             when {
                 state.isLoading && state.followers.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    YhCircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
                 state.error != null && state.followers.isEmpty() -> {
@@ -221,7 +211,7 @@ private fun FollowersListScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = {
+                        YhButton(onClick = {
                             viewModel.loadFollowers(token = token, baId = baId, memberName = searchKeyword, page = 1)
                         }) {
                             Text("重试")
@@ -294,7 +284,9 @@ private fun FollowersListContent(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .yhTopBarNestedScroll(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(state.followers) { follower ->
@@ -312,7 +304,7 @@ private fun FollowersListContent(
                     onToggleAdmin(follower.userId, follower.userLevel == 2)
                 }
             )
-            HorizontalDivider()
+            YhHorizontalDivider()
         }
 
         if (state.isLoadingMore) {
@@ -323,7 +315,7 @@ private fun FollowersListContent(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    YhCircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
             }
         }
@@ -397,10 +389,10 @@ private fun FollowerItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Surface(
+                YhCard(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = CircleShape
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    cornerRadius = 22.dp
                 ) {}
             }
         }
@@ -435,7 +427,7 @@ private fun FollowerItem(
         }
 
         Box {
-            IconButton(
+            YhIconButton(
                 onClick = {
                     if (!isUpdating) {
                         showMenu = true
@@ -444,18 +436,18 @@ private fun FollowerItem(
                 enabled = !isUpdating
             ) {
                 if (isUpdating) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    YhCircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
                 }
             }
 
-            DropdownMenu(
+            YhDropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
                 val isAdmin = follower.userLevel == 2
-                DropdownMenuItem(
+                YhDropdownMenuItem(
                     text = { Text(if (isAdmin) "取消管理员" else "设置管理员") },
                     onClick = {
                         showMenu = false

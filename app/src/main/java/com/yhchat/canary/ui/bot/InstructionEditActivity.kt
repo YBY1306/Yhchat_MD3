@@ -24,13 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +46,11 @@ import com.yhchat.canary.data.model.BotInstruction
 import com.yhchat.canary.data.model.BotInstructionRequest
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
@@ -250,7 +250,7 @@ fun InstructionEditScreen(
                 title = if (isEdit) "编辑指令 - $botName" else "创建指令 - $botName",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -263,9 +263,8 @@ fun InstructionEditScreen(
                         enabled = !isSaving && !isLoading
                     ) {
                         if (isSaving) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -287,7 +286,7 @@ fun InstructionEditScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -366,17 +365,17 @@ fun InstructionEditScreen(
                                     
                                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            FilterChip(
+                                            YhFilterChip(
                                                 selected = instructionType == 1,
                                                 onClick = { instructionType = 1 },
                                                 label = { Text("普通指令") }
                                             )
-                                            FilterChip(
+                                            YhFilterChip(
                                                 selected = instructionType == 2,
                                                 onClick = { instructionType = 2 },
                                                 label = { Text("直发指令") }
                                             )
-                                            FilterChip(
+                                            YhFilterChip(
                                                 selected = instructionType == 5,
                                                 onClick = { instructionType = 5 },
                                                 label = { Text("自定义输入") }
@@ -433,19 +432,19 @@ fun InstructionEditScreen(
                                         var showAddFieldMenu by remember { mutableStateOf(false) }
                                         
                                         Box {
-                                            IconButton(onClick = { showAddFieldMenu = true }) {
+                                            YhIconButton(onClick = { showAddFieldMenu = true }) {
                                                 Icon(
                                                     imageVector = Icons.Default.Add,
                                                     contentDescription = "添加字段"
                                                 )
                                             }
                                             
-                                            DropdownMenu(
+                                            YhDropdownMenu(
                                                 expanded = showAddFieldMenu,
                                                 onDismissRequest = { showAddFieldMenu = false }
                                             ) {
                                                 CustomFieldType.values().forEach { type ->
-                                                    DropdownMenuItem(
+                                                    YhDropdownMenuItem(
                                                         text = { Text(type.displayName) },
                                                         onClick = {
                                                             customFields = customFields + InstructionFormField(type = type)
@@ -515,7 +514,7 @@ private fun CustomFieldEditCard(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
-                IconButton(onClick = onRemove) {
+                YhIconButton(onClick = onRemove) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "删除字段",

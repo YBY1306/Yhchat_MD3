@@ -14,6 +14,7 @@ import com.yhchat.canary.data.api.CreateBoardRequest
 import com.yhchat.canary.data.api.CreateBoardResponse
 import com.yhchat.canary.data.api.CreatePostRequest
 import com.yhchat.canary.data.api.DeleteBoardRequest
+import com.yhchat.canary.data.api.DeleteCommentRequest
 import com.yhchat.canary.data.api.DeletePostRequest
 import com.yhchat.canary.data.api.EditBoardRequest
 import com.yhchat.canary.data.api.EditPostRequest
@@ -631,6 +632,32 @@ class CommunityRepository @Inject constructor(
             val request = CommentPostRequest(postId = postId, commentId = commentId, content = content)
             val response = apiService.commentPost(token, request)
             
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.code == 1) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("API返回错误: ${body?.message ?: "未知错误"}"))
+                }
+            } else {
+                Result.failure(Exception("网络请求失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 删除评论
+     */
+    suspend fun deleteComment(
+        token: String,
+        commentId: Int
+    ): Result<ApiStatus> {
+        return try {
+            val request = DeleteCommentRequest(commentId = commentId)
+            val response = apiService.deleteComment(token, request)
+
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null && body.code == 1) {

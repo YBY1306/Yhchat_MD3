@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -134,6 +135,7 @@ fun LayoutSettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .yhTopBarNestedScroll()
                 .padding(padding),
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)

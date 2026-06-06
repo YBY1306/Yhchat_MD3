@@ -38,27 +38,15 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -87,7 +75,17 @@ import coil.request.ImageRequest
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.ui.community.CommunityPostCard
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.components.ScrollAwareNavigationState
@@ -338,7 +336,7 @@ fun CommunityTabScreen(
                     title = "社区",
                     large = false,
                     navigationIcon = {
-                        IconButton(onClick = { openDrawer() }) {
+                        YhIconButton(onClick = { openDrawer() }) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
                                 contentDescription = "打开侧边栏"
@@ -351,7 +349,7 @@ fun CommunityTabScreen(
                             onSelectedChange = { selectedFeed = it }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = {
+                        YhIconButton(onClick = {
                             val intent = Intent(context, SearchActivity::class.java).apply {
                                 putExtra("token", token)
                             }
@@ -509,7 +507,7 @@ private fun CommunityFeedScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
 
@@ -535,7 +533,7 @@ private fun CommunityFeedScreen(
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(
+                                    YhCircularProgressIndicator(
                                         modifier = Modifier.size(24.dp),
                                         strokeWidth = 2.dp
                                     )
@@ -599,7 +597,7 @@ private fun CommunityFeedScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
 
@@ -625,7 +623,7 @@ private fun CommunityFeedScreen(
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(
+                                    YhCircularProgressIndicator(
                                         modifier = Modifier.size(24.dp),
                                         strokeWidth = 2.dp
                                     )
@@ -885,7 +883,7 @@ fun MoreTabContent(
                                     )
                                 }
 
-                                TextButton(
+                                YhTextButton(
                                     onClick = {
                                         boardToManage = board
                                         manageVisibleRange = 0
@@ -923,7 +921,7 @@ fun MoreTabContent(
     }
 
     if (showManageBoardSheet && boardToManage != null) {
-        ModalBottomSheet(
+        YhBottomSheet(
             onDismissRequest = {
                 showManageBoardSheet = false
             }
@@ -991,7 +989,7 @@ fun MoreTabContent(
                         }
 
                         if (isUploadingAvatar) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp
                             )
@@ -1031,9 +1029,9 @@ fun MoreTabContent(
                         )
                     }
 
-                    TextButton(
+                    YhTextButton(
                         onClick = {
-                            val current = board ?: return@TextButton
+                            val current = board ?: return@YhTextButton
                             isEditingBoard = !isEditingBoard
                             editedBoardName = current.name
                             editedAvatarUrl = current.avatar
@@ -1045,7 +1043,7 @@ fun MoreTabContent(
                 }
 
                 if (isEditingBoard) {
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = editedBoardName,
                         onValueChange = { input ->
                             if (input.length <= 10) {
@@ -1066,18 +1064,18 @@ fun MoreTabContent(
                         )
                     }
 
-                    Button(
+                    YhButton(
                         onClick = {
-                            val current = board ?: return@Button
+                            val current = board ?: return@YhButton
                             val name = editedBoardName.trim()
                             val avatar = editedAvatarUrl.trim()
                             if (name.isBlank()) {
                                 editError = "分区名称不能为空"
-                                return@Button
+                                return@YhButton
                             }
                             if (avatar.isBlank()) {
                                 editError = "分区头像不能为空"
-                                return@Button
+                                return@YhButton
                             }
                             isManaging = true
                             viewModel.editBoard(
@@ -1100,7 +1098,7 @@ fun MoreTabContent(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isManaging) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp
                             )
@@ -1112,7 +1110,7 @@ fun MoreTabContent(
                     }
                 }
 
-                HorizontalDivider()
+                YhHorizontalDivider()
 
                 Text(
                     text = "可见范围",
@@ -1120,7 +1118,7 @@ fun MoreTabContent(
                 )
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
+                        YhRadioButton(
                             selected = manageVisibleRange == 0,
                             onClick = { manageVisibleRange = 0 }
                         )
@@ -1128,7 +1126,7 @@ fun MoreTabContent(
                         Text("所有人可见")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
+                        YhRadioButton(
                             selected = manageVisibleRange == 1,
                             onClick = { manageVisibleRange = 1 }
                         )
@@ -1143,7 +1141,7 @@ fun MoreTabContent(
                 )
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
+                        YhRadioButton(
                             selected = managePublishAuthority == 0,
                             onClick = { managePublishAuthority = 0 }
                         )
@@ -1151,7 +1149,7 @@ fun MoreTabContent(
                         Text("所有人都可以发文章和评论")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
+                        YhRadioButton(
                             selected = managePublishAuthority == 1,
                             onClick = { managePublishAuthority = 1 }
                         )
@@ -1159,7 +1157,7 @@ fun MoreTabContent(
                         Text("仅所有者发文章，任何人可评论")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
+                        YhRadioButton(
                             selected = managePublishAuthority == 2,
                             onClick = { managePublishAuthority = 2 }
                         )
@@ -1176,9 +1174,9 @@ fun MoreTabContent(
                     )
                 }
 
-                Button(
+                YhButton(
                     onClick = {
-                        val board = boardToManage ?: return@Button
+                        val board = boardToManage ?: return@YhButton
                         isManaging = true
                         viewModel.manageBoard(
                             token = token,
@@ -1199,7 +1197,7 @@ fun MoreTabContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isManaging) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
@@ -1210,7 +1208,7 @@ fun MoreTabContent(
                     }
                 }
 
-                HorizontalDivider()
+                YhHorizontalDivider()
 
                 deleteError?.let { err ->
                     Text(
@@ -1220,22 +1218,18 @@ fun MoreTabContent(
                     )
                 }
 
-                Button(
+                YhButton(
                     onClick = {
                         deleteError = null
                         showDeleteBoardDialog = true
                     },
                     enabled = !isManaging && !isUploadingAvatar && !isDeletingBoard,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isDeletingBoard) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onError
+                            strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("删除中", color = MaterialTheme.colorScheme.onError)
@@ -1248,7 +1242,7 @@ fun MoreTabContent(
 
         if (showDeleteBoardDialog) {
             val current = boardToManage
-            AlertDialog(
+            YhAlertDialog(
                 onDismissRequest = {
                     if (!isDeletingBoard) {
                         showDeleteBoardDialog = false
@@ -1259,9 +1253,9 @@ fun MoreTabContent(
                     Text("确定要删除分区「${current?.name.orEmpty()}」吗？删除后不可恢复。")
                 },
                 confirmButton = {
-                    Button(
+                    YhButton(
                         onClick = {
-                            val b = current ?: return@Button
+                            val b = current ?: return@YhButton
                             isDeletingBoard = true
                             deleteError = null
                             viewModel.deleteBoard(
@@ -1279,16 +1273,13 @@ fun MoreTabContent(
                                 }
                             )
                         },
-                        enabled = !isDeletingBoard,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
+                        enabled = !isDeletingBoard
                     ) {
                         Text("删除", color = MaterialTheme.colorScheme.onError)
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    YhTextButton(
                         onClick = { showDeleteBoardDialog = false },
                         enabled = !isDeletingBoard
                     ) {
@@ -1310,12 +1301,11 @@ fun MoreOptionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -1371,13 +1361,11 @@ fun BoardListContent(
     ) {
         // 错误提示
         error?.let { errorMessage ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = errorMessage,
@@ -1429,7 +1417,7 @@ fun BoardListContent(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
             }
@@ -1460,13 +1448,11 @@ fun MyPostListContent(
     ) {
         // 错误提示
         error?.let { errorMessage ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = errorMessage,
@@ -1534,7 +1520,7 @@ fun MyPostListContent(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
             }
@@ -1556,14 +1542,13 @@ fun MyPostItem(
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = { showContextMenu = true }
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            )
     ) {
         Column(
             modifier = Modifier
@@ -1678,12 +1663,12 @@ fun MyPostItem(
         
         // 删除确认对话框
         if (showDeleteDialog) {
-            AlertDialog(
+            YhAlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text("删除文章") },
                 text = { Text("确定要删除这篇文章吗？删除后无法恢复。") },
                 confirmButton = {
-                    TextButton(
+                    YhTextButton(
                         onClick = {
                             showDeleteDialog = false
                             onDelete()
@@ -1693,7 +1678,7 @@ fun MyPostItem(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
+                    YhTextButton(onClick = { showDeleteDialog = false }) {
                         Text("取消")
                     }
                 }
@@ -1711,14 +1696,14 @@ fun PostContextMenu(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text("操作选项")
         },
         text = {
             Column {
-                TextButton(
+                YhTextButton(
                     onClick = onEdit,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1736,7 +1721,7 @@ fun PostContextMenu(
                     }
                 }
                 
-                TextButton(
+                YhTextButton(
                     onClick = onDelete,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1761,7 +1746,7 @@ fun PostContextMenu(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

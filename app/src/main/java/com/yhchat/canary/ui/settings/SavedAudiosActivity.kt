@@ -38,12 +38,9 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -64,10 +61,14 @@ import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSlider
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -279,7 +280,7 @@ private fun SavedAudiosScreen(
                 title = topBarTitle,
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         if (uiState.selectionMode) {
                             viewModel.finishSelection()
                         } else {
@@ -291,7 +292,7 @@ private fun SavedAudiosScreen(
                 },
                 actions = {
                     if (uiState.selectionMode) {
-                        IconButton(
+                        YhIconButton(
                             onClick = {
                                 viewModel.requestDelete(uiState.selectedIds.toList())
                             },
@@ -299,7 +300,7 @@ private fun SavedAudiosScreen(
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = "删除")
                         }
-                        IconButton(
+                        YhIconButton(
                             onClick = {
                                 viewModel.finishSelection()
                             }
@@ -362,6 +363,7 @@ private fun SavedAudiosScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .yhTopBarNestedScroll()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -495,7 +497,7 @@ private fun SavedAudioCard(
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (selectionMode) {
-                    Checkbox(checked = selected, onCheckedChange = { onClick() })
+                    YhCheckbox(checked = selected, onCheckedChange = { onClick() })
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
@@ -515,16 +517,16 @@ private fun SavedAudioCard(
                 }
 
                 if (!selectionMode) {
-                    IconButton(onClick = onPlay) {
+                    YhIconButton(onClick = onPlay) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "暂停" else "播放"
                         )
                     }
-                    IconButton(onClick = onRename) {
+                    YhIconButton(onClick = onRename) {
                         Icon(Icons.Default.Edit, contentDescription = "重命名")
                     }
-                    IconButton(onClick = onDelete) {
+                    YhIconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = "删除")
                     }
                 }
@@ -532,7 +534,7 @@ private fun SavedAudioCard(
 
             if ((isExpanded || isActive) && !selectionMode) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Slider(
+                YhSlider(
                     value = sliderPosMs,
                     onValueChange = onSeek,
                     valueRange = 0f..(if (sliderMaxMs > 0) sliderMaxMs else maxOf(sliderPosMs, 60_000f) + 1_000f),

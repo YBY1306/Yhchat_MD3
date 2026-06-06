@@ -28,15 +28,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +55,13 @@ import com.yhchat.canary.ui.bot.viewmodel.ParamVariableType
 import com.yhchat.canary.ui.bot.viewmodel.ParamVariableUi
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
@@ -133,10 +133,10 @@ private fun ParamVariableRow(
                     )
                 }
                 Row {
-                    IconButton(onClick = onEdit) {
+                    YhIconButton(onClick = onEdit) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "编辑变量")
                     }
-                    IconButton(onClick = onDelete) {
+                    YhIconButton(onClick = onDelete) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "删除变量")
                     }
                 }
@@ -182,7 +182,7 @@ private fun JsonPreviewCard(
             ) {
                 Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                 if (onCopy != null) {
-                    IconButton(onClick = onCopy) {
+                    YhIconButton(onClick = onCopy) {
                         Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "复制 JSON")
                     }
                 }
@@ -238,7 +238,7 @@ private fun ParamVariableDialog(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ParamVariableType.values().forEach { option ->
-                        FilterChip(
+                        YhFilterChip(
                             selected = type == option,
                             onClick = { type = option },
                             label = { Text(if (option == ParamVariableType.Input) "文本输入" else "下拉选择") }
@@ -331,7 +331,7 @@ private fun BotLlmSettingsScreen(
                 title = "$botName 大模型设置",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    YhIconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -344,7 +344,7 @@ private fun BotLlmSettingsScreen(
                         onClick = { viewModel.saveSettings() }
                     ) {
                         if (uiState.isSaving) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier
                                     .width(18.dp)
                                     .height(18.dp),
@@ -367,7 +367,7 @@ private fun BotLlmSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (uiState.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                YhLinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
             uiState.error?.let { errorText ->
@@ -385,7 +385,7 @@ private fun BotLlmSettingsScreen(
                     checked = uiState.isBigModel,
                     onCheckedChange = viewModel::toggleBigModel
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 SettingsSwitchRow(
                     title = "需要自动回复",
                     subtitle = "开启后机器人收到消息会使用 LLM 回复",
@@ -413,7 +413,7 @@ private fun BotLlmSettingsScreen(
                 }
 
                 if (uiState.isRefreshingModels) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    YhLinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
 
                 DropdownTextField(
@@ -493,7 +493,7 @@ private fun BotLlmSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             editingParam = ParamVariableUi()
                             isParamDialogVisible = true
@@ -648,14 +648,14 @@ private fun DropdownTextField(
                 label = { Text(label) },
                 placeholder = placeholder?.let { { Text(it) } },
                 trailingIcon = {
-                    IconButton(onClick = { expanded = true }) {
+                    YhIconButton(onClick = { expanded = true }) {
                         Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null)
                     }
                 }
             )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            YhDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEach { (id, text) ->
-                    DropdownMenuItem(
+                    YhDropdownMenuItem(
                         text = { Text(text) },
                         onClick = {
                             expanded = false
@@ -664,7 +664,7 @@ private fun DropdownTextField(
                     )
                 }
                 if (options.isEmpty()) {
-                    DropdownMenuItem(
+                    YhDropdownMenuItem(
                         text = { Text("暂无可选项") },
                         enabled = false,
                         onClick = { }

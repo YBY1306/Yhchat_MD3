@@ -22,8 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,6 +47,8 @@ import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
@@ -447,14 +447,14 @@ private fun MemberItem(
                         )
                     }
                     
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
                         // 根据成员权限显示上任/卸任管理员
                         if (member.permissionLevel == 2) {
                             // 管理员，显示卸任选项
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("卸任管理员") },
                                 onClick = {
                                     showMenu = false
@@ -463,7 +463,7 @@ private fun MemberItem(
                             )
                         } else if (member.permissionLevel == 0) {
                             // 普通成员，显示上任选项
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("设为管理员") },
                                 onClick = {
                                     showMenu = false
@@ -473,7 +473,7 @@ private fun MemberItem(
                         }
 
                         if (canTransferGroupOwner) {
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("转让群主") },
                                 onClick = {
                                     showMenu = false
@@ -482,14 +482,14 @@ private fun MemberItem(
                             )
                         }
                         
-                        DropdownMenuItem(
+                        YhDropdownMenuItem(
                             text = { Text("踢出群聊") },
                             onClick = {
                                 showMenu = false
                                 onRemoveMember?.invoke(member.userId)
                             }
                         )
-                        DropdownMenuItem(
+                        YhDropdownMenuItem(
                             text = { Text("禁言") },
                             onClick = {
                                 showMenu = false

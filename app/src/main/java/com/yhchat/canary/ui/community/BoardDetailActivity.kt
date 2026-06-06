@@ -5,7 +5,6 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,21 +29,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -62,13 +49,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -150,53 +146,58 @@ fun BoardDetailScreen(
         }
     }
     
-    Surface(
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        val pullToRefreshState = rememberPullToRefreshState()
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        // 顶部应用栏
-        TopAppBar(
-            title = {
-                Text(
-                    text = boardDetailState.board?.name ?: boardName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopBar(
+                title = boardDetailState.board?.name ?: boardName,
+                large = false,
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                actions = {
+                    YhIconButton(
+                        onClick = {
+                            val intent = Intent(context, SearchActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "搜索"
+                        )
+                    }
                 }
-            },
-            actions = {
-                IconButton(onClick = {
-                    // 跳转到搜索Activity
-                    val intent = Intent(context, SearchActivity::class.java).apply {
+            )
+        },
+        floatingActionButton = {
+            YhFloatingActionButton(
+                onClick = {
+                    val intent = Intent(context, CreatePostActivity::class.java).apply {
+                        putExtra("board_id", boardId)
+                        putExtra("board_name", boardDetailState.board?.name ?: boardName)
                         putExtra("token", token)
                     }
                     context.startActivity(intent)
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "搜索"
-                    )
                 }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "发布文章"
+                )
             }
-        )
-        
-        // 文章列表（包含分区信息卡片）
+        }
+    ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = boardDetailState.isLoading || postListState.isLoading,
             onRefresh = {
@@ -205,20 +206,22 @@ fun BoardDetailScreen(
                 }
             },
             state = pullToRefreshState,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .yhTopBarNestedScroll(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 分区信息卡片 - 作为列表的第一项，跟随滚动
                 item {
                     boardDetailState.board?.let { board ->
                         BoardInfoCard(
                             board = board,
                             onGroupListClick = {
-                                // 跳转到群聊列表Activity
                                 val intent = Intent(context, GroupListActivity::class.java).apply {
                                     putExtra("board_id", boardId)
                                     putExtra("board_name", board.name)
@@ -226,23 +229,18 @@ fun BoardDetailScreen(
                                 }
                                 context.startActivity(intent)
                             },
-                            onFollowClick = {
-                                viewModel.followBoard(token, boardId)
-                            },
+                            onFollowClick = { viewModel.followBoard(token, boardId) },
                             followState = followState,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
                 }
-                
-                // 错误提示
+
                 postListState.error?.let { error ->
                     item {
-                        Card(
+                        YhCard(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Text(
                                 text = error,
@@ -253,7 +251,7 @@ fun BoardDetailScreen(
                         }
                     }
                 }
-                
+
                 items(postListState.posts) { post ->
                     PostListItem(
                         post = post,
@@ -261,7 +259,6 @@ fun BoardDetailScreen(
                             if (onPostNavigate != null) {
                                 onPostNavigate(post.id, post.title)
                             } else {
-                                // 跳转到文章详情
                                 val intent = Intent(context, PostDetailActivity::class.java).apply {
                                     putExtra("post_id", post.id)
                                     putExtra("post_title", post.title)
@@ -276,8 +273,7 @@ fun BoardDetailScreen(
                         }
                     )
                 }
-                
-                // 自动加载更多指示器
+
                 if (postListState.posts.isNotEmpty() && postListState.hasMore) {
                     item {
                         LaunchedEffect(Unit) {
@@ -285,7 +281,7 @@ fun BoardDetailScreen(
                                 viewModel.loadMorePosts(token, boardId)
                             }
                         }
-                        
+
                         if (postListState.isLoading) {
                             Box(
                                 modifier = Modifier
@@ -293,7 +289,7 @@ fun BoardDetailScreen(
                                     .padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -301,8 +297,7 @@ fun BoardDetailScreen(
                         }
                     }
                 }
-                
-                // 空状态
+
                 if (postListState.posts.isEmpty() && !postListState.isLoading) {
                     item {
                         Box(
@@ -319,8 +314,7 @@ fun BoardDetailScreen(
                         }
                     }
                 }
-                
-                // 加载状态
+
                 if (postListState.isLoading && postListState.posts.isEmpty()) {
                     item {
                         Box(
@@ -329,39 +323,17 @@ fun BoardDetailScreen(
                                 .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            YhCircularProgressIndicator()
                         }
                     }
                 }
             }
         }
-        }
-        
-        // 浮空发文章按钮 - 位置稍微上移
-        FloatingActionButton(
-            onClick = {
-                // 启动发文章Activity
-                val intent = Intent(context, CreatePostActivity::class.java).apply {
-                    putExtra("board_id", boardId)
-                    putExtra("board_name", boardDetailState.board?.name ?: boardName)
-                    putExtra("token", token)
-                }
-                context.startActivity(intent)
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 24.dp, end = 16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "发布文章"
-            )
-        }
     }
     
     // 屏蔽用户对话框
     if (showBlockDialog && selectedPost != null) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { 
                 showBlockDialog = false
                 selectedPost = null
@@ -369,7 +341,7 @@ fun BoardDetailScreen(
             title = { Text("屏蔽用户") },
             text = { Text("确定要屏蔽用户 ${selectedPost?.senderNickname} 吗？屏蔽后将不再看到该用户的文章。") },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         selectedPost?.let { post ->
                             viewModel.blockUser(token, post.senderId)
@@ -380,7 +352,7 @@ fun BoardDetailScreen(
                     enabled = !blockState.isLoading
                 ) {
                     if (blockState.isLoading) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
@@ -390,7 +362,7 @@ fun BoardDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = { 
                         showBlockDialog = false
                         selectedPost = null
@@ -412,17 +384,16 @@ fun BoardDetailScreen(
     
     // 屏蔽错误提示
     blockState.error?.let { error ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { viewModel.resetBlockState() },
             title = { Text("错误") },
             text = { Text(error) },
             confirmButton = {
-                TextButton(onClick = { viewModel.resetBlockState() }) {
+                YhTextButton(onClick = { viewModel.resetBlockState() }) {
                     Text("确定")
                 }
             }
         )
-    }
     }
 }
 
@@ -439,9 +410,9 @@ fun BoardInfoCard(
 ) {
     var showImageViewer by remember(board.avatar) { mutableStateOf(false) }
 
-    Card(
+    YhCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 16.dp
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -504,27 +475,15 @@ fun BoardInfoCard(
             }
             
             // 关注状态按钮
-            Button(
+            YhButton(
                 onClick = onFollowClick,
                 enabled = !followState.isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (board.isFollowed == "1") 
-                        MaterialTheme.colorScheme.surface 
-                    else 
-                        MaterialTheme.colorScheme.primary,
-                    contentColor = if (board.isFollowed == "1") 
-                        MaterialTheme.colorScheme.onSurface 
-                    else 
-                        MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.height(32.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                modifier = Modifier.height(32.dp)
             ) {
                 if (followState.isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        strokeWidth = 1.dp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        strokeWidth = 1.dp
                     )
                 } else {
                     Text(

@@ -27,10 +27,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +47,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.BotInstruction
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -120,7 +120,7 @@ fun InstructionManagementScreen(
                 title = "$botName - 指令管理",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -128,7 +128,7 @@ fun InstructionManagementScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { 
+                    YhIconButton(onClick = {
                         InstructionEditActivity.start(context, botId, botName, null)
                     }) {
                         Icon(
@@ -151,7 +151,7 @@ fun InstructionManagementScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -322,7 +322,7 @@ fun InstructionListItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             // 预览按钮
-            IconButton(onClick = onPreview) {
+            YhIconButton(onClick = onPreview) {
                 Icon(
                     imageVector = Icons.Default.Visibility,
                     contentDescription = "预览",
@@ -331,7 +331,7 @@ fun InstructionListItem(
             }
             
             // 编辑按钮
-            IconButton(onClick = onEdit) {
+            YhIconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "编辑",
@@ -340,7 +340,7 @@ fun InstructionListItem(
             }
             
             // 删除按钮
-            IconButton(onClick = onDelete) {
+            YhIconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "删除",

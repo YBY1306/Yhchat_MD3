@@ -26,11 +26,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +44,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhTopBar
@@ -136,7 +136,7 @@ private fun BotManagementScreen(
                 title = "管理机器人",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -220,7 +220,7 @@ private fun BotManagementScreen(
                         }
                     )
                     
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     // 机器人设置
                     ManagementOption(
@@ -232,7 +232,7 @@ private fun BotManagementScreen(
                         }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     ManagementOption(
                         icon = Icons.Default.Memory,
@@ -243,7 +243,7 @@ private fun BotManagementScreen(
                         }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     // 进入聊天
                     ManagementOption(
@@ -260,7 +260,7 @@ private fun BotManagementScreen(
                         }
                     )
                     
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 编辑机器人
                     ManagementOption(
@@ -302,10 +302,9 @@ private fun BotManagementScreen(
                             enabled = !uiState.isStoppingBot && !uiState.isLoading && !uiState.isDeletingBot
                         ) {
                             if (uiState.isStoppingBot) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("处理中...")
@@ -321,10 +320,9 @@ private fun BotManagementScreen(
                             enabled = !uiState.isDeletingBot && !uiState.isLoading && !uiState.isStoppingBot
                         ) {
                             if (uiState.isDeletingBot) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.error
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("删除中...")

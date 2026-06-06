@@ -975,6 +975,12 @@ interface ApiService {
         @Header("token") token: String,
         @Body request: CommentPostRequest
     ): Response<ApiStatus>
+
+    @POST("v1/community/comment/delete")
+    suspend fun deleteComment(
+        @Header("token") token: String,
+        @Body request: DeleteCommentRequest
+    ): Response<ApiStatus>
     
     @POST("v1/community/posts/create")
     suspend fun createPost(
@@ -1851,6 +1857,14 @@ data class CommentPostRequest(
     
     @SerializedName("content")
     val content: String
+)
+
+/**
+ * 删除评论请求
+ */
+data class DeleteCommentRequest(
+    @SerializedName("commentId")
+    val commentId: Int
 )
 
 /**

@@ -286,6 +286,24 @@ class PostDetailViewModel @Inject constructor(
     }
 
     /**
+     * 使用TokenRepository删除评论
+     */
+    fun deleteCommentWithToken(postId: Int, commentId: Int) {
+        viewModelScope.launch {
+            try {
+                val token = tokenRepository.getTokenSync()
+                if (token != null) {
+                    deleteComment(token, postId, commentId)
+                } else {
+                    _commentListState.value = _commentListState.value.copy(error = "未登录")
+                }
+            } catch (e: Exception) {
+                _commentListState.value = _commentListState.value.copy(error = "获取登录信息失败: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * 点赞文章
      */
     fun likePost(token: String, postId: Int) {
@@ -371,6 +389,23 @@ class PostDetailViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     _commentListState.value = _commentListState.value.copy(error = error.message)
+                }
+        }
+    }
+
+    /**
+     * 删除评论
+     */
+    fun deleteComment(token: String, postId: Int, commentId: Int) {
+        viewModelScope.launch {
+            communityRepository.deleteComment(token, commentId)
+                .onSuccess {
+                    loadCommentList(token, postId, 1)
+                }
+                .onFailure { error ->
+                    _commentListState.value = _commentListState.value.copy(
+                        error = error.message ?: "删除评论失败"
+                    )
                 }
         }
     }

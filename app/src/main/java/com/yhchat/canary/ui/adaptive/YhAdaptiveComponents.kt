@@ -33,6 +33,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -40,10 +43,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -54,6 +59,13 @@ val isMiuixUi: Boolean
 
 private val LocalYhMiuixScrollBehavior =
     compositionLocalOf<top.yukonga.miuix.kmp.basic.ScrollBehavior?> { null }
+
+@OptIn(ExperimentalMaterial3Api::class)
+private val LocalYhMd3ScrollBehavior =
+    compositionLocalOf<TopAppBarScrollBehavior?> { null }
+
+private val LocalYhScaffoldContainerColor =
+    compositionLocalOf { Color.Unspecified }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,9 +80,12 @@ fun YhScaffold(
 ) {
     if (isMiuixUi) {
         val scrollBehavior = top.yukonga.miuix.kmp.basic.MiuixScrollBehavior()
-        CompositionLocalProvider(LocalYhMiuixScrollBehavior provides scrollBehavior) {
+        CompositionLocalProvider(
+            LocalYhMiuixScrollBehavior provides scrollBehavior,
+            LocalYhScaffoldContainerColor provides top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+        ) {
             top.yukonga.miuix.kmp.basic.Scaffold(
-                modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                modifier = modifier,
                 containerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background,
                 topBar = topBar,
                 bottomBar = bottomBar,
@@ -91,15 +106,34 @@ fun YhScaffold(
             )
         }
     } else {
-        androidx.compose.material3.Scaffold(
-            modifier = modifier,
-            containerColor = containerColor,
-            topBar = topBar,
-            bottomBar = bottomBar,
-            floatingActionButton = floatingActionButton,
-            contentWindowInsets = contentWindowInsets,
-            content = content
-        )
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+        CompositionLocalProvider(
+            LocalYhMd3ScrollBehavior provides scrollBehavior,
+            LocalYhScaffoldContainerColor provides containerColor
+        ) {
+            androidx.compose.material3.Scaffold(
+                modifier = modifier,
+                containerColor = containerColor,
+                topBar = topBar,
+                bottomBar = bottomBar,
+                floatingActionButton = floatingActionButton,
+                contentWindowInsets = contentWindowInsets,
+                content = content
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Modifier.yhTopBarNestedScroll(): Modifier {
+    return when {
+        isMiuixUi -> {
+            LocalYhMiuixScrollBehavior.current?.let { nestedScroll(it.nestedScrollConnection) } ?: this
+        }
+        else -> {
+            LocalYhMd3ScrollBehavior.current?.let { nestedScroll(it.nestedScrollConnection) } ?: this
+        }
     }
 }
 
@@ -228,6 +262,13 @@ fun YhTopBar(
             )
         }
     } else {
+        val scrollBehavior = LocalYhMd3ScrollBehavior.current
+        val topBarContainerColor = LocalYhScaffoldContainerColor.current
+            .takeOrElse { MaterialTheme.colorScheme.surface }
+        val colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = topBarContainerColor,
+            scrolledContainerColor = topBarContainerColor
+        )
         if (large) {
             androidx.compose.material3.LargeTopAppBar(
                 title = {
@@ -238,7 +279,9 @@ fun YhTopBar(
                 },
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                colors = colors,
+                scrollBehavior = scrollBehavior
             )
         } else {
             androidx.compose.material3.TopAppBar(
@@ -250,7 +293,9 @@ fun YhTopBar(
                 },
                 modifier = modifier,
                 navigationIcon = navigationIcon,
-                actions = actions
+                actions = actions,
+                colors = colors,
+                scrollBehavior = scrollBehavior
             )
         }
     }
@@ -286,18 +331,34 @@ fun YhTopAppBar(
             )
         }
     } else if (large) {
+        val scrollBehavior = LocalYhMd3ScrollBehavior.current
+        val topBarContainerColor = LocalYhScaffoldContainerColor.current
+            .takeOrElse { MaterialTheme.colorScheme.surface }
         androidx.compose.material3.LargeTopAppBar(
             title = title,
             modifier = modifier,
             navigationIcon = navigationIcon,
-            actions = actions
+            actions = actions,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = topBarContainerColor,
+                scrolledContainerColor = topBarContainerColor
+            ),
+            scrollBehavior = scrollBehavior
         )
     } else {
+        val scrollBehavior = LocalYhMd3ScrollBehavior.current
+        val topBarContainerColor = LocalYhScaffoldContainerColor.current
+            .takeOrElse { MaterialTheme.colorScheme.surface }
         androidx.compose.material3.TopAppBar(
             title = title,
             modifier = modifier,
             navigationIcon = navigationIcon,
-            actions = actions
+            actions = actions,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = topBarContainerColor,
+                scrolledContainerColor = topBarContainerColor
+            ),
+            scrollBehavior = scrollBehavior
         )
     }
 }
@@ -447,6 +508,9 @@ fun YhButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
+    contentPadding: PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    containerColor: Color? = null,
+    contentColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     if (isMiuixUi) {
@@ -462,6 +526,15 @@ fun YhButton(
             modifier = modifier,
             enabled = enabled,
             shape = shape,
+            contentPadding = contentPadding,
+            colors = if (containerColor != null || contentColor != null) {
+                androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = containerColor ?: MaterialTheme.colorScheme.primary,
+                    contentColor = contentColor ?: MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                androidx.compose.material3.ButtonDefaults.buttonColors()
+            },
             content = content
         )
     }
@@ -521,6 +594,8 @@ fun YhIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    containerColor: Color? = null,
+    contentColor: Color? = null,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
@@ -535,6 +610,35 @@ fun YhIconButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            colors = if (containerColor != null || contentColor != null) {
+                androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+                    containerColor = containerColor ?: Color.Transparent,
+                    contentColor = contentColor ?: MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                androidx.compose.material3.IconButtonDefaults.iconButtonColors()
+            },
+            content = content
+        )
+    }
+}
+
+@Composable
+fun YhFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.Button(
+            onClick = onClick,
+            modifier = modifier,
+            content = { content() }
+        )
+    } else {
+        androidx.compose.material3.FloatingActionButton(
+            onClick = onClick,
+            modifier = modifier,
             content = content
         )
     }
@@ -837,6 +941,43 @@ fun YhTabRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun YhSegmentedControl(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelectedIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.TabRow(
+            tabs = labels,
+            selectedTabIndex = selectedIndex,
+            onTabSelected = onSelectedIndexChange,
+            modifier = modifier
+        )
+    } else {
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(
+            modifier = modifier
+        ) {
+            labels.forEachIndexed { index, label ->
+                androidx.compose.material3.SegmentedButton(
+                    selected = selectedIndex == index,
+                    onClick = { onSelectedIndexChange(index) },
+                    enabled = enabled,
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = labels.size
+                    )
+                ) {
+                    Text(label)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun YhSearchInputField(
     query: String,
@@ -885,15 +1026,28 @@ fun YhOutlinedButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
+    contentColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
-    YhButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        shape = shape,
-        content = content
-    )
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.Button(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            content = content
+        )
+    } else {
+        androidx.compose.material3.OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            shape = shape,
+            colors = contentColor?.let {
+                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = it)
+            } ?: androidx.compose.material3.ButtonDefaults.outlinedButtonColors(),
+            content = content
+        )
+    }
 }
 
 @Composable
@@ -938,12 +1092,16 @@ fun YhOutlinedTextField(
     supportingText: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
+    prefix: @Composable (() -> Unit)? = null,
+    suffix: @Composable (() -> Unit)? = null,
     singleLine: Boolean = false,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     isError: Boolean = false,
+    shape: Shape = androidx.compose.material3.OutlinedTextFieldDefaults.shape,
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     val miuixLabel = when {
         label != null -> ""
@@ -963,7 +1121,8 @@ fun YhOutlinedTextField(
             maxLines = maxLines,
             visualTransformation = visualTransformation,
             trailingIcon = trailingIcon,
-            keyboardOptions = keyboardOptions
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
     } else {
         OutlinedTextField(
@@ -977,12 +1136,16 @@ fun YhOutlinedTextField(
             supportingText = supportingText,
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
+            prefix = prefix,
+            suffix = suffix,
             singleLine = singleLine,
             minLines = minLines,
             maxLines = maxLines,
             isError = isError,
+            shape = shape,
             visualTransformation = visualTransformation,
-            keyboardOptions = keyboardOptions
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
     }
 }
@@ -1094,7 +1257,7 @@ fun YhDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YhBottomSheet(
-    show: Boolean,
+    show: Boolean = true,
     title: String? = null,
     onDismissRequest: () -> Unit,
     content: @Composable () -> Unit
@@ -1112,6 +1275,117 @@ fun YhBottomSheet(
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             content = { content() }
+        )
+    }
+}
+
+@Composable
+fun YhBottomAppBar(
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    actions: @Composable RowScope.() -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.FloatingToolbar(
+            modifier = modifier.padding(contentPadding),
+            color = containerColor,
+            content = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions
+                )
+            }
+        )
+    } else {
+        androidx.compose.material3.BottomAppBar(
+            modifier = modifier,
+            containerColor = containerColor,
+            contentPadding = contentPadding,
+            actions = actions
+        )
+    }
+}
+
+@Composable
+fun YhFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    label: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.Button(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            content = { label() }
+        )
+    } else {
+        androidx.compose.material3.FilterChip(
+            selected = selected,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            label = label
+        )
+    }
+}
+
+@Composable
+fun YhDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (isMiuixUi) {
+        YhWindowListPopup(
+            show = expanded,
+            modifier = modifier,
+            onDismissRequest = onDismissRequest
+        ) {
+            Column(content = content)
+        }
+    } else {
+        androidx.compose.material3.DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismissRequest,
+            modifier = modifier,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun YhDropdownMenuItem(
+    text: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null
+) {
+    if (isMiuixUi) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leadingIcon?.invoke()
+            text()
+        }
+    } else {
+        androidx.compose.material3.DropdownMenuItem(
+            text = text,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            leadingIcon = leadingIcon
         )
     }
 }

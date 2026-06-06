@@ -24,12 +24,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,7 +39,11 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 
 /**
  * 文章列表界面
@@ -60,19 +61,15 @@ fun PostListScreen(
     onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        // 顶部应用栏
-        YhTopBar(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopBar(
             title = boardName,
             large = false,
             navigationIcon = {
-                IconButton(onClick = onBackClick) {
+                YhIconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回"
@@ -80,7 +77,7 @@ fun PostListScreen(
                 }
             },
             actions = {
-                IconButton(onClick = onSearchClick) {
+                YhIconButton(onClick = onSearchClick) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "搜索"
@@ -88,6 +85,13 @@ fun PostListScreen(
                 }
             }
         )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
         
         // 错误提示
         error?.let { errorMessage ->
@@ -108,7 +112,9 @@ fun PostListScreen(
         
         // 文章列表
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .yhTopBarNestedScroll(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -130,7 +136,7 @@ fun PostListScreen(
                         enabled = !isLoading
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp
                             )
@@ -168,7 +174,7 @@ fun PostListScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
             }
@@ -224,9 +230,9 @@ fun PostItem(
                 Spacer(modifier = Modifier.weight(1f))
 
                 if (post.isSticky != 0) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small
+                    YhCard(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        cornerRadius = 8.dp
                     ) {
                         Text(
                             text = "置顶",
@@ -243,9 +249,9 @@ fun PostItem(
                 
                 // VIP标识
                 if (post.isVip == 1) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small
+                    YhCard(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        cornerRadius = 8.dp
                     ) {
                         Text(
                             text = "VIP",
@@ -318,12 +324,12 @@ fun PostItem(
                 }
                 
                 // 内容类型标识
-                Surface(
-                    color = if (post.contentType == 2) 
+                YhCard(
+                    containerColor = if (post.contentType == 2)
                         MaterialTheme.colorScheme.primaryContainer 
                     else 
                         MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small
+                    cornerRadius = 8.dp
                 ) {
                     Text(
                         text = if (post.contentType == 2) "Markdown" else "文本",

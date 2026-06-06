@@ -4,28 +4,20 @@ package com.yhchat.canary.ui.community
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -39,6 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -83,45 +82,41 @@ fun MyCollectPostsScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.systemBars)
-    ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "我的收藏",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
-                }
-            }
-        )
+    val pullToRefreshState = rememberPullToRefreshState()
 
-        val pullToRefreshState = rememberPullToRefreshState()
+    YhScaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopBar(
+                title = "我的收藏",
+                large = false,
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = collectState.isRefreshing,
             onRefresh = { viewModel.refreshCollectPostList(token) },
-            state = pullToRefreshState
+            state = pullToRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             when {
                 collectState.error != null -> {
-                    Card(
+                    YhCard(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
+                        containerColor = MaterialTheme.colorScheme.errorContainer
                     ) {
                         Text(
                             text = collectState.error ?: "加载失败",
@@ -133,16 +128,16 @@ fun MyCollectPostsScreen(
                 }
 
                 collectState.posts.isEmpty() && collectState.isLoading -> {
-                    androidx.compose.foundation.layout.Box(
+                    Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
 
                 collectState.posts.isEmpty() -> {
-                    androidx.compose.foundation.layout.Box(
+                    Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
@@ -156,9 +151,11 @@ fun MyCollectPostsScreen(
 
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .yhTopBarNestedScroll(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(collectState.posts) { post ->
                             PostListItem(
@@ -179,7 +176,7 @@ fun MyCollectPostsScreen(
 
                         if (collectState.posts.isNotEmpty() && collectState.hasMore) {
                             item {
-                                Button(
+                                YhButton(
                                     onClick = { viewModel.loadMoreCollectPosts(token) },
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -187,7 +184,7 @@ fun MyCollectPostsScreen(
                                     enabled = !collectState.isLoading
                                 ) {
                                     if (collectState.isLoading) {
-                                        CircularProgressIndicator(
+                                        YhCircularProgressIndicator(
                                             modifier = Modifier
                                                 .padding(end = 8.dp),
                                             strokeWidth = 2.dp

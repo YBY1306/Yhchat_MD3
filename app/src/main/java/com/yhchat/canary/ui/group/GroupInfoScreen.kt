@@ -57,6 +57,7 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.data.repository.CacheRepository
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
@@ -66,6 +67,7 @@ import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.settings.SettingsCustomItem
 import com.yhchat.canary.ui.settings.SettingsGroup
@@ -305,7 +307,7 @@ private fun GroupInfoContent(
 
     LazyColumn(
         state = listState,
-        modifier = modifier,
+        modifier = modifier.yhTopBarNestedScroll(),
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
@@ -359,8 +361,9 @@ private fun GroupInfoContent(
                                         noNotify = if (checked) 1 else 0
                                     ).fold(
                                         onSuccess = {
+                                            CacheRepository(context.applicationContext)
+                                                .updateConversationDoNotDisturb(groupId, if (checked) 1 else 0)
                                             android.widget.Toast.makeText(context, "设置成功", android.widget.Toast.LENGTH_SHORT).show()
-                                            onRefresh()
                                         },
                                         onFailure = { error ->
                                             isNoNotify = !checked

@@ -20,11 +20,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
@@ -139,7 +139,7 @@ fun HtmlSettingsScreen(
             title = "HTML设置",
             large = false,
             navigationIcon = {
-                IconButton(onClick = onBackClick) {
+                YhIconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "返回"
@@ -202,7 +202,7 @@ fun HtmlSettingsScreen(
                                 )
                             }
                             
-                            HorizontalDivider()
+                            YhHorizontalDivider()
                             
                             // 缩放设置
                             Row(
@@ -230,7 +230,7 @@ fun HtmlSettingsScreen(
                                 )
                             }
                             
-                            HorizontalDivider()
+                            YhHorizontalDivider()
                             
                             // 图片加载设置
                             Row(
@@ -285,7 +285,7 @@ fun HtmlSettingsScreen(
                                             .padding(vertical = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        RadioButton(
+                                        YhRadioButton(
                                             selected = cacheMode == value,
                                             onClick = { 
                                                 cacheMode = value
@@ -301,7 +301,7 @@ fun HtmlSettingsScreen(
                                 }
                             }
                             
-                            HorizontalDivider()
+                            YhHorizontalDivider()
                             
                             // User Agent
                             Column {
@@ -318,7 +318,7 @@ fun HtmlSettingsScreen(
                                             .padding(vertical = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        RadioButton(
+                                        YhRadioButton(
                                             selected = userAgent == value,
                                             onClick = { 
                                                 userAgent = value

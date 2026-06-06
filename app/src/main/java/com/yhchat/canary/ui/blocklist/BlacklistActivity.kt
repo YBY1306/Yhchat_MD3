@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,20 +32,9 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +52,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.local.BlockedUser
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import java.text.SimpleDateFormat
@@ -124,7 +124,6 @@ class BlacklistActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlacklistScreen(
     viewModel: BlacklistViewModel,
@@ -152,23 +151,13 @@ fun BlacklistScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "黑名单管理",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${uiState.blockedUsers.size} 个被屏蔽用户",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                },
+            YhTopBar(
+                title = "黑名单管理 (${uiState.blockedUsers.size})",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -176,13 +165,13 @@ fun BlacklistScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onImportClick) {
+                    YhIconButton(onClick = onImportClick) {
                         Icon(
                             imageVector = Icons.Default.FileUpload,
                             contentDescription = "导入"
                         )
                     }
-                    IconButton(onClick = onExportClick) {
+                    YhIconButton(onClick = onExportClick) {
                         Icon(
                             imageVector = Icons.Default.FileDownload,
                             contentDescription = "导出"
@@ -198,16 +187,14 @@ fun BlacklistScreen(
                 .padding(paddingValues)
         ) {
             // 黑名单开关
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.blocklistEnabled) 
-                        MaterialTheme.colorScheme.primaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
+                containerColor = if (uiState.blocklistEnabled)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
                     modifier = Modifier
@@ -232,7 +219,7 @@ fun BlacklistScreen(
                         )
                     }
                     
-                    Switch(
+                    YhSwitch(
                         checked = uiState.blocklistEnabled,
                         onCheckedChange = { enabled ->
                             viewModel.setBlocklistEnabled(enabled)
@@ -247,7 +234,7 @@ fun BlacklistScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else if (uiState.blockedUsers.isEmpty()) {
                 Box(
@@ -278,7 +265,9 @@ fun BlacklistScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .yhTopBarNestedScroll(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -309,7 +298,6 @@ fun BlacklistScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockedUserItem(
     user: BlockedUser,
@@ -318,7 +306,7 @@ fun BlockedUserItem(
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -373,7 +361,7 @@ fun BlockedUserItem(
             }
             
             // 编辑按钮
-            IconButton(onClick = { showEditDialog = true }) {
+            YhIconButton(onClick = { showEditDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "编辑"
@@ -381,7 +369,7 @@ fun BlockedUserItem(
             }
             
             // 移除按钮
-            IconButton(onClick = onUnblock) {
+            YhIconButton(onClick = onUnblock) {
                 Icon(
                     imageVector = Icons.Default.RemoveCircle,
                     contentDescription = "移除",
@@ -404,7 +392,6 @@ fun BlockedUserItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditBlockedUserDialog(
     user: BlockedUser,
@@ -413,7 +400,7 @@ fun EditBlockedUserDialog(
 ) {
     var reason by remember { mutableStateOf(user.reason) }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text("编辑屏蔽原因")
@@ -426,7 +413,7 @@ fun EditBlockedUserDialog(
                     text = "用户: ${user.userName.ifEmpty { user.userId }}",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = reason,
                     onValueChange = { reason = it },
                     label = { Text("屏蔽原因") },
@@ -437,7 +424,7 @@ fun EditBlockedUserDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     onConfirm(user.copy(reason = reason))
                 }
@@ -446,7 +433,7 @@ fun EditBlockedUserDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -459,7 +446,7 @@ fun ImportModeDialog(
     onMerge: () -> Unit,
     onReplace: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text("导入模式")
@@ -470,9 +457,10 @@ fun ImportModeDialog(
             ) {
                 Text("选择导入方式：")
                 
-                Card(
-                    onClick = onMerge,
-                    modifier = Modifier.fillMaxWidth()
+                YhCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onMerge)
                 ) {
                     Row(
                         modifier = Modifier
@@ -500,9 +488,10 @@ fun ImportModeDialog(
                     }
                 }
                 
-                Card(
-                    onClick = onReplace,
-                    modifier = Modifier.fillMaxWidth()
+                YhCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onReplace)
                 ) {
                     Row(
                         modifier = Modifier
@@ -534,7 +523,7 @@ fun ImportModeDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

@@ -4,13 +4,9 @@ package com.yhchat.canary.ui.community
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Block
@@ -18,11 +14,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -37,6 +30,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -102,74 +99,75 @@ fun MyPostsScreen(
         }
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.systemBars)
-    ) {
-        // 顶部应用栏
-        TopAppBar(
-            title = {
-                if (isSearching) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("搜索我的文章...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                } else {
-                    Text(
-                        text = "我的文章",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
-                }
-            },
-            actions = {
-                // 搜索按钮
-                if (isSearching) {
-                    IconButton(onClick = {
-                        isSearching = false
-                        searchQuery = ""
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "取消搜索"
+    YhScaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopAppBar(
+                title = {
+                    if (isSearching) {
+                        YhOutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("搜索我的文章...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    } else {
+                        Text(
+                            text = "我的文章",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                } else {
-                    IconButton(onClick = { isSearching = true }) {
+                },
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "搜索我的文章"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                actions = {
+                    if (isSearching) {
+                        YhIconButton(
+                            onClick = {
+                                isSearching = false
+                                searchQuery = ""
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "取消搜索"
+                            )
+                        }
+                    } else {
+                        YhIconButton(onClick = { isSearching = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "搜索我的文章"
+                            )
+                        }
+                    }
+
+                    YhIconButton(
+                        onClick = {
+                            val intent = android.content.Intent(context, BlockedUsersActivity::class.java).apply {
+                                putExtra("token", token)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = "屏蔽用户"
                         )
                     }
                 }
-                
-                // 屏蔽用户按钮
-                IconButton(onClick = {
-                    val intent = android.content.Intent(context, BlockedUsersActivity::class.java).apply {
-                        putExtra("token", token)
-                    }
-                    context.startActivity(intent)
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Block,
-                        contentDescription = "屏蔽用户"
-                    )
-                }
-            }
-        )
+            )
+        }
+    ) { paddingValues ->
         
         // 内容区域
         val pullToRefreshState = rememberPullToRefreshState()
@@ -177,7 +175,10 @@ fun MyPostsScreen(
         PullToRefreshBox(
             isRefreshing = myPostListState.isRefreshing,
             onRefresh = { viewModel.refreshMyPostList(token) },
-            state = pullToRefreshState
+            state = pullToRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             MyPostListContent(
                 posts = filteredPosts,

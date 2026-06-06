@@ -21,17 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +46,12 @@ import com.yhchat.canary.data.repository.SendMessagePayload
 import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTopBar
@@ -173,12 +173,12 @@ fun InstructionFormScreen(
                 title = "/${instruction.name}",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
                 },
                 actions = {
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             if (!isSending) {
                                 scope.launch {
@@ -203,7 +203,7 @@ fun InstructionFormScreen(
                         enabled = !isSending
                     ) {
                         if (isSending) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
@@ -290,7 +290,7 @@ fun FormFieldComponent(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                             ) {
-                                RadioButton(
+                                YhRadioButton(
                                     selected = selectedIndex == index,
                                     onClick = {
                                         onValueChange(
@@ -411,7 +411,7 @@ fun FormFieldComponent(
                             onDismissRequest = { expanded = false }
                         ) {
                             options.forEachIndexed { index, option ->
-                                DropdownMenuItem(
+                                YhDropdownMenuItem(
                                     text = { Text(option) },
                                     onClick = {
                                         onValueChange(
@@ -442,7 +442,7 @@ fun FormFieldComponent(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                             ) {
-                                Checkbox(
+                                YhCheckbox(
                                     checked = selectedValues.contains(option),
                                     onCheckedChange = { checked ->
                                         val newSet = if (checked) {

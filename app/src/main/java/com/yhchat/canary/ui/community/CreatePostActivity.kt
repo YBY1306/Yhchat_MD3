@@ -26,22 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Drafts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -60,6 +48,15 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.R
 import com.yhchat.canary.data.di.RepositoryFactory
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -242,14 +239,11 @@ fun CreatePostScreen(
         }
     }
     
-    Surface(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        TopAppBar(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+        YhTopAppBar(
             title = {
                 Text(
                     text = "发布到 $displayBoardName",
@@ -258,7 +252,7 @@ fun CreatePostScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = {
+                YhIconButton(onClick = {
                     if (title.isNotBlank() || content.isNotBlank()) {
                         showExitDialog = true
                     } else {
@@ -272,7 +266,7 @@ fun CreatePostScreen(
                 }
             },
             actions = {
-                IconButton(
+                YhIconButton(
                     onClick = { isMarkdownMode = !isMarkdownMode }
                 ) {
                     Icon(
@@ -284,7 +278,7 @@ fun CreatePostScreen(
                 }
 
                 // 草稿箱
-                IconButton(
+                YhIconButton(
                     onClick = onDraftBoxClick
                 ) {
                     Icon(
@@ -294,7 +288,7 @@ fun CreatePostScreen(
                 }
                 
                 // 发布按钮
-                IconButton(
+                YhIconButton(
                     onClick = {
                         if (title.isNotBlank() && content.isNotBlank()) {
                             viewModel.createPost(
@@ -309,7 +303,7 @@ fun CreatePostScreen(
                     enabled = title.isNotBlank() && content.isNotBlank() && !createPostState.isLoading
                 ) {
                     if (createPostState.isLoading) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
@@ -320,21 +314,23 @@ fun CreatePostScreen(
                         )
                     }
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            )
+            }
         )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
         
         // 错误提示
         createPostState.error?.let { error ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = error,
@@ -346,13 +342,11 @@ fun CreatePostScreen(
         }
 
         draftSaveState.error?.let { error ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = error,
@@ -367,11 +361,12 @@ fun CreatePostScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .yhTopBarNestedScroll()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("文章标题") },
@@ -382,7 +377,7 @@ fun CreatePostScreen(
             }
 
             item {
-                TextField(
+                YhOutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
                     label = {
@@ -400,27 +395,15 @@ fun CreatePostScreen(
                         .fillMaxWidth()
                         .fillParentMaxHeight()
                         .heightIn(min = 320.dp),
-                    minLines = 12,
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        errorIndicatorColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        errorContainerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
+                    minLines = 12
                 )
             }
 
             if (isMarkdownMode) {
                 item {
-                    Card(
+                    YhCard(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
@@ -446,7 +429,7 @@ fun CreatePostScreen(
     
     // 退出确认对话框
     if (showExitDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = {
                 Text("保存草稿")
@@ -455,7 +438,7 @@ fun CreatePostScreen(
                 Text("您有未保存的内容，是否保存为草稿")
             },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         if (!draftSaveState.isSaving && (title.isNotBlank() || content.isNotBlank())) {
                             pendingExitAfterDraftSave = true
@@ -473,7 +456,7 @@ fun CreatePostScreen(
                     enabled = !draftSaveState.isSaving
                 ) {
                     if (draftSaveState.isSaving) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
@@ -483,7 +466,7 @@ fun CreatePostScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         if (!draftSaveState.isSaving) {
                             showExitDialog = false

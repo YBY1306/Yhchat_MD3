@@ -44,29 +44,16 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -94,6 +81,18 @@ import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.coin.CoinDetailActivity
 import com.yhchat.canary.ui.coin.CoinRecordActivity
@@ -211,7 +210,7 @@ fun ProfileScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // 顶部应用栏
-        TopAppBar(
+        YhTopAppBar(
             title = {
                 Text(
                     text = "我的",
@@ -219,7 +218,7 @@ fun ProfileScreen(
                 )
             },
             actions = {
-                IconButton(
+                YhIconButton(
                     onClick = {
                         SettingsActivity.start(context, navigationRepository, tokenRepository)
                     }
@@ -261,7 +260,7 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            YhCircularProgressIndicator()
                         }
                     }
                 }
@@ -285,7 +284,7 @@ fun ProfileScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
+                            YhButton(
                                 onClick = { viewModel.loadUserProfile() }
                             ) {
                                 Text("重试")
@@ -490,7 +489,7 @@ private fun UserProfileContent(
                             Box(
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -511,7 +510,7 @@ private fun UserProfileContent(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(
+                    YhIconButton(
                         onClick = onShowChangeNicknameDialog,
                         modifier = Modifier.size(32.dp)
                     ) {
@@ -621,7 +620,7 @@ private fun UserProfileContent(
                     title = "个人信息",
                     subtitle = "完善资料，体现自己个性",
                     trailingContent = {
-                        TextButton(onClick = onShowUserDataDialog) {
+                        YhTextButton(onClick = onShowUserDataDialog) {
                             Text("编辑")
                         }
                     }
@@ -638,7 +637,7 @@ private fun UserProfileContent(
                     title = "手机号",
                     subtitle = if (showFullPhone) userProfile.phone!! else formatPhoneNumber(userProfile.phone!!),
                     trailingContent = {
-                        IconButton(onClick = { showFullPhone = !showFullPhone }) {
+                        YhIconButton(onClick = { showFullPhone = !showFullPhone }) {
                             Icon(
                                 imageVector = if (showFullPhone) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = if (showFullPhone) "隐藏手机号" else "显示手机号",
@@ -659,7 +658,7 @@ private fun UserProfileContent(
                     title = "邮箱",
                     subtitle = userProfile.email ?: "未绑定",
                     trailingContent = {
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 val clazz = if (hasEmail) {
                                     EmailModificationActivity::class.java
@@ -825,12 +824,12 @@ private fun CoinMenuBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState()
     val coroutineScope = rememberCoroutineScope()
 
-    ModalBottomSheet(
+    YhBottomSheet(
+        show = true,
+        title = "金币功能",
         onDismissRequest = onDismiss,
-        sheetState = sheetState
     ) {
         val activity = context as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -945,8 +944,6 @@ private fun UserDataEditBottomSheet(
     onSave: (SaveUserDataRequest) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    val coroutineScope = rememberCoroutineScope()
 
     var introduction by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("3") }
@@ -983,13 +980,14 @@ private fun UserDataEditBottomSheet(
         }
     }
 
-    ModalBottomSheet(
+    YhBottomSheet(
+        show = true,
+        title = "个人信息",
         onDismissRequest = {
             if (!saveUserDataState.isLoading) {
                 onDismiss()
             }
-        },
-        sheetState = sheetState
+        }
     ) {
         val activity = LocalContext.current as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -1021,10 +1019,9 @@ private fun UserDataEditBottomSheet(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                TextButton(
+                YhTextButton(
                     onClick = {
                         if (!saveUserDataState.isLoading) {
-                            coroutineScope.launch { sheetState.hide() }
                             onDismiss()
                         }
                     },
@@ -1035,7 +1032,7 @@ private fun UserDataEditBottomSheet(
             }
 
             if (userDataState.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                YhLinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
             userDataState.error?.let { error ->
@@ -1046,7 +1043,7 @@ private fun UserDataEditBottomSheet(
                 )
             }
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = introduction,
                 onValueChange = { introduction = it },
                 label = { Text("个人简介") },
@@ -1062,7 +1059,7 @@ private fun UserDataEditBottomSheet(
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
+                    YhRadioButton(
                         selected = gender == "1",
                         onClick = { if (!saveUserDataState.isLoading) gender = "1" },
                         enabled = !saveUserDataState.isLoading
@@ -1072,7 +1069,7 @@ private fun UserDataEditBottomSheet(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
+                    YhRadioButton(
                         selected = gender == "2",
                         onClick = { if (!saveUserDataState.isLoading) gender = "2" },
                         enabled = !saveUserDataState.isLoading
@@ -1082,7 +1079,7 @@ private fun UserDataEditBottomSheet(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
+                    YhRadioButton(
                         selected = gender == "3",
                         onClick = { if (!saveUserDataState.isLoading) gender = "3" },
                         enabled = !saveUserDataState.isLoading
@@ -1132,7 +1129,7 @@ private fun UserDataEditBottomSheet(
                     onExpandedChange = { if (!saveUserDataState.isLoading) yearExpanded = !yearExpanded },
                     modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = selectedYear?.toString() ?: "",
                         onValueChange = {},
                         readOnly = true,
@@ -1146,12 +1143,12 @@ private fun UserDataEditBottomSheet(
                             )
                             .fillMaxWidth()
                     )
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = yearExpanded,
                         onDismissRequest = { yearExpanded = false }
                     ) {
                         yearOptions.forEach { y ->
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text(y.toString()) },
                                 onClick = {
                                     selectedYear = y
@@ -1167,7 +1164,7 @@ private fun UserDataEditBottomSheet(
                     onExpandedChange = { if (!saveUserDataState.isLoading) monthExpanded = !monthExpanded },
                     modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = selectedMonth?.toString() ?: "",
                         onValueChange = {},
                         readOnly = true,
@@ -1181,12 +1178,12 @@ private fun UserDataEditBottomSheet(
                             )
                             .fillMaxWidth()
                     )
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = monthExpanded,
                         onDismissRequest = { monthExpanded = false }
                     ) {
                         monthOptions.forEach { m ->
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text(m.toString()) },
                                 onClick = {
                                     selectedMonth = m
@@ -1202,7 +1199,7 @@ private fun UserDataEditBottomSheet(
                     onExpandedChange = { if (!saveUserDataState.isLoading) dayExpanded = !dayExpanded },
                     modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = selectedDay?.toString() ?: "",
                         onValueChange = {},
                         readOnly = true,
@@ -1216,12 +1213,12 @@ private fun UserDataEditBottomSheet(
                             )
                             .fillMaxWidth()
                     )
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = dayExpanded,
                         onDismissRequest = { dayExpanded = false }
                     ) {
                         dayOptions.forEach { d ->
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text(d.toString()) },
                                 onClick = {
                                     selectedDay = d
@@ -1233,7 +1230,7 @@ private fun UserDataEditBottomSheet(
                 }
             }
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = province,
                 onValueChange = { province = it },
                 label = { Text("省") },
@@ -1241,7 +1238,7 @@ private fun UserDataEditBottomSheet(
                 enabled = !saveUserDataState.isLoading
             )
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = city,
                 onValueChange = { city = it },
                 label = { Text("市") },
@@ -1249,7 +1246,7 @@ private fun UserDataEditBottomSheet(
                 enabled = !saveUserDataState.isLoading
             )
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = district,
                 onValueChange = { district = it },
                 label = { Text("区") },
@@ -1257,7 +1254,7 @@ private fun UserDataEditBottomSheet(
                 enabled = !saveUserDataState.isLoading
             )
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = locationCode,
                 onValueChange = { locationCode = it },
                 label = { Text("地区编码") },
@@ -1267,9 +1264,9 @@ private fun UserDataEditBottomSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Button(
+            YhButton(
                 onClick = {
-                    if (saveUserDataState.isLoading) return@Button
+                    if (saveUserDataState.isLoading) return@YhButton
                     val birthday = if (selectedYear != null && selectedMonth != null && selectedDay != null) {
                         Calendar.getInstance().apply {
                             set(Calendar.YEAR, selectedYear!!)
@@ -1298,7 +1295,7 @@ private fun UserDataEditBottomSheet(
                 enabled = !saveUserDataState.isLoading
             ) {
                 if (saveUserDataState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    YhCircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("保存")
                 }
@@ -1328,7 +1325,7 @@ private fun ChangeInviteCodeDialog(
         }
     }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = { if (!changeInviteCodeState.isLoading) onDismiss() },
         title = {
             Text(
@@ -1345,7 +1342,7 @@ private fun ChangeInviteCodeDialog(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = newInviteCode,
                     onValueChange = { newInviteCode = it },
                     label = { Text("邀请码") },
@@ -1377,12 +1374,12 @@ private fun ChangeInviteCodeDialog(
             }
         },
         confirmButton = {
-            Button(
+            YhButton(
                 onClick = { onConfirm(newInviteCode) },
                 enabled = !changeInviteCodeState.isLoading && newInviteCode.isNotBlank() && !changeInviteCodeState.isSuccess
             ) {
                 if (changeInviteCodeState.isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )
@@ -1398,7 +1395,7 @@ private fun ChangeInviteCodeDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            YhTextButton(
                 onClick = onDismiss,
                 enabled = !changeInviteCodeState.isLoading
             ) {
@@ -1429,7 +1426,7 @@ private fun ChangeNicknameDialog(
         }
     }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = { if (!changeNicknameState.isLoading) onDismiss() },
         title = {
             Text(
@@ -1446,7 +1443,7 @@ private fun ChangeNicknameDialog(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = newNickname,
                     onValueChange = { newNickname = it },
                     label = { Text("用户名") },
@@ -1478,12 +1475,12 @@ private fun ChangeNicknameDialog(
             }
         },
         confirmButton = {
-            Button(
+            YhButton(
                 onClick = { onConfirm(newNickname) },
                 enabled = !changeNicknameState.isLoading && newNickname.isNotBlank() && !changeNicknameState.isSuccess
             ) {
                 if (changeNicknameState.isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )
@@ -1499,7 +1496,7 @@ private fun ChangeNicknameDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            YhTextButton(
                 onClick = onDismiss,
                 enabled = !changeNicknameState.isLoading
             ) {
@@ -1518,7 +1515,7 @@ private fun BetaInfoDialog(
     betaInfo: BetaInfo,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(
@@ -1557,7 +1554,7 @@ private fun BetaInfoDialog(
             }
         },
         confirmButton = {
-            Button(
+            YhButton(
                 onClick = onDismiss
             ) {
                 Text("我知道了")
@@ -1597,11 +1594,11 @@ private fun InviteCodeMenuBottomSheet(
     onShowChangeInviteCodeDialog: () -> Unit
 ) {
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState()
 
-    ModalBottomSheet(
+    YhBottomSheet(
+        show = true,
+        title = "邀请码功能",
         onDismissRequest = onDismiss,
-        sheetState = sheetState
     ) {
         val activity = context as? Activity
         val sheetColor = MaterialTheme.colorScheme.surface

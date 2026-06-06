@@ -21,22 +21,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.contacts.ContactsViewModel
@@ -121,11 +118,7 @@ fun SendToChatBottomSheet(
         }
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = null
-    ) {
+    YhBottomSheet(onDismissRequest = onDismiss) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
         val darkIcons = sheetColor.luminance() > 0.5f
@@ -150,7 +143,7 @@ fun SendToChatBottomSheet(
                     fontWeight = FontWeight.Bold
                 )
 
-                TextButton(
+                YhTextButton(
                     onClick = {
                         if (selectedContacts.isNotEmpty() && !isSending) {
                             isSending = true
@@ -163,7 +156,10 @@ fun SendToChatBottomSheet(
                     enabled = selectedContacts.isNotEmpty() && !isSending
                 ) {
                     if (isSending) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        YhCircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         Text(sendButtonText(selectedContacts.size))
                     }
@@ -202,7 +198,7 @@ fun SendToChatBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("搜索") },
@@ -210,18 +206,14 @@ fun SendToChatBottomSheet(
                     .fillMaxWidth()
                     .height(50.dp),
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                )
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else {
                 HorizontalPager(

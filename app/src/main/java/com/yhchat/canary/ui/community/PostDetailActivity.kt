@@ -60,31 +60,14 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -117,6 +100,21 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.CommunityBoard
 import com.yhchat.canary.data.model.CommunityComment
 import com.yhchat.canary.data.model.CommunityPost
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.ImageViewer
@@ -262,7 +260,7 @@ fun PostContentCard(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            TextButton(onClick = onReportClick) {
+            YhTextButton(onClick = onReportClick) {
                 Text("举报")
             }
         }
@@ -346,7 +344,7 @@ fun PostContentCard(
         // 群聊来源信息
         post.group?.let { group ->
             if (!group.groupId.isNullOrEmpty() && group.groupId != "0") {
-                Card(
+                YhCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -354,9 +352,7 @@ fun PostContentCard(
                             val groupLink = "yunhu://chat-add?id=${group.groupId}&type=group"
                             UnifiedLinkHandler.handleLink(context, groupLink)
                         },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 ) {
                     Row(
                         modifier = Modifier
@@ -387,7 +383,7 @@ fun PostContentCard(
         
         // 分区信息卡片
         board?.let { boardInfo ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
@@ -399,9 +395,7 @@ fun PostContentCard(
                         }
                         context.startActivity(intent)
                     },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                )
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {
                 Row(
                     modifier = Modifier
@@ -684,13 +678,11 @@ fun PostBottomActionBarDuo3(
                 enter = fadeIn(animationSpec = tween(180)),
                 exit = fadeOut(animationSpec = tween(140))
             ) {
-                Button(
+                YhButton(
                     onClick = onCommentInputToggle,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Comment,
@@ -707,13 +699,11 @@ fun PostBottomActionBarDuo3(
 
             Spacer(modifier = Modifier.width(4.dp))
 
-            IconButton(
+            YhIconButton(
                 onClick = onSearchToggle,
                 modifier = Modifier.size(32.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Crossfade(
                     targetState = isSearchExpanded,
@@ -738,15 +728,17 @@ fun PostBottomActionBarDuo3(
 @Composable
 fun CommentItem(
     comment: CommunityComment,
+    canDelete: Boolean = false,
     onLikeClick: (Int) -> Unit = {},
     onReplyClick: (Int) -> Unit = {},
+    onDeleteClick: (CommunityComment) -> Unit = {},
     onReportClick: (CommunityComment) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    Card(
+    YhCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 16.dp
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -870,11 +862,22 @@ fun CommentItem(
                     }
                 }
 
-                TextButton(
-                    onClick = { onReportClick(comment) },
-                    contentPadding = PaddingValues(0.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("举报")
+                    if (canDelete) {
+                        YhTextButton(
+                            onClick = { onDeleteClick(comment) },
+                        ) {
+                            Text("删除", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    YhTextButton(
+                        onClick = { onReportClick(comment) },
+                    ) {
+                        Text("举报")
+                    }
                 }
             }
             
@@ -972,7 +975,7 @@ fun RewardDialog(
     var rewardAmount by remember { mutableStateOf("") }
     val predefinedAmounts = listOf(0.1, 0.5, 1.0, 2.0, 5.0, 10.0)
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -995,7 +998,7 @@ fun RewardDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     predefinedAmounts.take(3).forEach { amount ->
-                        FilterChip(
+                        YhFilterChip(
                             onClick = { rewardAmount = amount.toString() },
                             label = { Text("${amount}币") },
                             selected = rewardAmount == amount.toString(),
@@ -1009,7 +1012,7 @@ fun RewardDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     predefinedAmounts.drop(3).forEach { amount ->
-                        FilterChip(
+                        YhFilterChip(
                             onClick = { rewardAmount = amount.toString() },
                             label = { Text("${amount}币") },
                             selected = rewardAmount == amount.toString(),
@@ -1018,7 +1021,7 @@ fun RewardDialog(
                     }
                 }
                 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = rewardAmount,
                     onValueChange = { 
                         if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
@@ -1034,7 +1037,7 @@ fun RewardDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     val amount = rewardAmount.toDoubleOrNull()
                     if (amount != null && amount > 0) {
@@ -1047,7 +1050,7 @@ fun RewardDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -1068,7 +1071,7 @@ fun ShareDialog(
     val webLink = "www.yhchat.com/c/p/$postId"
     val deepLink = "yunhu://post-detail?id=$postId"
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -1086,11 +1089,9 @@ fun ShareDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp)
@@ -1107,7 +1108,7 @@ fun ShareDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
+                        YhButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clip = ClipData.newPlainText("文章链接", webLink)
@@ -1127,11 +1128,9 @@ fun ShareDialog(
                     }
                 }
                 
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp)
@@ -1148,7 +1147,7 @@ fun ShareDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
+                        YhButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clip = ClipData.newPlainText("文章链接", deepLink)
@@ -1168,14 +1167,12 @@ fun ShareDialog(
                     }
                 }
                 
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth().clickable { 
                         onDismiss()
                         onShareToFriend()
                     },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -1198,7 +1195,7 @@ fun ShareDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("关闭")
             }
         }
@@ -1226,7 +1223,6 @@ fun PostDetailScreen(
     // 评论输入状态
     var commentText by remember { mutableStateOf("") }
     var showCommentInput by remember { mutableStateOf(false) }
-    val commentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var searchResultCount by remember { mutableStateOf(0) }
@@ -1246,6 +1242,7 @@ fun PostDetailScreen(
     var currentToken by remember { mutableStateOf("") }
     var isTokenLoaded by remember { mutableStateOf(false) }
     var reportTarget by remember { mutableStateOf<CommunityReportTarget?>(null) }
+    var pendingDeleteComment by remember { mutableStateOf<CommunityComment?>(null) }
     
     // 删除确认对话框状态
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -1296,7 +1293,7 @@ fun PostDetailScreen(
     }
     
     
-    Scaffold(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -1330,7 +1327,7 @@ fun PostDetailScreen(
             }
         },
         topBar = {
-            TopAppBar(
+            YhTopAppBar(
                 title = {
                     Text(
                         text = postDetailState.post?.title ?: postTitle,
@@ -1341,7 +1338,7 @@ fun PostDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -1349,17 +1346,17 @@ fun PostDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { topMenuExpanded = true }) {
+                    YhIconButton(onClick = { topMenuExpanded = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "更多操作"
                         )
                     }
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = topMenuExpanded,
                         onDismissRequest = { topMenuExpanded = false }
                     ) {
-                        DropdownMenuItem(
+                        YhDropdownMenuItem(
                             text = { Text("分享") },
                             onClick = {
                                 topMenuExpanded = false
@@ -1367,7 +1364,7 @@ fun PostDetailScreen(
                             }
                         )
                         if (canManagePost) {
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("修改") },
                                 onClick = {
                                     topMenuExpanded = false
@@ -1385,14 +1382,14 @@ fun PostDetailScreen(
                                     }
                                 }
                             )
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("移动文章") },
                                 onClick = {
                                     topMenuExpanded = false
                                     showMoveBoardDialog = true
                                 }
                             )
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = {
                                     Text(
                                         if ((postDetailState.post?.isSticky ?: 0) == 1) {
@@ -1404,7 +1401,7 @@ fun PostDetailScreen(
                                 },
                                 onClick = {
                                     topMenuExpanded = false
-                                    val post = postDetailState.post ?: return@DropdownMenuItem
+                                    val post = postDetailState.post ?: return@YhDropdownMenuItem
                                     val sticky = post.isSticky != 1
                                     viewModel.togglePostStickyWithToken(
                                         postId = post.id,
@@ -1422,7 +1419,7 @@ fun PostDetailScreen(
                                     )
                                 }
                             )
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("删除文章", color = MaterialTheme.colorScheme.error) },
                                 onClick = {
                                     topMenuExpanded = false
@@ -1443,13 +1440,11 @@ fun PostDetailScreen(
             
             // 错误提示
             postDetailState.error?.let { error ->
-                Card(
+                YhCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
                         text = error,
@@ -1466,7 +1461,7 @@ fun PostDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else {
                 postDetailState.post?.let { post ->
@@ -1478,7 +1473,9 @@ fun PostDetailScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .yhTopBarNestedScroll(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -1561,9 +1558,10 @@ fun PostDetailScreen(
             }
 
             if (showCommentInput) {
-                ModalBottomSheet(
+                YhBottomSheet(
+                    show = true,
+                    title = "评论 (${commentListState.comments.size})",
                     onDismissRequest = { showCommentInput = false },
-                    sheetState = commentSheetState
                 ) {
                     Column(
                         modifier = Modifier
@@ -1581,7 +1579,7 @@ fun PostDetailScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            TextButton(
+                            YhTextButton(
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     val clip = ClipData.newPlainText("帖子原文", postDetailState.post?.content ?: "")
@@ -1591,7 +1589,7 @@ fun PostDetailScreen(
                             ) { Text("复制原文") }
                         }
 
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = commentText,
                             onValueChange = { commentText = it },
                             modifier = Modifier.fillMaxWidth(),
@@ -1601,7 +1599,7 @@ fun PostDetailScreen(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                             trailingIcon = {
                                 if (commentText.isNotBlank()) {
-                                    IconButton(
+                                    YhIconButton(
                                         onClick = {
                                             viewModel.commentPostWithToken(postId, commentText)
                                             commentText = ""
@@ -1629,10 +1627,14 @@ fun PostDetailScreen(
                             items(commentListState.comments) { comment ->
                                 CommentItem(
                                     comment = comment,
+                                    canDelete = comment.senderId == postDetailState.currentUserId || postDetailState.isAdmin == 1 || commentListState.isAdmin == 1,
                                     onLikeClick = { commentId ->
                                         viewModel.likeCommentWithToken(postId, commentId)
                                     },
                                     onReplyClick = {
+                                    },
+                                    onDeleteClick = { selectedComment ->
+                                        pendingDeleteComment = selectedComment
                                     },
                                     onReportClick = { selectedComment ->
                                         reportTarget = CommunityReportTarget(
@@ -1658,7 +1660,7 @@ fun PostDetailScreen(
                                                 .padding(vertical = 12.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            CircularProgressIndicator(
+                                            YhCircularProgressIndicator(
                                                 modifier = Modifier.size(24.dp),
                                                 strokeWidth = 2.dp
                                             )
@@ -1681,9 +1683,32 @@ fun PostDetailScreen(
                     )
                 }
             }
+
+            pendingDeleteComment?.let { comment ->
+                YhAlertDialog(
+                    onDismissRequest = { pendingDeleteComment = null },
+                    title = { Text("删除评论") },
+                    text = { Text("确定要删除这条评论吗？删除后无法恢复。") },
+                    confirmButton = {
+                        YhTextButton(
+                            onClick = {
+                                viewModel.deleteCommentWithToken(postId, comment.id)
+                                pendingDeleteComment = null
+                            }
+                        ) {
+                            Text("删除", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        YhTextButton(onClick = { pendingDeleteComment = null }) {
+                            Text("取消")
+                        }
+                    }
+                )
+            }
             
             if (showMoveBoardDialog) {
-                AlertDialog(
+                YhAlertDialog(
                     onDismissRequest = { showMoveBoardDialog = false },
                     title = { Text("移动文章") },
                     text = {
@@ -1695,7 +1720,7 @@ fun PostDetailScreen(
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator()
+                                    YhCircularProgressIndicator()
                                 }
                             }
 
@@ -1745,7 +1770,7 @@ fun PostDetailScreen(
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = { showMoveBoardDialog = false }) {
+                        YhTextButton(onClick = { showMoveBoardDialog = false }) {
                             Text("关闭")
                         }
                     }
@@ -1753,12 +1778,12 @@ fun PostDetailScreen(
             }
 
             pendingMoveBoard?.let { board ->
-                AlertDialog(
+                YhAlertDialog(
                     onDismissRequest = { pendingMoveBoard = null },
                     title = { Text("确认移动") },
                     text = { Text("确认将文章移动到「${board.name}」吗？") },
                     confirmButton = {
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 pendingMoveBoard = null
                                 viewModel.movePostWithToken(
@@ -1778,7 +1803,7 @@ fun PostDetailScreen(
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { pendingMoveBoard = null }) {
+                        YhTextButton(onClick = { pendingMoveBoard = null }) {
                             Text("取消")
                         }
                     }
@@ -1787,12 +1812,12 @@ fun PostDetailScreen(
             
             // 删除确认对话框
             if (showDeleteDialog) {
-                AlertDialog(
+                YhAlertDialog(
                     onDismissRequest = { showDeleteDialog = false },
                     title = { Text("删除文章") },
                     text = { Text("确定要删除这篇文章吗？删除后无法恢复。") },
                     confirmButton = {
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 showDeleteDialog = false
                                 viewModel.deletePost(if (isTokenLoaded) currentToken else "", postId) {
@@ -1805,7 +1830,7 @@ fun PostDetailScreen(
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDeleteDialog = false }) {
+                        YhTextButton(onClick = { showDeleteDialog = false }) {
                             Text("取消")
                         }
                     }
@@ -2000,7 +2025,7 @@ private fun CommunityReportDialog(
         selectedImageUri = uri
     }
 
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(target.title)
@@ -2014,7 +2039,7 @@ private fun CommunityReportDialog(
                     expanded = reasonMenuExpanded,
                     onExpandedChange = { reasonMenuExpanded = !reasonMenuExpanded }
                 ) {
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = selectedReason,
                         onValueChange = {},
                         readOnly = true,
@@ -2034,8 +2059,8 @@ private fun CommunityReportDialog(
                         expanded = reasonMenuExpanded,
                         onDismissRequest = { reasonMenuExpanded = false }
                     ) {
-                        COMMUNITY_REPORT_REASONS.forEach { reason ->
-                            DropdownMenuItem(
+                    COMMUNITY_REPORT_REASONS.forEach { reason ->
+                            YhDropdownMenuItem(
                                 text = { Text(reason) },
                                 onClick = {
                                     selectedReason = reason
@@ -2046,7 +2071,7 @@ private fun CommunityReportDialog(
                     }
                 }
 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = reportContent,
                     onValueChange = { reportContent = it },
                     label = { Text("补充说明") },
@@ -2059,13 +2084,11 @@ private fun CommunityReportDialog(
                     )
                 )
 
-                Card(
+                YhCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { imagePickerLauncher.launch("image/*") },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 ) {
                     Column(
                         modifier = Modifier
@@ -2107,25 +2130,25 @@ private fun CommunityReportDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     if (selectedReason.isBlank()) {
                         Toast.makeText(context, "请选择举报原因", Toast.LENGTH_SHORT).show()
-                        return@TextButton
+                        return@YhTextButton
                     }
                     onSubmit(selectedReason, reportContent, selectedImageUri)
                 },
                 enabled = !isSubmitting
             ) {
                 if (isSubmitting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    YhCircularProgressIndicator(modifier = Modifier.size(16.dp))
                 } else {
                     Text("提交举报")
                 }
             }
         },
         dismissButton = {
-            TextButton(
+            YhTextButton(
                 onClick = onDismiss,
                 enabled = !isSubmitting
             ) {

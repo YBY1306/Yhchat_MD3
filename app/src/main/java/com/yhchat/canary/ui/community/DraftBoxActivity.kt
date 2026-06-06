@@ -27,17 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -54,6 +47,12 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.Draft
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -142,42 +141,35 @@ fun DraftBoxScreen(
         viewModel.loadDrafts(token)
     }
     
-    Surface(
+    YhScaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "草稿箱",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopBar(
+                title = "草稿箱",
+                large = false,
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
             )
-        )
-
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
         draftBoxState.error?.let { error ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = error,
@@ -194,7 +186,7 @@ fun DraftBoxScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                YhCircularProgressIndicator()
             }
         } else if (draftBoxState.drafts.isEmpty()) {
             Box(
@@ -225,7 +217,9 @@ fun DraftBoxScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .yhTopBarNestedScroll(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -255,11 +249,11 @@ fun DraftItem(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 16.dp
     ) {
         Row(
             modifier = Modifier
@@ -303,9 +297,9 @@ fun DraftItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
+                    YhCard(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        cornerRadius = 8.dp
                     ) {
                         Text(
                             text = draft.boardName,
@@ -316,9 +310,9 @@ fun DraftItem(
                     }
                     
                     if (draft.isMarkdownMode) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = MaterialTheme.shapes.small
+                        YhCard(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            cornerRadius = 8.dp
                         ) {
                             Text(
                                 text = "MarkDown",
@@ -338,9 +332,9 @@ fun DraftItem(
             }
             
             // 删除按钮
-            IconButton(onClick = onDelete, enabled = !isDeleting) {
+            YhIconButton(onClick = onDelete, enabled = !isDeleting) {
                 if (isDeleting) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )

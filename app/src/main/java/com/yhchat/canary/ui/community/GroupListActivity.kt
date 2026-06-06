@@ -22,19 +22,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -56,6 +47,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.CommunityGroup
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -73,30 +73,25 @@ class GroupListActivity : ComponentActivity() {
         
         setContent {
             YhchatCanaryTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val viewModel: GroupListViewModel = viewModel {
-                        val conversationRepository = RepositoryFactory.getConversationRepository(this@GroupListActivity)
-                        val tokenRepository = RepositoryFactory.getTokenRepository(this@GroupListActivity)
-                        conversationRepository.setTokenRepository(tokenRepository)
-                        
-                        GroupListViewModel(
-                            communityRepository = RepositoryFactory.getCommunityRepository(this@GroupListActivity),
-                            friendRepository = RepositoryFactory.getFriendRepository(this@GroupListActivity),
-                            conversationRepository = conversationRepository
-                        )
-                    }
-                    
-                    GroupListScreen(
-                        boardId = boardId,
-                        boardName = boardName,
-                        token = token,
-                        viewModel = viewModel,
-                        onBackClick = { finish() }
+                val viewModel: GroupListViewModel = viewModel {
+                    val conversationRepository = RepositoryFactory.getConversationRepository(this@GroupListActivity)
+                    val tokenRepository = RepositoryFactory.getTokenRepository(this@GroupListActivity)
+                    conversationRepository.setTokenRepository(tokenRepository)
+
+                    GroupListViewModel(
+                        communityRepository = RepositoryFactory.getCommunityRepository(this@GroupListActivity),
+                        friendRepository = RepositoryFactory.getFriendRepository(this@GroupListActivity),
+                        conversationRepository = conversationRepository
                     )
                 }
+
+                GroupListScreen(
+                    boardId = boardId,
+                    boardName = boardName,
+                    token = token,
+                    viewModel = viewModel,
+                    onBackClick = { finish() }
+                )
             }
         }
     }
@@ -127,44 +122,43 @@ fun GroupListScreen(
         }
     }
     
-    PullToRefreshBox(
-        isRefreshing = groupListState.isLoading,
-        onRefresh = { viewModel.loadGroupList(token, boardId) },
-        state = pullToRefreshState,
-        modifier = modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "$boardName - 群聊列表",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
+    YhScaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            YhTopBar(
+                title = "$boardName - 群聊列表",
+                large = false,
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
                 }
-            }
-        )
+            )
+        }
+    ) { paddingValues ->
+        PullToRefreshBox(
+            isRefreshing = groupListState.isLoading,
+            onRefresh = { viewModel.loadGroupList(token, boardId) },
+            state = pullToRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
         
         // 错误提示
         groupListState.error?.let { error ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Text(
                     text = error,
@@ -177,7 +171,9 @@ fun GroupListScreen(
         
         // 群聊列表
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .yhTopBarNestedScroll(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -191,7 +187,7 @@ fun GroupListScreen(
             // 加载更多按钮
             if (groupListState.groups.isNotEmpty() && groupListState.hasMore) {
                 item {
-                    Button(
+                    YhButton(
                         onClick = { viewModel.loadMoreGroups(token, boardId) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -199,7 +195,7 @@ fun GroupListScreen(
                         enabled = !groupListState.isLoading
                     ) {
                         if (groupListState.isLoading) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp
                             )
@@ -235,12 +231,13 @@ fun GroupListScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
             }
+            }
         }
-        }
+    }
     }
     
     // 监听申请状态变化
@@ -296,11 +293,11 @@ fun GroupListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 16.dp
     ) {
         Row(
             modifier = Modifier
@@ -370,7 +367,7 @@ fun GroupDetailDialog(
 ) {
     val joinRequestState by viewModel.joinRequestState.collectAsState()
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
         title = {
@@ -488,12 +485,12 @@ fun GroupDetailDialog(
             }
         },
          confirmButton = {
-             Button(
+             YhButton(
                  onClick = { onJoinRequest(group.groupId) },
                  enabled = !joinRequestState.isLoading && !joinRequestState.isSuccess && !joinRequestState.isChecking
              ) {
                  if (joinRequestState.isLoading || joinRequestState.isChecking) {
-                     CircularProgressIndicator(
+                     YhCircularProgressIndicator(
                          modifier = Modifier.size(16.dp),
                          strokeWidth = 2.dp
                      )
@@ -509,9 +506,9 @@ fun GroupDetailDialog(
                      }
                  )
              }
-         },
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("关闭")
             }
         }

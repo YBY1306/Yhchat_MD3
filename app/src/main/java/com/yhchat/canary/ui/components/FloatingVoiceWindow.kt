@@ -44,28 +44,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -90,6 +72,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSegmentedControl
+import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -452,7 +446,7 @@ fun FloatingVoiceWindow(
                     onTabSelected = { selectedTab = it }
                 )
                 
-                HorizontalDivider()
+                YhHorizontalDivider()
                 
                 // 内容区域
                 when (selectedTab) {
@@ -600,7 +594,7 @@ fun WindowTitleBar(
             )
         }
         
-        IconButton(onClick = onClose) {
+        YhIconButton(onClick = onClose) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "关闭"
@@ -612,32 +606,19 @@ fun WindowTitleBar(
 /**
  * Tab选择器
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabSelector(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    SingleChoiceSegmentedButtonRow(
+    YhSegmentedControl(
+        labels = listOf("保存的音频", "文字转语音"),
+        selectedIndex = selectedTab,
+        onSelectedIndexChange = onTabSelected,
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-    ) {
-        SegmentedButton(
-            selected = selectedTab == 0,
-            onClick = { onTabSelected(0) },
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-        ) {
-            Text("保存的音频")
-        }
-        SegmentedButton(
-            selected = selectedTab == 1,
-            onClick = { onTabSelected(1) },
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-        ) {
-            Text("文字转语音")
-        }
-    }
+    )
 }
 
 /**
@@ -652,7 +633,7 @@ fun SavedAudiosTab(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLoading) {
-            CircularProgressIndicator(
+            YhCircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else if (audios.isEmpty()) {
@@ -662,7 +643,7 @@ fun SavedAudiosTab(
             ) {
                 Text("暂无保存的音频")
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onRefresh) {
+                YhButton(onClick = onRefresh) {
                     Text("刷新")
                 }
             }
@@ -691,11 +672,10 @@ fun AudioItemCard(
     audio: SavedAudioItem,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -771,7 +751,7 @@ fun TTSTab(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 输入框
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = text,
             onValueChange = onTextChange,
             modifier = Modifier
@@ -796,11 +776,9 @@ fun TTSTab(
         
         // TTS状态指示器（成功时显示）
         if (error == null) {
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Row(
                     modifier = Modifier
@@ -842,11 +820,9 @@ fun TTSTab(
         
         // 错误提示
         if (error != null) {
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),
@@ -957,12 +933,10 @@ fun TTSTab(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
+                            YhButton(
                                 onClick = onRetryInitialization,
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
+                                containerColor = MaterialTheme.colorScheme.error
                             ) {
                                 Icon(
                                     imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
@@ -973,7 +947,7 @@ fun TTSTab(
                                 Text("重试")
                             }
                             
-                            OutlinedButton(
+                            YhOutlinedButton(
                                 onClick = onOpenTtsSettings,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -989,7 +963,7 @@ fun TTSTab(
                         
                         // 快速尝试其他引擎（如果有多个可用引擎）
                         if (availableTtsEngines.size > 1) {
-                            HorizontalDivider()
+                            YhHorizontalDivider()
                             Text(
                                 text = "快速尝试其他引擎:",
                                 style = MaterialTheme.typography.labelSmall,
@@ -1003,7 +977,7 @@ fun TTSTab(
                             ) {
                                 availableTtsEngines.filter { it.isInstalled }.take(5).forEach { engine ->
                                     if (engine.packageName != selectedTtsEngine) {
-                                        FilterChip(
+                                        YhFilterChip(
                                             selected = false,
                                             onClick = {
                                                 onEngineChange(engine.packageName)
@@ -1013,10 +987,7 @@ fun TTSTab(
                                                     engine.label,
                                                     style = MaterialTheme.typography.labelSmall
                                                 ) 
-                                            },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer
-                                            )
+                                            }
                                         )
                                     }
                                 }
@@ -1037,18 +1008,16 @@ fun TTSTab(
         
         // 进度条
         if (isPlaying && progress > 0) {
-            LinearProgressIndicator(
-                progress = { progress },
+            YhLinearProgressIndicator(
+                progress = progress,
                 modifier = Modifier.fillMaxWidth()
             )
         }
         
         // TTS参数控制
-        Card(
+        YhCard(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1076,7 +1045,7 @@ fun TTSTab(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Slider(
+                    YhSlider(
                         value = speechRate,
                         onValueChange = onSpeechRateChange,
                         valueRange = 0.5f..2.0f,
@@ -1101,7 +1070,7 @@ fun TTSTab(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Slider(
+                    YhSlider(
                         value = pitch,
                         onValueChange = onPitchChange,
                         valueRange = 0.5f..2.0f,
@@ -1126,7 +1095,7 @@ fun TTSTab(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Slider(
+                    YhSlider(
                         value = volume,
                         onValueChange = onVolumeChange,
                         valueRange = 0.0f..1.0f,
@@ -1135,7 +1104,7 @@ fun TTSTab(
                 }
                 
                 // 重置按钮
-                TextButton(
+                YhTextButton(
                     onClick = {
                         onSpeechRateChange(1.0f)
                         onPitchChange(1.0f)
@@ -1153,7 +1122,7 @@ fun TTSTab(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
+            YhButton(
                 onClick = if (isPlaying) onStopPreview else onPlayPreview,
                 enabled = text.isNotBlank() && error == null,
                 modifier = Modifier.weight(1f)
@@ -1166,13 +1135,13 @@ fun TTSTab(
                 Text(if (isPlaying) "停止" else "预览")
             }
             
-            Button(
+            YhButton(
                 onClick = onSynthesize,
                 enabled = text.isNotBlank() && !isSynthesizing && error == null,
                 modifier = Modifier.weight(1f)
             ) {
                 if (isSynthesizing) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )
@@ -1188,7 +1157,7 @@ fun TTSTab(
         }
         
         // TTS设置
-        TextButton(
+        YhTextButton(
             onClick = onOpenTtsSettings,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -1266,7 +1235,6 @@ suspend fun loadSavedAudios(context: Context): List<SavedAudioItem> {
 /**
  * TTS引擎选择器组件
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TtsEngineSelector(
     availableEngines: List<TtsEngineInfo>,
@@ -1278,11 +1246,9 @@ fun TtsEngineSelector(
     showEngineSelector: Boolean,
     onToggleEngineSelector: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-        )
+        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
     ) {
         Column(
             modifier = Modifier
@@ -1340,7 +1306,7 @@ fun TtsEngineSelector(
             
             // 引擎选择区域（展开时显示）
             if (showEngineSelector) {
-                HorizontalDivider()
+                YhHorizontalDivider()
                 
                 // 自动识别的引擎列表
                 Text(
@@ -1460,7 +1426,7 @@ fun TtsEngineSelector(
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider()
+                YhHorizontalDivider()
                 
                 // 自定义引擎包名输入
                 Column(
@@ -1474,7 +1440,7 @@ fun TtsEngineSelector(
                         color = MaterialTheme.colorScheme.primary
                     )
                     
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = customEnginePackage,
                         onValueChange = onCustomEnginePackageChange,
                         modifier = Modifier.fillMaxWidth(),
@@ -1483,7 +1449,7 @@ fun TtsEngineSelector(
                         singleLine = true,
                         trailingIcon = {
                             if (customEnginePackage.isNotBlank()) {
-                                IconButton(onClick = { onCustomEnginePackageChange("") }) {
+                                YhIconButton(onClick = { onCustomEnginePackageChange("") }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "清除"
@@ -1497,7 +1463,7 @@ fun TtsEngineSelector(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Button(
+                        YhButton(
                             onClick = onApplyCustomEngine,
                             enabled = customEnginePackage.isNotBlank(),
                             modifier = Modifier.weight(1f)
@@ -1505,7 +1471,7 @@ fun TtsEngineSelector(
                             Text("应用自定义引擎")
                         }
                         
-                        OutlinedButton(
+                        YhOutlinedButton(
                             onClick = {
                                 onCustomEnginePackageChange("")
                                 onEngineChange("") // 空字符串表示系统默认
@@ -1536,7 +1502,7 @@ fun TtsEngineSelector(
                             "Multi TTS" to "org.nobody.multitts"
                         ).forEach { (label, packageName) ->
                             val engineInfo = availableEngines.find { it.packageName == packageName }
-                            FilterChip(
+                            YhFilterChip(
                                 selected = selectedEngine == packageName,
                                 onClick = {
                                     onCustomEnginePackageChange(packageName)

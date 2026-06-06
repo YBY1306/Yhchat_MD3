@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,9 +42,12 @@ import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -109,28 +111,35 @@ fun NavigationSettingsScreen(
         viewModel.moveItem(from.index, to.index)
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        YhTopBar(
-            title = "导航栏管理",
-            large = false,
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
+    YhScaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            YhTopBar(
+                title = "导航栏管理",
+                large = false,
+                navigationIcon = {
+                    YhIconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                actions = {
+                    YhTextButton(
+                        onClick = { viewModel.resetToDefault() }
+                    ) {
+                        Text("重置")
+                    }
                 }
-            },
-            actions = {
-                YhTextButton(
-                    onClick = { viewModel.resetToDefault() }
-                ) {
-                    Text("重置")
-                }
-            }
-        )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
 
         YhCard(
             modifier = Modifier
@@ -186,6 +195,7 @@ fun NavigationSettingsScreen(
             state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
+                .yhTopBarNestedScroll()
                 .padding(horizontal = 16.dp)
         ) {
             itemsIndexed(uiState.items, key = { _, item -> item.id }) { index, item ->
@@ -318,5 +328,6 @@ private fun ReorderableCollectionItemScope.NavigationItemCard(
                 )
             }
         }
+    }
     }
 }

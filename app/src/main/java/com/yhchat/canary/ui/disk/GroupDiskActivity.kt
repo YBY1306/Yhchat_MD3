@@ -45,22 +45,10 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,6 +64,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.model.DiskFile
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.disk.webdav.WebDAVBrowserActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -185,12 +185,12 @@ fun GroupDiskScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
+            YhTopAppBar(
                 title = { Text("$groupName 的网盘", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -198,7 +198,7 @@ fun GroupDiskScreen(
                     }
                 },
                 actions = {
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             WebDAVBrowserActivity.start(context, groupId, groupName)
                         },
@@ -209,7 +209,7 @@ fun GroupDiskScreen(
                             contentDescription = "WebDAV"
                         )
                     }
-                    IconButton(
+                    YhIconButton(
                         onClick = { showCreateFolderDialog = true },
                         enabled = !uiState.isLoading
                     ) {
@@ -218,7 +218,7 @@ fun GroupDiskScreen(
                             contentDescription = "创建文件夹"
                         )
                     }
-                    IconButton(
+                    YhIconButton(
                         onClick = { filePickerLauncher.launch("*/*") },
                         enabled = !uiState.isUploading
                     ) {
@@ -232,7 +232,7 @@ fun GroupDiskScreen(
         },
         floatingActionButton = {
             if (!uiState.isLoading && !uiState.isUploading) {
-                FloatingActionButton(
+                YhFloatingActionButton(
                     onClick = { viewModel.loadFiles(groupId) }
                 ) {
                     Icon(Icons.Default.Refresh, "刷新")
@@ -246,13 +246,11 @@ fun GroupDiskScreen(
                 .padding(paddingValues)
         ) {
             // 面包屑导航
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                )
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {
                 LazyRow(
                     modifier = Modifier
@@ -330,7 +328,7 @@ fun GroupDiskScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -347,7 +345,7 @@ fun GroupDiskScreen(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            Button(onClick = { viewModel.loadFiles(groupId) }) {
+                            YhButton(onClick = { viewModel.loadFiles(groupId) }) {
                                 Text("重试")
                             }
                         }
@@ -380,7 +378,9 @@ fun GroupDiskScreen(
                 
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .yhTopBarNestedScroll(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -409,7 +409,7 @@ fun GroupDiskScreen(
             
             // 上传进度
             if (uiState.isUploading) {
-                LinearProgressIndicator(
+                YhLinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
@@ -529,15 +529,14 @@ private fun DiskFileCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(8.dp)
+        cornerRadius = 8.dp
     ) {
         Row(
             modifier = Modifier
@@ -592,11 +591,11 @@ private fun CreateFolderDialog(
 ) {
     var folderName by remember { mutableStateOf("") }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("创建文件夹") },
         text = {
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = folderName,
                 onValueChange = { folderName = it },
                 label = { Text("文件夹名称") },
@@ -605,7 +604,7 @@ private fun CreateFolderDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = { if (folderName.isNotBlank()) onConfirm(folderName) },
                 enabled = folderName.isNotBlank()
             ) {
@@ -613,7 +612,7 @@ private fun CreateFolderDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -630,7 +629,7 @@ private fun FileActionDialog(
 ) {
     val context = LocalContext.current
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("文件操作") },
         text = {
@@ -640,7 +639,7 @@ private fun FileActionDialog(
                 
                 // 如果是文件（objectType=2），显示下载选项
                 if (file.objectType == 2) {
-                    TextButton(
+                    YhTextButton(
                         onClick = {
                             onDownload()
                             onDismiss()
@@ -653,7 +652,7 @@ private fun FileActionDialog(
                     }
                 }
                 
-                TextButton(
+                YhTextButton(
                     onClick = onRename,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -662,7 +661,7 @@ private fun FileActionDialog(
                     Text("重命名")
                 }
                 
-                TextButton(
+                YhTextButton(
                     onClick = onDelete,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -678,7 +677,7 @@ private fun FileActionDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -691,15 +690,8 @@ private fun DownloadConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Download,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
         title = { Text("确认下载") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -707,10 +699,8 @@ private fun DownloadConfirmDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // 文件信息
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                YhCard(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(
                         modifier = Modifier
@@ -745,7 +735,7 @@ private fun DownloadConfirmDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            YhButton(onClick = onConfirm) {
                 Icon(
                     imageVector = Icons.Default.Download,
                     contentDescription = null,
@@ -756,7 +746,7 @@ private fun DownloadConfirmDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -771,11 +761,11 @@ private fun RenameFileDialog(
 ) {
     var newName by remember { mutableStateOf(currentName) }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("重命名") },
         text = {
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = newName,
                 onValueChange = { newName = it },
                 label = { Text("新名称") },
@@ -784,7 +774,7 @@ private fun RenameFileDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = { if (newName.isNotBlank()) onConfirm(newName) },
                 enabled = newName.isNotBlank()
             ) {
@@ -792,7 +782,7 @@ private fun RenameFileDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

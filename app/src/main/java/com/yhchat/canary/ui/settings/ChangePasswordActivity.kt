@@ -31,10 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +54,8 @@ import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
@@ -189,7 +189,7 @@ fun ChangePasswordScreen(
             title = "更改密码",
             large = false,
             navigationIcon = {
-                IconButton(onClick = onBackClick) {
+                YhIconButton(onClick = onBackClick) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
             }
@@ -237,9 +237,8 @@ fun ChangePasswordScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = MaterialTheme.colorScheme.primary
+                                YhCircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         } else if (uiState.captchaImage != null) {
@@ -306,7 +305,7 @@ fun ChangePasswordScreen(
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (uiState.showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = viewModel::togglePasswordVisibility) {
+                    YhIconButton(onClick = viewModel::togglePasswordVisibility) {
                         Icon(
                             imageVector = if (uiState.showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = if (uiState.showPassword) "隐藏密码" else "显示密码"
@@ -323,7 +322,7 @@ fun ChangePasswordScreen(
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (uiState.showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = viewModel::toggleConfirmPasswordVisibility) {
+                    YhIconButton(onClick = viewModel::toggleConfirmPasswordVisibility) {
                         Icon(
                             imageVector = if (uiState.showConfirmPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = if (uiState.showConfirmPassword) "隐藏密码" else "显示密码"
@@ -356,9 +355,8 @@ fun ChangePasswordScreen(
                     uiState.confirmPassword.isNotEmpty()
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                    YhCircularProgressIndicator(
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }

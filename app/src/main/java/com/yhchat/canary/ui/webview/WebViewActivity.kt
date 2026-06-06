@@ -24,7 +24,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,22 +38,10 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -64,13 +51,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import com.yhchat.canary.crash.CrashHandler
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomAppBar
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -161,7 +158,6 @@ class WebViewActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebViewScreen(
     initialUrl: String,
@@ -204,29 +200,14 @@ fun WebViewScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = uiState.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = uiState.url,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    },
+                YhTopBar(
+                    title = uiState.title,
+                    large = false,
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        YhIconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "关闭"
@@ -234,14 +215,14 @@ fun WebViewScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.setMenuVisible(true) }) {
+                        YhIconButton(onClick = { viewModel.setMenuVisible(true) }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "更多")
                         }
-                        DropdownMenu(
+                        YhDropdownMenu(
                             expanded = uiState.showMenu,
                             onDismissRequest = { viewModel.setMenuVisible(false) }
                         ) {
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("刷新") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
@@ -249,7 +230,7 @@ fun WebViewScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.Refresh, null) }
                             )
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("在浏览器中打开") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
@@ -261,7 +242,7 @@ fun WebViewScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.OpenInBrowser, null) }
                             )
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text("复制链接") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
@@ -276,8 +257,8 @@ fun WebViewScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
                             )
-                            HorizontalDivider()
-                            DropdownMenuItem(
+                            YhHorizontalDivider()
+                            YhDropdownMenuItem(
                                 text = { Text("关闭") },
                                 onClick = {
                                     viewModel.setMenuVisible(false)
@@ -286,41 +267,37 @@ fun WebViewScreen(
                                 leadingIcon = { Icon(Icons.Default.Close, null) }
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 )
                 // 进度条
                 if (uiState.progress < 1.0f) {
-                    LinearProgressIndicator(
-                        progress = { uiState.progress },
-                        modifier = Modifier.fillMaxWidth().height(2.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
+                    YhLinearProgressIndicator(
+                        progress = uiState.progress,
+                        modifier = Modifier.fillMaxWidth().height(2.dp)
                     )
                 }
             }
         },
         bottomBar = {
-            BottomAppBar(
-                actions = {
-                    IconButton(
+            YhBottomAppBar(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                    YhIconButton(
                         onClick = { webView?.goBack() },
                         enabled = uiState.canGoBack,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "后退")
                     }
-                    IconButton(
+                    YhIconButton(
                         onClick = { webView?.goForward() },
                         enabled = uiState.canGoForward,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "前进")
                     }
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             if (uiState.progress < 1.0f) {
                                 webView?.stopLoading()
@@ -335,10 +312,7 @@ fun WebViewScreen(
                             contentDescription = if (uiState.progress < 1.0f) "停止" else "刷新"
                         )
                     }
-                },
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -467,7 +441,7 @@ fun WebViewScreen(
 
     // 外部跳转拦截对话框
     if (uiState.showJumpDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { viewModel.dismissJumpDialog() },
             title = { Text("外部应用跳转请求") },
             text = { 
@@ -484,7 +458,7 @@ fun WebViewScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
+                YhButton(onClick = {
                     val jumpUrl = uiState.pendingJumpUrl
                     viewModel.dismissJumpDialog()
                     try {
@@ -505,7 +479,7 @@ fun WebViewScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissJumpDialog() }) {
+                YhTextButton(onClick = { viewModel.dismissJumpDialog() }) {
                     Text("忽略")
                 }
             }
@@ -518,7 +492,7 @@ fun WebViewScreen(
             uiState.pendingContentDisposition,
             uiState.pendingMimeType
         )
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { viewModel.dismissDownloadDialog() },
             title = { Text("下载文件") },
             text = {
@@ -535,13 +509,13 @@ fun WebViewScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
+                YhButton(onClick = {
                     val downloadUrl = uiState.pendingDownloadUrl
                     val mimeType = uiState.pendingMimeType
                     viewModel.dismissDownloadDialog()
                     if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
                         Toast.makeText(context, "外部存储不可用", Toast.LENGTH_LONG).show()
-                        return@Button
+                        return@YhButton
                     }
                     try {
                         val request = DownloadManager.Request(downloadUrl.toUri()).apply {
@@ -565,7 +539,7 @@ fun WebViewScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissDownloadDialog() }) {
+                YhTextButton(onClick = { viewModel.dismissDownloadDialog() }) {
                     Text("取消")
                 }
             }

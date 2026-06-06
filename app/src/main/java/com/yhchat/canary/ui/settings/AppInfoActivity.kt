@@ -29,11 +29,8 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +57,9 @@ import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhTextButton
@@ -175,7 +175,7 @@ private fun AppInfoScreen(
                 title = "应用详情",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    YhIconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -231,7 +231,7 @@ private fun AppInfoScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            HorizontalDivider()
+            YhHorizontalDivider()
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -520,7 +520,7 @@ private fun AppInfoItem(
             }
             
             if (isLoading) {
-                CircularProgressIndicator(
+                YhCircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp
                 )

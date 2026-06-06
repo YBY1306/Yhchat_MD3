@@ -25,13 +25,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +45,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhTopBar
@@ -125,7 +125,7 @@ private fun BotSettingsScreen(
                 title = "$botName 设置",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    YhIconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
@@ -178,7 +178,7 @@ private fun BotSettingsScreen(
                                 enabled = !uiState.isLoading,
                                 readOnly = true,
                                 trailingIcon = {
-                                    IconButton(
+                                    YhIconButton(
                                         onClick = {
                                             if (uiState.token.isNotBlank()) {
                                                 clipboard.setText(AnnotatedString(uiState.token))
@@ -238,7 +238,7 @@ private fun BotSettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                RadioButton(
+                                YhRadioButton(
                                     selected = uiState.callbackMode == 0,
                                     onClick = { viewModel.updateCallbackMode(0) },
                                     enabled = !uiState.isSavingWebhook && !uiState.isLoading
@@ -251,7 +251,7 @@ private fun BotSettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                RadioButton(
+                                YhRadioButton(
                                     selected = uiState.callbackMode == 1,
                                     onClick = { viewModel.updateCallbackMode(1) },
                                     enabled = !uiState.isSavingWebhook && !uiState.isLoading
@@ -286,7 +286,7 @@ private fun BotSettingsScreen(
                                 enabled = !uiState.isSavingWebhook && !uiState.isLoading,
                                 readOnly = true,
                                 trailingIcon = {
-                                    IconButton(
+                                    YhIconButton(
                                         onClick = {
                                             clipboard.setText(AnnotatedString(wsSubscribeUrl))
                                             Toast.makeText(context, "已复制 WS 地址", Toast.LENGTH_SHORT).show()
@@ -330,10 +330,9 @@ private fun BotSettingsScreen(
                                 enabled = !uiState.isSavingWebhook && !uiState.isLoading
                             ) {
                                 if (uiState.isSavingWebhook) {
-                                    CircularProgressIndicator(
+                                    YhCircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
+                                        strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("保存中...")
@@ -375,10 +374,9 @@ private fun BotSettingsScreen(
                             enabled = !uiState.isResettingLink && !uiState.isLoading
                         ) {
                             if (uiState.isResettingLink) {
-                                CircularProgressIndicator(
+                                YhCircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("恢复中...")
@@ -479,7 +477,7 @@ private fun BotSettingsScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             
-                            IconButton(
+                            YhIconButton(
                                 onClick = {
                                     InstructionManagementActivity.start(context, botId, botName)
                                 }
@@ -500,7 +498,7 @@ private fun BotSettingsScreen(
                                     .height(60.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                             }
                         } else if (uiState.instructions.isEmpty()) {
                             Text(
@@ -544,7 +542,7 @@ private fun BotSettingsScreen(
                                     }
                                     
                                     if (instruction != uiState.instructions.take(3).last()) {
-                                        HorizontalDivider()
+                                        YhHorizontalDivider()
                                     }
                                 }
                                 

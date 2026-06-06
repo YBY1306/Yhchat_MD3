@@ -48,11 +48,25 @@ import com.yhchat.canary.data.websocket.ConnectionState
 import com.yhchat.canary.data.websocket.WebSocketService
 import com.yhchat.canary.service.AudioPlayerService
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhListItem
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhSwitchItem
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.isMiuixUi
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
@@ -117,9 +131,9 @@ fun SettingsScreen(
         topBar = {
             YhTopBar(
                 title = "设置",
-                large = isMiuixUi,
+                large = true,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -133,6 +147,7 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .yhTopBarNestedScroll()
                 .padding(innerPadding),
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -389,7 +404,7 @@ fun SettingsScreen(
 
     // 退出登录确认对话框
     if (showLogoutDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = {
                 Text(
@@ -402,7 +417,7 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         showLogoutDialog = false
                         onLogout()
@@ -412,7 +427,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = { showLogoutDialog = false }
                 ) {
                     Text("取消")
@@ -464,9 +479,8 @@ private fun AccountSwitchBottomSheet(
     onDeleteAccount: (String) -> Unit,
     onSwitchAccount: (String) -> Unit
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface
+    YhBottomSheet(
+        onDismissRequest = onDismiss
     ) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -491,12 +505,12 @@ private fun AccountSwitchBottomSheet(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onAddAccount) {
+                YhTextButton(onClick = onAddAccount) {
                     Text("添加账号")
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -554,7 +568,7 @@ private fun AccountSwitchBottomSheet(
                             )
                         }
 
-                        IconButton(
+                        YhIconButton(
                             onClick = { onDeleteAccount(account.userId) }
                         ) {
                             Icon(
@@ -580,7 +594,7 @@ private fun AccountSwitchBottomSheet(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = onAddAccount) {
+                            YhButton(onClick = onAddAccount) {
                                 Text("添加账号")
                             }
                         }
@@ -764,7 +778,7 @@ private fun TTSSpeechRateSettingItem(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            Slider(
+            YhSlider(
                 value = speechRate,
                 onValueChange = onSpeechRateChange,
                 valueRange = 0.5f..2.0f,
@@ -838,7 +852,7 @@ private fun TTSPitchSettingItem(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            Slider(
+            YhSlider(
                 value = pitch,
                 onValueChange = onPitchChange,
                 valueRange = 0.5f..2.0f,
@@ -904,7 +918,7 @@ private fun ThemeSettingsGroup(
     )
 
     if (showThemeDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showThemeDialog = false },
             title = { Text("选择主题模式") },
             text = {
@@ -921,7 +935,7 @@ private fun ThemeSettingsGroup(
                                 .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RadioButton(
+                            YhRadioButton(
                                 selected = themeMode == value,
                                 onClick = null
                             )
@@ -935,7 +949,7 @@ private fun ThemeSettingsGroup(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) {
+                YhTextButton(onClick = { showThemeDialog = false }) {
                     Text("取消")
                 }
             }
@@ -994,7 +1008,7 @@ private fun LongPressSendMarkdownSettingItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Switch(
+                YhSwitch(
                     checked = enabled,
                     onCheckedChange = { checked ->
                         enabled = checked
@@ -1005,7 +1019,7 @@ private fun LongPressSendMarkdownSettingItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Slider(
+            YhSlider(
                 value = seconds.toFloat(),
                 onValueChange = { seconds = it.toInt().coerceIn(1, 10) },
                 onValueChangeFinished = {
@@ -1117,7 +1131,7 @@ private fun FontSizeSettingItem(
             Spacer(modifier = Modifier.height(12.dp))
             
             // 滑动条
-            Slider(
+            YhSlider(
                 value = fontScale,
                 onValueChange = { newValue ->
                     fontScale = newValue
@@ -1215,7 +1229,7 @@ private fun GlobalScaleSettingItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Slider(
+                YhSlider(
                     value = scale,
                     onValueChange = { newValue ->
                         val clamped = newValue.coerceIn(0.5f, 1.5f)
@@ -1295,7 +1309,7 @@ private fun MemoryAutoCleanSettingItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Switch(
+                YhSwitch(
                     checked = enabled,
                     onCheckedChange = { checked ->
                         enabled = checked
@@ -1310,7 +1324,7 @@ private fun MemoryAutoCleanSettingItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = thresholdValueText,
                     onValueChange = { newValue ->
                         thresholdValueText = newValue
@@ -1329,18 +1343,18 @@ private fun MemoryAutoCleanSettingItem(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Box {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = { unitExpanded = true },
                         enabled = enabled
                     ) {
                         Text(unit)
                     }
 
-                    DropdownMenu(
+                    YhDropdownMenu(
                         expanded = unitExpanded,
                         onDismissRequest = { unitExpanded = false }
                     ) {
-                        DropdownMenuItem(
+                        YhDropdownMenuItem(
                             text = { Text("MB") },
                             onClick = {
                                 unit = "MB"
@@ -1348,7 +1362,7 @@ private fun MemoryAutoCleanSettingItem(
                                 unitExpanded = false
                             }
                         )
-                        DropdownMenuItem(
+                        YhDropdownMenuItem(
                             text = { Text("GB") },
                             onClick = {
                                 unit = "GB"
@@ -1612,7 +1626,7 @@ private fun ColorPickerDialog(
         Color(0xFF000000)  // 黑色
     )
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -1659,7 +1673,7 @@ private fun ColorPickerDialog(
                 }
                 
                 // 颜色输入框
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = colorInput,
                     onValueChange = { input ->
                         colorInput = input.uppercase()
@@ -1745,7 +1759,7 @@ private fun ColorPickerDialog(
                 }
                 
                 // 重置按钮
-                TextButton(
+                YhTextButton(
                     onClick = {
                         selectedColor = Color(0xFF6200EE)
                         colorInput = "#6200EE"
@@ -1764,7 +1778,7 @@ private fun ColorPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     // 保存颜色
                     if (colorInput.matches(Regex("^#[0-9A-Fa-f]{6}$"))) {
@@ -1786,7 +1800,7 @@ private fun ColorPickerDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
@@ -1845,7 +1859,7 @@ private fun WebPQualitySettingItem(
             Spacer(modifier = Modifier.height(12.dp))
             
             // 滑动条
-            Slider(
+            YhSlider(
                 value = webpQuality,
                 onValueChange = { newValue ->
                     webpQuality = newValue
@@ -2166,7 +2180,7 @@ fun SettingsSwitchItem(
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            Switch(
+            YhSwitch(
                 checked = checked,
                 onCheckedChange = null // Handled by parent click
             )
@@ -2335,7 +2349,7 @@ private fun YhToolsPanel(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = postIdInput,
                                     onValueChange = { postIdInput = it },
                                     modifier = Modifier.weight(1f),
@@ -2344,12 +2358,12 @@ private fun YhToolsPanel(
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Button(
+                                YhButton(
                                     onClick = {
                                         val postId = postIdInput.toIntOrNull()
                                         if (postId == null) {
                                             android.widget.Toast.makeText(context, "文章ID必须是数字", android.widget.Toast.LENGTH_SHORT).show()
-                                            return@Button
+                                            return@YhButton
                                         }
                                         val intent = Intent(context, PostDetailActivity::class.java).apply {
                                             putExtra("post_id", postId)
@@ -2365,7 +2379,7 @@ private fun YhToolsPanel(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = boardIdInput,
                                     onValueChange = { boardIdInput = it },
                                     modifier = Modifier.weight(1f),
@@ -2374,12 +2388,12 @@ private fun YhToolsPanel(
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Button(
+                                YhButton(
                                     onClick = {
                                         val boardId = boardIdInput.toIntOrNull()
                                         if (boardId == null) {
                                             android.widget.Toast.makeText(context, "社区ID必须是数字", android.widget.Toast.LENGTH_SHORT).show()
-                                            return@Button
+                                            return@YhButton
                                         }
                                         val intent = Intent(context, BoardDetailActivity::class.java).apply {
                                             putExtra("board_id", boardId)
@@ -2396,7 +2410,7 @@ private fun YhToolsPanel(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = stickerPackIdInput,
                                     onValueChange = { stickerPackIdInput = it },
                                     modifier = Modifier.weight(1f),
@@ -2404,12 +2418,12 @@ private fun YhToolsPanel(
                                     singleLine = true
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Button(
+                                YhButton(
                                     onClick = {
                                         val stickerPackId = stickerPackIdInput.trim()
                                         if (stickerPackId.isBlank()) {
                                             android.widget.Toast.makeText(context, "表情包ID不能为空", android.widget.Toast.LENGTH_SHORT).show()
-                                            return@Button
+                                            return@YhButton
                                         }
                                         StickerPackDetailActivity.start(context, stickerPackId)
                                     }
@@ -2424,19 +2438,19 @@ private fun YhToolsPanel(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = {
+                                YhOutlinedButton(onClick = {
                                     webSocketService.disconnect()
                                 }) {
                                     Text("停止")
                                 }
-                                OutlinedTextField(
+                                YhOutlinedTextField(
                                     value = wsPlatformInput,
                                     onValueChange = { wsPlatformInput = it },
                                     modifier = Modifier.width(140.dp),
                                     label = { Text("在线版本") },
                                     singleLine = true
                                 )
-                                Button(
+                                YhButton(
                                     onClick = {
                                         coroutineScope.launch {
                                             val tokenRepo = RepositoryFactory.getTokenRepository(context)

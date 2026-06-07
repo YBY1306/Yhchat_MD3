@@ -2173,7 +2173,8 @@ fun YhDropdownMenuItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    leadingIcon: @Composable (() -> Unit)? = null
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     if (isMiuixUi) {
         Row(
@@ -2184,7 +2185,13 @@ fun YhDropdownMenuItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             leadingIcon?.invoke()
-            text()
+            Box(modifier = Modifier.weight(1f)) {
+                text()
+            }
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(12.dp))
+                trailingIcon()
+            }
         }
     } else {
         androidx.compose.material3.DropdownMenuItem(
@@ -2192,7 +2199,8 @@ fun YhDropdownMenuItem(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            leadingIcon = leadingIcon
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon
         )
     }
 }

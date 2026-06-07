@@ -1170,7 +1170,7 @@ fun ConversationItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 3.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = Color.Transparent,
         shadowElevation = 0.dp,
         shape = RoundedCornerShape(14.dp)
     ) {

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhCheckbox
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
@@ -164,35 +165,47 @@ fun AttachmentMenu(
             YhHorizontalDivider()
             
             YhDropdownMenuItem(
-                text = { Text(if (selectedMessageType == 1) "文本  ✓" else "文本") },
+                text = { Text("文本") },
                 onClick = { onTextClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = selectedMessageType == 1)
                 }
             )
 
             YhDropdownMenuItem(
-                text = { Text(if (selectedMessageType == 8) "HTML  ✓" else "HTML") },
+                text = { Text("HTML") },
                 onClick = { onHtmlClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = selectedMessageType == 8)
                 }
             )
             
             YhDropdownMenuItem(
-                text = { Text(if (selectedMessageType == 3) "Markdown  ✓" else "Markdown") },
+                text = { Text("Markdown") },
                 onClick = { onMarkdownClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = selectedMessageType == 3)
                 }
             )
             
             if (onA2UiClick != null) {
                 YhDropdownMenuItem(
-                    text = { Text(if (selectedMessageType == 14) "A2UI  ✓" else "A2UI") },
+                    text = { Text("A2UI") },
                     onClick = { onA2UiClick.invoke() },
                     leadingIcon = {
                         Icon(Icons.Default.Settings, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        MenuCheckedIndicator(checked = selectedMessageType == 14)
                     }
                 )
             }
@@ -203,37 +216,59 @@ fun AttachmentMenu(
             YhHorizontalDivider()
             
             YhDropdownMenuItem(
-                text = { Text(if (defaultMessageType == 1) "默认文本  ✓" else "默认文本") },
+                text = { Text("默认文本") },
                 onClick = { onDefaultMessageTypeChange.invoke(1) },
                 leadingIcon = {
                     Icon(Icons.Default.TextFields, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = defaultMessageType == 1)
                 }
             )
 
             YhDropdownMenuItem(
-                text = { Text(if (defaultMessageType == 3) "默认Markdown  ✓" else "默认Markdown") },
+                text = { Text("默认Markdown") },
                 onClick = { onDefaultMessageTypeChange.invoke(3) },
                 leadingIcon = {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = defaultMessageType == 3)
                 }
             )
 
             YhDropdownMenuItem(
-                text = { Text(if (defaultMessageType == 8) "默认HTML  ✓" else "默认HTML") },
+                text = { Text("默认HTML") },
                 onClick = { onDefaultMessageTypeChange.invoke(8) },
                 leadingIcon = {
                     Icon(Icons.Default.Code, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = defaultMessageType == 8)
                 }
             )
 
             YhDropdownMenuItem(
-                text = { Text(if (defaultMessageType == 14) "默认A2UI  ✓" else "默认A2UI") },
+                text = { Text("默认A2UI") },
                 onClick = { onDefaultMessageTypeChange.invoke(14) },
                 leadingIcon = {
                     Icon(Icons.Default.Settings, contentDescription = null)
+                },
+                trailingIcon = {
+                    MenuCheckedIndicator(checked = defaultMessageType == 14)
                 }
             )
         }
     }
+}
+
+@Composable
+private fun MenuCheckedIndicator(checked: Boolean) {
+    YhCheckbox(
+        checked = checked,
+        onCheckedChange = null,
+        enabled = false,
+        modifier = Modifier.size(22.dp)
+    )
 }
 

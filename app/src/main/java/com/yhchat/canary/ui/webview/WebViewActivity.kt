@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.view.ViewGroup
 import android.webkit.URLUtil
 import android.webkit.WebChromeClient
@@ -352,7 +353,7 @@ fun WebViewScreen(
                                             inputStream
                                         )
                                     } catch (e: Exception) {
-                                        CrashHandler.showCaughtException(context, e)
+                                        Log.w("WebViewActivity", "Failed to intercept WebView request: $url", e)
                                         // 如果拦截失败，返回 null 让 WebView 自己处理
                                         return null
                                     }

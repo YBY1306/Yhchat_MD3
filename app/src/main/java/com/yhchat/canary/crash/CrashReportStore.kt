@@ -58,7 +58,7 @@ object CrashReportStore {
         return buildString {
             appendLine("Yhchat Canary Crash Report")
             appendLine("Time: $time")
-            appendLine("Thread: ${thread.name} (${thread.threadId()})")
+            appendLine("Thread: ${thread.name} (${thread.id})")
             appendLine("Package: ${context.packageName}")
             appendLine("VersionName: ${packageInfo?.versionName ?: "unknown"}")
             @Suppress("DEPRECATION")

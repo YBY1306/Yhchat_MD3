@@ -121,9 +121,6 @@ android {
     }
 
     sourceSets {
-        getByName("player") {
-            java.srcDir("src/withPlayer/java")
-        }
         getByName("playermiuix") {
             java.srcDir("src/withPlayer/java")
         }

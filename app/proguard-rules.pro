@@ -56,3 +56,6 @@
 -keepclassmembers class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator CREATOR;
 }
+
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

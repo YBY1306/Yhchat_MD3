@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -105,6 +106,8 @@ private val LocalYhScaffoldContainerColor =
     compositionLocalOf { Color.Unspecified }
 
 private val YhTabIndicatorHeight = 3.dp
+private val YhMd3ButtonShape: Shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+private val YhMd3ButtonContentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
 
 @Composable
 private fun TabIndicatorScope.YhRoundedCornerTabIndicator(
@@ -295,7 +298,13 @@ fun YhModalNavigationDrawer(
                             .fillMaxWidth(0.92f),
                         color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
                     ) {
-                        drawerContent()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .windowInsetsPadding(WindowInsets.safeDrawing)
+                        ) {
+                            drawerContent()
+                        }
                     }
                     Box(
                         modifier = Modifier
@@ -977,13 +986,14 @@ fun YhButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
-    contentPadding: PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    shape: Shape = YhMd3ButtonShape,
+    contentPadding: PaddingValues? = null,
     containerColor: Color? = null,
     contentColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixInsideMargin = contentPadding ?: top.yukonga.miuix.kmp.basic.ButtonDefaults.InsideMargin
         top.yukonga.miuix.kmp.basic.Button(
             onClick = onClick,
             modifier = modifier,
@@ -996,16 +1006,17 @@ fun YhButton(
             } else {
                 top.yukonga.miuix.kmp.basic.ButtonDefaults.buttonColorsPrimary()
             },
-            insideMargin = contentPadding,
+            insideMargin = miuixInsideMargin,
             content = content
         )
     } else {
+        val md3ContentPadding = contentPadding ?: YhMd3ButtonContentPadding
         Button(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
             shape = shape,
-            contentPadding = contentPadding,
+            contentPadding = md3ContentPadding,
             colors = if (containerColor != null || contentColor != null) {
                 androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = containerColor ?: MaterialTheme.colorScheme.primary,
@@ -1038,7 +1049,7 @@ fun YhTextButton(
                 contentColor = colors.textColor,
                 disabledContentColor = colors.disabledTextColor
             ),
-            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            insideMargin = top.yukonga.miuix.kmp.basic.ButtonDefaults.InsideMargin,
             content = content
         )
     } else {
@@ -1064,7 +1075,7 @@ fun YhTextButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            insideMargin = top.yukonga.miuix.kmp.basic.ButtonDefaults.InsideMargin
         )
     } else {
         TextButton(
@@ -1087,11 +1098,23 @@ fun YhIconButton(
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixBackgroundColor = containerColor ?: Color.Unspecified
+        val miuixContent: @Composable () -> Unit = {
+            val providedContentColor = contentColor
+            if (providedContentColor != null) {
+                CompositionLocalProvider(top.yukonga.miuix.kmp.theme.LocalContentColor provides providedContentColor) {
+                    content()
+                }
+            } else {
+                content()
+            }
+        }
         top.yukonga.miuix.kmp.basic.IconButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            content = content
+            backgroundColor = miuixBackgroundColor,
+            content = miuixContent
         )
     } else {
         IconButton(
@@ -1571,7 +1594,7 @@ fun YhOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = androidx.compose.material3.ButtonDefaults.shape,
+    shape: Shape = YhMd3ButtonShape,
     contentColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
@@ -1584,7 +1607,7 @@ fun YhOutlinedButton(
                 color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryVariant,
                 contentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSecondaryVariant
             ),
-            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            insideMargin = top.yukonga.miuix.kmp.basic.ButtonDefaults.InsideMargin,
             content = content
         )
     } else {
@@ -2057,6 +2080,19 @@ fun YhFilterChip(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.buttonColors(
+                color = if (selected) {
+                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.primaryContainer
+                } else {
+                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryVariant
+                },
+                contentColor = if (selected) {
+                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onPrimaryContainer
+                } else {
+                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSecondaryVariant
+                }
+            ),
+            insideMargin = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
             content = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     leadingIcon?.let {

@@ -13,14 +13,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -95,9 +92,7 @@ class DraftBoxActivity : ComponentActivity() {
                         startActivity(intent)
                         finish()
                     },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.systemBars)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -107,12 +102,10 @@ class DraftBoxActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     private fun SetSystemNavigationBarColor() {
         val isLightTheme = !isSystemInDarkTheme()
-        // 获取 TopAppBar 的背景颜色
-        val topAppBarContainerColor = MaterialTheme.colorScheme.surface
         
         SideEffect {
-            // 状态栏颜色跟随 TopAppBar 背景颜色
-            window.statusBarColor = topAppBarContainerColor.toArgb()
+            // 状态栏保持透明，让 TopAppBar 绘制到状态栏下方，避免顶部出现一块白色区域
+            window.statusBarColor = Color.Transparent.toArgb()
             // 导航栏保持透明
             window.navigationBarColor = Color.Transparent.toArgb()
             

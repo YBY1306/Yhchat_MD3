@@ -79,26 +79,30 @@ fun YhMiuixScrollBehavior(): top.yukonga.miuix.kmp.basic.ScrollBehavior {
 fun YhFloatingActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.primary,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    containerColor: Color? = null,
+    contentColor: Color? = null,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixContainerColor = containerColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.primary
+        val miuixContentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onPrimary
         top.yukonga.miuix.kmp.basic.FloatingActionButton(
             onClick = onClick,
             modifier = modifier,
-            containerColor = containerColor,
+            containerColor = miuixContainerColor,
         ) {
-            CompositionLocalProvider(top.yukonga.miuix.kmp.theme.LocalContentColor provides contentColor) {
+            CompositionLocalProvider(top.yukonga.miuix.kmp.theme.LocalContentColor provides miuixContentColor) {
                 content()
             }
         }
     } else {
+        val md3ContainerColor = containerColor ?: MaterialTheme.colorScheme.primary
+        val md3ContentColor = contentColor ?: MaterialTheme.colorScheme.onPrimary
         FloatingActionButton(
             onClick = onClick,
             modifier = modifier,
-            containerColor = containerColor,
-            contentColor = contentColor,
+            containerColor = md3ContainerColor,
+            contentColor = md3ContentColor,
             content = content
         )
     }
@@ -107,23 +111,25 @@ fun YhFloatingActionButton(
 @Composable
 fun YhFloatingToolbar(
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    color: Color? = null,
     cornerRadius: Dp = 16.dp,
     showDivider: Boolean = false,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixColor = color ?: top.yukonga.miuix.kmp.basic.FloatingToolbarDefaults.defaultColor()
         top.yukonga.miuix.kmp.basic.FloatingToolbar(
             modifier = modifier,
-            color = color,
+            color = miuixColor,
             cornerRadius = cornerRadius,
             showDivider = showDivider,
             content = content
         )
     } else {
+        val md3Color = color ?: MaterialTheme.colorScheme.surfaceContainerHigh
         Surface(
             modifier = modifier,
-            color = color,
+            color = md3Color,
             shape = androidx.compose.foundation.shape.RoundedCornerShape(cornerRadius),
             content = content
         )
@@ -134,26 +140,30 @@ fun YhFloatingToolbar(
 fun YhSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
-    color: Color = MaterialTheme.colorScheme.surface,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    color: Color? = null,
+    contentColor: Color? = null,
     shadowElevation: Dp = 0.dp,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixColor = color ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+        val miuixContentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
         top.yukonga.miuix.kmp.basic.Surface(
             modifier = modifier,
             shape = shape,
-            color = color,
-            contentColor = contentColor,
+            color = miuixColor,
+            contentColor = miuixContentColor,
             shadowElevation = shadowElevation,
             content = content
         )
     } else {
+        val md3Color = color ?: MaterialTheme.colorScheme.surface
+        val md3ContentColor = contentColor ?: MaterialTheme.colorScheme.onSurface
         Surface(
             modifier = modifier,
             shape = shape,
-            color = color,
-            contentColor = contentColor,
+            color = md3Color,
+            contentColor = md3ContentColor,
             shadowElevation = shadowElevation,
             content = content
         )
@@ -166,30 +176,34 @@ fun YhClickableSurface(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     shape: Shape = RectangleShape,
-    color: Color = MaterialTheme.colorScheme.surface,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    color: Color? = null,
+    contentColor: Color? = null,
     shadowElevation: Dp = 0.dp,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
+        val miuixColor = color ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+        val miuixContentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
         top.yukonga.miuix.kmp.basic.Surface(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
             shape = shape,
-            color = color,
-            contentColor = contentColor,
+            color = miuixColor,
+            contentColor = miuixContentColor,
             shadowElevation = shadowElevation,
             content = content
         )
     } else {
+        val md3Color = color ?: MaterialTheme.colorScheme.surface
+        val md3ContentColor = contentColor ?: MaterialTheme.colorScheme.onSurface
         Surface(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
             shape = shape,
-            color = color,
-            contentColor = contentColor,
+            color = md3Color,
+            contentColor = md3ContentColor,
             shadowElevation = shadowElevation,
             content = content
         )

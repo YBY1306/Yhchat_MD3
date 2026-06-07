@@ -1209,6 +1209,153 @@ fun YhWindowDropdownPreference(
 }
 
 @Composable
+fun YhSuperArrow(
+    title: String,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.preference.ArrowPreference(
+            title = title,
+            summary = summary,
+            modifier = modifier,
+            enabled = enabled,
+            onClick = onClick
+        )
+    } else {
+        YhBasicComponent(
+            title = title,
+            summary = summary,
+            modifier = modifier,
+            enabled = enabled,
+            onClick = onClick
+        )
+    }
+}
+
+@Composable
+fun YhSuperSwitch(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.preference.SwitchPreference(
+            title = title,
+            summary = summary,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        YhBasicComponent(
+            title = title,
+            summary = summary,
+            modifier = modifier,
+            enabled = enabled,
+            onClick = { if (enabled) onCheckedChange(!checked) },
+            endActions = {
+                YhSwitch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    enabled = enabled
+                )
+            }
+        )
+    }
+}
+
+@Composable
+fun YhSuperCheckbox(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    YhCheckboxItem(
+        title = title,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        subtitle = summary,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun YhSuperRadioButton(
+    title: String,
+    selected: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    YhRadioItem(
+        title = title,
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier,
+        subtitle = summary,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun YhSuperDropdown(
+    items: List<String>,
+    selectedIndex: Int,
+    title: String,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true,
+    showValue: Boolean = true,
+    onSelectedIndexChange: ((Int) -> Unit)? = null
+) {
+    YhOverlayDropdownPreference(
+        items = items,
+        selectedIndex = selectedIndex,
+        title = title,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled,
+        showValue = showValue,
+        onSelectedIndexChange = onSelectedIndexChange
+    )
+}
+
+@Composable
+fun YhSuperSpinner(
+    items: List<String>,
+    selectedIndex: Int,
+    title: String,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true,
+    showValue: Boolean = true,
+    onSelectedIndexChange: ((Int) -> Unit)? = null
+) {
+    YhOverlaySpinnerPreference(
+        items = items,
+        selectedIndex = selectedIndex,
+        title = title,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled,
+        showValue = showValue,
+        onSelectedIndexChange = onSelectedIndexChange
+    )
+}
+
+@Composable
 fun YhOverlayDropdownPreference(
     items: List<String>,
     selectedIndex: Int,

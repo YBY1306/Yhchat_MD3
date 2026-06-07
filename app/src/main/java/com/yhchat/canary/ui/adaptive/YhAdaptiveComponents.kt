@@ -958,18 +958,13 @@ fun YhSegmentedControl(
             modifier = modifier
         )
     } else {
-        androidx.compose.material3.SingleChoiceSegmentedButtonRow(
-            modifier = modifier
-        ) {
+        Row(modifier = modifier) {
             labels.forEachIndexed { index, label ->
-                androidx.compose.material3.SegmentedButton(
+                YhFilterChip(
                     selected = selectedIndex == index,
                     onClick = { onSelectedIndexChange(index) },
                     enabled = enabled,
-                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(
-                        index = index,
-                        count = labels.size
-                    )
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 ) {
                     Text(label)
                 }

@@ -249,6 +249,7 @@ fun NavigationSettingsScreen(
         }
     }
 }
+}
 
 @Composable
 private fun ReorderableCollectionItemScope.NavigationItemCard(
@@ -328,6 +329,5 @@ private fun ReorderableCollectionItemScope.NavigationItemCard(
                 )
             }
         }
-    }
     }
 }

@@ -1,4 +1,4 @@
-package com.yhchat.canary.ui.contacts
+﻿package com.yhchat.canary.ui.contacts
 
 import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
@@ -89,12 +89,12 @@ fun ContactsScreen(
     }
 
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("通讯录") },
+            YhTopBar(
+                title = "通讯录",
                 actions = {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         val intent = Intent(context, SearchActivity::class.java)
                         context.startActivity(intent)
                     }) {
@@ -114,7 +114,7 @@ fun ContactsScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    YhCircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
                 uiState.error != null -> {
@@ -131,7 +131,7 @@ fun ContactsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadContacts() }) {
+                        YhButton(onClick = { viewModel.loadContacts() }) {
                             Text("重试")
                         }
                     }
@@ -140,7 +140,9 @@ fun ContactsScreen(
                 else -> {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .yhTopBarNestedScroll(),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         if (showRequests) {
@@ -163,7 +165,7 @@ fun ContactsScreen(
                                                 .padding(16.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                            YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 } else {
@@ -338,7 +340,7 @@ private fun ContactGroupHeader(
         label = "rotation"
     )
 
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle),
@@ -388,7 +390,7 @@ private fun ContactItem(
 ) {
     val context = LocalContext.current
     
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
@@ -434,7 +436,7 @@ private fun ContactItem(
             
             // 权限标识（仅群聊）
             if (contact.permissionLevel == 100) {
-                Surface(
+                YhSurface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     shape = MaterialTheme.shapes.small
                 ) {
@@ -446,7 +448,7 @@ private fun ContactItem(
                     )
                 }
             } else if (contact.permissionLevel == 2) {
-                Surface(
+                YhSurface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = MaterialTheme.shapes.small
                 ) {
@@ -461,7 +463,7 @@ private fun ContactItem(
         }
     }
     
-    HorizontalDivider(
+    YhHorizontalDivider(
         modifier = Modifier.padding(start = 76.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
@@ -489,7 +491,7 @@ private fun FriendRequestRow(
         else -> Icons.Default.Error to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
@@ -551,13 +553,12 @@ private fun FriendRequestRow(
         }
     }
 
-    HorizontalDivider(
+    YhHorizontalDivider(
         modifier = Modifier.padding(start = 76.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FriendRequestDetailBottomSheet(
     item: FriendRequestItem,
@@ -566,10 +567,9 @@ private fun FriendRequestDetailBottomSheet(
     onAgree: () -> Unit,
     onReject: () -> Unit
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+    YhBottomSheet(
+        title = "申请/邀请详情",
+        onDismissRequest = onDismiss
     ) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -598,12 +598,10 @@ private fun FriendRequestDetailBottomSheet(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
             ) {
-                Card(
+                YhCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                    )
+                    cornerRadius = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 ) {
                     Column(
                         modifier = Modifier
@@ -664,22 +662,22 @@ private fun FriendRequestDetailBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = onReject,
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
                         enabled = !processing,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        contentColor = MaterialTheme.colorScheme.error
                     ) {
                         if (processing) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            YhCircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(10.dp))
                         }
                         Text("拒绝")
                     }
 
-                    Button(
+                    YhButton(
                         onClick = onAgree,
                         modifier = Modifier
                             .weight(1f)
@@ -687,14 +685,14 @@ private fun FriendRequestDetailBottomSheet(
                         enabled = !processing
                     ) {
                         if (processing) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            YhCircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(10.dp))
                         }
                         Text("通过")
                     }
                 }
             } else {
-                OutlinedButton(
+                YhOutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -725,3 +723,4 @@ private fun InfoLine(label: String, value: String) {
     }
     Spacer(modifier = Modifier.height(8.dp))
 }
+

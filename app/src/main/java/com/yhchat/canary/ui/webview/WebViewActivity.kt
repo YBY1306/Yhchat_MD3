@@ -280,8 +280,8 @@ fun WebViewScreen(
         },
         bottomBar = {
             YhBottomAppBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
             ) {
                     YhIconButton(
                         onClick = { webView?.goBack() },

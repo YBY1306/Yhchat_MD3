@@ -81,6 +81,7 @@ fun YhchatCanaryTheme(
     val customColorInt by rememberIntPreference("theme_settings", "custom_primary_color", -1)
     val monetEnabled by rememberBooleanPreference("display_settings", "enable_monet_colors", true)
     val fontScalePreference = fontScalePercent / 100f
+    val isMiuixStyle = BuildConfig.UI_STYLE == "miuix"
     
     // 读取自定义主题颜色设置
     val useCustomColor = customColorInt != -1 && customColorInt != 0xFF6200EE.toInt()
@@ -96,7 +97,7 @@ fun YhchatCanaryTheme(
     // 选择配色方案（莫奈取色优先级最高）
     val baseColorScheme = when {
         // 优先1：启用了莫奈取色且系统支持（Android 12+）
-        monetEnabled && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        !isMiuixStyle && monetEnabled && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (effectiveDarkTheme) {
                 dynamicDarkColorScheme(context)
             } else {
@@ -133,7 +134,7 @@ fun YhchatCanaryTheme(
             colorScheme = colorScheme,
             typography = Typography
         ) {
-            if (BuildConfig.UI_STYLE == "miuix") {
+            if (isMiuixStyle) {
                 val miuixMode = when (themeMode) {
                     "light" -> ColorSchemeMode.Light
                     "dark" -> ColorSchemeMode.Dark

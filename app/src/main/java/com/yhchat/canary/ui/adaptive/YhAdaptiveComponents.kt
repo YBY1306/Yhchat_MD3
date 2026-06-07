@@ -2,6 +2,11 @@ package com.yhchat.canary.ui.adaptive
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -33,6 +38,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TabIndicatorScope
+import androidx.compose.material3.TabPosition
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ListItemDefaults
@@ -45,6 +52,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -54,22 +62,34 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
 import com.yhchat.canary.BuildConfig
+import kotlinx.coroutines.launch
 
 val isMiuixUi: Boolean
     get() = BuildConfig.UI_STYLE == "miuix"
@@ -83,6 +103,101 @@ private val LocalYhMd3ScrollBehavior =
 
 private val LocalYhScaffoldContainerColor =
     compositionLocalOf { Color.Unspecified }
+
+private val YhTabIndicatorHeight = 3.dp
+
+@Composable
+private fun TabIndicatorScope.YhRoundedCornerTabIndicator(
+    index: Int,
+    indicatorColor: Color = MaterialTheme.colorScheme.primary,
+    indicatorHeight: Dp = YhTabIndicatorHeight
+) {
+    var startAnimatable by remember { mutableStateOf<Animatable<Dp, AnimationVector1D>?>(null) }
+    var endAnimatable by remember { mutableStateOf<Animatable<Dp, AnimationVector1D>?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(
+        Modifier
+            .tabIndicatorLayout { measurable: Measurable,
+                                  constraints: Constraints,
+                                  tabPositions: List<TabPosition> ->
+                val tabPosition = tabPositions.getOrNull(index) ?: return@tabIndicatorLayout layout(
+                    constraints.maxWidth,
+                    constraints.maxHeight
+                ) {}
+                val newStart = tabPosition.left
+                val newEnd = tabPosition.right
+
+                val startAnim =
+                    startAnimatable
+                        ?: Animatable(newStart, Dp.VectorConverter).also { startAnimatable = it }
+                val endAnim =
+                    endAnimatable
+                        ?: Animatable(newEnd, Dp.VectorConverter).also { endAnimatable = it }
+
+                if (endAnim.targetValue != newEnd) {
+                    coroutineScope.launch {
+                        endAnim.animateTo(
+                            newEnd,
+                            animationSpec = if (endAnim.value < newEnd) {
+                                spring(stiffness = Spring.StiffnessHigh)
+                            } else {
+                                spring(stiffness = Spring.StiffnessMedium)
+                            }
+                        )
+                    }
+                }
+                if (startAnim.targetValue != newStart) {
+                    coroutineScope.launch {
+                        startAnim.animateTo(
+                            newStart,
+                            animationSpec = if (startAnim.value < newStart) {
+                                spring(stiffness = Spring.StiffnessMedium)
+                            } else {
+                                spring(stiffness = Spring.StiffnessHigh)
+                            }
+                        )
+                    }
+                }
+
+                val indicatorEnd = endAnim.value.roundToPx()
+                val indicatorStart = startAnim.value.roundToPx()
+                val indicatorWidth = indicatorEnd - indicatorStart
+                val indicatorHeightPx = indicatorHeight.roundToPx()
+                val horizontalPadding =
+                    (tabPosition.width - tabPosition.contentWidth).times(0.5f).roundToPx()
+                val placeable = measurable.measure(
+                    Constraints.fixed(
+                        width = (indicatorWidth - horizontalPadding * 2).coerceIn(0, indicatorWidth),
+                        height = indicatorHeightPx
+                    )
+                )
+
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    placeable.place(
+                        x = indicatorStart + horizontalPadding,
+                        y = constraints.maxHeight - indicatorHeightPx
+                    )
+                }
+            }
+            .fillMaxSize()
+            .drawWithContent {
+                val path = Path().apply {
+                    val cornerRadius = CornerRadius(size.height, size.height)
+                    addRoundRect(
+                        RoundRect(
+                            rect = Rect(offset = Offset.Zero, size),
+                            topLeft = cornerRadius,
+                            topRight = cornerRadius,
+                            bottomLeft = CornerRadius.Zero,
+                            bottomRight = CornerRadius.Zero
+                        )
+                    )
+                }
+                drawPath(path, indicatorColor)
+            }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -873,6 +988,15 @@ fun YhButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            colors = if (containerColor != null || contentColor != null) {
+                top.yukonga.miuix.kmp.basic.ButtonDefaults.buttonColors(
+                    color = containerColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.primary,
+                    contentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onPrimary
+                )
+            } else {
+                top.yukonga.miuix.kmp.basic.ButtonDefaults.buttonColorsPrimary()
+            },
+            insideMargin = contentPadding,
             content = content
         )
     } else {
@@ -903,10 +1027,18 @@ fun YhTextButton(
     content: @Composable RowScope.() -> Unit
 ) {
     if (isMiuixUi) {
+        val colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColors()
         top.yukonga.miuix.kmp.basic.Button(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            colors = top.yukonga.miuix.kmp.basic.ButtonColors(
+                color = colors.color,
+                disabledColor = colors.disabledColor,
+                contentColor = colors.textColor,
+                disabledContentColor = colors.disabledTextColor
+            ),
+            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             content = content
         )
     } else {
@@ -931,7 +1063,8 @@ fun YhTextButton(
             text = text,
             onClick = onClick,
             modifier = modifier,
-            enabled = enabled
+            enabled = enabled,
+            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         )
     } else {
         TextButton(
@@ -1252,21 +1385,27 @@ fun YhTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (tabs.isEmpty()) return
+    val safeSelectedIndex = selectedTabIndex.coerceIn(0, tabs.lastIndex)
+
     if (isMiuixUi) {
         top.yukonga.miuix.kmp.basic.TabRow(
             tabs = tabs,
-            selectedTabIndex = selectedTabIndex,
+            selectedTabIndex = safeSelectedIndex,
             onTabSelected = onTabSelected,
             modifier = modifier
         )
     } else {
         androidx.compose.material3.SecondaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            modifier = modifier
+            selectedTabIndex = safeSelectedIndex,
+            modifier = modifier,
+            indicator = {
+                YhRoundedCornerTabIndicator(index = safeSelectedIndex)
+            }
         ) {
             tabs.forEachIndexed { index, title ->
                 androidx.compose.material3.Tab(
-                    selected = selectedTabIndex == index,
+                    selected = safeSelectedIndex == index,
                     onClick = { onTabSelected(index) },
                     text = { Text(title) }
                 )
@@ -1283,12 +1422,34 @@ fun YhScrollableTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    YhTabRow(
-        tabs = tabs,
-        selectedTabIndex = selectedTabIndex,
-        onTabSelected = onTabSelected,
-        modifier = modifier
-    )
+    if (tabs.isEmpty()) return
+    val safeSelectedIndex = selectedTabIndex.coerceIn(0, tabs.lastIndex)
+
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.TabRow(
+            tabs = tabs,
+            selectedTabIndex = safeSelectedIndex,
+            onTabSelected = onTabSelected,
+            modifier = modifier
+        )
+    } else {
+        androidx.compose.material3.SecondaryScrollableTabRow(
+            selectedTabIndex = safeSelectedIndex,
+            modifier = modifier,
+            edgePadding = 0.dp,
+            indicator = {
+                YhRoundedCornerTabIndicator(index = safeSelectedIndex)
+            }
+        ) {
+            tabs.forEachIndexed { index, title ->
+                androidx.compose.material3.Tab(
+                    selected = safeSelectedIndex == index,
+                    onClick = { onTabSelected(index) },
+                    text = { Text(title) }
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1419,6 +1580,11 @@ fun YhOutlinedButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.buttonColors(
+                color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryVariant,
+                contentColor = contentColor ?: top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSecondaryVariant
+            ),
+            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             content = content
         )
     } else {
@@ -1449,6 +1615,7 @@ fun YhTextField(
             value = value,
             onValueChange = onValueChange,
             label = label,
+            useLabelAsPlaceholder = true,
             modifier = modifier,
             enabled = enabled,
             readOnly = readOnly
@@ -1486,29 +1653,52 @@ fun YhOutlinedTextField(
     shape: Shape = androidx.compose.material3.OutlinedTextFieldDefaults.shape,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    miuixLabelText: String = "",
+    miuixPlaceholderText: String = ""
 ) {
-    val miuixLabel = when {
-        label != null -> ""
-        placeholder != null -> ""
-        else -> ""
-    }
     if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.TextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = miuixLabel,
-            modifier = modifier,
-            enabled = enabled,
-            readOnly = readOnly,
-            singleLine = singleLine,
-            minLines = minLines,
-            maxLines = maxLines,
-            visualTransformation = visualTransformation,
-            trailingIcon = trailingIcon,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions
-        )
+        val placeholderContent = placeholder ?: label
+        val placeholderText = miuixPlaceholderText.ifBlank { miuixLabelText }
+        val shouldUseNativeLabel = placeholderContent == null && placeholderText.isNotBlank()
+        val startPadding = if (leadingIcon != null) 48.dp else 16.dp
+        val endPadding = if (trailingIcon != null) 48.dp else 16.dp
+
+        Box(modifier = modifier) {
+            top.yukonga.miuix.kmp.basic.TextField(
+                value = value,
+                onValueChange = onValueChange,
+                label = if (shouldUseNativeLabel) placeholderText else "",
+                modifier = Modifier.fillMaxWidth(),
+                enabled = enabled,
+                readOnly = readOnly,
+                singleLine = singleLine,
+                minLines = minLines,
+                maxLines = maxLines,
+                visualTransformation = visualTransformation,
+                leadingIcon = leadingIcon,
+                trailingIcon = trailingIcon,
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                useLabelAsPlaceholder = shouldUseNativeLabel
+            )
+
+            if (!shouldUseNativeLabel && value.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(start = startPadding, end = endPadding),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    CompositionLocalProvider(
+                        androidx.compose.material3.LocalContentColor provides
+                            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f)
+                    ) {
+                        placeholderContent?.invoke()
+                    }
+                }
+            }
+        }
     } else {
         OutlinedTextField(
             value = value,
@@ -1620,10 +1810,14 @@ fun YhAlertDialog(
     dismissButton: @Composable (() -> Unit)? = null
 ) {
     if (isMiuixUi) {
+        var visible by remember { mutableStateOf(true) }
+        val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+
         top.yukonga.miuix.kmp.window.WindowDialog(
-            show = true,
+            show = visible,
             modifier = modifier,
-            onDismissRequest = onDismissRequest
+            onDismissRequest = { visible = false },
+            onDismissFinished = currentOnDismissRequest
         ) {
             title?.invoke()
             text?.invoke()
@@ -1659,14 +1853,35 @@ fun YhDialog(
     onDismiss: (() -> Unit)? = null,
     content: (@Composable () -> Unit)? = null
 ) {
-    if (!show) return
-
     if (isMiuixUi) {
+        var mounted by remember { mutableStateOf(show) }
+        var visible by remember { mutableStateOf(show) }
+        var finishAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+        val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+        LaunchedEffect(show) {
+            if (show) {
+                mounted = true
+                visible = true
+                finishAction = null
+            } else if (mounted) {
+                visible = false
+            }
+        }
+        if (!mounted) return
+
         top.yukonga.miuix.kmp.window.WindowDialog(
-            show = show,
+            show = visible,
             title = title,
             summary = text,
-            onDismissRequest = onDismissRequest
+            onDismissRequest = {
+                finishAction = currentOnDismissRequest
+                visible = false
+            },
+            onDismissFinished = {
+                mounted = false
+                finishAction?.invoke()
+                finishAction = null
+            }
         ) {
             content?.invoke()
             androidx.compose.foundation.layout.Row(
@@ -1676,16 +1891,24 @@ fun YhDialog(
                 if (dismissText != null && onDismiss != null) {
                     top.yukonga.miuix.kmp.basic.TextButton(
                         text = dismissText,
-                        onClick = onDismiss
+                        onClick = {
+                            finishAction = onDismiss
+                            visible = false
+                        }
                     )
                 }
                 top.yukonga.miuix.kmp.basic.TextButton(
                     text = confirmText,
-                    onClick = onConfirm
+                    onClick = {
+                        finishAction = onConfirm
+                        visible = false
+                    }
                 )
             }
         }
     } else {
+        if (!show) return
+
         AlertDialog(
             onDismissRequest = onDismissRequest,
             title = { Text(title) },
@@ -1720,21 +1943,70 @@ fun YhBottomSheet(
     show: Boolean = true,
     title: String? = null,
     onDismissRequest: () -> Unit,
+    fullScreen: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    if (!show) return
-
     if (isMiuixUi) {
+        var mounted by remember { mutableStateOf(show) }
+        var visible by remember { mutableStateOf(show) }
+        var shouldNotifyDismiss by remember { mutableStateOf(false) }
+        val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+        LaunchedEffect(show) {
+            if (show) {
+                mounted = true
+                visible = true
+                shouldNotifyDismiss = false
+            } else if (mounted) {
+                visible = false
+            }
+        }
+        if (!mounted) return
+
         top.yukonga.miuix.kmp.window.WindowBottomSheet(
-            show = show,
+            show = visible,
             title = title,
-            onDismissRequest = onDismissRequest,
-            content = content
+            onDismissRequest = {
+                shouldNotifyDismiss = true
+                visible = false
+            },
+            onDismissFinished = {
+                mounted = false
+                if (shouldNotifyDismiss) {
+                    shouldNotifyDismiss = false
+                    currentOnDismissRequest()
+                }
+            },
+            sheetMaxWidth = 2000.dp,
+            insideMargin = DpSize(12.dp, 0.dp),
+            content = {
+                Box(
+                    modifier = if (fullScreen) {
+                        Modifier.fillMaxSize()
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                ) {
+                    content()
+                }
+            }
         )
     } else {
+        if (!show) return
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = fullScreen)
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            content = { content() }
+            sheetState = sheetState,
+            content = {
+                Box(
+                    modifier = if (fullScreen) {
+                        Modifier.fillMaxSize()
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                ) {
+                    content()
+                }
+            }
         )
     }
 }
@@ -1747,18 +2019,20 @@ fun YhBottomAppBar(
     actions: @Composable RowScope.() -> Unit
 ) {
     if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.FloatingToolbar(
-            modifier = modifier.padding(contentPadding),
+        top.yukonga.miuix.kmp.basic.Surface(
+            modifier = modifier.fillMaxWidth(),
             color = containerColor,
-            content = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = actions
-                )
-            }
-        )
+            contentColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(contentPadding),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions
+            )
+        }
     } else {
         androidx.compose.material3.BottomAppBar(
             modifier = modifier,

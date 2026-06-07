@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +56,9 @@ import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.data.repository.ExpressionRepository
 import com.yhchat.canary.data.repository.StickerRepository
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhClickableSurface
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhSurface
-import com.yhchat.canary.ui.adaptive.YhTabRow
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.sticker.StickerPackManagerActivity
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +97,16 @@ fun ExpressionPicker(
     
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) } // 0: 默认, 1: 收藏, 2+: 表情包
-    val totalTabs = remember(uiState.stickerPacks.size) { 2 + uiState.stickerPacks.size }
+    val tabs = remember(uiState.stickerPacks) {
+        buildList<ExpressionPickerTab> {
+            add(ExpressionPickerTab.DefaultExpressions)
+            add(ExpressionPickerTab.FavoriteExpressions)
+            uiState.stickerPacks.forEach { stickerPack ->
+                add(ExpressionPickerTab.StickerPackTab(stickerPack))
+            }
+        }
+    }
+    val totalTabs = tabs.size
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { totalTabs }
@@ -141,8 +153,8 @@ fun ExpressionPicker(
                     )
                 }
 
-                YhTabRow(
-                    tabs = listOf("默认表情", "已收藏表情") + uiState.stickerPacks.map { it.name },
+                ExpressionPickerTabRow(
+                    tabs = tabs,
                     selectedTabIndex = selectedTab,
                     onTabSelected = { selectedTab = it },
                     modifier = Modifier.weight(1f)
@@ -350,6 +362,114 @@ fun ExpressionPicker(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private sealed interface ExpressionPickerTab {
+    data object DefaultExpressions : ExpressionPickerTab
+    data object FavoriteExpressions : ExpressionPickerTab
+    data class StickerPackTab(val stickerPack: StickerPack) : ExpressionPickerTab
+}
+
+@Composable
+private fun ExpressionPickerTabRow(
+    tabs: List<ExpressionPickerTab>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        itemsIndexed(tabs) { index, tab ->
+            ExpressionPickerTabItem(
+                tab = tab,
+                selected = selectedTabIndex == index,
+                onClick = { onTabSelected(index) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpressionPickerTabItem(
+    tab: ExpressionPickerTab,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
+    }
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    YhClickableSurface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.height(40.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            when (tab) {
+                ExpressionPickerTab.DefaultExpressions -> {
+                    Text(
+                        text = "默认",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = contentColor,
+                        maxLines = 1
+                    )
+                }
+
+                ExpressionPickerTab.FavoriteExpressions -> {
+                    Text(
+                        text = "收藏",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = contentColor,
+                        maxLines = 1
+                    )
+                }
+
+                is ExpressionPickerTab.StickerPackTab -> {
+                    val previewSticker = tab.stickerPack.stickerItems.firstOrNull()
+                    if (previewSticker != null) {
+                        AsyncImage(
+                            model = ImageUtils.createStickerImageRequest(
+                                context = context,
+                                url = previewSticker.getFullUrl()
+                            ),
+                            contentDescription = tab.stickerPack.name,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Text(
+                            text = tab.stickerPack.name.take(1).ifBlank { "包" },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = contentColor,
+                            maxLines = 1
+                        )
                     }
                 }
             }

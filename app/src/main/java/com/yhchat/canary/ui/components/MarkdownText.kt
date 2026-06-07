@@ -150,25 +150,29 @@ fun MarkdownText(
                                     when (run) {
                                         is TaskRun.Markdown -> {
                                             if (run.content.isBlank()) return@forEach
-                                            MarkdownTextRun(
-                                                content = run.content,
-                                                latexConfig = latexConfig,
-                                                latexEnabled = latexEnabled,
-                                                highlightKeyword = highlightKeyword,
-                                                persistRenderState = persistRenderState,
-                                                enableTextSelection = enableTextSelection,
-                                                onLinkClicked = { url ->
-                                                    try {
-                                                        if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                                            com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                                        } else {
-                                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                            context.startActivity(intent)
+                                            MarkdownRendererCache.getMarkdownRenderBlocks(run.content).forEach { block ->
+                                                if (block.isNotBlank()) {
+                                                    MarkdownTextRun(
+                                                        content = block,
+                                                        latexConfig = latexConfig,
+                                                        latexEnabled = latexEnabled,
+                                                        highlightKeyword = highlightKeyword,
+                                                        persistRenderState = persistRenderState,
+                                                        enableTextSelection = enableTextSelection,
+                                                        onLinkClicked = { url ->
+                                                            try {
+                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+                                                                } else {
+                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                                    context.startActivity(intent)
+                                                                }
+                                                            } catch (_: Exception) {
+                                                            }
                                                         }
-                                                    } catch (_: Exception) {
-                                                    }
+                                                    )
                                                 }
-                                            )
+                                            }
                                         }
                                         is TaskRun.Task -> {
                                             Row(
@@ -879,6 +883,7 @@ private object MarkdownRendererCache {
     private const val DETAILS_STATE_CACHE_SIZE = 256
     private const val LATEX_SEGMENT_CACHE_SIZE = 1024
     private const val MARKDOWN_STATE_CACHE_SIZE = 128
+    private const val MARKDOWN_RENDER_BLOCK_CACHE_SIZE = 256
 
     private val normalizedMarkdownCache = createLruCache<String, String>(NORMALIZED_MARKDOWN_CACHE_SIZE)
     private val segmentCache = createLruCache<String, List<MarkdownSegment>>(SEGMENT_CACHE_SIZE)
@@ -888,6 +893,7 @@ private object MarkdownRendererCache {
     private val detailsExpandedCache = createLruCache<String, Boolean>(DETAILS_STATE_CACHE_SIZE)
     private val latexSegmentsCache = createLruCache<String, List<MarkdownInlineSegment>>(LATEX_SEGMENT_CACHE_SIZE)
     private val markdownStateCache = createLruCache<String, MarkdownState>(MARKDOWN_STATE_CACHE_SIZE)
+    private val markdownRenderBlockCache = createLruCache<String, List<String>>(MARKDOWN_RENDER_BLOCK_CACHE_SIZE)
 
     fun getNormalizedMarkdown(markdown: String): String = normalizedMarkdownCache.cached(markdown) {
         processTaskLists(normalizeLoosePipeTables(normalizeHeadingSpacing(normalizeSingleTildeStrikethrough(markdown))))
@@ -899,6 +905,10 @@ private object MarkdownRendererCache {
 
     fun getTaskRuns(content: String): List<TaskRun> = taskRunsCache.cached(content) {
         splitTaskRuns(content)
+    }
+
+    fun getMarkdownRenderBlocks(content: String): List<String> = markdownRenderBlockCache.cached(content) {
+        splitLinkHeavyMarkdownBlocks(content)
     }
 
     fun getHighlightedMarkdown(content: String, keyword: String): String {
@@ -1774,6 +1784,61 @@ private fun normalizePipeTableBlock(block: List<String>): List<String> {
         }
     }
 }
+
+private val InlineMarkdownLinkRegex = Regex("""\[[^\]]+]\([^)]+\)""")
+
+private fun splitLinkHeavyMarkdownBlocks(content: String): List<String> {
+    if (!isLinkHeavyMarkdown(content)) return listOf(content)
+
+    val blocks = mutableListOf<String>()
+    val current = mutableListOf<String>()
+    var inFence = false
+
+    fun flush() {
+        if (current.isNotEmpty()) {
+            blocks += current.joinToString("\n").trim('\n')
+            current.clear()
+        }
+    }
+
+    content.lines().forEach { line ->
+        val trimmed = line.trim()
+        val startsFence = trimmed.startsWith("```")
+
+        if (!inFence && trimmed.isBlank()) {
+            flush()
+            return@forEach
+        }
+
+        if (!inFence && trimmed.startsWith("#") && current.isNotEmpty()) {
+            flush()
+        }
+
+        current += line
+
+        if (startsFence) {
+            inFence = !inFence
+        }
+
+        if (!inFence && trimmed.startsWith("#")) {
+            flush()
+        }
+    }
+
+    flush()
+    return blocks.ifEmpty { listOf(content) }
+}
+
+private fun isLinkHeavyMarkdown(content: String): Boolean {
+    var count = 0
+    for (match in InlineMarkdownLinkRegex.findAll(content)) {
+        count++
+        if (count >= LINK_HEAVY_MARKDOWN_THRESHOLD) return true
+    }
+    return false
+}
+
+private const val LINK_HEAVY_MARKDOWN_THRESHOLD = 32
 
 private sealed interface TaskRun {
     data class Markdown(val content: String) : TaskRun

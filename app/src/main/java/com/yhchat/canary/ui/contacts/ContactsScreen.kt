@@ -569,7 +569,8 @@ private fun FriendRequestDetailBottomSheet(
 ) {
     YhBottomSheet(
         title = "申请/邀请详情",
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        fullScreen = true
     ) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -579,6 +580,7 @@ private fun FriendRequestDetailBottomSheet(
         }
         Column(
             modifier = Modifier
+                .fillMaxHeight()
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 16.dp)

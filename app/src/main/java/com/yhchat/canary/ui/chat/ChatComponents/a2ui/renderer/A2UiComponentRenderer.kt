@@ -61,7 +61,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.buildChoicePickerValue
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.combineScopePath
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.evaluator.executeA2UiAction

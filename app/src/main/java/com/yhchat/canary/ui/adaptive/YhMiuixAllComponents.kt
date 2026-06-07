@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RectangleShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -20,7 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItem as Md3NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
+import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 
 @Composable
 fun YhMiuixTheme(
@@ -78,6 +80,7 @@ fun YhFloatingActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
@@ -85,13 +88,17 @@ fun YhFloatingActionButton(
             onClick = onClick,
             modifier = modifier,
             containerColor = containerColor,
-            content = content
-        )
+        ) {
+            CompositionLocalProvider(top.yukonga.miuix.kmp.theme.LocalContentColor provides contentColor) {
+                content()
+            }
+        }
     } else {
         FloatingActionButton(
             onClick = onClick,
             modifier = modifier,
             containerColor = containerColor,
+            contentColor = contentColor,
             content = content
         )
     }
@@ -217,7 +224,7 @@ fun RowScope.YhNavigationBarItem(
     enabled: Boolean = true
 ) {
     if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.NavigationBarItem(
+        MiuixNavigationBarItem(
             selected = selected,
             onClick = onClick,
             icon = icon,
@@ -226,7 +233,7 @@ fun RowScope.YhNavigationBarItem(
             enabled = enabled
         )
     } else {
-        NavigationBarItem(
+        Md3NavigationBarItem(
             selected = selected,
             onClick = onClick,
             icon = {
@@ -1221,6 +1228,7 @@ fun YhOkLabAlphaSlider(
 @Composable
 fun YhOverlayDialog(
     show: Boolean,
+    modifier: Modifier = Modifier,
     title: String? = null,
     summary: String? = null,
     onDismissRequest: (() -> Unit)? = null,
@@ -1229,6 +1237,7 @@ fun YhOverlayDialog(
     if (isMiuixUi) {
         top.yukonga.miuix.kmp.overlay.OverlayDialog(
             show = show,
+            modifier = modifier,
             title = title,
             summary = summary,
             onDismissRequest = onDismissRequest,
@@ -1249,6 +1258,7 @@ fun YhOverlayDialog(
 @Composable
 fun YhOverlayBottomSheet(
     show: Boolean,
+    modifier: Modifier = Modifier,
     title: String? = null,
     onDismissRequest: (() -> Unit)? = null,
     content: @Composable () -> Unit
@@ -1256,6 +1266,7 @@ fun YhOverlayBottomSheet(
     if (isMiuixUi) {
         top.yukonga.miuix.kmp.overlay.OverlayBottomSheet(
             show = show,
+            modifier = modifier,
             title = title,
             onDismissRequest = onDismissRequest,
             content = content

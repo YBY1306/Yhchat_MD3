@@ -1277,6 +1277,22 @@ fun YhTabRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun YhScrollableTabRow(
+    tabs: List<String>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    YhTabRow(
+        tabs = tabs,
+        selectedTabIndex = selectedTabIndex,
+        onTabSelected = onTabSelected,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun YhSegmentedControl(
     labels: List<String>,
     selectedIndex: Int,
@@ -1576,7 +1592,7 @@ fun YhDropdownSelector(
                     )
                     .fillMaxWidth()
             )
-            androidx.compose.material3.ExposedDropdownMenu(
+            androidx.compose.material3.DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
@@ -1803,7 +1819,7 @@ fun YhDropdownMenu(
             onDismissRequest = onDismissRequest
         ) {
             YhListPopupColumn {
-                content()
+                Column(content = content)
             }
         }
     } else {

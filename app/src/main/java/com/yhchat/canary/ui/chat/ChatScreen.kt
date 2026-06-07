@@ -1230,7 +1230,8 @@ fun ChatScreen(
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
                 YhFloatingActionButton(

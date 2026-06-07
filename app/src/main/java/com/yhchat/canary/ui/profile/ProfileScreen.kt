@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +64,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
@@ -202,6 +206,25 @@ fun ProfileScreen(
         }
     }
 
+    val listState = rememberLazyListState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        navigationState?.show()
+    }
+
+    DisposableEffect(lifecycleOwner, navigationState) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                navigationState?.show()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
@@ -226,9 +249,7 @@ fun ProfileScreen(
                 }
             }
         )
-        
-        val listState = rememberLazyListState()
-        
+
         // 监听滚动状态，自动隐藏/显示导航栏
         if (navigationState != null) {
             observeScrollForNavigation(listState, navigationState)
@@ -240,14 +261,14 @@ fun ProfileScreen(
                 refreshing = true
                 viewModel.loadUserProfile()
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f)
         ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             when {
                 uiState.isLoading -> {
                     item("profile_loading") {

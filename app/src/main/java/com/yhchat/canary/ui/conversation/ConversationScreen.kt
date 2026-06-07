@@ -363,7 +363,6 @@ fun ConversationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 5.dp)
         ) {
             YhCard(
                 modifier = Modifier

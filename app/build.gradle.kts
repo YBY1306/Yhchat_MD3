@@ -120,18 +120,6 @@ android {
         }
     }
 
-    sourceSets {
-        getByName("playermiuix") {
-            java.srcDir("src/withPlayer/java")
-        }
-        getByName("full") {
-            java.srcDir("src/withPlayer/java")
-        }
-        getByName("fullmiuix") {
-            java.srcDir("src/withPlayer/java")
-        }
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true

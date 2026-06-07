@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun FallbackVideoMessageView(
+fun VideoMessageView(
     videoUrl: String,
     textColor: Color,
     modifier: Modifier = Modifier,

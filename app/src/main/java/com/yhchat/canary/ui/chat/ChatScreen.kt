@@ -405,7 +405,7 @@ fun ChatScreen(
             showLiveRoomsSheet = false
             val launched = LiveRoomLauncher.open(context, payload)
             if (!launched) {
-                Toast.makeText(context, "withLive 页面未接入", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "live 页面未接入", Toast.LENGTH_SHORT).show()
             }
         }
     }

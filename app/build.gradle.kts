@@ -67,32 +67,71 @@ android {
         }
     }
 
-    flavorDimensions += "player"
+    flavorDimensions += "variant"
 
     productFlavors {
         create("standard") {
-            dimension = "player"
+            dimension = "variant"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "false")
             buildConfigField("String", "UI_STYLE", "\"md3\"")
         }
-        create("withPlayer") {
-            dimension = "player"
+        create("player") {
+            dimension = "variant"
             buildConfigField("boolean", "WITH_PLAYER", "true")
             buildConfigField("boolean", "WITH_LIVE", "false")
             buildConfigField("String", "UI_STYLE", "\"md3\"")
         }
-        create("withLive") {
-            dimension = "player"
+        create("playermiuix") {
+            dimension = "variant"
+            buildConfigField("boolean", "WITH_PLAYER", "true")
+            buildConfigField("boolean", "WITH_LIVE", "false")
+            buildConfigField("String", "UI_STYLE", "\"miuix\"")
+        }
+        create("live") {
+            dimension = "variant"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "true")
             buildConfigField("String", "UI_STYLE", "\"md3\"")
         }
+        create("livemiuix") {
+            dimension = "variant"
+            buildConfigField("boolean", "WITH_PLAYER", "false")
+            buildConfigField("boolean", "WITH_LIVE", "true")
+            buildConfigField("String", "UI_STYLE", "\"miuix\"")
+        }
+        create("full") {
+            dimension = "variant"
+            buildConfigField("boolean", "WITH_PLAYER", "true")
+            buildConfigField("boolean", "WITH_LIVE", "true")
+            buildConfigField("String", "UI_STYLE", "\"md3\"")
+        }
+        create("fullmiuix") {
+            dimension = "variant"
+            buildConfigField("boolean", "WITH_PLAYER", "true")
+            buildConfigField("boolean", "WITH_LIVE", "true")
+            buildConfigField("String", "UI_STYLE", "\"miuix\"")
+        }
         create("miuix") {
-            dimension = "player"
+            dimension = "variant"
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "false")
             buildConfigField("String", "UI_STYLE", "\"miuix\"")
+        }
+    }
+
+    sourceSets {
+        getByName("player") {
+            java.srcDir("src/withPlayer/java")
+        }
+        getByName("playermiuix") {
+            java.srcDir("src/withPlayer/java")
+        }
+        getByName("full") {
+            java.srcDir("src/withPlayer/java")
+        }
+        getByName("fullmiuix") {
+            java.srcDir("src/withPlayer/java")
         }
     }
 
@@ -132,8 +171,14 @@ protobuf {
 }
 
 dependencies {
-    add("withPlayerImplementation", project(":player"))
-    add("withLiveImplementation", project(":live"))
+    add("playerImplementation", project(":player"))
+    add("playermiuixImplementation", project(":player"))
+    add("liveImplementation", project(":live"))
+    add("livemiuixImplementation", project(":live"))
+    add("fullImplementation", project(":player"))
+    add("fullImplementation", project(":live"))
+    add("fullmiuixImplementation", project(":player"))
+    add("fullmiuixImplementation", project(":live"))
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.0")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.0")
 

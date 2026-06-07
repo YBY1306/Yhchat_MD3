@@ -34,10 +34,7 @@ import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material.icons.filled.Web
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,8 +60,11 @@ import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -745,7 +745,7 @@ private fun MessageDetailContent(message: ChatMessage) {
             Spacer(modifier = Modifier.height(8.dp))
             
             // 消息气泡
-            Surface(
+            YhSurface(
                 modifier = Modifier.wrapContentWidth(),
                 shape = RoundedCornerShape(
                     topStart = 4.dp,
@@ -754,7 +754,7 @@ private fun MessageDetailContent(message: ChatMessage) {
                     bottomEnd = 16.dp
                 ),
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp
+                shadowElevation = 2.dp
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp)

@@ -20,20 +20,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,8 +34,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.data.model.GoldCoinRecord
 import com.yhchat.canary.data.model.RewardRecord
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -74,7 +71,7 @@ class CoinRecordActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoinRecordScreen(
     onBackClick: () -> Unit,
@@ -96,17 +93,13 @@ fun CoinRecordScreen(
     
     val uiState by viewModel.uiState.collectAsState()
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "金币明细",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "金币明细",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -120,41 +113,20 @@ fun CoinRecordScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .yhTopBarNestedScroll()
         ) {
             // Tab导航栏
-            YhSecondaryTabRow(
+            YhTabRow(
+                tabs = listOf("金币增减", "文章打赏", "评论打赏"),
                 selectedTabIndex = pagerState.currentPage,
+                onTabSelected = { index ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(index)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Tab(
-                    selected = pagerState.currentPage == 0,
-                    onClick = { 
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(0)
-                        }
-                    },
-                    text = { Text("金币增减") }
-                )
-                Tab(
-                    selected = pagerState.currentPage == 1,
-                    onClick = { 
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(1)
-                        }
-                    },
-                    text = { Text("文章打赏") }
-                )
-                Tab(
-                    selected = pagerState.currentPage == 2,
-                    onClick = { 
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(2)
-                        }
-                    },
-                    text = { Text("评论打赏") }
-                )
-            }
-            
+            )
+
             // 内容区域
             HorizontalPager(
                 state = pagerState,
@@ -162,10 +134,9 @@ fun CoinRecordScreen(
             ) { page ->
                 val isRefreshing = uiState.loadingPage == page && uiState.isLoading
 
-                PullToRefreshBox(
+                YhPullToRefresh(
                     isRefreshing = isRefreshing,
                     onRefresh = { viewModel.loadForPage(page, force = true) },
-                    state = rememberPullToRefreshState(),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     when {
@@ -174,10 +145,10 @@ fun CoinRecordScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                YhCircularProgressIndicator()
                             }
                         }
-                        
+
                         uiState.error != null && uiState.errorPage == page -> {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -191,7 +162,7 @@ fun CoinRecordScreen(
                                         text = uiState.error ?: "加载失败",
                                         color = MaterialTheme.colorScheme.error
                                     )
-                                    TextButton(
+                                    YhTextButton(
                                         onClick = {
                                             viewModel.loadForPage(page, force = true)
                                         }
@@ -201,7 +172,7 @@ fun CoinRecordScreen(
                                 }
                             }
                         }
-                        
+
                         else -> {
                             when (page) {
                                 0 -> CoinIncreaseDecreaseList(uiState.coinRecords)
@@ -252,9 +223,8 @@ private fun CoinRecordCard(record: GoldCoinRecord) {
     val date = Date(record.createTime * 1000)
     val isIncrease = record.changeAmount > 0
     
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    YhCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -368,9 +338,8 @@ private fun RewardRecordCard(reward: RewardRecord) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     val date = Date(reward.createTime * 1000)
     
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    YhCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier

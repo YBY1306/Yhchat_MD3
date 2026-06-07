@@ -25,14 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,8 +45,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import okhttp3.OkHttpClient
@@ -109,7 +108,6 @@ private data class WsMessageItem(
     val time: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Suppress("DEPRECATION")
 @Composable
 private fun BotWsTestScreen(
@@ -209,7 +207,7 @@ private fun BotWsTestScreen(
                 title = "事件测试",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    YhIconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -248,10 +246,9 @@ private fun BotWsTestScreen(
                     enabled = !isConnecting
                 ) {
                     if (isConnecting) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "连接中")
@@ -261,7 +258,7 @@ private fun BotWsTestScreen(
                 }
             }
 
-            HorizontalDivider()
+            YhHorizontalDivider()
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -270,9 +267,9 @@ private fun BotWsTestScreen(
             ) {
                 items(messages) { item ->
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        Surface(
+                        YhSurface(
                             shape = RoundedCornerShape(12.dp),
-                            tonalElevation = 1.dp,
+                            shadowElevation = 1.dp,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -281,7 +278,7 @@ private fun BotWsTestScreen(
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.Top
                             ) {
-                                IconButton(
+                                YhIconButton(
                                     onClick = {
                                         clipboard.setText(AnnotatedString(item.raw))
                                         Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()

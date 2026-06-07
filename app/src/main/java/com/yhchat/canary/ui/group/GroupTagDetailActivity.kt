@@ -28,11 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,9 +48,12 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.ImageUtils
@@ -108,7 +107,6 @@ class GroupTagDetailActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupTagDetailScreen(
     groupId: String,
@@ -351,7 +349,7 @@ fun AddMemberToTagDialog(
                                                 // 权限标识
                                                 if (member.permissionLevel == 100) {
                                                     Spacer(modifier = Modifier.width(8.dp))
-                                                    Surface(
+                                                    YhSurface(
                                                         shape = MaterialTheme.shapes.small,
                                                         color = MaterialTheme.colorScheme.errorContainer
                                                     ) {
@@ -364,7 +362,7 @@ fun AddMemberToTagDialog(
                                                     }
                                                 } else if (member.permissionLevel == 2) {
                                                     Spacer(modifier = Modifier.width(8.dp))
-                                                    Surface(
+                                                    YhSurface(
                                                         shape = MaterialTheme.shapes.small,
                                                         color = MaterialTheme.colorScheme.primaryContainer
                                                     ) {
@@ -465,7 +463,7 @@ fun TagMemberCard(
                     // 权限标识
                     if (member.permissionLevel == 100) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
+                        YhSurface(
                             shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.errorContainer
                         ) {
@@ -478,7 +476,7 @@ fun TagMemberCard(
                         }
                     } else if (member.permissionLevel == 2) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
+                        YhSurface(
                             shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {

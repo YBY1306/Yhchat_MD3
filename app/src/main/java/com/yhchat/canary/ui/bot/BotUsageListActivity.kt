@@ -30,15 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,11 +52,17 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.group.GroupInfoActivity
 import com.yhchat.canary.ui.bot.viewmodel.BotUsageListViewModel
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
@@ -108,7 +106,6 @@ class BotUsageListActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BotUsageListRoute(
     botId: String,
@@ -150,7 +147,7 @@ private fun BotUsageListRoute(
                 title = "$botName 使用列表",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    YhIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
@@ -162,21 +159,12 @@ private fun BotUsageListRoute(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            YhSecondaryTabRow(
+            YhTabRow(
+                tabs = listOf("用户列表(${uiState.userCount})", "群聊列表(${uiState.groupCount})"),
                 selectedTabIndex = uiState.selectedTab,
+                onTabSelected = { viewModel.selectTab(it) },
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Tab(
-                    selected = uiState.selectedTab == 0,
-                    onClick = { viewModel.selectTab(0) },
-                    text = { Text("用户列表(${uiState.userCount})") }
-                )
-                Tab(
-                    selected = uiState.selectedTab == 1,
-                    onClick = { viewModel.selectTab(1) },
-                    text = { Text("群聊列表(${uiState.groupCount})") }
-                )
-            }
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -197,7 +185,7 @@ private fun BotUsageListRoute(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else if (uiState.error != null && currentItems.isEmpty()) {
                 Box(
@@ -260,7 +248,7 @@ private fun BotUsageListRoute(
                                     .padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                             }
                         }
                     }
@@ -335,11 +323,11 @@ private fun UsageUserItem(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                YhIconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "更多")
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
+                YhDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    YhDropdownMenuItem(
                         text = { Text("踢出") },
                         onClick = {
                             menuExpanded = false
@@ -389,11 +377,11 @@ private fun UsageGroupItem(
             Icon(imageVector = Icons.Filled.Groups, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.width(8.dp))
             Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                YhIconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "更多")
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
+                YhDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    YhDropdownMenuItem(
                         text = { Text("踢出") },
                         onClick = {
                             menuExpanded = false

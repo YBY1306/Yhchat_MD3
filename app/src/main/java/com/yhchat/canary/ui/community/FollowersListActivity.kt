@@ -27,10 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,9 +53,12 @@ import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSnackbar
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
@@ -242,7 +242,7 @@ private fun FollowersListScreen(
             }
 
             if (state.error != null && state.followers.isNotEmpty()) {
-                Snackbar(
+                YhSnackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)

@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +24,14 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.FriendRepository
 import com.yhchat.canary.data.repository.GroupRepository
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.contacts.Contact
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +41,6 @@ import kotlinx.coroutines.launch
 /**
  * 邀请好友加入群聊对话框
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteToGroupDialog(
     groupId: String,
@@ -43,7 +50,6 @@ fun InviteToGroupDialog(
 ) {
     val context = LocalContext.current
     val viewModel = remember { InviteDialogViewModel() }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     LaunchedEffect(Unit) {
         viewModel.init(context)
@@ -65,9 +71,10 @@ fun InviteToGroupDialog(
         }
     }
     
-    ModalBottomSheet(
+    YhBottomSheet(
+        show = true,
+        title = null,
         onDismissRequest = onDismiss,
-        sheetState = sheetState
     ) {
         val activity = LocalContext.current as? android.app.Activity
         val sheetColor = MaterialTheme.colorScheme.surface
@@ -94,13 +101,13 @@ fun InviteToGroupDialog(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onDismiss) {
+                YhTextButton(onClick = onDismiss) {
                     Text("关闭")
                 }
             }
 
             // 搜索框
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
@@ -122,7 +129,7 @@ fun InviteToGroupDialog(
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
 
@@ -141,7 +148,7 @@ fun InviteToGroupDialog(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            TextButton(onClick = { viewModel.loadFriends() }) {
+                            YhTextButton(onClick = { viewModel.loadFriends() }) {
                                 Text("重试")
                             }
                         }
@@ -200,13 +207,11 @@ private fun FriendInviteItem(
 ) {
     val context = LocalContext.current
     
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick, enabled = !isInviting),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Row(
             modifier = Modifier
@@ -242,9 +247,9 @@ private fun FriendInviteItem(
             
             // 邀请按钮/状态
             if (isInviting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                YhCircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
-                Button(
+                YhButton(
                     onClick = onClick,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) {
@@ -338,4 +343,3 @@ data class InviteDialogUiState(
     val invitingFriendId: String? = null,  // 正在邀请的好友ID
     val error: String? = null
 )
-

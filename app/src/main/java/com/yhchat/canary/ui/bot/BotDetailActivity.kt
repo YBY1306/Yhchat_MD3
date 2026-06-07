@@ -16,13 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,12 +37,17 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhRichListItem
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.YhVerticalDivider
 import com.yhchat.canary.ui.components.HtmlWebView
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
@@ -371,7 +370,7 @@ private fun BotDetailScreen(
                     }
                 )
 
-                ListItem(
+                YhRichListItem(
                     headlineContent = { Text("免打扰") },
                     supportingContent = {
                         Text(if (uiState.isNoNotify) "已开启" else "未开启")
@@ -397,11 +396,7 @@ private fun BotDetailScreen(
                             )
                         }
                     },
-                    colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
                 YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
@@ -518,7 +513,7 @@ private fun SheetActionItem(
     val baseIconColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     val alpha = if (enabled) 1f else 0.45f
 
-    ListItem(
+    YhRichListItem(
         headlineContent = {
             Text(
                 text = title,
@@ -532,14 +527,9 @@ private fun SheetActionItem(
                 tint = baseIconColor.copy(alpha = alpha)
             )
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() },
-        colors = ListItemDefaults.colors(
-            containerColor = containerColor
-        ),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = containerColor,
+        onClick = if (enabled) onClick else null
     )
     YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 }
@@ -578,11 +568,10 @@ private fun BotDetailContent(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
+                        YhSurface(
                             modifier = Modifier.size(86.dp),
                             shape = CircleShape,
                             shadowElevation = 0.dp,
-                            tonalElevation = 0.dp
                         ) {
                             AsyncImage(
                                 model = if (botInfo.data.avatarUrl.isNotBlank()) {
@@ -684,7 +673,7 @@ private fun BotDetailContent(
                         value = botInfo.data.headcount.toString(),
                         modifier = Modifier.weight(1f)
                     )
-                    VerticalDivider(
+                    YhVerticalDivider(
                         modifier = Modifier
                             .height(60.dp)
                             .padding(horizontal = 16.dp),
@@ -717,7 +706,7 @@ private fun BotDetailContent(
             if (boardData != null && boardData.content.isNotBlank()) {
                 item {
                     BotInfoSectionCard(title = "看板信息") {
-                        Surface(
+                        YhSurface(
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -879,7 +868,7 @@ private fun EnhancedStatisticItem(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
+        YhSurface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
             modifier = Modifier.size(48.dp)

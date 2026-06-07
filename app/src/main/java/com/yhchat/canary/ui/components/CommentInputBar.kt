@@ -14,22 +14,20 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSurface
 
 /**
  * 评论输入栏组件
@@ -48,12 +46,9 @@ fun CommentInputBar(
     minLines: Int = 1
 ) {
     if (isVisible) {
-        Card(
+        YhCard(
             modifier = modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Row(
                 modifier = Modifier
@@ -61,7 +56,7 @@ fun CommentInputBar(
                     .padding(16.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = commentText,
                     onValueChange = onCommentTextChange,
                     modifier = Modifier.weight(1f),
@@ -85,7 +80,7 @@ fun CommentInputBar(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                IconButton(
+                YhIconButton(
                     onClick = {
                         if (commentText.isNotBlank()) {
                             val processedContent = commentText.trim()
@@ -94,14 +89,6 @@ fun CommentInputBar(
                     },
                     enabled = commentText.isNotBlank() && isEnabled
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "发送评论",
-                        tint = if (commentText.isNotBlank() && isEnabled)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送评论",
@@ -120,7 +107,6 @@ fun CommentInputBar(
  * 底部固定的评论输入栏
  * 贴附在虚拟按键上方，使用 WindowInsets 处理键盘遮挡
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomCommentInputBar(
     commentText: String,
@@ -134,13 +120,12 @@ fun BottomCommentInputBar(
     minLines: Int = 1
 ) {
     if (isVisible) {
-        Surface(
+        YhSurface(
             modifier = modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .windowInsetsPadding(WindowInsets.ime),
             shadowElevation = 8.dp,
-            tonalElevation = 3.dp,
             color = MaterialTheme.colorScheme.surface
         ) {
             Row(
@@ -149,7 +134,7 @@ fun BottomCommentInputBar(
                     .padding(16.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = commentText,
                     onValueChange = onCommentTextChange,
                     modifier = Modifier.weight(1f),
@@ -174,7 +159,7 @@ fun BottomCommentInputBar(
                 
                 Spacer(modifier = Modifier.width(12.dp))
                 
-                FloatingActionButton(
+                YhFloatingActionButton(
                     onClick = {
                         if (commentText.isNotBlank()) {
                             val processedContent = commentText.trim()
@@ -185,11 +170,7 @@ fun BottomCommentInputBar(
                     containerColor = if (commentText.isNotBlank() && isEnabled) 
                         MaterialTheme.colorScheme.primary 
                     else 
-                        MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = if (commentText.isNotBlank() && isEnabled) 
-                        MaterialTheme.colorScheme.onPrimary 
-                    else 
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,

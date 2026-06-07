@@ -1,6 +1,7 @@
 package com.yhchat.canary.ui.adaptive
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,17 +30,31 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +64,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
@@ -134,6 +151,68 @@ fun Modifier.yhTopBarNestedScroll(): Modifier {
         else -> {
             LocalYhMd3ScrollBehavior.current?.let { nestedScroll(it.nestedScrollConnection) } ?: this
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun YhModalNavigationDrawer(
+    drawerOpen: Boolean,
+    onDismissRequest: () -> Unit,
+    drawerContent: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    gesturesEnabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        Box(modifier = modifier.fillMaxSize()) {
+            content()
+            if (drawerOpen) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(1f)
+                        .background(Color.Black.copy(alpha = 0.28f))
+                ) {
+                    YhSurface(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.92f),
+                        color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+                    ) {
+                        drawerContent()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(enabled = gesturesEnabled, onClick = onDismissRequest)
+                    )
+                }
+            }
+        }
+    } else {
+        val drawerState = rememberDrawerState(
+            initialValue = if (drawerOpen) DrawerValue.Open else DrawerValue.Closed
+        )
+        LaunchedEffect(drawerOpen) {
+            if (drawerOpen) {
+                drawerState.open()
+            } else {
+                drawerState.close()
+            }
+        }
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.fillMaxWidth(0.92f),
+                    content = { drawerContent() }
+                )
+            },
+            gesturesEnabled = gesturesEnabled,
+            content = content
+        )
     }
 }
 
@@ -301,6 +380,22 @@ fun YhTopBar(
     }
 }
 
+@Composable
+fun YhSmallTopAppBar(
+    title: String,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    YhTopBar(
+        title = title,
+        modifier = modifier,
+        large = false,
+        navigationIcon = navigationIcon,
+        actions = actions
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YhTopAppBar(
@@ -429,6 +524,266 @@ fun YhListItem(
             onClick = onClick,
             modifier = modifier,
             isDestructive = isDestructive
+        )
+    }
+}
+
+@Composable
+fun YhArrowPreference(
+    title: String,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    YhSuperArrow(
+        title = title,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun YhSwitchPreference(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    YhSuperSwitch(
+        title = title,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun YhCheckboxPreference(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    YhSuperCheckbox(
+        title = title,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun YhRadioButtonPreference(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    enabled: Boolean = true
+) {
+    YhSuperRadioButton(
+        title = title,
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier,
+        summary = summary,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun YhSettingsGroup(
+    title: String? = null,
+    items: List<@Composable () -> Unit>,
+    modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) return
+
+    if (isMiuixUi) {
+        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (!title.isNullOrEmpty()) {
+                top.yukonga.miuix.kmp.basic.SmallTitle(text = title)
+            }
+            YhCard(modifier = Modifier.fillMaxWidth()) {
+                items.forEach { item -> item() }
+            }
+        }
+        return
+    }
+
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (!title.isNullOrEmpty()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
+        val cornerRadius = 24.dp
+        val smallRadius = 4.dp
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp)
+        ) {
+            items.forEachIndexed { index, item ->
+                val shape = when {
+                    items.size == 1 -> androidx.compose.foundation.shape.RoundedCornerShape(cornerRadius)
+                    index == 0 -> androidx.compose.foundation.shape.RoundedCornerShape(
+                        topStart = cornerRadius,
+                        topEnd = cornerRadius,
+                        bottomStart = smallRadius,
+                        bottomEnd = smallRadius
+                    )
+                    index == items.size - 1 -> androidx.compose.foundation.shape.RoundedCornerShape(
+                        topStart = smallRadius,
+                        topEnd = smallRadius,
+                        bottomStart = cornerRadius,
+                        bottomEnd = cornerRadius
+                    )
+                    else -> androidx.compose.foundation.shape.RoundedCornerShape(smallRadius)
+                }
+
+                YhSurface(
+                    shape = shape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun YhSettingsItemCell(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false
+) {
+    YhListItem(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        isDestructive = isDestructive
+    )
+}
+
+@Composable
+fun YhSettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    isError: Boolean = false
+) {
+    YhSwitchItem(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        isError = isError
+    )
+}
+
+@Composable
+fun YhRichListItem(
+    modifier: Modifier = Modifier,
+    headlineContent: @Composable () -> Unit,
+    supportingContent: (@Composable () -> Unit)? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    onClick: (() -> Unit)? = null
+) {
+    if (isMiuixUi) {
+        val clickableModifier = if (onClick != null) {
+            modifier.clickable(onClick = onClick)
+        } else {
+            modifier
+        }
+        top.yukonga.miuix.kmp.basic.Surface(
+            modifier = clickableModifier.fillMaxWidth(),
+            color = containerColor
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                leadingContent?.let {
+                    it()
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    headlineContent()
+                    supportingContent?.invoke()
+                }
+                trailingContent?.let {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    it()
+                }
+            }
+        }
+    } else {
+        androidx.compose.material3.ListItem(
+            headlineContent = headlineContent,
+            supportingContent = supportingContent,
+            leadingContent = leadingContent,
+            trailingContent = trailingContent,
+            modifier = if (onClick != null) {
+                modifier.clickable(onClick = onClick)
+            } else {
+                modifier
+            },
+            colors = ListItemDefaults.colors(containerColor = containerColor),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        )
+    }
+}
+
+@Composable
+fun YhSnackbar(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        YhSurface(
+            modifier = modifier,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+            color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface,
+            contentColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface,
+            shadowElevation = 8.dp
+        ) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                content()
+            }
+        }
+    } else {
+        Snackbar(
+            modifier = modifier,
+            content = content
         )
     }
 }
@@ -618,27 +973,6 @@ fun YhIconButton(
             } else {
                 androidx.compose.material3.IconButtonDefaults.iconButtonColors()
             },
-            content = content
-        )
-    }
-}
-
-@Composable
-fun YhFloatingActionButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    if (isMiuixUi) {
-        top.yukonga.miuix.kmp.basic.Button(
-            onClick = onClick,
-            modifier = modifier,
-            content = { content() }
-        )
-    } else {
-        androidx.compose.material3.FloatingActionButton(
-            onClick = onClick,
-            modifier = modifier,
             content = content
         )
     }
@@ -1016,6 +1350,46 @@ fun YhSearchInputField(
 }
 
 @Composable
+fun YhInputField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "",
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.InputField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onSearch = onSearch,
+            expanded = expanded,
+            onExpandedChange = onExpandedChange,
+            modifier = modifier,
+            label = label,
+            enabled = enabled,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon
+        )
+    } else {
+        YhSearchInputField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onSearch = onSearch,
+            modifier = modifier,
+            label = label,
+            enabled = enabled,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon
+        )
+    }
+}
+
+@Composable
 fun YhOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1142,6 +1516,81 @@ fun YhOutlinedTextField(
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun YhDropdownSelector(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelectedIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "",
+    placeholder: String = "",
+    enabled: Boolean = true
+) {
+    val safeSelectedIndex = selectedIndex.takeIf { it in items.indices } ?: -1
+    val selectedValue = if (safeSelectedIndex >= 0) items[safeSelectedIndex] else ""
+
+    if (isMiuixUi) {
+        YhWindowDropdownPreference(
+            items = items,
+            selectedIndex = safeSelectedIndex.coerceAtLeast(0),
+            title = label.ifBlank { placeholder },
+            modifier = modifier,
+            summary = null,
+            enabled = enabled && items.isNotEmpty(),
+            showValue = true,
+            onSelectedIndexChange = onSelectedIndexChange
+        )
+    } else {
+        var expanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { if (enabled && items.isNotEmpty()) expanded = !expanded },
+            modifier = modifier
+        ) {
+            YhOutlinedTextField(
+                value = selectedValue,
+                onValueChange = {},
+                readOnly = true,
+                enabled = enabled,
+                label = if (label.isNotBlank()) {
+                    { Text(label) }
+                } else {
+                    null
+                },
+                placeholder = if (placeholder.isNotBlank()) {
+                    { Text(placeholder) }
+                } else {
+                    null
+                },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier
+                    .menuAnchor(
+                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                        enabled = enabled
+                    )
+                    .fillMaxWidth()
+            )
+            androidx.compose.material3.ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                items.forEachIndexed { index, item ->
+                    YhDropdownMenuItem(
+                        text = { Text(item) },
+                        onClick = {
+                            onSelectedIndexChange(index)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1310,6 +1759,7 @@ fun YhFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
     label: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
@@ -1317,7 +1767,15 @@ fun YhFilterChip(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            content = { label() }
+            content = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    leadingIcon?.let {
+                        it()
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    label()
+                }
+            }
         )
     } else {
         androidx.compose.material3.FilterChip(
@@ -1325,6 +1783,7 @@ fun YhFilterChip(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
+            leadingIcon = leadingIcon,
             label = label
         )
     }
@@ -1343,7 +1802,9 @@ fun YhDropdownMenu(
             modifier = modifier,
             onDismissRequest = onDismissRequest
         ) {
-            Column(content = content)
+            YhListPopupColumn {
+                content()
+            }
         }
     } else {
         androidx.compose.material3.DropdownMenu(
@@ -1351,6 +1812,31 @@ fun YhDropdownMenu(
             onDismissRequest = onDismissRequest,
             modifier = modifier,
             content = content
+        )
+    }
+}
+
+@Composable
+fun YhDropdownImpl(
+    text: String,
+    optionSize: Int,
+    isSelected: Boolean,
+    index: Int,
+    onSelectedIndexChange: (Int) -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.DropdownImpl(
+            text = text,
+            optionSize = optionSize,
+            isSelected = isSelected,
+            index = index,
+            onSelectedIndexChange = onSelectedIndexChange
+        )
+    } else {
+        YhDropdownMenuItem(
+            text = { Text(text) },
+            onClick = { onSelectedIndexChange(index) },
+            enabled = true
         )
     }
 }

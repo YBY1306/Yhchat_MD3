@@ -38,28 +38,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,10 +90,28 @@ import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiPieSlices
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseColor
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.ImageViewer
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
+import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhVerticalDivider
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun RenderA2UiComponent(
     componentId: String,
@@ -202,11 +199,9 @@ internal fun RenderA2UiComponent(
         }
 
         componentType == "card" || componentType == "container" -> {
-            Card(
+            YhCard(
                 modifier = modifier.applyA2UiLayout(component, includePadding = false),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(
                     modifier = Modifier
@@ -421,7 +416,7 @@ internal fun RenderA2UiComponent(
             when {
                 component.variant.equals("borderless", ignoreCase = true) ||
                     component.variant.equals("text", ignoreCase = true) -> {
-                    TextButton(
+                    YhTextButton(
                         onClick = {
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                         },
@@ -442,7 +437,7 @@ internal fun RenderA2UiComponent(
                 }
 
                 component.variant.equals("primary", ignoreCase = true) || component.primary == true -> {
-                    Button(
+                    YhButton(
                         onClick = {
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                         },
@@ -463,7 +458,7 @@ internal fun RenderA2UiComponent(
                 }
 
                 else -> {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = {
                             executeA2UiAction(context, spec, dataModel, scopePath, component.action, component.actionId)
                         },
@@ -612,7 +607,7 @@ internal fun RenderA2UiComponent(
                 showTimePicker = false
             }
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = textFieldValue,
                 onValueChange = { newValue ->
                     textFieldValue = newValue
@@ -658,7 +653,7 @@ internal fun RenderA2UiComponent(
                 },
                 trailingIcon = if (isDateTimeInput) {
                     {
-                        IconButton(onClick = { 
+                        YhIconButton(onClick = { 
                             if (enableDate) {
                                 showDatePicker = true
                             } else if (enableTime) {
@@ -743,7 +738,7 @@ internal fun RenderA2UiComponent(
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Checkbox(
+                                YhCheckbox(
                                     checked = selected,
                                     onCheckedChange = {
                                         if (valuePath != null) {
@@ -773,7 +768,7 @@ internal fun RenderA2UiComponent(
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                RadioButton(
+                                YhRadioButton(
                                     selected = selected,
                                     onClick = {
                                         if (valuePath != null) {
@@ -785,7 +780,7 @@ internal fun RenderA2UiComponent(
                                 Text(option.label)
                             }
                         } else if (displayStyle == "chips") {
-                            FilterChip(
+                            YhFilterChip(
                                 selected = selected,
                                 onClick = {
                                     if (valuePath != null) {
@@ -798,7 +793,7 @@ internal fun RenderA2UiComponent(
                                 label = { Text(option.label) }
                             )
                         } else {
-                            FilterChip(
+                            YhFilterChip(
                                 selected = selected,
                                 onClick = {
                                     if (valuePath != null) {
@@ -838,9 +833,9 @@ internal fun RenderA2UiComponent(
             }
 
             if (visible && contentId != null) {
-                ModalBottomSheet(
-                    onDismissRequest = { visible = false },
-                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                YhBottomSheet(
+                    show = visible,
+                    onDismissRequest = { visible = false }
                 ) {
                     val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
                     val sheetColor = MaterialTheme.colorScheme.surface
@@ -879,7 +874,7 @@ internal fun RenderA2UiComponent(
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
-                Slider(
+                YhSlider(
                     value = currentValue.coerceIn(min, max),
                     onValueChange = { newValue ->
                         if (valuePath != null) {
@@ -1048,25 +1043,20 @@ internal fun RenderA2UiComponent(
             
             Column(modifier = baseModifier.fillMaxWidth()) {
                 if (tabs.isNotEmpty()) {
-                    YhScrollableTabRow(
-                        selectedTabIndex = activeTabIndex,
-                        edgePadding = 0.dp,
-                        containerColor = Color.Transparent
-                    ) {
-                        tabs.forEachIndexed { index, tabMap ->
-                            Tab(
-                                selected = activeTabIndex == index,
-                                onClick = {
-                                    if (activeTabPath != null) {
-                                        onDataModelChange(activeTabPath, index)
-                                    } else {
-                                        localActiveTabIndex = index
-                                    }
-                                },
-                                text = { Text(tabMap["label"]?.toString() ?: "Tab ${index + 1}") }
-                            )
-                        }
+                    val tabLabels = tabs.mapIndexed { index, tabMap ->
+                        tabMap["label"]?.toString() ?: "Tab ${index + 1}"
                     }
+                    YhTabRow(
+                        tabs = tabLabels,
+                        selectedTabIndex = activeTabIndex,
+                        onTabSelected = { selectedIndex ->
+                            if (activeTabPath != null) {
+                                onDataModelChange(activeTabPath, selectedIndex)
+                            } else {
+                                localActiveTabIndex = selectedIndex
+                            }
+                        }
+                    )
                 }
                 
                 val currentTab = tabs.getOrNull(activeTabIndex)
@@ -1089,12 +1079,12 @@ internal fun RenderA2UiComponent(
 
         componentType == "divider" || componentType == "separator" -> {
             if (parentAxis == "row") {
-                VerticalDivider(
+                YhVerticalDivider(
                     modifier = Modifier.height(24.dp).padding(horizontal = 8.dp),
                     color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.outlineVariant
                 )
             } else {
-                HorizontalDivider(
+                YhHorizontalDivider(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.outlineVariant
                 )
@@ -1112,18 +1102,17 @@ internal fun RenderA2UiComponent(
 
         componentType == "progress" || componentType == "indicator" -> {
             val progress = component.progressValue ?: 0f
+            @Suppress("UNUSED_VARIABLE")
             val color = component.color?.let { parseColor(it) } ?: MaterialTheme.colorScheme.primary
             if (component.variant == "circular") {
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = baseModifier.size(40.dp),
-                    color = color
+                YhCircularProgressIndicator(
+                    progress = progress,
+                    modifier = baseModifier.size(40.dp)
                 )
             } else {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = baseModifier.fillMaxWidth(),
-                    color = color
+                YhLinearProgressIndicator(
+                    progress = progress,
+                    modifier = baseModifier.fillMaxWidth()
                 )
             }
         }

@@ -43,12 +43,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -84,11 +79,15 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRichListItem
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
@@ -577,7 +576,7 @@ fun UserDetailScreen(
                         }
                     )
 
-                    ListItem(
+                    YhRichListItem(
                         headlineContent = { Text("免打扰") },
                         supportingContent = {
                             Text(if (uiState.isNoNotify) "已开启" else "未开启")
@@ -603,11 +602,7 @@ fun UserDetailScreen(
                                 )
                             }
                         },
-                        colors = ListItemDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        tonalElevation = 0.dp,
-                        shadowElevation = 0.dp
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
                     YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
@@ -762,7 +757,7 @@ private fun SheetActionItem(
     val baseIconColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     val alpha = if (enabled) 1f else 0.45f
 
-    ListItem(
+    YhRichListItem(
         headlineContent = {
             Text(
                 text = title,
@@ -776,14 +771,9 @@ private fun SheetActionItem(
                 tint = baseIconColor.copy(alpha = alpha)
             )
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() },
-        colors = ListItemDefaults.colors(
-            containerColor = containerColor
-        ),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = containerColor,
+        onClick = if (enabled) onClick else null
     )
     YhHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 }
@@ -974,7 +964,7 @@ fun UserDetailContent(
                         }
                         else -> {
                             createdBoards.forEach { board ->
-                                Surface(
+                                YhSurface(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -1110,7 +1100,7 @@ private fun UserHeroCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     medals.take(4).forEach { medal ->
-                        Surface(
+                        YhSurface(
                             shape = RoundedCornerShape(999.dp),
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
                         ) {
@@ -1151,7 +1141,7 @@ private fun UserHeroCard(
 
 @Composable
 private fun VipBadge() {
-    Surface(
+    YhSurface(
         shape = RoundedCornerShape(999.dp),
         color = MaterialTheme.colorScheme.primary
     ) {

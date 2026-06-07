@@ -61,15 +61,7 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -105,13 +97,18 @@ import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownSelector
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
 import com.yhchat.canary.ui.adaptive.YhFilterChip
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
@@ -238,7 +235,7 @@ fun PostContentCard(
                     )
                     if (post.isVip == 1) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
+                        YhSurface(
                             color = MaterialTheme.colorScheme.primary,
                             shape = MaterialTheme.shapes.small
                         ) {
@@ -524,7 +521,7 @@ fun PostBottomActionBarDuo3(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Surface(
+                    YhSurface(
                         modifier = Modifier.clickable { onLikeClick() },
                         shape = RoundedCornerShape(24.dp),
                         color = if (post.isLiked == "1") {
@@ -552,7 +549,7 @@ fun PostBottomActionBarDuo3(
                         }
                     }
 
-                    Surface(
+                    YhSurface(
                         modifier = Modifier.clickable { onCollectClick() },
                         shape = RoundedCornerShape(24.dp),
                         color = if (post.isCollected == 1) {
@@ -580,7 +577,7 @@ fun PostBottomActionBarDuo3(
                         }
                     }
 
-                    Surface(
+                    YhSurface(
                         modifier = Modifier.clickable { onRewardClick() },
                         shape = RoundedCornerShape(24.dp),
                         color = if (post.isReward == 1) {
@@ -626,14 +623,13 @@ fun PostBottomActionBarDuo3(
                     .height(32.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Surface(
+                YhSurface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(32.dp)
                         .padding(end = 4.dp),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.Transparent,
-                    tonalElevation = 0.dp,
                     shadowElevation = 0.dp
                 ) {
                     Row(
@@ -769,7 +765,7 @@ fun CommentItem(
                         )
                         if (comment.isVip == 1) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            Surface(
+                            YhSurface(
                                 color = MaterialTheme.colorScheme.primary,
                                 shape = MaterialTheme.shapes.small
                             ) {
@@ -934,7 +930,7 @@ fun CommentReplyItem(
                 )
                 if (reply.isVip == 1) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Surface(
+                    YhSurface(
                         color = MaterialTheme.colorScheme.primary,
                         shape = MaterialTheme.shapes.small
                     ) {
@@ -1465,11 +1461,9 @@ fun PostDetailScreen(
                 }
             } else {
                 postDetailState.post?.let { post ->
-                    val pullToRefreshState = rememberPullToRefreshState()
-                    PullToRefreshBox(
+                    YhPullToRefresh(
                         isRefreshing = postDetailState.isRefreshing,
                         onRefresh = { viewModel.refreshPostDetailWithToken(postId) },
-                        state = pullToRefreshState,
                         modifier = Modifier.weight(1f)
                     ) {
                         LazyColumn(
@@ -2017,7 +2011,6 @@ private fun CommunityReportDialog(
     var reportContent by remember { mutableStateOf("") }
     var selectedReason by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var reasonMenuExpanded by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -2035,41 +2028,16 @@ private fun CommunityReportDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ExposedDropdownMenuBox(
-                    expanded = reasonMenuExpanded,
-                    onExpandedChange = { reasonMenuExpanded = !reasonMenuExpanded }
-                ) {
-                    YhOutlinedTextField(
-                        value = selectedReason,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("举报原因") },
-                        placeholder = { Text("请选择举报原因") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = true
-                            ),
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonMenuExpanded)
-                        }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = reasonMenuExpanded,
-                        onDismissRequest = { reasonMenuExpanded = false }
-                    ) {
-                    COMMUNITY_REPORT_REASONS.forEach { reason ->
-                            YhDropdownMenuItem(
-                                text = { Text(reason) },
-                                onClick = {
-                                    selectedReason = reason
-                                    reasonMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                YhDropdownSelector(
+                    items = COMMUNITY_REPORT_REASONS,
+                    selectedIndex = COMMUNITY_REPORT_REASONS.indexOf(selectedReason),
+                    onSelectedIndexChange = { index ->
+                        selectedReason = COMMUNITY_REPORT_REASONS.getOrNull(index).orEmpty()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = "举报原因",
+                    placeholder = "请选择举报原因"
+                )
 
                 YhOutlinedTextField(
                     value = reportContent,

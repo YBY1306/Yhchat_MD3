@@ -38,18 +38,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,13 +71,18 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhModalNavigationDrawer
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
 import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.components.ScrollAwareNavigationState
 import com.yhchat.canary.ui.components.observeScrollForNavigation
 import com.yhchat.canary.ui.components.rememberBooleanPreference
@@ -116,7 +111,7 @@ fun CommunityTabScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var drawerOpen by rememberSaveable { mutableStateOf(false) }
 
     // 获取布局设置
     val showHotTab by rememberBooleanPreference("layout_settings", "community_show_hot", true)
@@ -162,15 +157,11 @@ fun CommunityTabScreen(
     }
 
     fun openDrawer() {
-        coroutineScope.launch {
-            drawerState.open()
-        }
+        drawerOpen = true
     }
 
     fun closeDrawer() {
-        coroutineScope.launch {
-            drawerState.close()
-        }
+        drawerOpen = false
     }
 
     @Composable
@@ -178,36 +169,17 @@ fun CommunityTabScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            YhSecondaryTabRow(
+            YhTabRow(
+                tabs = tabTitles,
                 selectedTabIndex = selectedTab,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = {
-                            selectedTab = index
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .padding(horizontal = 4.dp),
-                        text = {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    )
-                }
-            }
+                onTabSelected = { index ->
+                    selectedTab = index
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(index)
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
             LaunchedEffect(token) {
                 if (token.isNotEmpty()) {
@@ -225,11 +197,9 @@ fun CommunityTabScreen(
                 val currentTabTitle = tabTitles.getOrNull(page) ?: ""
                 when (currentTabTitle) {
                     "热门" -> {
-                        val pullToRefreshState = rememberPullToRefreshState()
-                        PullToRefreshBox(
+                        YhPullToRefresh(
                             isRefreshing = boardListState.isRefreshing,
-                            onRefresh = { viewModel.refreshBoardList(token) },
-                            state = pullToRefreshState
+                            onRefresh = { viewModel.refreshBoardList(token) }
                         ) {
                             BoardListContent(
                                 boards = boardListState.boards,
@@ -251,11 +221,9 @@ fun CommunityTabScreen(
                         }
                     }
                     "全部" -> {
-                        val pullToRefreshState = rememberPullToRefreshState()
-                        PullToRefreshBox(
+                        YhPullToRefresh(
                             isRefreshing = allBoardListState.isRefreshing,
-                            onRefresh = { viewModel.refreshAllBoardList(token) },
-                            state = pullToRefreshState
+                            onRefresh = { viewModel.refreshAllBoardList(token) }
                         ) {
                             BoardListContent(
                                 boards = allBoardListState.boards,
@@ -277,11 +245,9 @@ fun CommunityTabScreen(
                         }
                     }
                     "关注" -> {
-                        val pullToRefreshState = rememberPullToRefreshState()
-                        PullToRefreshBox(
+                        YhPullToRefresh(
                             isRefreshing = followingBoardListState.isRefreshing,
-                            onRefresh = { viewModel.refreshFollowingBoardList(token) },
-                            state = pullToRefreshState
+                            onRefresh = { viewModel.refreshFollowingBoardList(token) }
                         ) {
                             BoardListContent(
                                 boards = followingBoardListState.boards,
@@ -318,14 +284,11 @@ fun CommunityTabScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
+    YhModalNavigationDrawer(
+        drawerOpen = drawerOpen,
+        onDismissRequest = { drawerOpen = false },
         drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(0.92f)
-            ) {
-                DrawerBody()
-            }
+            DrawerBody()
         },
         gesturesEnabled = true
     ) {
@@ -421,11 +384,11 @@ private fun FeedToggleChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    YhSurface(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(999.dp),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 0.dp
+        shadowElevation = 0.dp
     ) {
         Text(
             text = text,
@@ -451,8 +414,6 @@ private fun CommunityFeedScreen(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val pullState = rememberPullToRefreshState()
-
     if (navigationState != null) {
         observeScrollForNavigation(listState, navigationState)
     }
@@ -483,10 +444,9 @@ private fun CommunityFeedScreen(
                 }
             }
         }
-        PullToRefreshBox(
+        YhPullToRefresh(
             isRefreshing = latestState.isRefreshing,
             onRefresh = { onRefreshLatest() },
-            state = pullState,
             modifier = modifier
         ) {
             when {
@@ -573,10 +533,9 @@ private fun CommunityFeedScreen(
                 }
             }
         }
-        PullToRefreshBox(
+        YhPullToRefresh(
             isRefreshing = hotState.isRefreshing,
             onRefresh = { onRefreshHot() },
-            state = pullState,
             modifier = modifier
         ) {
             when {
@@ -856,7 +815,7 @@ fun MoreTabContent(
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     } else {
-                                        Surface(
+                                        YhSurface(
                                             modifier = Modifier.fillMaxSize(),
                                             color = MaterialTheme.colorScheme.surfaceVariant,
                                             shape = CircleShape
@@ -981,7 +940,7 @@ fun MoreTabContent(
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
                         } else {
-                            Surface(
+                            YhSurface(
                                 modifier = Modifier.fillMaxSize(),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 shape = CircleShape

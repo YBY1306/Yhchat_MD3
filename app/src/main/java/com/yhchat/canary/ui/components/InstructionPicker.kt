@@ -15,14 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +32,10 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.Instruction
 import com.yhchat.canary.data.repository.GroupRepository
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +44,6 @@ import kotlinx.coroutines.launch
 /**
  * 指令选择器（类似表情选择器）
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionPicker(
     groupId: String? = null,
@@ -68,12 +65,12 @@ fun InstructionPicker(
     
     val uiState by viewModel.uiState.collectAsState()
     
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .height(300.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        shadowElevation = 2.dp
     ) {
         // 直接显示内容，去掉TabRow
         when {
@@ -82,7 +79,7 @@ fun InstructionPicker(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -99,7 +96,7 @@ fun InstructionPicker(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            TextButton(onClick = {
+                            YhTextButton(onClick = {
                                 when {
                                     groupId != null -> viewModel.loadGroupInstructions(groupId)
                                     botId != null -> viewModel.loadBotInstructions(botId)
@@ -153,13 +150,11 @@ private fun InstructionItem(
     instruction: Instruction,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Column(
             modifier = Modifier
@@ -179,7 +174,7 @@ private fun InstructionItem(
                 
                 // 权限标识
                 if (instruction.auth > 0) {
-                    Surface(
+                    YhSurface(
                         color = when (instruction.auth) {
                             2 -> MaterialTheme.colorScheme.primaryContainer
                             3 -> MaterialTheme.colorScheme.secondaryContainer
@@ -334,4 +329,3 @@ data class InstructionPickerUiState(
     val instructions: List<Instruction> = emptyList(),
     val error: String? = null
 )
-

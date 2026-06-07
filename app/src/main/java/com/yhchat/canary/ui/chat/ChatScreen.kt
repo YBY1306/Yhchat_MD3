@@ -17,9 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.MaterialTheme
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -46,6 +46,13 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.data.model.MsgForwardReceive
 import com.yhchat.canary.ui.bot.BotDetailActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.chat.ChatComponents.*
 import com.yhchat.canary.ui.community.SendToChatBottomSheet
 import com.yhchat.canary.ui.components.ChatInputBar
@@ -69,7 +76,6 @@ import kotlin.math.min
  * 聊天界面
  */
 @OptIn(
-    ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
     ExperimentalLayoutApi::class
 )
@@ -617,8 +623,6 @@ fun ChatScreen(
     }
 
     // 下拉刷新状态（刷新最新消息）
-    val pullToRefreshState = rememberPullToRefreshState()
-    
     // 应用聊天背景
     Box(
         modifier = modifier.fillMaxSize()
@@ -634,7 +638,7 @@ fun ChatScreen(
             )
         }
     
-    Surface(
+    YhSurface(
             modifier = Modifier.fillMaxSize(),
             color = if (uiState.chatBackgroundUrl != null) {
                 MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
@@ -704,14 +708,12 @@ fun ChatScreen(
         
         // 错误信息
         uiState.error?.let { error ->
-            Card(
+            YhCard(
                 modifier = Modifier
                     .zIndex(2f)
                     .fillMaxWidth()
                     .padding(8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Row(
                     modifier = Modifier
@@ -725,7 +727,7 @@ fun ChatScreen(
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.weight(1f)
                     )
-                    TextButton(
+                    YhTextButton(
                         onClick = { viewModel.clearError() }
                     ) {
                         Text("关闭")
@@ -735,10 +737,9 @@ fun ChatScreen(
         }
 
         // 消息列表（占据中间可用空间）
-        PullToRefreshBox(
+        YhPullToRefresh(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refreshLatestMessages() },
-            state = pullToRefreshState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -750,7 +751,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else {
                 val groupOwnerId = uiState.groupInfo?.ownerId
@@ -1194,7 +1195,7 @@ fun ChatScreen(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(
+                                    YhCircularProgressIndicator(
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
@@ -1232,7 +1233,7 @@ fun ChatScreen(
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
-                FloatingActionButton(
+                YhFloatingActionButton(
                     onClick = {
                         coroutineScope.launch {
                             shouldStickToBottom = true
@@ -1242,8 +1243,7 @@ fun ChatScreen(
                         }
                     },
                     modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
@@ -1683,7 +1683,7 @@ fun ChatScreen(
     
     // 生成图片加载中指示器
     if (isGeneratingImage) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = {},
             title = { Text("生成中...") },
             text = {
@@ -1691,7 +1691,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             },
             confirmButton = {}

@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yhchat.canary.MainActivity
@@ -15,6 +14,7 @@ import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.NavigationRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -63,7 +63,7 @@ class SettingsActivity : BaseActivity() {
         setContent {
             YhchatCanaryTheme {
                 val settingsViewModel: SettingsViewModel = viewModel()
-                Surface(
+                YhSurface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {

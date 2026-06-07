@@ -24,7 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.ui.chat.ChatUiState
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
@@ -47,7 +51,6 @@ import com.yhchat.canary.ui.components.rememberBooleanPreference
 /**
  * 聊天界面顶部应用栏
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatTopAppBar(
     chatId: String,
@@ -132,9 +135,8 @@ fun ChatTopAppBar(
     // a fixed title inset reserved for the navigation icon, leaving an empty gap. Use a custom bar
     // so the avatar/title can truly align to the left edge.
     if (!shouldShowBackButton) {
-        Surface(
+        YhSurface(
             color = MaterialTheme.colorScheme.primaryContainer,
-            tonalElevation = 0.dp,
             shadowElevation = 0.dp,
             modifier = modifier
         ) {
@@ -205,7 +207,7 @@ fun ChatTopAppBar(
                 }
 
                 if (showRefreshButton) {
-                    IconButton(onClick = onRefreshClick) {
+                    YhIconButton(onClick = onRefreshClick) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "刷新消息"
@@ -213,7 +215,7 @@ fun ChatTopAppBar(
                     }
                 }
                 if (showTtsButton) {
-                    IconButton(onClick = onTtsClick) {
+                    YhIconButton(onClick = onTtsClick) {
                         Icon(
                             imageVector = Icons.Default.RecordVoiceOver,
                             contentDescription = "文字转语音",
@@ -222,7 +224,7 @@ fun ChatTopAppBar(
                     }
                 }
                 if (chatType == 1) {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         android.util.Log.d("ChatTopAppBar", "Opening user detail: chatId=$chatId, chatName=$chatName")
                         com.yhchat.canary.ui.user.UserDetailActivity.start(
                             context = context,
@@ -237,7 +239,7 @@ fun ChatTopAppBar(
                     }
                 }
                 if (chatType == 2) {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         android.util.Log.d("ChatTopAppBar", "Opening group info: chatId=$chatId, chatName=$chatName")
                         val intent = Intent(context, com.yhchat.canary.ui.group.GroupInfoActivity::class.java)
                         intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_ID, chatId)
@@ -251,7 +253,7 @@ fun ChatTopAppBar(
                     }
                 }
                 if (chatType == 3) {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         android.util.Log.d("ChatTopAppBar", "Opening bot detail: chatId=$chatId, chatName=$chatName")
                         com.yhchat.canary.ui.bot.BotDetailActivity.start(
                             context = context,
@@ -271,11 +273,27 @@ fun ChatTopAppBar(
         return
     }
 
-    TopAppBar(
-        title = {
+    YhSurface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shadowElevation = 0.dp,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            YhIconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "返回"
+                )
+            }
+
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onTitleAreaClick)
                     .padding(vertical = 2.dp),
@@ -327,18 +345,9 @@ fun ChatTopAppBar(
                     LiveWaveButton(onClick = onLiveClick)
                 }
             }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回"
-                )
-            }
-        },
-        actions = {
+
             if (showRefreshButton) {
-                IconButton(onClick = onRefreshClick) {
+                YhIconButton(onClick = onRefreshClick) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "刷新消息"
@@ -347,7 +356,7 @@ fun ChatTopAppBar(
             }
             // TTS按钮（受布局设置控制）
             if (showTtsButton) {
-                IconButton(onClick = onTtsClick) {
+                YhIconButton(onClick = onTtsClick) {
                     Icon(
                         imageVector = Icons.Default.RecordVoiceOver,
                         contentDescription = "文字转语音",
@@ -357,7 +366,7 @@ fun ChatTopAppBar(
             }
             // 用户详情按钮（只在单聊时显示）
             if (chatType == 1) {
-                IconButton(onClick = {
+                YhIconButton(onClick = {
                     android.util.Log.d("ChatTopAppBar", "Opening user detail: chatId=$chatId, chatName=$chatName")
                     com.yhchat.canary.ui.user.UserDetailActivity.start(
                         context = context,
@@ -373,7 +382,7 @@ fun ChatTopAppBar(
             }
             // 群聊信息菜单（只在群聊时显示）
             if (chatType == 2) {
-                IconButton(onClick = {
+                YhIconButton(onClick = {
                     android.util.Log.d("ChatTopAppBar", "Opening group info: chatId=$chatId, chatName=$chatName")
                     val intent = Intent(context, com.yhchat.canary.ui.group.GroupInfoActivity::class.java)
                     intent.putExtra(com.yhchat.canary.ui.group.GroupInfoActivity.EXTRA_GROUP_ID, chatId)
@@ -388,7 +397,7 @@ fun ChatTopAppBar(
             }
             // 机器人信息菜单（只在机器人聊天时显示）
             if (chatType == 3) {
-                IconButton(onClick = {
+                YhIconButton(onClick = {
                     android.util.Log.d("ChatTopAppBar", "Opening bot detail: chatId=$chatId, chatName=$chatName")
                     com.yhchat.canary.ui.bot.BotDetailActivity.start(
                         context = context,
@@ -403,12 +412,8 @@ fun ChatTopAppBar(
                     )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        modifier = modifier
-    )
+        }
+    }
 }
 
 @Composable

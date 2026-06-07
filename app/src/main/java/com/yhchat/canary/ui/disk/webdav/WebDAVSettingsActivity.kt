@@ -22,19 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.MountSetting
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 class WebDAVSettingsActivity : BaseActivity() {
@@ -95,7 +94,6 @@ class WebDAVSettingsActivity : BaseActivity() {
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WebDAVSettingsScreen(
     groupId: String,
@@ -128,12 +126,13 @@ private fun WebDAVSettingsScreen(
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(text = "$groupName 的 WebDAV 设置", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "$groupName 的 WebDAV 设置",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -141,7 +140,7 @@ private fun WebDAVSettingsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         editingMount = null
                         showInputDialog = true
                     }) {
@@ -159,7 +158,7 @@ private fun WebDAVSettingsScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             }
 
@@ -178,7 +177,8 @@ private fun WebDAVSettingsScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
+                        .padding(paddingValues)
+                        .yhTopBarNestedScroll(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -218,12 +218,12 @@ private fun WebDAVSettingsScreen(
     }
 
     showDeleteDialog?.let { mount ->
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showDeleteDialog = null },
             title = { Text("删除挂载点") },
             text = { Text("确定删除挂载点 \"${mount.mountName}\" 吗？") },
             confirmButton = {
-                TextButton(onClick = {
+                YhTextButton(onClick = {
                     viewModel.deleteMountSetting(groupId, mount.id)
                     showDeleteDialog = null
                 }) {
@@ -231,7 +231,7 @@ private fun WebDAVSettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
+                YhTextButton(onClick = { showDeleteDialog = null }) {
                     Text("取消")
                 }
             }
@@ -246,9 +246,9 @@ private fun MountSettingCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(mount.mountName, style = MaterialTheme.typography.titleMedium)
@@ -256,10 +256,10 @@ private fun MountSettingCard(
             Text("目录: ${mount.webdavRootPath}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("用户名: ${mount.webdavUserName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = onEdit) {
+                YhIconButton(onClick = onEdit) {
                     Icon(imageVector = Icons.Default.Edit, contentDescription = "编辑")
                 }
-                IconButton(onClick = onDelete) {
+                YhIconButton(onClick = onDelete) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -281,7 +281,7 @@ private fun MountSettingInputDialog(
     var webdavPassword by remember { mutableStateOf(mount?.webdavPassword ?: "") }
     var webdavRootPath by remember { mutableStateOf(mount?.webdavRootPath ?: "") }
 
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text(title) },
         text = {
@@ -294,7 +294,7 @@ private fun MountSettingInputDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     onConfirm(
                         MountFormState(
@@ -312,7 +312,7 @@ private fun MountSettingInputDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+            YhTextButton(onClick = onDismiss, enabled = !isSubmitting) {
                 Text("取消")
             }
         }
@@ -325,11 +325,10 @@ private fun MountTextField(
     label: String,
     onValueChange: (String) -> Unit
 ) {
-    OutlinedTextField(
+    YhOutlinedTextField(
         value = valueState,
         onValueChange = onValueChange,
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth()
     )
 }
-

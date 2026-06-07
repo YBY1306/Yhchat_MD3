@@ -26,9 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,12 +45,15 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhRadioButton
+import com.yhchat.canary.ui.adaptive.YhRichListItem
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -442,7 +443,7 @@ private fun BotSettingsScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
 
-                        androidx.compose.material3.ListItem(
+                        YhRichListItem(
                             headlineContent = { Text("查看使用列表") },
                             supportingContent = { Text("用户列表 / 群聊列表") },
                             trailingContent = {
@@ -451,11 +452,10 @@ private fun BotSettingsScreen(
                                     contentDescription = null
                                 )
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    BotUsageListActivity.start(context, botId, botName)
-                                }
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                BotUsageListActivity.start(context, botId, botName)
+                            }
                         )
                     }
                 }

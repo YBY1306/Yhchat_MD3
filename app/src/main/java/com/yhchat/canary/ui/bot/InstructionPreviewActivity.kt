@@ -20,14 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -36,9 +29,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.BotInstruction
 import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
@@ -80,7 +79,6 @@ class InstructionPreviewActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionPreviewScreen(
     instruction: BotInstruction,
@@ -94,7 +92,7 @@ fun InstructionPreviewScreen(
                 title = "指令预览 - ${instruction.name}",
                 large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -138,7 +136,7 @@ fun InstructionPreviewScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
+                        YhSurface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
@@ -228,7 +226,7 @@ private fun CustomFieldPreview(field: InstructionFormField) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     options.forEach { option ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = false, onClick = { })
+                            YhRadioButton(selected = false, onClick = { })
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = option, style = MaterialTheme.typography.bodyMedium)
                         }
@@ -272,7 +270,7 @@ private fun CustomFieldPreview(field: InstructionFormField) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     options.forEach { option ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = false, onCheckedChange = { }, enabled = false)
+                            YhCheckbox(checked = false, onCheckedChange = { }, enabled = false)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = option, style = MaterialTheme.typography.bodyMedium)
                         }

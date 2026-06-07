@@ -20,7 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +54,9 @@ import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhFilterChip
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhListItem
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
@@ -61,13 +64,16 @@ import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhSettingsGroup
+import com.yhchat.canary.ui.adaptive.YhSettingsItemCell
+import com.yhchat.canary.ui.adaptive.YhSettingsSwitchItem
 import com.yhchat.canary.ui.adaptive.YhSwitch
-import com.yhchat.canary.ui.adaptive.YhSwitchItem
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
-import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.login.LoginActivity
@@ -555,10 +561,12 @@ private fun AccountSwitchBottomSheet(
                                 )
                                 if (isCurrent) {
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    AssistChip(
+                                    YhFilterChip(
+                                        selected = true,
                                         onClick = {},
-                                        label = { Text("当前") }
-                                    )
+                                    ) {
+                                        Text("当前")
+                                    }
                                 }
                             }
                             Text(
@@ -2016,55 +2024,7 @@ fun SettingsGroup(
     items: List<@Composable () -> Unit>,
     modifier: Modifier = Modifier
 ) {
-    if (items.isEmpty()) return
-
-    if (isMiuixUi) {
-        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            if (!title.isNullOrEmpty()) {
-                top.yukonga.miuix.kmp.basic.SmallTitle(text = title)
-            }
-            YhCard(modifier = Modifier.fillMaxWidth()) {
-                items.forEach { item -> item() }
-            }
-        }
-        return
-    }
-
-    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        if (!title.isNullOrEmpty()) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
-
-        val cornerRadius = 24.dp
-        val smallRadius = 4.dp
-        
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-             items.forEachIndexed { index, item ->
-                val shape = when {
-                    items.size == 1 -> RoundedCornerShape(cornerRadius)
-                    index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = smallRadius, bottomEnd = smallRadius)
-                    index == items.size - 1 -> RoundedCornerShape(topStart = smallRadius, topEnd = smallRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
-                    else -> RoundedCornerShape(smallRadius)
-                }
-
-                Surface(
-                    shape = shape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    item()
-                }
-             }
-        }
-    }
+    YhSettingsGroup(title = title, items = items, modifier = modifier)
 }
 
 /**
@@ -2078,53 +2038,13 @@ fun SettingsItemCell(
     onClick: () -> Unit,
     isDestructive: Boolean = false
 ) {
-    if (isMiuixUi) {
-        YhListItem(
-            icon = icon,
-            title = title,
-            subtitle = subtitle,
-            onClick = onClick,
-            isDestructive = isDestructive
-        )
-    } else {
-        SettingsCustomItem(onClick = onClick) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(24.dp),
-                tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-        }
-    }
-    }
+    YhSettingsItemCell(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        isDestructive = isDestructive
+    )
 }
 
 /**
@@ -2139,54 +2059,14 @@ fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     isError: Boolean = false
 ) {
-    if (isMiuixUi) {
-        YhSwitchItem(
-            icon = icon,
-            title = title,
-            subtitle = subtitle,
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            isError = isError
-        )
-    } else {
-        SettingsCustomItem(onClick = { onCheckedChange(!checked) }) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(24.dp),
-                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            YhSwitch(
-                checked = checked,
-                onCheckedChange = null // Handled by parent click
-            )
-        }
-    }
-    }
+    YhSettingsSwitchItem(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        isError = isError
+    )
 }
 
 /**
@@ -2325,23 +2205,11 @@ private fun YhToolsPanel(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    YhSecondaryTabRow(selectedTabIndex = selectedTab) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("社区") }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = { Text("表情包") }
-                        )
-                        Tab(
-                            selected = selectedTab == 2,
-                            onClick = { selectedTab = 2 },
-                            text = { Text("WebSocket") }
-                        )
-                    }
+                    YhTabRow(
+                        tabs = listOf("社区", "表情包", "WebSocket"),
+                        selectedTabIndex = selectedTab,
+                        onTabSelected = { selectedTab = it }
+                    )
 
                     when (selectedTab) {
                         0 -> {

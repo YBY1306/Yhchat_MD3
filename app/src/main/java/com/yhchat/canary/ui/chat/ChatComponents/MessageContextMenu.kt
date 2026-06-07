@@ -28,17 +28,17 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.ChatMessage
 import com.yhchat.canary.service.AudioCacheManager
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -68,7 +68,7 @@ fun MessageContextMenu(
     onMultiSelect: (() -> Unit)? = null,  // 多选
     onOpenInInternalBrowser: (() -> Unit)? = null
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -86,325 +86,164 @@ fun MessageContextMenu(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 复制全部
-                TextButton(
+                ContextMenuAction(
                     onClick = onCopyAll,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "复制全部",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("复制全部")
-                    }
-                }
+                    icon = Icons.Default.ContentCopy,
+                    text = "复制全部"
+                )
 
                 // 自由复制（仅对文本、Markdown、HTML消息显示）
                 if (message.contentType in listOf(1, 3, 8)) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onFreeCopy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentPaste,
-                                contentDescription = "自由复制",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("自由复制")
-                        }
-                    }
+                        icon = Icons.Default.ContentPaste,
+                        text = "自由复制"
+                    )
                 }
 
                 if (message.contentType == 8 && onOpenInInternalBrowser != null) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onOpenInInternalBrowser,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Language,
-                                contentDescription = "在内置浏览器中打开",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("在内置浏览器中打开")
-                        }
-                    }
+                        icon = Icons.Default.Language,
+                        text = "在内置浏览器中打开"
+                    )
                 }
                 
                 // 引用
-                TextButton(
+                ContextMenuAction(
                     onClick = onQuote,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FormatQuote,
-                            contentDescription = "引用",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("引用")
-                    }
-                }
+                    icon = Icons.Default.FormatQuote,
+                    text = "引用"
+                )
 
-                TextButton(
+                ContextMenuAction(
                     onClick = onForward,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "转发",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("转发")
-                    }
-                }
+                    icon = Icons.AutoMirrored.Filled.Send,
+                    text = "转发"
+                )
                 
                 // 编辑消息（仅对文本、Markdown、HTML、A2UI消息显示）
                 if (onEdit != null && message.contentType in listOf(1, 3, 8, 14)) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onEdit,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "编辑",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("编辑")
-                        }
-                    }
+                        icon = Icons.Default.Edit,
+                        text = "编辑"
+                    )
                 }
                 
                 // 添加表情（仅对消息类型7显示）
                 if (onAddExpression != null && message.contentType == 7) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onAddExpression,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AddCircle,
-                                contentDescription = "添加表情",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("添加表情")
-                        }
-                    }
+                        icon = Icons.Default.AddCircle,
+                        text = "添加表情"
+                    )
                 }
 
                 // 保存语音（仅对语音消息显示）
                 if (onSaveAudio != null && message.contentType == 11) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onSaveAudio,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = "保存语音",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("保存语音")
-                        }
-                    }
+                        icon = Icons.Default.Download,
+                        text = "保存语音"
+                    )
                 }
                 
                 // 语音转文字（仅对语音消息显示）
                 if (onSpeechToText != null && message.contentType == 11) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onSpeechToText,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "语音转文字",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("语音转文字")
-                        }
-                    }
+                        icon = Icons.Default.Edit,
+                        text = "语音转文字"
+                    )
                 }
                 
                 // +1 复制发送同样消息
                 if (onPlusOne != null) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onPlusOne,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AddCircle,
-                                contentDescription = "+1",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("+1", color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                        icon = Icons.Default.AddCircle,
+                        text = "+1",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
 
                 if (onFavorite != null) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onFavorite,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "收藏",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("收藏")
-                        }
-                    }
+                        icon = Icons.Default.Star,
+                        text = "收藏"
+                    )
                 }
                 
                 // 多选
                 if (onMultiSelect != null) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onMultiSelect,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckBox,
-                                contentDescription = "多选",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("多选")
-                        }
-                    }
+                        icon = Icons.Default.CheckBox,
+                        text = "多选"
+                    )
                 }
                 
                 // 屏蔽用户
                 if (onBlockUser != null) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = onBlockUser,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Block,
-                                contentDescription = "屏蔽用户",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "屏蔽用户",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
+                        icon = Icons.Default.Block,
+                        text = "屏蔽用户",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
                 
                 // 撤回（危险操作）
                 if (showRecall) {
-                    TextButton(
+                    ContextMenuAction(
                         onClick = {
                             onRecall()
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "撤回",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    "撤回消息",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
+                        icon = Icons.Default.Delete,
+                        text = "撤回消息",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }
     )
+}
+
+@Composable
+private fun ContextMenuAction(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    YhTextButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                modifier = Modifier.size(20.dp),
+                tint = tint
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text, color = tint)
+        }
+    }
 }
 
 /**

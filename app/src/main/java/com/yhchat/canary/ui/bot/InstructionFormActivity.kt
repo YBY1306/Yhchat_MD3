@@ -22,12 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,7 +45,7 @@ import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCheckbox
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
-import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhDropdownSelector
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhRadioButton
@@ -383,52 +380,25 @@ fun FormFieldComponent(
                     // 下拉选择器
                     val options = (field.propsValue["options"] as? String ?: "").split("#").filter { it.isNotEmpty() }
                     val selectedIndex = value?.selectIndex ?: 0
-                    val selectedValue = if (selectedIndex in options.indices) options[selectedIndex] else options.firstOrNull() ?: ""
-                    
-                    var expanded by remember { mutableStateOf(false) }
-                    
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it }
-                    ) {
-                        YhOutlinedTextField(
-                            value = selectedValue,
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(
-                                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                    enabled = true
-                                )
-                        )
-                        
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            options.forEachIndexed { index, option ->
-                                YhDropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        onValueChange(
-                                            FormFieldValue(
-                                                id = field.id,
-                                                type = field.type,
-                                                label = field.label,
-                                                selectIndex = index,
-                                                selectValue = option
-                                            )
-                                        )
-                                        expanded = false
-                                    }
+                    YhDropdownSelector(
+                        items = options,
+                        selectedIndex = selectedIndex,
+                        onSelectedIndexChange = { index ->
+                            options.getOrNull(index)?.let { option ->
+                                onValueChange(
+                                    FormFieldValue(
+                                        id = field.id,
+                                        type = field.type,
+                                        label = field.label,
+                                        selectIndex = index,
+                                        selectValue = option
+                                    )
                                 )
                             }
-                        }
-                    }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = field.propsValue["placeholder"] as? String ?: ""
+                    )
                 }
                 
                 "checkbox" -> {

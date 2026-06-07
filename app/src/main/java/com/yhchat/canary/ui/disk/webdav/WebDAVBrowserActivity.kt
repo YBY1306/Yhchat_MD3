@@ -44,20 +44,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -73,6 +60,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.WebDAVFile
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.utils.WebDAVDownloadManager
@@ -121,7 +120,7 @@ class WebDAVBrowserActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WebDAVBrowserScreen(
     groupId: String,
@@ -159,12 +158,13 @@ fun WebDAVBrowserScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("$groupName 的 WebDAV", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "$groupName 的 WebDAV",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -172,10 +172,10 @@ fun WebDAVBrowserScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { WebDAVDownloadListActivity.start(context) }) {
+                    YhIconButton(onClick = { WebDAVDownloadListActivity.start(context) }) {
                         Icon(imageVector = Icons.Default.Download, contentDescription = "下载列表")
                     }
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         val intent = WebDAVSettingsActivity.intent(context, groupId, groupName)
                         settingsLauncher.launch(intent)
                     }) {
@@ -189,6 +189,7 @@ fun WebDAVBrowserScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .yhTopBarNestedScroll()
         ) {
             when {
                 // 初始加载挂载点列表时显示加载中
@@ -197,7 +198,7 @@ fun WebDAVBrowserScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -215,7 +216,7 @@ fun WebDAVBrowserScreen(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            Button(onClick = { viewModel.loadMountSettings(groupId) }) {
+                            YhButton(onClick = { viewModel.loadMountSettings(groupId) }) {
                                 Text("重试")
                             }
                         }
@@ -271,13 +272,12 @@ fun WebDAVBrowserScreen(
                     }
                     
                     // 分类标签栏
-                    Card(
+                    YhCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        cornerRadius = 16.dp
                     ) {
                         LazyRow(
                             modifier = Modifier
@@ -287,7 +287,7 @@ fun WebDAVBrowserScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             itemsIndexed(uiState.mountSettings) { index, mountSetting ->
-                                FilterChip(
+                                YhFilterChip(
                                     selected = uiState.selectedMountIndex == index,
                                     onClick = {
                                         viewModel.selectMount(index)
@@ -332,7 +332,7 @@ fun WebDAVBrowserScreen(
     
     // 下载确认对话框
     if (showDownloadDialog && fileToDownload != null) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = {
                 showDownloadDialog = false
                 fileToDownload = null
@@ -355,7 +355,7 @@ fun WebDAVBrowserScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         fileToDownload?.let { file ->
                             WebDAVDownloadManager.startDownload(context, file)
@@ -369,7 +369,7 @@ fun WebDAVBrowserScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         showDownloadDialog = false
                         fileToDownload = null
@@ -400,7 +400,7 @@ private fun WebDAVFileListPage(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                YhCircularProgressIndicator()
             }
         }
         
@@ -417,7 +417,7 @@ private fun WebDAVFileListPage(
                         text = mountState.error ?: "加载失败",
                         color = MaterialTheme.colorScheme.error
                     )
-                    Button(onClick = { 
+                    YhButton(onClick = { 
                         val selectedMount = uiState.mountSettings.getOrNull(pageIndex)
                         if (selectedMount != null) {
                             viewModel.loadFiles(selectedMount, mountState.currentPath)
@@ -514,15 +514,14 @@ private fun WebDAVFileCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(8.dp)
+        cornerRadius = 8.dp
     ) {
         Row(
             modifier = Modifier

@@ -33,10 +33,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,10 +51,13 @@ import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCheckbox
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.components.ImageUtils
@@ -218,7 +218,7 @@ private fun GroupSettingsContent(
                                         contentScale = ContentScale.Crop
                                     )
                                     if (uiState.isEditing) {
-                                        Surface(
+                                        YhSurface(
                                             modifier = Modifier
                                                 .size(32.dp)
                                                 .clickable(enabled = !uiState.isUploadingAvatar) {
@@ -226,7 +226,7 @@ private fun GroupSettingsContent(
                                                 },
                                             shape = CircleShape,
                                             color = MaterialTheme.colorScheme.primary,
-                                            tonalElevation = 4.dp
+                                            shadowElevation = 4.dp
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 if (uiState.isUploadingAvatar) {
@@ -754,7 +754,7 @@ private fun StatusMessageCard(
     containerColor: Color,
     contentColor: Color
 ) {
-    Surface(
+    YhSurface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),

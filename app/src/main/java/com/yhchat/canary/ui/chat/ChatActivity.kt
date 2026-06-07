@@ -9,8 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +21,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -132,7 +132,7 @@ class ChatActivity : BaseActivity() {
                         window.isNavigationBarContrastEnforced = false
                     }
                 }
-                Surface(color = MaterialTheme.colorScheme.background) {
+                YhSurface(color = MaterialTheme.colorScheme.background) {
                     if (chatId.isBlank()) {
                         Box(
                             modifier = androidx.compose.ui.Modifier.fillMaxSize(),

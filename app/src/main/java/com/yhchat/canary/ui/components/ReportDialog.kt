@@ -14,19 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,6 +31,15 @@ import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.repository.ReportRepository
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.utils.ImageUploadUtil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,7 +49,6 @@ import kotlinx.coroutines.launch
 /**
  * 举报对话框
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportDialog(
     chatId: String,
@@ -105,7 +101,7 @@ fun ReportDialog(
         }
     }
     
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text("举报${when(chatType) {
@@ -125,36 +121,21 @@ fun ReportDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                ExposedDropdownMenuBox(
-                    expanded = reasonMenuExpanded,
-                    onExpandedChange = { expanded ->
-                        if (!uiState.isLoading) {
-                            reasonMenuExpanded = expanded
-                        }
-                    }
-                ) {
-                    OutlinedTextField(
-                        value = selectedReason,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("举报原因") },
-                        modifier = Modifier
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !uiState.isLoading
-                            )
-                            .fillMaxWidth(),
+                Column {
+                    YhOutlinedButton(
+                        onClick = { if (!uiState.isLoading) reasonMenuExpanded = true },
                         enabled = !uiState.isLoading,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonMenuExpanded) },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                    )
-
-                    ExposedDropdownMenu(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("举报原因: $selectedReason")
+                    }
+                    YhDropdownMenu(
                         expanded = reasonMenuExpanded,
-                        onDismissRequest = { reasonMenuExpanded = false }
+                        onDismissRequest = { reasonMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         reportReasons.forEach { reason ->
-                            DropdownMenuItem(
+                            YhDropdownMenuItem(
                                 text = { Text(reason) },
                                 onClick = {
                                     selectedReason = reason
@@ -166,7 +147,7 @@ fun ReportDialog(
                     }
                 }
                 
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = reportContent,
                     onValueChange = { reportContent = it },
                     label = { Text("举报内容") },
@@ -186,7 +167,7 @@ fun ReportDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = { imagePickerLauncher.launch("image/*") },
                         enabled = !uiState.isLoading && !uiState.isLoading
                     ) {
@@ -200,7 +181,7 @@ fun ReportDialog(
                     }
                     
                     if (uiState.isLoading) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
@@ -228,7 +209,7 @@ fun ReportDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            YhTextButton(
                 onClick = {
                     if (reportContent.isNotBlank()) {
                         viewModel.submitReport(
@@ -244,7 +225,7 @@ fun ReportDialog(
                 enabled = !uiState.isLoading && reportContent.isNotBlank()
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )
@@ -254,7 +235,7 @@ fun ReportDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            YhTextButton(
                 onClick = onDismiss,
                 enabled = !uiState.isLoading
             ) {

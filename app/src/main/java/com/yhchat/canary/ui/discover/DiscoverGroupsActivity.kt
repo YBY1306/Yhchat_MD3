@@ -19,7 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +34,21 @@ import com.yhchat.canary.data.api.ApiClient
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.AddFriendRequest
 import com.yhchat.canary.data.model.RecommendGroup
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
-import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -64,7 +76,6 @@ class DiscoverGroupsActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
@@ -156,30 +167,13 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
         }
     }
 
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    if (isSearching) {
-                        TextField(
-                            value = searchKeyword,
-                            onValueChange = { searchKeyword = it },
-                            placeholder = { Text("搜索群聊...") },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
-                        Text("发现群聊", fontWeight = FontWeight.Bold)
-                    }
-                },
+            YhTopBar(
+                title = if (isSearching) "搜索群聊" else "发现群聊",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = {
+                    YhIconButton(onClick = {
                         if (isSearching) {
                             isSearching = false
                             searchKeyword = ""
@@ -197,11 +191,11 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                 },
                 actions = {
                     if (!isSearching) {
-                        IconButton(onClick = { isSearching = true }) {
+                        YhIconButton(onClick = { isSearching = true }) {
                             Icon(Icons.Default.Search, contentDescription = "搜索")
                         }
                     } else {
-                        IconButton(onClick = { searchGroups(searchKeyword) }) {
+                        YhIconButton(onClick = { searchGroups(searchKeyword) }) {
                             Icon(Icons.Default.Search, contentDescription = "执行搜索")
                         }
                     }
@@ -213,7 +207,20 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .yhTopBarNestedScroll()
         ) {
+            if (isSearching) {
+                YhOutlinedTextField(
+                    value = searchKeyword,
+                    onValueChange = { searchKeyword = it },
+                    placeholder = { Text("搜索群聊...") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
             // 如果正在搜索，显示搜索结果
             if (isSearching) {
                 when {
@@ -222,7 +229,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            YhCircularProgressIndicator()
                         }
                     }
                     searchError != null -> {
@@ -236,7 +243,7 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = { searchGroups(searchKeyword) }) {
+                                YhButton(onClick = { searchGroups(searchKeyword) }) {
                                     Text("重试")
                                 }
                             }
@@ -349,27 +356,20 @@ fun DiscoverGroupsScreen(onBackClick: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             } else {
                 // 分类选项
-                YhScrollableTabRow(
+                YhTabRow(
+                    tabs = categories,
                     selectedTabIndex = pagerState.currentPage,
-                    modifier = Modifier.fillMaxWidth(),
-                    edgePadding = 16.dp
-                ) {
-                    categories.forEachIndexed { index, category ->
-                        Tab(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
-                            },
-                            text = { Text(category) }
-                        )
-                    }
-                }
+                    onTabSelected = { index ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // 群聊列表页面
                 HorizontalPager(
@@ -465,7 +465,7 @@ fun GroupListPage(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                 }
             }
             error != null -> {
@@ -509,7 +509,7 @@ fun GroupListPage(
                                     .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                             }
                         }
                     } else if (hasMoreData) {
@@ -609,11 +609,11 @@ fun GroupCard(
 ) {
     var showImageViewer by remember(group.avatarUrl) { mutableStateOf(false) }
 
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+    YhCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -703,7 +703,7 @@ fun GroupDetailDialog(
     }
     var showImageViewer by remember(group.avatarUrl) { mutableStateOf(false) }
 
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("群聊详情") },
         text = {
@@ -801,12 +801,12 @@ fun GroupDetailDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onJoin) {
+            YhButton(onClick = onJoin) {
                 Text("加入群聊")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

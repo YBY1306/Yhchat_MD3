@@ -26,10 +26,9 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,8 +53,8 @@ import com.yhchat.canary.data.model.CommunityPost
 import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhTabRow
 import com.yhchat.canary.ui.adaptive.YhTextButton
-import com.yhchat.canary.ui.components.YhScrollableTabRow
 import com.yhchat.canary.ui.contacts.Contact
 import com.yhchat.canary.ui.contacts.ContactsViewModel
 import kotlinx.coroutines.launch
@@ -166,35 +165,12 @@ fun SendToChatBottomSheet(
                 }
             }
 
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                YhScrollableTabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier = Modifier.wrapContentWidth(),
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    edgePadding = 0.dp,
-                    divider = {}
-                ) {
-                    listOf("  好友  ", "  群聊  ", "  机器人  ").forEachIndexed { index, tabTitle ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = {
-                                Text(
-                                    text = tabTitle,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        )
-                    }
-                }
-            }
+            YhTabRow(
+                tabs = listOf("好友", "群聊", "机器人"),
+                selectedTabIndex = selectedTab,
+                onTabSelected = { selectedTab = it },
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 

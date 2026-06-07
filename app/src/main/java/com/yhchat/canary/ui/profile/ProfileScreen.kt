@@ -45,15 +45,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,12 +77,17 @@ import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownSelector
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
 import com.yhchat.canary.ui.adaptive.YhRadioButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.base.SystemBarUtils
@@ -167,7 +164,6 @@ fun ProfileScreen(
 
     // 下拉刷新状态
     var refreshing by remember { mutableStateOf(false) }
-    val pullToRefreshState = rememberPullToRefreshState()
 
     // 刷新完成后关闭指示器
     LaunchedEffect(uiState.isLoading) {
@@ -238,13 +234,12 @@ fun ProfileScreen(
             observeScrollForNavigation(listState, navigationState)
         }
 
-        PullToRefreshBox(
+        YhPullToRefresh(
             isRefreshing = refreshing,
             onRefresh = {
                 refreshing = true
                 viewModel.loadUserProfile()
             },
-            state = pullToRefreshState,
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -418,12 +413,12 @@ private fun UserProfileContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 头像和姓名部分
-        Surface(
+        YhSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(24.dp),
-            tonalElevation = 4.dp,
+            shadowElevation = 4.dp,
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(
@@ -460,7 +455,7 @@ private fun UserProfileContent(
                     }
                     
                     // 修改头像指示器
-                    Surface(
+                    YhSurface(
                         modifier = Modifier
                             .size(24.dp)
                             .align(Alignment.BottomEnd),
@@ -480,7 +475,7 @@ private fun UserProfileContent(
                     
                     // 上传中指示器
                     if (changeAvatarState.isLoading) {
-                        Surface(
+                        YhSurface(
                             modifier = Modifier
                                 .size(80.dp)
                                 .clip(CircleShape),
@@ -1099,9 +1094,6 @@ private fun UserDataEditBottomSheet(
             val currentYear = nowCal.get(Calendar.YEAR)
             val yearOptions = remember(currentYear) { (1900..currentYear).toList().reversed() }
             val monthOptions = remember { (1..12).toList() }
-            var yearExpanded by remember { mutableStateOf(false) }
-            var monthExpanded by remember { mutableStateOf(false) }
-            var dayExpanded by remember { mutableStateOf(false) }
 
             val maxDayInMonth = remember(selectedYear, selectedMonth) {
                 val year = selectedYear ?: 2000
@@ -1124,110 +1116,38 @@ private fun UserDataEditBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ExposedDropdownMenuBox(
-                    expanded = yearExpanded,
-                    onExpandedChange = { if (!saveUserDataState.isLoading) yearExpanded = !yearExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    YhOutlinedTextField(
-                        value = selectedYear?.toString() ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("年") },
-                        enabled = !saveUserDataState.isLoading,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !saveUserDataState.isLoading
-                            )
-                            .fillMaxWidth()
-                    )
-                    YhDropdownMenu(
-                        expanded = yearExpanded,
-                        onDismissRequest = { yearExpanded = false }
-                    ) {
-                        yearOptions.forEach { y ->
-                            YhDropdownMenuItem(
-                                text = { Text(y.toString()) },
-                                onClick = {
-                                    selectedYear = y
-                                    yearExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                YhDropdownSelector(
+                    items = yearOptions.map { it.toString() },
+                    selectedIndex = yearOptions.indexOf(selectedYear),
+                    onSelectedIndexChange = { index ->
+                        selectedYear = yearOptions.getOrNull(index)
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = "年",
+                    enabled = !saveUserDataState.isLoading
+                )
 
-                ExposedDropdownMenuBox(
-                    expanded = monthExpanded,
-                    onExpandedChange = { if (!saveUserDataState.isLoading) monthExpanded = !monthExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    YhOutlinedTextField(
-                        value = selectedMonth?.toString() ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("月") },
-                        enabled = !saveUserDataState.isLoading,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !saveUserDataState.isLoading
-                            )
-                            .fillMaxWidth()
-                    )
-                    YhDropdownMenu(
-                        expanded = monthExpanded,
-                        onDismissRequest = { monthExpanded = false }
-                    ) {
-                        monthOptions.forEach { m ->
-                            YhDropdownMenuItem(
-                                text = { Text(m.toString()) },
-                                onClick = {
-                                    selectedMonth = m
-                                    monthExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                YhDropdownSelector(
+                    items = monthOptions.map { it.toString() },
+                    selectedIndex = monthOptions.indexOf(selectedMonth),
+                    onSelectedIndexChange = { index ->
+                        selectedMonth = monthOptions.getOrNull(index)
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = "月",
+                    enabled = !saveUserDataState.isLoading
+                )
 
-                ExposedDropdownMenuBox(
-                    expanded = dayExpanded,
-                    onExpandedChange = { if (!saveUserDataState.isLoading) dayExpanded = !dayExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    YhOutlinedTextField(
-                        value = selectedDay?.toString() ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("日") },
-                        enabled = !saveUserDataState.isLoading,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !saveUserDataState.isLoading
-                            )
-                            .fillMaxWidth()
-                    )
-                    YhDropdownMenu(
-                        expanded = dayExpanded,
-                        onDismissRequest = { dayExpanded = false }
-                    ) {
-                        dayOptions.forEach { d ->
-                            YhDropdownMenuItem(
-                                text = { Text(d.toString()) },
-                                onClick = {
-                                    selectedDay = d
-                                    dayExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                YhDropdownSelector(
+                    items = dayOptions.map { it.toString() },
+                    selectedIndex = dayOptions.indexOf(selectedDay),
+                    onSelectedIndexChange = { index ->
+                        selectedDay = dayOptions.getOrNull(index)
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = "日",
+                    enabled = !saveUserDataState.isLoading
+                )
             }
 
             YhOutlinedTextField(

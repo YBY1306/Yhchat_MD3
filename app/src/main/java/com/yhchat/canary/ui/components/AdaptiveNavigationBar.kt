@@ -7,24 +7,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.NavigationRailItemDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
+import com.yhchat.canary.ui.adaptive.YhNavigationBar
+import com.yhchat.canary.ui.adaptive.YhNavigationBarItem
+import com.yhchat.canary.ui.adaptive.YhNavigationRail
+import com.yhchat.canary.ui.adaptive.YhNavigationRailItem
+import com.yhchat.canary.ui.adaptive.YhSurface
 
 /**
  * 自适应导航栏 - LibChecker风格
@@ -84,40 +78,20 @@ private fun NavigationRailBar(
     onScreenChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    NavigationRail(
+    YhNavigationRail(
         modifier = modifier
-            .fillMaxHeight(),
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
+            .fillMaxHeight()
     ) {
         Spacer(Modifier.height(16.dp))
         
         visibleItems.forEach { item ->
-            NavigationRailItem(
-                icon = {
-                    Icon(
-                        imageVector = item.getIcon(),
-                        contentDescription = item.title,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                },
+            YhNavigationRailItem(
+                icon = item.getIcon(),
+                label = item.title,
                 selected = currentScreen == item.id,
                 onClick = {
                     onScreenChange(item.id)
-                },
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                }
             )
         }
     }
@@ -150,39 +124,17 @@ private fun AnimatedBottomNavigationBar(
         label = "navBarOffset"
     )
     
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 3.dp,
+    YhNavigationBar(
         modifier = modifier.offset(y = offsetY)
     ) {
         visibleItems.forEach { item ->
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = item.getIcon(),
-                        contentDescription = item.title,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                },
+            YhNavigationBarItem(
+                icon = item.getIcon(),
+                label = item.title,
                 selected = currentScreen == item.id,
                 onClick = {
                     onScreenChange(item.id)
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                alwaysShowLabel = true
+                }
             )
         }
     }
@@ -209,43 +161,20 @@ fun GradientBottomNavigationBar(
         label = "navBarOffset"
     )
     
-    Surface(
+    YhSurface(
         modifier = modifier.offset(y = offsetY),
-        tonalElevation = 3.dp,
         shadowElevation = 8.dp,
         color = MaterialTheme.colorScheme.surface
     ) {
-        NavigationBar(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
+        YhNavigationBar {
             visibleItems.forEach { item ->
-                NavigationBarItem(
-                    icon = {
-                        Icon(
-                            imageVector = item.getIcon(),
-                            contentDescription = item.title,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = {
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    },
+                YhNavigationBarItem(
+                    icon = item.getIcon(),
+                    label = item.title,
                     selected = currentScreen == item.id,
                     onClick = {
                         onScreenChange(item.id)
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    alwaysShowLabel = true
+                    }
                 )
             }
         }

@@ -12,10 +12,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.RectangleShape
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -24,6 +25,8 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +52,26 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
+
+@Composable
+fun YhMiuixTheme(
+    smoothRounding: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.theme.MiuixTheme(
+            smoothRounding = smoothRounding,
+            content = content
+        )
+    } else {
+        content()
+    }
+}
+
+@Composable
+fun YhMiuixScrollBehavior(): top.yukonga.miuix.kmp.basic.ScrollBehavior {
+    return top.yukonga.miuix.kmp.basic.MiuixScrollBehavior()
+}
 
 @Composable
 fun YhFloatingActionButton(
@@ -193,19 +216,30 @@ fun RowScope.YhNavigationBarItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    NavigationBarItem(
-        selected = selected,
-        onClick = onClick,
-        icon = {
-            androidx.compose.material3.Icon(
-                imageVector = icon,
-                contentDescription = label
-            )
-        },
-        label = { Text(label) },
-        modifier = modifier,
-        enabled = enabled
-    )
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.NavigationBarItem(
+            selected = selected,
+            onClick = onClick,
+            icon = icon,
+            label = label,
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        NavigationBarItem(
+            selected = selected,
+            onClick = onClick,
+            icon = {
+                androidx.compose.material3.Icon(
+                    imageVector = icon,
+                    contentDescription = label
+                )
+            },
+            label = { Text(label) },
+            modifier = modifier,
+            enabled = enabled
+        )
+    }
 }
 
 @Composable
@@ -305,6 +339,41 @@ fun ColumnScope.YhNavigationRailItem(
 }
 
 @Composable
+fun YhNavigationRailItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.NavigationRailItem(
+            selected = selected,
+            onClick = onClick,
+            icon = icon,
+            label = label,
+            modifier = modifier,
+            enabled = enabled
+        )
+    } else {
+        NavigationRailItem(
+            selected = selected,
+            onClick = onClick,
+            icon = {
+                androidx.compose.material3.Icon(
+                    imageVector = icon,
+                    contentDescription = label
+                )
+            },
+            label = { Text(label) },
+            modifier = modifier,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
 fun YhNumberPicker(
     value: Int,
     onValueChange: (Int) -> Unit,
@@ -351,6 +420,7 @@ fun YhNumberPicker(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YhPullToRefresh(
     isRefreshing: Boolean,
@@ -368,12 +438,20 @@ fun YhPullToRefresh(
             content = content
         )
     } else {
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            state = rememberPullToRefreshState(),
             modifier = modifier.padding(contentPadding)
         ) {
             content()
         }
     }
+}
+
+@Composable
+fun YhRememberPullToRefreshState(): top.yukonga.miuix.kmp.basic.PullToRefreshState {
+    return top.yukonga.miuix.kmp.basic.rememberPullToRefreshState()
 }
 
 @Composable
@@ -540,14 +618,22 @@ fun YhIcon(
             imageVector = imageVector,
             contentDescription = contentDescription,
             modifier = modifier,
-            tint = tint
+            tint = if (tint == Color.Unspecified) {
+                top.yukonga.miuix.kmp.theme.LocalContentColor.current
+            } else {
+                tint
+            }
         )
     } else {
         androidx.compose.material3.Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
             modifier = modifier,
-            tint = tint
+            tint = if (tint == Color.Unspecified) {
+                androidx.compose.material3.LocalContentColor.current
+            } else {
+                tint
+            }
         )
     }
 }
@@ -564,14 +650,22 @@ fun YhIcon(
             painter = painter,
             contentDescription = contentDescription,
             modifier = modifier,
-            tint = tint
+            tint = if (tint == Color.Unspecified) {
+                top.yukonga.miuix.kmp.theme.LocalContentColor.current
+            } else {
+                tint
+            }
         )
     } else {
         androidx.compose.material3.Icon(
             painter = painter,
             contentDescription = contentDescription,
             modifier = modifier,
-            tint = tint
+            tint = if (tint == Color.Unspecified) {
+                androidx.compose.material3.LocalContentColor.current
+            } else {
+                tint
+            }
         )
     }
 }
@@ -588,7 +682,11 @@ fun YhIcon(
             bitmap = bitmap,
             contentDescription = contentDescription,
             modifier = modifier,
-            tint = tint
+            tint = if (tint == Color.Unspecified) {
+                top.yukonga.miuix.kmp.theme.LocalContentColor.current
+            } else {
+                tint
+            }
         )
     } else {
         androidx.compose.foundation.Image(
@@ -1173,6 +1271,98 @@ fun YhOverlayBottomSheet(
 }
 
 @Composable
+fun YhWindowDialog(
+    show: Boolean,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    summary: String? = null,
+    onDismissRequest: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.window.WindowDialog(
+            show = show,
+            modifier = modifier,
+            title = title,
+            summary = summary,
+            onDismissRequest = onDismissRequest,
+            content = content
+        )
+    } else if (show) {
+        YhDialog(
+            show = true,
+            title = title.orEmpty(),
+            text = summary,
+            onDismissRequest = { onDismissRequest?.invoke() },
+            onConfirm = { onDismissRequest?.invoke() },
+            content = content
+        )
+    }
+}
+
+@Composable
+fun YhWindowBottomSheet(
+    show: Boolean,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    onDismissRequest: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.window.WindowBottomSheet(
+            show = show,
+            modifier = modifier,
+            title = title,
+            onDismissRequest = onDismissRequest,
+            content = content
+        )
+    } else {
+        YhBottomSheet(
+            show = show,
+            title = title,
+            onDismissRequest = { onDismissRequest?.invoke() },
+            content = content
+        )
+    }
+}
+
+@Composable
+fun YhSuperDialog(
+    show: Boolean,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    summary: String? = null,
+    onDismissRequest: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    YhOverlayDialog(
+        show = show,
+        title = title,
+        summary = summary,
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        content = content
+    )
+}
+
+@Composable
+fun YhSuperBottomSheet(
+    show: Boolean,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    onDismissRequest: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    YhOverlayBottomSheet(
+        show = show,
+        title = title,
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        content = content
+    )
+}
+
+@Composable
 fun YhWindowDropdownPreference(
     items: List<String>,
     selectedIndex: Int,
@@ -1524,6 +1714,56 @@ fun YhOverlaySpinnerPreference(
 }
 
 @Composable
+fun YhSpinnerItemImpl(
+    entry: top.yukonga.miuix.kmp.basic.SpinnerEntry,
+    entryCount: Int,
+    isSelected: Boolean,
+    index: Int,
+    dialogMode: Boolean = false,
+    onSelectedIndexChange: (Int) -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.SpinnerItemImpl(
+            entry = entry,
+            entryCount = entryCount,
+            isSelected = isSelected,
+            index = index,
+            spinnerColors = if (dialogMode) {
+                top.yukonga.miuix.kmp.basic.SpinnerDefaults.dialogSpinnerColors()
+            } else {
+                top.yukonga.miuix.kmp.basic.SpinnerDefaults.spinnerColors()
+            },
+            dialogMode = dialogMode,
+            onSelectedIndexChange = onSelectedIndexChange
+        )
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectedIndexChange(index) }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            entry.icon?.invoke(Modifier.padding(end = 12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                entry.title?.let {
+                    Text(
+                        text = it,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                entry.summary?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun YhWindowListPopup(
     show: Boolean,
     modifier: Modifier = Modifier,
@@ -1606,6 +1846,62 @@ fun YhListPopupColumn(
     } else {
         Column(content = { content() })
     }
+}
+
+@Composable
+fun YhListPopupContent(
+    popupContentSize: androidx.compose.ui.unit.IntSize,
+    onPopupContentSizeChange: (androidx.compose.ui.unit.IntSize) -> Unit,
+    fractionProgress: () -> Float,
+    alphaProgress: () -> Float,
+    popupLayoutPosition: top.yukonga.miuix.kmp.basic.PopupLayoutPosition,
+    localTransformOrigin: androidx.compose.ui.graphics.TransformOrigin,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    if (isMiuixUi) {
+        top.yukonga.miuix.kmp.basic.ListPopupContent(
+            popupContentSize = popupContentSize,
+            onPopupContentSizeChange = onPopupContentSizeChange,
+            fractionProgress = fractionProgress,
+            alphaProgress = alphaProgress,
+            popupLayoutPosition = popupLayoutPosition,
+            localTransformOrigin = localTransformOrigin,
+            modifier = modifier,
+            content = content
+        )
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            content = content
+        )
+    }
+}
+
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
+@Composable
+fun YhRememberScrollBarAdapter(
+    scrollState: androidx.compose.foundation.ScrollState
+): top.yukonga.miuix.kmp.basic.ScrollBarAdapter {
+    return top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter(scrollState)
+}
+
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
+@Composable
+fun YhRememberScrollBarAdapter(
+    scrollState: androidx.compose.foundation.lazy.LazyListState
+): top.yukonga.miuix.kmp.basic.ScrollBarAdapter {
+    return top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter(scrollState)
+}
+
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
+@Composable
+fun YhRememberScrollBarAdapter(
+    scrollState: androidx.compose.foundation.lazy.grid.LazyGridState
+): top.yukonga.miuix.kmp.basic.ScrollBarAdapter {
+    return top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter(scrollState)
 }
 
 @Composable

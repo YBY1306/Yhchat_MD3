@@ -18,16 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,9 +35,16 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.data.model.GroupMemberInfo
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupMemberMentionPicker(
     groupId: String,
@@ -87,11 +85,11 @@ fun GroupMemberMentionPicker(
         )
     }
 
-    Surface(
+    YhSurface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -101,18 +99,18 @@ fun GroupMemberMentionPicker(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onDismiss) {
+                YhIconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "关闭")
                 }
                 Text("选择群成员", style = MaterialTheme.typography.titleSmall)
-                Button(onClick = onDismiss) {
+                YhButton(onClick = onDismiss) {
                     Text("确定")
                 }
             }
 
-            HorizontalDivider()
+            YhHorizontalDivider()
 
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
                 leadingIcon = {
@@ -129,7 +127,7 @@ fun GroupMemberMentionPicker(
                 singleLine = true
             )
 
-            HorizontalDivider()
+            YhHorizontalDivider()
 
             when {
                 isLoading -> {
@@ -201,7 +199,7 @@ private fun GroupMemberMentionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Checkbox(
+        YhCheckbox(
             checked = isSelected,
             onCheckedChange = { checked ->
                 if (checked && !isSelected) {
@@ -229,7 +227,7 @@ private fun GroupMemberMentionRow(
 
             if (badgeText != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Surface(
+                YhSurface(
                     shape = RoundedCornerShape(4.dp),
                     color = badgeColor
                 ) {

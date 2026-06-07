@@ -28,16 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +45,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.ImageViewer
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
@@ -97,7 +96,6 @@ class StickerPackDetailActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StickerPackDetailScreen(
     stickerPackId: String,
@@ -111,12 +109,13 @@ fun StickerPackDetailScreen(
         viewModel.loadStickerPackDetail(stickerPackId)
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("表情包详情") },
+            YhTopBar(
+                title = "表情包详情",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回"
@@ -125,7 +124,7 @@ fun StickerPackDetailScreen(
                 },
                 actions = {
                     if (uiState.stickerPack != null) {
-                        IconButton(
+                        YhIconButton(
                             onClick = { viewModel.addStickerPackToFavorites(stickerPackId) }
                         ) {
                             Icon(
@@ -145,7 +144,7 @@ fun StickerPackDetailScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -204,6 +203,7 @@ fun StickerPackDetailContent(
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
+            .yhTopBarNestedScroll()
             .padding(horizontal = 16.dp),
         columns = GridCells.Fixed(4),
         contentPadding = PaddingValues(bottom = 16.dp),
@@ -211,9 +211,9 @@ fun StickerPackDetailContent(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                cornerRadius = 16.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -348,14 +348,14 @@ fun StickerItemView(
 ) {
     val imageUrl = sticker.toStickerImageUrl()
     
-    Card(
+    YhCard(
         modifier = Modifier
             .aspectRatio(0.8f) // Adjust aspect ratio to accommodate text
             .clickable {
                 // 点击打开图片预览器
                 onImageClick()
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        cornerRadius = 12.dp
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

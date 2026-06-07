@@ -23,15 +23,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,8 +52,12 @@ import com.yhchat.canary.data.model.StickerItem
 import com.yhchat.canary.data.model.StickerPack
 import com.yhchat.canary.data.repository.ExpressionRepository
 import com.yhchat.canary.data.repository.StickerRepository
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTabRow
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.sticker.StickerPackManagerActivity
-import com.yhchat.canary.ui.components.YhScrollableTabRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,7 +68,7 @@ import kotlinx.coroutines.withContext
 /**
  * 表情选择器
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpressionPicker(
     onExpressionClick: (Expression) -> Unit,  // 点击表情后的回调（传递完整的Expression对象）
@@ -121,12 +119,12 @@ fun ExpressionPicker(
         }
     }
     
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .height(300.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Tab 切换
@@ -134,7 +132,7 @@ fun ExpressionPicker(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
+                YhIconButton(
                     onClick = { StickerPackManagerActivity.start(context) }
                 ) {
                     Icon(
@@ -143,51 +141,12 @@ fun ExpressionPicker(
                     )
                 }
 
-                YhScrollableTabRow(
+                YhTabRow(
+                    tabs = listOf("默认表情", "已收藏表情") + uiState.stickerPacks.map { it.name },
                     selectedTabIndex = selectedTab,
-                    modifier = Modifier.weight(1f),
-                    edgePadding = 8.dp,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("默认表情") }
-                    )
-
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("已收藏表情") }
-                    )
-
-                    uiState.stickerPacks.forEachIndexed { index, stickerPack ->
-                        val tabIndex = index + 2
-                        Tab(
-                            selected = selectedTab == tabIndex,
-                            onClick = { selectedTab = tabIndex }
-                        ) {
-                            val firstSticker = stickerPack.stickerItems.firstOrNull()
-                            if (firstSticker != null) {
-                                AsyncImage(
-                                    model = ImageUtils.createStickerImageRequest(
-                                        context = context,
-                                        url = firstSticker.getFullUrl()
-                                    ),
-                                    contentDescription = stickerPack.name,
-                                    modifier = Modifier
-                                        .padding(vertical = 8.dp)
-                                        .size(24.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Text("📦")
-                            }
-                        }
-                    }
-                }
+                    onTabSelected = { selectedTab = it },
+                    modifier = Modifier.weight(1f)
+                )
             }
             
             // 内容区域
@@ -197,7 +156,7 @@ fun ExpressionPicker(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 }
                 
@@ -214,7 +173,7 @@ fun ExpressionPicker(
                                 text = uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error
                             )
-                            TextButton(onClick = { 
+                            YhTextButton(onClick = { 
                                 viewModel.loadExpressions()
                                 viewModel.loadStickerPacks()
                                 viewModel.loadDefaultExpressions(context)

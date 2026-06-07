@@ -25,19 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,8 +39,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhClickableSurface
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSegmentedControl
+import com.yhchat.canary.ui.adaptive.YhSwitch
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
@@ -92,7 +91,6 @@ class CreateActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateScreen(
     initialTab: Int = CreateActivity.TAB_GROUP,
@@ -108,12 +106,13 @@ fun CreateScreen(
     var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("创建群聊", "创建机器人")
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("创建", fontWeight = FontWeight.Bold) },
+            YhTopBar(
+                title = "创建",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
@@ -126,15 +125,14 @@ fun CreateScreen(
                 .padding(padding)
         ) {
             // 选项卡
-            YhSecondaryTabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
+            YhSegmentedControl(
+                labels = tabs,
+                selectedIndex = selectedTab,
+                onSelectedIndexChange = { selectedTab = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
             
             // 内容区域
             when (selectedTab) {
@@ -188,15 +186,17 @@ fun CreateGroupContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .yhTopBarNestedScroll()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 群聊头像
-        Card(
+        YhClickableSurface(
             modifier = Modifier
                 .size(100.dp)
                 .align(Alignment.CenterHorizontally),
+            shape = MaterialTheme.shapes.large,
             onClick = { imagePickerLauncher.launch("image/*") }
         ) {
             Box(
@@ -227,7 +227,7 @@ fun CreateGroupContent(
         )
         
         // 群聊名称
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = name,
             onValueChange = { name = it },
             label = { Text("群聊名称 *") },
@@ -236,7 +236,7 @@ fun CreateGroupContent(
         )
         
         // 群聊简介
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = introduction,
             onValueChange = { introduction = it },
             label = { Text("群聊简介") },
@@ -246,7 +246,7 @@ fun CreateGroupContent(
         )
         
         // 分类名称
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = category,
             onValueChange = { category = it },
             label = { Text("分类名称") },
@@ -255,7 +255,7 @@ fun CreateGroupContent(
         )
         
         // 分类ID
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = if (categoryId == 0) "" else categoryId.toString(),
             onValueChange = { categoryId = it.toIntOrNull() ?: 0 },
             label = { Text("分类ID") },
@@ -266,11 +266,11 @@ fun CreateGroupContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         // 创建按钮
-        Button(
+        YhButton(
             onClick = {
                 if (name.isBlank()) {
                     Toast.makeText(context, "请输入群聊名称", Toast.LENGTH_SHORT).show()
-                    return@Button
+                    return@YhButton
                 }
                 viewModel.createGroup(
                     name = name,
@@ -285,10 +285,7 @@ fun CreateGroupContent(
             enabled = !uiState.isLoading
         ) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else {
                 Text("创建群聊")
             }
@@ -331,15 +328,17 @@ fun CreateBotContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .yhTopBarNestedScroll()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 机器人头像
-        Card(
+        YhClickableSurface(
             modifier = Modifier
                 .size(100.dp)
                 .align(Alignment.CenterHorizontally),
+            shape = MaterialTheme.shapes.large,
             onClick = { imagePickerLauncher.launch("image/*") }
         ) {
             Box(
@@ -370,7 +369,7 @@ fun CreateBotContent(
         )
         
         // 机器人名称
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = name,
             onValueChange = { name = it },
             label = { Text("机器人名称 *") },
@@ -379,7 +378,7 @@ fun CreateBotContent(
         )
         
         // 机器人简介
-        OutlinedTextField(
+        YhOutlinedTextField(
             value = introduction,
             onValueChange = { introduction = it },
             label = { Text("机器人简介") },
@@ -395,7 +394,7 @@ fun CreateBotContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("私有机器人")
-            Switch(
+            YhSwitch(
                 checked = isPrivate,
                 onCheckedChange = { isPrivate = it }
             )
@@ -410,11 +409,11 @@ fun CreateBotContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         // 创建按钮
-        Button(
+        YhButton(
             onClick = {
                 if (name.isBlank()) {
                     Toast.makeText(context, "请输入机器人名称", Toast.LENGTH_SHORT).show()
-                    return@Button
+                    return@YhButton
                 }
                 viewModel.createBot(
                     name = name,
@@ -428,10 +427,7 @@ fun CreateBotContent(
             enabled = !uiState.isLoading
         ) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else {
                 Text("创建机器人")
             }

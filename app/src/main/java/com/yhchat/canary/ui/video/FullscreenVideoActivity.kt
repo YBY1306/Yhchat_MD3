@@ -36,14 +36,7 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.VolumeDown
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +54,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -295,9 +293,8 @@ private fun FullscreenVideoPlayer(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.White
+                YhCircularProgressIndicator(
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
@@ -320,7 +317,7 @@ private fun FullscreenVideoPlayer(
                     )
             ) {
                 // 关闭按钮
-                IconButton(
+                YhIconButton(
                     onClick = { 
                         onClose(uiState.currentPositionMs, uiState.isPlaying)
                     },
@@ -379,7 +376,7 @@ private fun FullscreenVideoPlayer(
                 ) {
                     val durationMs = uiState.durationMs
                     // Seek slider
-                    Slider(
+                    YhSlider(
                         value = if (durationMs > 0L) {
                             (uiState.currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                         } else {
@@ -390,12 +387,7 @@ private fun FullscreenVideoPlayer(
                             videoView?.seekTo(newPosition)
                             viewModel.onSeek(newPosition.toLong())
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        )
+                        modifier = Modifier.fillMaxWidth()
                     )
                     
                     // Time display
@@ -427,7 +419,7 @@ private fun FullscreenVideoPlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Rewind 10s button
-                    IconButton(
+                    YhIconButton(
                         onClick = { seekBackward(10) },
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -444,7 +436,7 @@ private fun FullscreenVideoPlayer(
                     }
                     
                     // Play/Pause button (large)
-                    FilledIconButton(
+                    YhIconButton(
                         onClick = {
                             if (uiState.isPlaying) {
                                 pauseVideo()
@@ -455,10 +447,9 @@ private fun FullscreenVideoPlayer(
                         modifier = Modifier.size(64.dp)
                     ) {
                         if (uiState.isBuffering) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(32.dp),
-                                strokeWidth = 3.dp,
-                                color = Color.White
+                                strokeWidth = 3.dp
                             )
                         } else {
                             Icon(
@@ -470,7 +461,7 @@ private fun FullscreenVideoPlayer(
                     }
                     
                     // Forward 10s button
-                    IconButton(
+                    YhIconButton(
                         onClick = { seekForward(10) },
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -487,7 +478,7 @@ private fun FullscreenVideoPlayer(
                     }
                     
                     // Volume button
-                    IconButton(
+                    YhIconButton(
                         onClick = { 
                             val nextVisible = !uiState.showVolumeSlider
                             viewModel.setVolumeSliderVisible(nextVisible)
@@ -520,7 +511,7 @@ private fun FullscreenVideoPlayer(
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
-                        Slider(
+                        YhSlider(
                             value = uiState.volume,
                             onValueChange = { newVolume ->
                                 val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -528,12 +519,7 @@ private fun FullscreenVideoPlayer(
                                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volumeLevel, 0)
                                 viewModel.onVolumeChanged(newVolume)
                             },
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                            )
+                            modifier = Modifier.weight(1f)
                         )
                         Icon(
                             imageVector = Icons.Default.VolumeUp,

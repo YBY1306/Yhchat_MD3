@@ -36,15 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +63,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.ChatMessage
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCheckbox
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
@@ -258,7 +259,7 @@ fun MessageItem(
 
             val bubbleColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
 
-            Surface(
+            YhSurface(
                 modifier = Modifier
                     .wrapContentWidth()
                     .clip(
@@ -282,7 +283,7 @@ fun MessageItem(
                         }
                     },
                 color = bubbleColor,
-                tonalElevation = if (isMyMessage) 0.dp else 2.dp
+                shadowElevation = if (isMyMessage) 0.dp else 2.dp
             ) {
                 if (isCollapsed && onToggleCollapse != null) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -320,7 +321,7 @@ fun MessageItem(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        OutlinedButton(
+                        YhOutlinedButton(
                             onClick = onToggleCollapse,
                             modifier = Modifier.align(Alignment.End)
                         ) {
@@ -527,19 +528,20 @@ fun MessageItem(
     }
 
     if (showFreeCopyDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showFreeCopyDialog = false },
             title = { Text("自由复制") },
             text = {
-                androidx.compose.material3.TextField(
+                YhOutlinedTextField(
                     value = freeCopyText,
                     onValueChange = { freeCopyText = it },
                     modifier = Modifier.fillMaxWidth(),
+                    label = { Text("内容") },
                     singleLine = false
                 )
             },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         val clip = android.content.ClipData.newPlainText("message", freeCopyText)
                         clipboardManager.setPrimaryClip(clip)
@@ -549,7 +551,7 @@ fun MessageItem(
                 ) { Text("复制") }
             },
             dismissButton = {
-                TextButton(onClick = { showFreeCopyDialog = false }) { Text("取消") }
+                YhTextButton(onClick = { showFreeCopyDialog = false }) { Text("取消") }
             }
         )
     }
@@ -564,12 +566,12 @@ fun RecallMessageItem(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Surface(
+        YhSurface(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .widthIn(max = 280.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            tonalElevation = 1.dp
+            shadowElevation = 1.dp
         ) {
             Text(
                     text = "${message.sender.name} 在 ${formatRecallTime(message.msgDeleteTime!!)} 撤回了一条消息",
@@ -591,12 +593,12 @@ fun TipMessageItem(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Surface(
+        YhSurface(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .widthIn(max = 280.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            tonalElevation = 1.dp
+            shadowElevation = 1.dp
         ) {
             Text(
                     text = message.content.text ?: "系统提示",
@@ -661,7 +663,7 @@ fun SenderNameAndTags(
             )
 
             if (message.sender.chatType == 3) {
-                Surface(
+                YhSurface(
                     shape = RoundedCornerShape(4.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
@@ -676,7 +678,7 @@ fun SenderNameAndTags(
 
             when (resolvedMemberPermission) {
                 100 -> if (showOwnerBadge) {
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(4.dp),
                         color = Color(0xFFFF9800)
                     ) {
@@ -689,7 +691,7 @@ fun SenderNameAndTags(
                     }
                 }
                 2 -> if (showAdminBadge) {
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(4.dp),
                         color = Color(0xFF2196F3)
                     ) {
@@ -705,7 +707,7 @@ fun SenderNameAndTags(
 
             if (showMemberTags && !shouldHideTagsForPrivateChat) {
                 tags.take(1).forEach { tag ->
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(4.dp),
                         color = parseTagColor(tag.color)
                     ) {
@@ -719,7 +721,7 @@ fun SenderNameAndTags(
                 }
 
                 if (hasMultipleTags) {
-                    IconButton(
+                    YhIconButton(
                         onClick = onToggleExpand,
                         modifier = Modifier.size(20.dp)
                     ) {
@@ -745,7 +747,7 @@ fun SenderNameAndTags(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 tags.drop(1).forEach { tag ->
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(4.dp),
                         color = parseTagColor(tag.color)
                     ) {
@@ -830,7 +832,7 @@ fun AnimatedMessageItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isMultiSelectMode) {
-                Checkbox(
+                YhCheckbox(
                     checked = isSelected,
                     onCheckedChange = { onSelectionToggle?.invoke(message.msgId) },
                     modifier = Modifier
@@ -890,7 +892,7 @@ fun AnimatedMessageItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isMultiSelectMode) {
-                Checkbox(
+                YhCheckbox(
                     checked = isSelected,
                     onCheckedChange = { onSelectionToggle?.invoke(message.msgId) },
                     modifier = Modifier

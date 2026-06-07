@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +34,15 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BotLlmParamValue
 import com.yhchat.canary.proto.bot.board
 import com.yhchat.canary.proto.group.Bot_data
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhDropdownSelector
+import com.yhchat.canary.ui.adaptive.YhFilterChip
+import com.yhchat.canary.ui.adaptive.YhIcon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhText
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
@@ -45,14 +54,11 @@ fun BotBoardContent(
     modifier: Modifier = Modifier
 ) {
     val safeBoardContent = remember(boardData.content) { boardData.content.ifBlank { "[绌哄唴瀹筣" } }
-    Card(
+    YhCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -62,7 +68,7 @@ fun BotBoardContent(
             when (boardData.contentType) {
                 1 -> {
                     SelectionContainer {
-                        Text(
+                        YhText(
                             text = safeBoardContent,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -94,7 +100,7 @@ fun BotBoardContent(
                 }
                 else -> {
                     SelectionContainer {
-                        Text(
+                        YhText(
                             text = safeBoardContent,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -116,10 +122,10 @@ fun BotLlmParamsDialog(
     onSelectChange: (paramId: String, value: String) -> Unit
 ) {
     val scrollState = rememberScrollState()
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "${botName.ifBlank { "Bot" }} Params")
+            YhText(text = "${botName.ifBlank { "Bot" }} Params")
         },
         text = {
             Column(
@@ -132,47 +138,25 @@ fun BotLlmParamsDialog(
                 params.forEach { item ->
                     val title = item.label.ifBlank { item.name.ifBlank { item.id } }
                     if (item.type.equals("select", ignoreCase = true)) {
-                        var expanded by remember(item.id) { mutableStateOf(false) }
                         val options = remember(item.options) {
                             item.options.split("#").map { it.trim() }.filter { it.isNotBlank() }
                         }
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = !expanded }
-                        ) {
-                            OutlinedTextField(
-                                value = item.selectValue.orEmpty(),
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(title) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(
-                                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                        enabled = true
-                                    )
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                options.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(option) },
-                                        onClick = {
-                                            onSelectChange(item.id, option)
-                                            expanded = false
-                                        }
-                                    )
+                        YhDropdownSelector(
+                            items = options,
+                            selectedIndex = options.indexOf(item.selectValue.orEmpty()),
+                            onSelectedIndexChange = { index ->
+                                options.getOrNull(index)?.let { option ->
+                                    onSelectChange(item.id, option)
                                 }
-                            }
-                        }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = title
+                        )
                     } else {
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = item.value.orEmpty(),
                             onValueChange = { onInputChange(item.id, it) },
-                            label = { Text(title) },
+                            label = { YhText(title) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
@@ -181,8 +165,8 @@ fun BotLlmParamsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("瀹屾垚")
+            YhTextButton(onClick = onDismiss) {
+                YhText("瀹屾垚")
             }
         }
     )
@@ -247,7 +231,7 @@ fun GroupBotBoardsSection(
             ) { _, bot ->
                 val isSelected = selectedBotId == bot.botId
 
-                FilterChip(
+                YhFilterChip(
                     selected = isSelected,
                     onClick = {
                         selectedBotId = if (isSelected) null else bot.botId
@@ -269,7 +253,7 @@ fun GroupBotBoardsSection(
                                 contentScale = ContentScale.Crop
                             )
 
-                            Text(
+                            YhText(
                                 text = bot.name,
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
@@ -279,7 +263,7 @@ fun GroupBotBoardsSection(
                     },
                     leadingIcon = if (isSelected) {
                         {
-                            Icon(
+                            YhIcon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "宸查€変腑",
                                 modifier = Modifier.size(16.dp)
@@ -293,18 +277,18 @@ fun GroupBotBoardsSection(
                 items = botsWithLlmParams,
                 key = { bot -> "group_bot_llm_params_${bot.botId}_${bot.name}" }
             ) { bot ->
-                AssistChip(
+                YhFilterChip(
+                    selected = false,
                     onClick = { onOpenBotLlmParams(bot.botId) },
-                    label = {
+                ) {
                         val botName = botLlmRefParams[bot.botId].orEmpty().ifBlank { bot.name }
-                        Text(
+                        YhText(
                             text = "${botName}的大模型参数",
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    }
-                )
+                }
             }
         }
 
@@ -327,7 +311,7 @@ fun GroupBotBoardsSection(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
+                        YhText(
                             text = "${boardData.botName.ifBlank{ "Bot" }}的看板",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
@@ -335,27 +319,27 @@ fun GroupBotBoardsSection(
                             modifier = Modifier.weight(1f)
                         )
 
-                        TextButton(
+                        YhTextButton(
                             onClick = {
                                 val content = boardData.content.ifBlank { "" }
                                 clipboardManager.setText(AnnotatedString(content))
                                 Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                             }
                         ) {
-                            Icon(
+                            YhIcon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "澶嶅埗鍘熸枃",
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("复制原文")
+                            YhText("复制原文")
                         }
 
-                        IconButton(
+                        YhIconButton(
                             onClick = { selectedBotId = null },
                             modifier = Modifier.size(24.dp)
                         ) {
-                            Icon(
+                            YhIcon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
                                 contentDescription = "鏀惰捣",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant

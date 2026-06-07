@@ -13,27 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,12 +41,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.yhchat.canary.ui.components.YhSecondaryTabRow
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhSegmentedControl
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
 
 /**
  * 登录界面
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String, String) -> Unit, // token, userId
@@ -141,51 +135,28 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 登录方式选择
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                cornerRadius = 16.dp,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-            YhSecondaryTabRow(
-                selectedTabIndex = selectedTab,
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = Color.Transparent
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { 
-                        Text(
-                            "手机登录",
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
-                        ) 
-                    }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { 
-                        Text(
-                            "邮箱登录",
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
-                        ) 
-                    }
+                YhSegmentedControl(
+                    labels = listOf("手机登录", "邮箱登录"),
+                    selectedIndex = selectedTab,
+                    onSelectedIndexChange = { selectedTab = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
                 )
             }
-        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         // 登录表单
-        Card(
+        YhCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            cornerRadius = 20.dp,
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -226,7 +197,7 @@ fun LoginScreen(
                                 )
                                 
                                 // 刷新按钮
-                                OutlinedButton(
+                                YhOutlinedButton(
                                     onClick = { viewModel.getCaptcha() },
                                     enabled = !uiState.isLoading,
                                     modifier = Modifier.height(36.dp)
@@ -237,7 +208,7 @@ fun LoginScreen(
                         }
                         
                         // 手机号输入
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = mobile,
                             onValueChange = { mobile = it },
                             label = { Text("手机号") },
@@ -247,7 +218,7 @@ fun LoginScreen(
                         )
 
                         // 图片验证码输入
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = imageCaptcha,
                             onValueChange = { imageCaptcha = it },
                             label = { Text("图片验证码") },
@@ -262,7 +233,7 @@ fun LoginScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedTextField(
+                            YhOutlinedTextField(
                                 value = smsCaptcha,
                                 onValueChange = { smsCaptcha = it },
                                 label = { Text("短信验证码") },
@@ -271,7 +242,7 @@ fun LoginScreen(
                                 singleLine = true
                             )
 
-                            Button(
+                            YhButton(
                                 onClick = { 
                                     viewModel.getSmsCaptcha(mobile, imageCaptcha)
                                 },
@@ -295,7 +266,7 @@ fun LoginScreen(
                     }
                     1 -> {
                         // 邮箱登录
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = email,
                             onValueChange = { email = it },
                             label = { Text("邮箱") },
@@ -304,14 +275,14 @@ fun LoginScreen(
                             singleLine = true
                         )
                         
-                        OutlinedTextField(
+                        YhOutlinedTextField(
                             value = password,
                             onValueChange = { password = it },
                             label = { Text("密码") },
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             trailingIcon = {
-                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                YhIconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                         contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
@@ -336,7 +307,7 @@ fun LoginScreen(
                 }
                 
                 // 登录按钮
-                Button(
+                YhButton(
                     onClick = {
                         when (selectedTab) {
                             0 -> viewModel.loginWithCaptcha(mobile, smsCaptcha)
@@ -350,16 +321,12 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
+                        YhCircularProgressIndicator(
+                            modifier = Modifier.size(20.dp)
                         )
                     } else {
                         Text(
@@ -375,13 +342,12 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             // Token登录按钮
-            OutlinedButton(
+            YhOutlinedButton(
                 onClick = { showTokenDialog = true },
                 enabled = !uiState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .height(48.dp)
             ) {
                 Text(
                     text = "使用Token登录",
@@ -436,7 +402,7 @@ private fun TokenLoginDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Token登录") },
         text = {
@@ -447,7 +413,7 @@ private fun TokenLoginDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = tokenInput,
                     onValueChange = onTokenChange,
                     label = { Text("用户Token") },
@@ -459,7 +425,7 @@ private fun TokenLoginDialog(
             }
         },
         confirmButton = {
-            Button(
+            YhButton(
                 onClick = onConfirm,
                 enabled = tokenInput.isNotBlank()
             ) {
@@ -467,7 +433,7 @@ private fun TokenLoginDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

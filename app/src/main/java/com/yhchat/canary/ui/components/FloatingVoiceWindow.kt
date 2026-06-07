@@ -44,10 +44,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -77,12 +74,15 @@ import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhFilterChip
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhSegmentedControl
 import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -419,13 +419,13 @@ fun FloatingVoiceWindow(
                 .width(windowWidth)
                 .height(windowHeight)
         ) {
-            Surface(
+            YhSurface(
                 modifier = Modifier
                     .fillMaxSize()
                     .shadow(8.dp, RoundedCornerShape(12.dp)),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp
+                shadowElevation = 2.dp
             ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 标题栏（可拖动）
@@ -1321,7 +1321,7 @@ fun TtsEngineSelector(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // 添加"系统默认"选项
-                    Surface(
+                    YhSurface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { 
@@ -1367,7 +1367,7 @@ fun TtsEngineSelector(
                     
                     if (availableEngines.isNotEmpty()) {
                         availableEngines.forEach { engine ->
-                            Surface(
+                            YhSurface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onEngineChange(engine.packageName) },

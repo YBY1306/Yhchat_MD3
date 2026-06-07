@@ -32,15 +32,7 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +53,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSlider
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -222,7 +219,7 @@ internal fun A2UiAudioPlayer(
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Slider(
+            YhSlider(
                 value = if (duration > 0) (animatedProgress / duration).coerceIn(0f, 1f) else 0f,
                 onValueChange = { progress ->
                     if (duration > 0) {
@@ -268,7 +265,7 @@ internal fun A2UiAudioPlayer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Play/Pause button
-            FilledIconButton(
+            YhIconButton(
                 onClick = {
                     if (url.isNotBlank()) {
                         if (isPlaying) {
@@ -297,7 +294,7 @@ internal fun A2UiAudioPlayer(
                 enabled = !isLoading && url.isNotBlank()
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
                     )
@@ -312,7 +309,7 @@ internal fun A2UiAudioPlayer(
             Spacer(modifier = Modifier.width(16.dp))
             
             // Stop button
-            OutlinedIconButton(
+            YhIconButton(
                 onClick = {
                     // 停止播放并重置进度
                     com.yhchat.canary.service.AudioPlayerService.stopPlayAudio(context)
@@ -655,9 +652,8 @@ internal fun A2UiVideoPlayer(
                     .height(height),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.White
+                YhCircularProgressIndicator(
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
@@ -735,7 +731,7 @@ internal fun A2UiVideoPlayer(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Seek slider
-                    Slider(
+                    YhSlider(
                         value = if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f,
                         onValueChange = { fraction ->
                             val newPosition = (fraction * duration).toInt()
@@ -747,12 +743,7 @@ internal fun A2UiVideoPlayer(
                             // 同步音频服务进度
                             com.yhchat.canary.service.AudioPlayerService.seekTo(context, currentPosition.toLong())
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        )
+                        modifier = Modifier.fillMaxWidth()
                     )
                     
                     // Time display
@@ -782,7 +773,7 @@ internal fun A2UiVideoPlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Rewind 10s button
-                    IconButton(
+                    YhIconButton(
                         onClick = { seekBackward(10) },
                         enabled = !isLoading,
                         modifier = Modifier.size(44.dp)
@@ -806,7 +797,7 @@ internal fun A2UiVideoPlayer(
                     }
                     
                     // Stop button
-                    IconButton(
+                    YhIconButton(
                         onClick = { stopVideo() },
                         enabled = !isLoading,
                         modifier = Modifier.size(44.dp)
@@ -820,7 +811,7 @@ internal fun A2UiVideoPlayer(
                     }
                     
                     // Play/Pause button (large)
-                    FilledIconButton(
+                    YhIconButton(
                         onClick = {
                             if (isPlaying) {
                                 pauseVideo()
@@ -832,10 +823,9 @@ internal fun A2UiVideoPlayer(
                         modifier = Modifier.size(56.dp)
                     ) {
                         if (isBuffering) {
-                            CircularProgressIndicator(
+                            YhCircularProgressIndicator(
                                 modifier = Modifier.size(28.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.White
+                                strokeWidth = 2.dp
                             )
                         } else {
                             Icon(
@@ -847,7 +837,7 @@ internal fun A2UiVideoPlayer(
                     }
                     
                     // Forward 10s button
-                    IconButton(
+                    YhIconButton(
                         onClick = { seekForward(10) },
                         enabled = !isLoading,
                         modifier = Modifier.size(44.dp)
@@ -871,7 +861,7 @@ internal fun A2UiVideoPlayer(
                     }
                     
                     // Fullscreen button
-                    IconButton(
+                    YhIconButton(
                         onClick = {
                             // 使用 ActivityResultLauncher 启动全屏播放器以获取返回结果
                             val intent = Intent(context, com.yhchat.canary.ui.video.FullscreenVideoActivity::class.java).apply {

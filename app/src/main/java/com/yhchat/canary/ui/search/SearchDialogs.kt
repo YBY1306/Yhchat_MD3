@@ -13,14 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +28,13 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.UserInfo
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.components.ImageUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,11 +50,11 @@ fun GroupInfoDialog(
     if (group == null) return
     
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp)
+            cornerRadius = 16.dp
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -120,23 +120,20 @@ fun GroupInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("取消")
                     }
                     
-                    Button(
+                    YhButton(
                         onClick = { onAdd(group) },
                         enabled = !isAdding,
                         modifier = Modifier.weight(1f)
                     ) {
                         if (isAdding) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                            YhCircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Add,
@@ -163,11 +160,11 @@ fun UserInfoDialog(
     if (user == null) return
     
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp)
+            cornerRadius = 16.dp
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -206,7 +203,7 @@ fun UserInfoDialog(
                     )
                     
                     if (user.isVip == 1) {
-                        Surface(
+                        YhSurface(
                             shape = RoundedCornerShape(6.dp),
                             color = MaterialTheme.colorScheme.tertiary
                         ) {
@@ -241,23 +238,20 @@ fun UserInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("取消")
                     }
                     
-                    Button(
+                    YhButton(
                         onClick = { onAdd(user) },
                         enabled = !isAdding,
                         modifier = Modifier.weight(1f)
                     ) {
                         if (isAdding) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                            YhCircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Add,
@@ -284,11 +278,11 @@ fun BotInfoDialog(
     if (bot == null) return
     
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp)
+            cornerRadius = 16.dp
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -326,7 +320,7 @@ fun BotInfoDialog(
                         textAlign = TextAlign.Center
                     )
                     
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(6.dp),
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
@@ -379,23 +373,20 @@ fun BotInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(
+                    YhOutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("取消")
                     }
                     
-                    Button(
+                    YhButton(
                         onClick = { onAdd(bot) },
                         enabled = !isAdding,
                         modifier = Modifier.weight(1f)
                     ) {
                         if (isAdding) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                            YhCircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Add,

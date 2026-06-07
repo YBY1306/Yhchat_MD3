@@ -15,7 +15,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -51,6 +51,11 @@ import com.yhchat.canary.ui.login.LoginViewModel
 import com.yhchat.canary.ui.profile.ProfileScreen
 import com.yhchat.canary.ui.search.SearchScreen
 import com.yhchat.canary.ui.search.SearchViewModel
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhVerticalDivider as VerticalDivider
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -88,7 +93,7 @@ class MainActivity : BaseActivity() {
                 // 设置系统导航栏颜色，让手势线自动适配应用的导航栏颜色
                 SetSystemNavigationBarColor()
                 
-                Surface(
+                YhSurface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
@@ -747,7 +752,7 @@ class MainActivity : BaseActivity() {
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                                     }
                                 }
                             }
@@ -867,7 +872,7 @@ class MainActivity : BaseActivity() {
                                             modifier = Modifier.fillMaxSize(),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                                         }
                                     }
                                 }

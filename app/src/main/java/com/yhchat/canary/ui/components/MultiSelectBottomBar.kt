@@ -14,18 +14,17 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSurface
 
 /**
  * 多选模式底部操作栏
@@ -41,13 +40,12 @@ fun MultiSelectBottomBar(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    YhSurface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-        tonalElevation = 2.dp,
         shadowElevation = 2.dp
     ) {
         Row(
@@ -58,7 +56,7 @@ fun MultiSelectBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // 关闭按钮
-            IconButton(onClick = onClose) {
+            YhIconButton(onClick = onClose) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "关闭多选",
@@ -81,11 +79,10 @@ fun MultiSelectBottomBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 转发按钮
-                FilledTonalButton(
+                YhButton(
                     onClick = onForward,
                     enabled = selectedCount > 0,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
@@ -100,11 +97,10 @@ fun MultiSelectBottomBar(
                 }
 
                 // 生成图片按钮
-                FilledTonalButton(
+                YhButton(
                     onClick = onGenerateImage,
                     enabled = selectedCount > 0,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Image,
@@ -119,15 +115,12 @@ fun MultiSelectBottomBar(
                 }
 
                 // 撤回按钮
-                FilledTonalButton(
+                YhButton(
                     onClick = onRecall,
                     enabled = selectedCount > 0,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,

@@ -11,11 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +25,9 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.BotInfo
 import com.yhchat.canary.data.model.GroupDetail
 import com.yhchat.canary.data.model.UserInfo
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.components.ImageUtils
 
 @Composable
@@ -36,12 +35,11 @@ fun GroupResultCard(
     group: GroupDetail,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -112,12 +110,11 @@ fun UserResultCard(
     user: UserInfo,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -163,7 +160,7 @@ fun UserResultCard(
                     
                     // VIP标签
                     if (user.isVip == 1) {
-                        Surface(
+                        YhSurface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.tertiary
                         ) {
@@ -200,12 +197,11 @@ fun BotResultCard(
     bot: BotInfo,
     onClick: () -> Unit
 ) {
-    Card(
+    YhCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        cornerRadius = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -250,7 +246,7 @@ fun BotResultCard(
                     )
                     
                     // 机器人标签
-                    Surface(
+                    YhSurface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {

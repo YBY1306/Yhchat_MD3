@@ -7,8 +7,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,16 +33,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -67,12 +58,20 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import kotlinx.coroutines.launch
 
 /**
  * 聊天输入栏组件
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatInputBar(
     text: String,
@@ -390,13 +389,12 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
             }
             
             // 整体输入框背景 - 圆角矩形，包含所有按钮和输入框
-            Surface(
+            YhSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(24.dp),  // 大圆角
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),  // 半透明背景
-                tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {
                 Row(
@@ -408,7 +406,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
             ) {
                 // 加号按钮
                 if (showAddButton) {
-                    IconButton(
+                    YhIconButton(
                         onClick = { 
                             showAttachMenu = !showAttachMenu
                             showExpressionPicker = false
@@ -434,8 +432,8 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                 
                 // 麦克风按钮
                 if (showMicButton) {
-                    IconButton(
-                        onClick = {
+                    YhIconButton(
+                        onClick = { 
                             isVoiceMode = !isVoiceMode
                             showAttachMenu = false
                             showExpressionPicker = false
@@ -469,10 +467,15 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 长按说话按钮
-                        Surface(
+                        YhSurface(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(36.dp)
+                                .border(
+                                    1.dp,
+                                    if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(18.dp)
+                                )
                                 .pointerInput(voiceViewModel, chatId, chatType, isProcessing, isUploading) {
                                     detectTapGestures(
                                         onPress = {
@@ -528,11 +531,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                                     )
                                 },
                             color = Color.Transparent,
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(
-                                1.dp, 
-                                if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
-                            )
+                            shape = RoundedCornerShape(18.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
@@ -568,7 +567,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                         }
                         
                         // 从存储选取按钮
-                        Button(
+                        YhOutlinedButton(
                             onClick = {
                                 audioPickerLauncher.launch(arrayOf("audio/*"))
                             },
@@ -576,15 +575,8 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(36.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            border = BorderStroke(
-                                1.dp, 
-                                if (isProcessing || isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            ),
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(18.dp),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -665,8 +657,8 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                     
                     // 指令按钮 - 群聊 或 机器人私聊
                     if (showInstructionButton && onInstructionClick != null && (groupId != null || botId != null)) {
-                        IconButton(
-                            onClick = { 
+                    YhIconButton(
+                        onClick = { 
                                 showInstructionPicker = !showInstructionPicker
                                 showAttachMenu = false
                                 showExpressionPicker = false
@@ -690,7 +682,7 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                     
                     // 表情按钮
                     if (showExpressionButton) {
-                        IconButton(
+                        YhIconButton(
                             onClick = { 
                                 showExpressionPicker = !showExpressionPicker
                                 showAttachMenu = false
@@ -909,7 +901,7 @@ private fun VoiceToTextChoiceDialog(
     onConvertToText: () -> Unit,
     onCancel: () -> Unit
 ) {
-    androidx.compose.material3.AlertDialog(
+    YhAlertDialog(
         onDismissRequest = { if (!isConverting) onCancel() },
         title = {
             Text(
@@ -925,7 +917,7 @@ private fun VoiceToTextChoiceDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CircularProgressIndicator()
+                    YhCircularProgressIndicator()
                     Text(
                         text = progress,
                         style = MaterialTheme.typography.bodyMedium,
@@ -942,10 +934,10 @@ private fun VoiceToTextChoiceDialog(
         confirmButton = {
             if (!isConverting) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onDirectSend) {
+                    YhTextButton(onClick = onDirectSend) {
                         Text("直接发送")
                     }
-                    Button(onClick = onConvertToText) {
+                    YhButton(onClick = onConvertToText) {
                         Text("转文字")
                     }
                 }
@@ -953,7 +945,7 @@ private fun VoiceToTextChoiceDialog(
         },
         dismissButton = {
             if (!isConverting) {
-                TextButton(onClick = onCancel) {
+                YhTextButton(onClick = onCancel) {
                     Text("取消")
                 }
             }
@@ -969,7 +961,7 @@ fun InstructionBar(
     instruction: com.yhchat.canary.data.model.Instruction,
     onClearInstruction: () -> Unit
 ) {
-    Surface(
+    YhSurface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1001,7 +993,7 @@ fun InstructionBar(
                 }
             }
             
-            IconButton(
+            YhIconButton(
                 onClick = onClearInstruction,
                 modifier = Modifier.size(24.dp)
             ) {

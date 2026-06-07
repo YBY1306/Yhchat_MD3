@@ -15,27 +15,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 
 /**
  * 引用消息显示栏
@@ -46,7 +45,7 @@ fun QuotedMessageBar(
     onClearQuote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    YhSurface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
@@ -89,7 +88,7 @@ fun QuotedMessageBar(
             }
             
             // 右侧：关闭按钮
-            IconButton(
+            YhIconButton(
                 onClick = onClearQuote,
                 modifier = Modifier.size(32.dp)
             ) {
@@ -123,12 +122,12 @@ fun AttachmentMenu(
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1
 ) {
-    DropdownMenu(
+    YhDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest
     ) {
         // 附件选项
-        DropdownMenuItem(
+        YhDropdownMenuItem(
             text = { Text("图片") },
             onClick = { onImageClick?.invoke() },
             leadingIcon = {
@@ -136,7 +135,7 @@ fun AttachmentMenu(
             }
         )
         
-        DropdownMenuItem(
+        YhDropdownMenuItem(
             text = { Text("拍照") },
             onClick = { onCameraClick?.invoke() },
             leadingIcon = {
@@ -144,7 +143,7 @@ fun AttachmentMenu(
             }
         )
         
-        DropdownMenuItem(
+        YhDropdownMenuItem(
             text = { Text("视频") },
             onClick = { onVideoClick?.invoke() },
             leadingIcon = {
@@ -152,7 +151,7 @@ fun AttachmentMenu(
             }
         )
         
-        DropdownMenuItem(
+        YhDropdownMenuItem(
             text = { Text("文件") },
             onClick = { onFileClick?.invoke() },
             leadingIcon = {
@@ -162,101 +161,77 @@ fun AttachmentMenu(
         
         // 消息类型选项
         if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
-            HorizontalDivider()
+            YhHorizontalDivider()
             
-            DropdownMenuItem(
-                text = { Text("文本") },
+            YhDropdownMenuItem(
+                text = { Text(if (selectedMessageType == 1) "文本  ✓" else "文本") },
                 onClick = { onTextClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 1) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
 
-            DropdownMenuItem(
-                text = { Text("HTML") },
+            YhDropdownMenuItem(
+                text = { Text(if (selectedMessageType == 8) "HTML  ✓" else "HTML") },
                 onClick = { onHtmlClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 8) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
             
-            DropdownMenuItem(
-                text = { Text("Markdown") },
+            YhDropdownMenuItem(
+                text = { Text(if (selectedMessageType == 3) "Markdown  ✓" else "Markdown") },
                 onClick = { onMarkdownClick.invoke() },
                 leadingIcon = {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
-                },
-                trailingIcon = if (selectedMessageType == 3) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
             
             if (onA2UiClick != null) {
-                DropdownMenuItem(
-                    text = { Text("A2UI") },
+                YhDropdownMenuItem(
+                    text = { Text(if (selectedMessageType == 14) "A2UI  ✓" else "A2UI") },
                     onClick = { onA2UiClick.invoke() },
                     leadingIcon = {
                         Icon(Icons.Default.Settings, contentDescription = null)
-                    },
-                    trailingIcon = if (selectedMessageType == 14) {
-                        { Icon(Icons.Default.Check, contentDescription = null) }
-                    } else null
+                    }
                 )
             }
         }
 
         // 默认消息类型选项
         if (onDefaultMessageTypeChange != null) {
-            HorizontalDivider()
+            YhHorizontalDivider()
             
-            DropdownMenuItem(
-                text = { Text("默认文本") },
+            YhDropdownMenuItem(
+                text = { Text(if (defaultMessageType == 1) "默认文本  ✓" else "默认文本") },
                 onClick = { onDefaultMessageTypeChange.invoke(1) },
                 leadingIcon = {
                     Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 1) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
 
-            DropdownMenuItem(
-                text = { Text("默认Markdown") },
+            YhDropdownMenuItem(
+                text = { Text(if (defaultMessageType == 3) "默认Markdown  ✓" else "默认Markdown") },
                 onClick = { onDefaultMessageTypeChange.invoke(3) },
                 leadingIcon = {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 3) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
 
-            DropdownMenuItem(
-                text = { Text("默认HTML") },
+            YhDropdownMenuItem(
+                text = { Text(if (defaultMessageType == 8) "默认HTML  ✓" else "默认HTML") },
                 onClick = { onDefaultMessageTypeChange.invoke(8) },
                 leadingIcon = {
                     Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 8) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
 
-            DropdownMenuItem(
-                text = { Text("默认A2UI") },
+            YhDropdownMenuItem(
+                text = { Text(if (defaultMessageType == 14) "默认A2UI  ✓" else "默认A2UI") },
                 onClick = { onDefaultMessageTypeChange.invoke(14) },
                 leadingIcon = {
                     Icon(Icons.Default.Settings, contentDescription = null)
-                },
-                trailingIcon = if (defaultMessageType == 14) {
-                    { Icon(Icons.Default.Check, contentDescription = null) }
-                } else null
+                }
             )
         }
     }

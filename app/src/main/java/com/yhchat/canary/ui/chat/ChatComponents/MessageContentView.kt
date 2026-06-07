@@ -32,12 +32,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +58,13 @@ import com.yhchat.canary.data.model.MessageContent
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.model.A2UiSpec
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.looksLikeA2UiJson
 import com.yhchat.canary.ui.chat.ChatComponents.a2ui.parser.parseA2UiSpec
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhLinearProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.components.DownloadManager
 import com.yhchat.canary.ui.components.DownloadState
@@ -248,7 +250,7 @@ fun MessageContentView(
                             } 
                         }
                         
-                        Surface(
+                        YhSurface(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .combinedClickable(
@@ -287,7 +289,7 @@ fun MessageContentView(
                                     modifier = Modifier.padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    androidx.compose.material3.Icon(
+            Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Send,
                                         contentDescription = "文件",
                                         tint = textColor,
@@ -356,13 +358,13 @@ fun MessageContentView(
                                     // 下载状态图标和取消按钮
                                     when (downloadState) {
                                         is DownloadState.Downloading -> {
-                                            IconButton(
+                                            YhIconButton(
                                                 onClick = {
                                                     DownloadManager.cancelDownload(context, fileUrl)
                                                 },
                                                 modifier = Modifier.size(32.dp)
                                             ) {
-                                                androidx.compose.material3.Icon(
+        Icon(
                                                     imageVector = Icons.Default.Cancel,
                                                     contentDescription = "取消下载",
                                                     tint = MaterialTheme.colorScheme.error,
@@ -371,7 +373,7 @@ fun MessageContentView(
                                             }
                                         }
                                         is DownloadState.Completed -> {
-                                            androidx.compose.material3.Icon(
+        Icon(
                                                 imageVector = Icons.Default.CheckCircle,
                                                 contentDescription = "下载完成",
                                                 tint = MaterialTheme.colorScheme.primary,
@@ -379,7 +381,7 @@ fun MessageContentView(
                                             )
                                         }
                                         is DownloadState.Error -> {
-                                            androidx.compose.material3.Icon(
+        Icon(
                                                 imageVector = Icons.Default.Error,
                                                 contentDescription = "下载失败",
                                                 tint = MaterialTheme.colorScheme.error,
@@ -387,7 +389,7 @@ fun MessageContentView(
                                             )
                                         }
                                         else -> {
-                                            androidx.compose.material3.Icon(
+        Icon(
                                                 imageVector = Icons.Default.Download,
                                                 contentDescription = "下载",
                                                 tint = textColor.copy(alpha = 0.7f),
@@ -400,14 +402,12 @@ fun MessageContentView(
                                 // 下载进度条
                                 val currentState = downloadState
                                 if (currentState is DownloadState.Downloading && currentState.total > 0) {
-                                    LinearProgressIndicator(
-                                        progress = { (currentState.progress.toFloat() / currentState.total.toFloat()).coerceIn(0f, 1f) },
+                                    YhLinearProgressIndicator(
+                                        progress = (currentState.progress.toFloat() / currentState.total.toFloat()).coerceIn(0f, 1f),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(horizontal = 12.dp)
-                                            .padding(bottom = 8.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                            .padding(bottom = 8.dp)
                                     )
                                 }
                             }
@@ -792,7 +792,7 @@ fun MessageContentView(
         content.quoteMsgText?.let { quoteText: String ->
             val safeQuoteText = quoteText.ifBlank { "[引用消息]" }
             Spacer(modifier = Modifier.height(4.dp))
-            Surface(
+            YhSurface(
                 modifier = Modifier
                     .widthIn(max = 280.dp)
                     .clip(RoundedCornerShape(4.dp))
@@ -840,7 +840,7 @@ fun MessageContentView(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         // 视频图标
-                                        androidx.compose.material3.Icon(
+                        Icon(
                                             imageVector = Icons.Default.PlayArrow,
                                             contentDescription = "引用视频",
                                             tint = textColor.copy(alpha = 0.7f),
@@ -966,7 +966,7 @@ private fun PostMessageView(
     }
 
     // 文章卡片
-    Surface(
+    YhSurface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -1086,7 +1086,7 @@ private fun FormMessageView(
                 )
                 if (formItems.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    androidx.compose.material3.HorizontalDivider(
+                    YhHorizontalDivider(
                         color = textColor.copy(alpha = 0.2f),
                         thickness = 0.5.dp
                     )
@@ -1184,7 +1184,7 @@ private fun FormItemView(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
@@ -1216,7 +1216,7 @@ private fun FormItemView(
                     color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Surface(
+                YhSurface(
                     modifier = Modifier.fillMaxWidth(),
                     color = textColor.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(6.dp)
@@ -1243,7 +1243,7 @@ private fun FormItemView(
                     style = MaterialTheme.typography.bodyMedium,
                     color = textColor
                 )
-                Surface(
+                YhSurface(
                     shape = RoundedCornerShape(12.dp),
                     color = if (item.value == true) accentColor else textColor.copy(alpha = 0.3f)
                 ) {
@@ -1268,7 +1268,7 @@ private fun FormItemView(
                     color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Surface(
+                YhSurface(
                     modifier = Modifier.fillMaxWidth(),
                     color = textColor.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(6.dp)
@@ -1291,7 +1291,7 @@ private fun FormItemView(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
@@ -1320,7 +1320,7 @@ private fun FormItemView(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     imageVector = if (item.value == true) Icons.Default.Check else Icons.Default.Close,
                     contentDescription = null,
                     modifier = Modifier
@@ -1547,7 +1547,7 @@ private fun TgsPreviewMessage(
     ) {
         when {
             lottieJson == null -> {
-                CircularProgressIndicator(
+                YhCircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp
                 )

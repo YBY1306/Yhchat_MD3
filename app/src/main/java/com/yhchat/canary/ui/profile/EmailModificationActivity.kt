@@ -17,25 +17,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +41,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
+import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.launch
 
@@ -91,7 +89,6 @@ class EmailModificationActivity : BaseActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmailModificationScreen(
     viewModel: EmailModificationViewModel,
@@ -128,17 +125,13 @@ fun EmailModificationScreen(
         }
     }
     
-    Scaffold(
+    YhScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "修改邮箱",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            YhTopBar(
+                title = "修改邮箱",
+                large = false,
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    YhIconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回"
@@ -152,16 +145,15 @@ fun EmailModificationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .yhTopBarNestedScroll()
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 说明文字
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                )
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -182,7 +174,7 @@ fun EmailModificationScreen(
             }
             
             // 人机验证码显示和刷新
-            Card(
+            YhCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -198,7 +190,7 @@ fun EmailModificationScreen(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium
                         )
-                        IconButton(
+                        YhIconButton(
                             onClick = {
                                 viewModel.getCaptcha { id, bitmap ->
                                     captchaId = id
@@ -229,7 +221,7 @@ fun EmailModificationScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     // 验证码输入框
-                    OutlinedTextField(
+                    YhOutlinedTextField(
                         value = captchaCode,
                         onValueChange = { captchaCode = it },
                         label = { Text("请输入验证码") },
@@ -244,7 +236,7 @@ fun EmailModificationScreen(
             }
             
             // 邮箱输入
-            OutlinedTextField(
+            YhOutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("新邮箱地址") },
@@ -267,7 +259,7 @@ fun EmailModificationScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
+                YhOutlinedTextField(
                     value = emailVerificationCode,
                     onValueChange = { emailVerificationCode = it },
                     label = { Text("邮箱验证码") },
@@ -279,7 +271,7 @@ fun EmailModificationScreen(
                     singleLine = true
                 )
                 
-                Button(
+                YhButton(
                     onClick = {
                         if (email.isNotBlank() && captchaCode.isNotBlank() && captchaId.isNotBlank()) {
                             isGettingEmailCode = true
@@ -312,7 +304,7 @@ fun EmailModificationScreen(
                     modifier = Modifier.height(56.dp)
                 ) {
                     if (isGettingEmailCode) {
-                        CircularProgressIndicator(
+                        YhCircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
@@ -327,7 +319,7 @@ fun EmailModificationScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             // 确定修改按钮
-            Button(
+            YhButton(
                 onClick = {
                     if (email.isNotBlank() && emailVerificationCode.isNotBlank()) {
                         isLoading = true
@@ -353,14 +345,12 @@ fun EmailModificationScreen(
                 enabled = !isLoading && email.isNotBlank() && emailVerificationCode.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .height(56.dp)
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        strokeWidth = 2.dp
                     )
                 } else {
                     Text(

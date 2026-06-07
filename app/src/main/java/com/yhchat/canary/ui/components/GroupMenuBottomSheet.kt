@@ -25,22 +25,10 @@ import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wallpaper
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +39,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.disk.GroupDiskActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +62,6 @@ data class MenuItemData(
 /**
  * 群聊菜单BottomSheet - 支持全屏扩展
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupMenuBottomSheet(
     groupId: String,
@@ -76,19 +69,6 @@ fun GroupMenuBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val bottomSheetState = rememberStandardBottomSheetState(
-        initialValue = SheetValue.PartiallyExpanded,
-        confirmValueChange = { true },
-        skipHiddenState = false
-    )
-    
-    // 监听 sheet 状态变化
-    LaunchedEffect(bottomSheetState.targetValue) {
-        android.util.Log.d("GroupMenuBottomSheet", "Sheet state: ${bottomSheetState.targetValue}")
-        if (bottomSheetState.targetValue == SheetValue.Hidden) {
-            onDismiss()
-        }
-    }
     var showReportDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
@@ -135,11 +115,11 @@ fun GroupMenuBottomSheet(
         )
     }
     
-    BottomSheetScaffold(
-        scaffoldState = rememberBottomSheetScaffoldState(
-            bottomSheetState = bottomSheetState
-        ),
-        sheetContent = {
+    YhBottomSheet(
+        show = true,
+        title = null,
+        onDismissRequest = onDismiss
+    ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -152,7 +132,7 @@ fun GroupMenuBottomSheet(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Surface(
+                    YhSurface(
                         modifier = Modifier.size(width = 32.dp, height = 4.dp),
                         shape = RoundedCornerShape(2.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -186,7 +166,7 @@ fun GroupMenuBottomSheet(
                     
                     // 分隔线
                     item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        YhHorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                     
                     // 危险操作菜单项
@@ -200,20 +180,6 @@ fun GroupMenuBottomSheet(
                     }
                 }
             }
-        },
-        sheetPeekHeight = 200.dp, // 初始显示高度
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // 背景遮罩
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable { 
-                    CoroutineScope(Dispatchers.Main).launch {
-                        bottomSheetState.hide()
-                    }
-                }
-        )
     }
     
     // 举报对话框
@@ -297,7 +263,7 @@ fun ExitGroupDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    YhAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -310,17 +276,16 @@ fun ExitGroupDialog(
             Text("确定要退出群聊「$groupName」吗？")
         },
         confirmButton = {
-            Button(
+            YhButton(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
             ) {
-                Text("退出", color = MaterialTheme.colorScheme.onError)
+                Text("退出")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            YhTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         }

@@ -42,8 +42,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -53,17 +51,7 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -110,6 +98,18 @@ import com.yhchat.canary.ui.components.observeScrollForNavigation
 import com.yhchat.canary.ui.components.rememberScrollAwareNavigationState
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberSharedPreferences
+import com.yhchat.canary.ui.adaptive.YhAlertDialog
+import com.yhchat.canary.ui.adaptive.YhBasicComponent
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhClickableSurface
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhPullToRefresh
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.search.ComprehensiveSearchActivity
 import com.yhchat.canary.ui.search.SearchViewModel
 import com.yhchat.canary.utils.QRCodeUtil
@@ -122,7 +122,6 @@ import java.util.Locale
 /**
  * 会话列表界面
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
     token: String,
@@ -160,9 +159,6 @@ fun ConversationScreen(
     // 刷新状态 - 使用key保持状态
     var refreshing by rememberSaveable { mutableStateOf(false) }
 
-    // 下拉刷新状态
-    val pullToRefreshState = rememberPullToRefreshState()
-    
     // 协程作用域
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -369,15 +365,12 @@ fun ConversationScreen(
                 .statusBarsPadding()
                 .padding(top = 5.dp)
         ) {
-            Card(
+            YhCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                cornerRadius = 28.dp,
+                containerColor = Color.Transparent
             ) {
                 val searchBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
                 val onSearchColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -560,7 +553,7 @@ fun ConversationScreen(
                                     )
                                 }
                                 if (searchQuery.isNotEmpty()) {
-                                    IconButton(
+                                    YhIconButton(
                                         onClick = {
                                             searchQuery = ""
                                             searchViewModel.clearSearch()
@@ -587,7 +580,7 @@ fun ConversationScreen(
 
                     // 右侧：加号按钮
                     if (!isSearchActive && layoutShowAddButton) {
-                        IconButton(onClick = { showAddMenuBottomSheet = true }) {
+                        YhIconButton(onClick = { showAddMenuBottomSheet = true }) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "添加",
@@ -600,12 +593,11 @@ fun ConversationScreen(
         }
         
         uiState.error?.let { error ->
-            Surface(
+            YhSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
-                tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -669,7 +661,7 @@ fun ConversationScreen(
                             modifier = Modifier.fillMaxWidth().padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -691,7 +683,7 @@ fun ConversationScreen(
                     items = category.list ?: emptyList(),
                     key = { index, item -> "api_${catIndex}_${item.friendId}_${item.friendType}_$index" }
                 ) { index, searchItem ->
-                    Surface(
+                    YhSurface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -747,7 +739,7 @@ fun ConversationScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Surface(
+                            YhSurface(
                                 color = when (searchItem.friendType) {
                                     1 -> MaterialTheme.colorScheme.primaryContainer
                                     2 -> MaterialTheme.colorScheme.secondaryContainer
@@ -794,7 +786,7 @@ fun ConversationScreen(
             } else {
                 // ========== 正常模式 ==========
                 // 会话列表（支持下拉刷新）
-                PullToRefreshBox(
+                YhPullToRefresh(
                 isRefreshing = refreshing,
                 onRefresh = {
                     // 只有用户主动下拉刷新时才重新加载数据
@@ -806,7 +798,6 @@ fun ConversationScreen(
                         refreshing = false
                     }
                 },
-                state = pullToRefreshState,
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (uiState.isLoading) {
@@ -814,7 +805,7 @@ fun ConversationScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        YhCircularProgressIndicator()
                     }
                 } else {
                     val allConversations by viewModel.conversations.collectAsState()
@@ -954,7 +945,7 @@ fun ConversationScreen(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    YhCircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
                             }
                         }
@@ -987,12 +978,12 @@ fun ConversationScreen(
     
     // 扫描方式选择弹窗
     if (showScanMethodDialog) {
-        AlertDialog(
+        YhAlertDialog(
             onDismissRequest = { showScanMethodDialog = false },
             title = { Text("扫一扫") },
             text = { Text("请选择扫描方式") },
             confirmButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         showScanMethodDialog = false
                         val options = ScanOptions()
@@ -1008,7 +999,7 @@ fun ConversationScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                YhTextButton(
                     onClick = {
                         showScanMethodDialog = false
                         galleryLauncher.launch("image/*")
@@ -1022,9 +1013,9 @@ fun ConversationScreen(
 
     // 添加菜单 BottomSheet
     if (showAddMenuBottomSheet) {
-        androidx.compose.material3.ModalBottomSheet(
-            onDismissRequest = { showAddMenuBottomSheet = false },
-            sheetState = androidx.compose.material3.rememberModalBottomSheetState()
+        YhBottomSheet(
+            show = showAddMenuBottomSheet,
+            onDismissRequest = { showAddMenuBottomSheet = false }
         ) {
             val activity = context as? android.app.Activity
             val sheetColor = MaterialTheme.colorScheme.surface
@@ -1091,52 +1082,52 @@ private fun AddMenuBottomSheetContent(
         
         // 添加用户/群聊/机器人
         if (showAddUser) {
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text("添加用户/群聊/机器人") },
-                supportingContent = { Text("通过ID搜索并添加好友、群聊或机器人", style = MaterialTheme.typography.bodySmall) },
-                leadingContent = {
+            YhBasicComponent(
+                title = "添加用户/群聊/机器人",
+                summary = "通过ID搜索并添加好友、群聊或机器人",
+                onClick = onAddUserGroupBot,
+                startAction = {
                     Icon(
                         imageVector = Icons.Default.PersonAdd,
                         contentDescription = "添加",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
-                },
-                modifier = Modifier.clickable(onClick = onAddUserGroupBot)
+                }
             )
         }
         
         // 创建群聊/机器人
         if (showAddGroup) {
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text("创建群聊/机器人") },
-                supportingContent = { Text("创建新的群聊或机器人", style = MaterialTheme.typography.bodySmall) },
-                leadingContent = {
+            YhBasicComponent(
+                title = "创建群聊/机器人",
+                summary = "创建新的群聊或机器人",
+                onClick = onCreateGroupBot,
+                startAction = {
                     Icon(
                         imageVector = Icons.Default.GroupAdd,
                         contentDescription = "创建",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
-                },
-                modifier = Modifier.clickable(onClick = onCreateGroupBot)
+                }
             )
         }
         
         // 扫一扫
         if (showScan) {
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text("扫一扫") },
-                supportingContent = { Text("扫描二维码添加好友或加入群聊", style = MaterialTheme.typography.bodySmall) },
-                leadingContent = {
+            YhBasicComponent(
+                title = "扫一扫",
+                summary = "扫描二维码添加好友或加入群聊",
+                onClick = onScan,
+                startAction = {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = "扫一扫",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
-                },
-                modifier = Modifier.clickable(onClick = onScan)
+                }
             )
         }
     }
@@ -1175,13 +1166,12 @@ fun ConversationItem(
         }
     }
     
-    Surface(
+    YhClickableSurface(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 3.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         shape = RoundedCornerShape(14.dp)
     ) {

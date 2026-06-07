@@ -22,16 +22,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +40,14 @@ import coil.compose.AsyncImage
 import com.yhchat.canary.crash.CrashHandler
 import com.yhchat.canary.data.model.ChatAddInfo
 import com.yhchat.canary.data.model.ChatAddType
+import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.adaptive.YhCard
+import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
+import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhOutlinedButton
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -84,7 +83,7 @@ class ChatAddActivity : ComponentActivity() {
                 // 处理 yhfx 分享链接
                 setContent {
                     YhchatCanaryTheme {
-                        Surface(
+                        YhSurface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
                         ) {
@@ -125,7 +124,7 @@ class ChatAddActivity : ComponentActivity() {
                     
                     setContent {
                         YhchatCanaryTheme {
-                            Surface(
+                            YhSurface(
                                 modifier = Modifier.fillMaxSize(),
                                 color = MaterialTheme.colorScheme.background
                             ) {
@@ -206,11 +205,10 @@ fun ChatAddScreen(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Card(
+        YhCard(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .wrapContentHeight(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .wrapContentHeight()
         ) {
             Column(
                 modifier = Modifier.padding(24.dp)
@@ -231,7 +229,7 @@ fun ChatAddScreen(
                     fontWeight = FontWeight.Bold
                 )
                     
-                    IconButton(onClick = onDismiss) {
+                    YhIconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "关闭"
@@ -249,7 +247,7 @@ fun ChatAddScreen(
                                 .height(200.dp),
                                 contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            YhCircularProgressIndicator()
                         }
                     }
                     
@@ -271,7 +269,7 @@ fun ChatAddScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             chatAddInfo?.let { info ->
-                                 OutlinedButton(onClick = { viewModel.loadChatInfo(info) }) {
+                                 YhOutlinedButton(onClick = { viewModel.loadChatInfo(info) }) {
                                     Text("重试")
                                 }
                             }
@@ -401,7 +399,7 @@ private fun ChatDetailContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            YhOutlinedButton(
                 onClick = {
                     activity?.finish()
                 },
@@ -410,13 +408,13 @@ private fun ChatDetailContent(
                 Text("取消")
             }
             
-            Button(
+            YhButton(
                 onClick = onAddClick,
                 modifier = Modifier.weight(1f),
                 enabled = !addState.isAdding && !addState.isAddSuccess
             ) {
                 if (addState.isAdding) {
-                    CircularProgressIndicator(
+                    YhCircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )

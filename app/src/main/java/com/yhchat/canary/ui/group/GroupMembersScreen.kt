@@ -22,10 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,9 +46,12 @@ import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhDropdownMenu
 import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhScaffold
+import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.components.ImageUtils
@@ -376,7 +376,7 @@ private fun MemberItem(
                     when (member.permissionLevel) {
                         100 -> {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
+                            YhSurface(
                                 shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.primary
                             ) {
@@ -390,7 +390,7 @@ private fun MemberItem(
                         }
                         2 -> {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
+                            YhSurface(
                                 shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.secondary
                             ) {
@@ -407,7 +407,7 @@ private fun MemberItem(
                     // VIP标签
                     if (member.isVip) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
+                        YhSurface(
                             shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {

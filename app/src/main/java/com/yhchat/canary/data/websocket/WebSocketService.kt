@@ -1063,6 +1063,15 @@ class WebSocketService @Inject constructor(
         avatarBitmapCache.clear()
         Log.d(tag, "🗑️ 清除头像缓存")
     }
+
+    /**
+     * 清除账号相关的运行时缓存。
+     */
+    fun clearRuntimeCaches() {
+        notificationMessageHistory.clear()
+        avatarBitmapCache.clear()
+        Log.d(tag, "🗑️ 清除WebSocket运行时缓存")
+    }
     
     /**
      * 获取缓存统计信息

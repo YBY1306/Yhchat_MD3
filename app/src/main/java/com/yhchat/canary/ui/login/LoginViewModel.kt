@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.yhchat.canary.data.api.ApiService
 import com.yhchat.canary.data.model.CaptchaData
 import com.yhchat.canary.data.model.LoginData
+import com.yhchat.canary.data.model.UserProfile
 import com.yhchat.canary.data.repository.AccountRepository
 import com.yhchat.canary.data.repository.TokenRepository
 import com.yhchat.canary.data.repository.UserRepository
@@ -134,13 +135,7 @@ class LoginViewModel @Inject constructor(
             userRepository.verificationLogin(mobile, captcha, generateDeviceId())
                 .onSuccess { loginData ->
                     println("登录成功: $loginData")
-                    // 保存Token到数据库
-                    tokenRepository?.saveToken(loginData.token)
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        loginSuccess = true,
-                        loginData = loginData
-                    )
+                    completeLogin(loginData.token)
                 }
                 .onFailure { error ->
                     println("登录失败: ${error.message}")
@@ -167,13 +162,7 @@ class LoginViewModel @Inject constructor(
             userRepository.emailLogin(email, password, generateDeviceId())
                 .onSuccess { loginData ->
                     println("邮箱登录成功: $loginData")
-                    // 保存Token到数据库
-                    tokenRepository?.saveToken(loginData.token)
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        loginSuccess = true,
-                        loginData = loginData
-                    )
+                    completeLogin(loginData.token)
                 }
                 .onFailure { error ->
                     println("邮箱登录失败: ${error.message}")
@@ -198,19 +187,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
             try {
-                // 直接保存Token并标记登录成功
-                tokenRepository?.saveToken(token)
-                
-                // 创建LoginData对象
-                val loginData = LoginData(
-                    token = token
-                )
-                
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    loginSuccess = true,
-                    loginData = loginData
-                )
+                completeLogin(token)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -218,6 +195,45 @@ class LoginViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private suspend fun completeLogin(token: String) {
+        val tokenRepository = this.tokenRepository
+        tokenRepository?.saveToken(token)
+
+        val profileRepository = this.profileRepository ?: userRepository
+        profileRepository.setTokenRepository(tokenRepository)
+
+        val profile = profileRepository.getUserProfile().getOrNull()
+        val resolvedUserId = profile?.userId?.takeIf { it.isNotBlank() }
+            ?: "user_${token.takeLast(8)}"
+
+        tokenRepository?.saveToken(token, resolvedUserId)
+        saveCurrentAccount(token, resolvedUserId, profile)
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            loginSuccess = true,
+            loginData = LoginData(token = token),
+            loggedInUserId = resolvedUserId,
+            loggedInAccountName = profile?.nickname.orEmpty(),
+            loggedInAvatarUrl = profile?.avatarUrl
+        )
+    }
+
+    private suspend fun saveCurrentAccount(
+        token: String,
+        userId: String,
+        profile: UserProfile?
+    ) {
+        val accountRepository = this.accountRepository ?: return
+        accountRepository.saveAccount(
+            userId = userId,
+            name = profile?.nickname?.takeIf { it.isNotBlank() } ?: "User $userId",
+            avatarUrl = profile?.avatarUrl,
+            displayId = userId,
+            token = token
+        )
     }
     
     /**
@@ -233,15 +249,11 @@ class LoginViewModel @Inject constructor(
                 val accountRepository = this@LoginViewModel.accountRepository
                 val profileRepository = this@LoginViewModel.profileRepository
 
+                tokenRepository?.saveToken(token, userId)
                 if (accountRepository != null && profileRepository != null) {
                     profileRepository.getUserProfile().onSuccess { profile ->
-                        accountRepository.saveAccount(
-                            userId = profile.userId,
-                            name = profile.nickname,
-                            avatarUrl = profile.avatarUrl,
-                            displayId = profile.userId,
-                            token = token
-                        )
+                        saveCurrentAccount(token, profile.userId, profile)
+                        tokenRepository?.saveToken(token, profile.userId)
                     }.onFailure {
                         accountRepository.saveAccount(
                             userId = userId,
@@ -275,5 +287,8 @@ data class LoginUiState(
     val error: String? = null,
     val loginSuccess: Boolean = false,
     val loginData: LoginData? = null,
+    val loggedInUserId: String? = null,
+    val loggedInAccountName: String = "",
+    val loggedInAvatarUrl: String? = null,
     val smsSuccess: Boolean = false
 )

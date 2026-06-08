@@ -6,13 +6,13 @@ import android.view.MenuItem
 import android.view.View
 import android.content.res.Resources
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.contextmenu.builder.item
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalTextToolbar
@@ -195,6 +195,170 @@ private const val MENU_ITEM_OPEN_IN_INTERNAL_BROWSER = 1007
 private const val MENU_ITEM_COPY_ALL = 1008
 private const val MENU_ITEM_FREE_COPY = 1009
 private const val MENU_ITEM_FAVORITE = 1010
+private const val MENU_ITEM_ADD_EXPRESSION = 1011
+private const val MENU_ITEM_BLOCK_USER = 1012
+private const val MENU_ITEM_SAVE_AUDIO = 1013
+private const val MENU_ITEM_SPEECH_TO_TEXT = 1014
+
+/**
+ * 非文本消息没有可选择文本，不能触发 SelectionContainer。
+ * 这个 launcher 复用同一套 ActionMode 菜单，让图片/文件/语音/视频等消息也能显示自定义操作容器。
+ */
+@Composable
+fun rememberMessageActionMenuLauncher(
+    enabled: Boolean = true,
+    onQuote: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+    onPlusOne: (() -> Unit)? = null,
+    onForward: (() -> Unit)? = null,
+    onMultiSelect: (() -> Unit)? = null,
+    onCopyAll: (() -> Unit)? = null,
+    onFreeCopy: (() -> Unit)? = null,
+    onFavorite: (() -> Unit)? = null,
+    onOpenInInternalBrowser: (() -> Unit)? = null,
+    onAddExpression: (() -> Unit)? = null,
+    onBlockUser: (() -> Unit)? = null,
+    onSaveAudio: (() -> Unit)? = null,
+    onSpeechToText: (() -> Unit)? = null
+): () -> Unit {
+    val view = LocalView.current
+    val callbacks = remember(
+        onQuote,
+        onEdit,
+        onDelete,
+        onPlusOne,
+        onForward,
+        onMultiSelect,
+        onCopyAll,
+        onFreeCopy,
+        onFavorite,
+        onOpenInInternalBrowser,
+        onAddExpression,
+        onBlockUser,
+        onSaveAudio,
+        onSpeechToText
+    ) {
+        MessageActionCallbacks(
+            onQuote = onQuote,
+            onEdit = onEdit,
+            onDelete = onDelete,
+            onPlusOne = onPlusOne,
+            onForward = onForward,
+            onMultiSelect = onMultiSelect,
+            onCopyAll = onCopyAll,
+            onFreeCopy = onFreeCopy,
+            onFavorite = onFavorite,
+            onOpenInInternalBrowser = onOpenInInternalBrowser,
+            onAddExpression = onAddExpression,
+            onBlockUser = onBlockUser,
+            onSaveAudio = onSaveAudio,
+            onSpeechToText = onSpeechToText
+        )
+    }
+
+    return remember(view, enabled, callbacks) {
+        {
+            if (enabled && callbacks.hasAnyAction()) {
+                showMessageActionMode(view, callbacks)
+            }
+        }
+    }
+}
+
+private data class MessageActionCallbacks(
+    val onQuote: (() -> Unit)?,
+    val onEdit: (() -> Unit)?,
+    val onDelete: (() -> Unit)?,
+    val onPlusOne: (() -> Unit)?,
+    val onForward: (() -> Unit)?,
+    val onMultiSelect: (() -> Unit)?,
+    val onCopyAll: (() -> Unit)?,
+    val onFreeCopy: (() -> Unit)?,
+    val onFavorite: (() -> Unit)?,
+    val onOpenInInternalBrowser: (() -> Unit)?,
+    val onAddExpression: (() -> Unit)?,
+    val onBlockUser: (() -> Unit)?,
+    val onSaveAudio: (() -> Unit)?,
+    val onSpeechToText: (() -> Unit)?
+) {
+    fun hasAnyAction(): Boolean {
+        return listOf(
+            onQuote,
+            onEdit,
+            onDelete,
+            onPlusOne,
+            onForward,
+            onMultiSelect,
+            onCopyAll,
+            onFreeCopy,
+            onFavorite,
+            onOpenInInternalBrowser,
+            onAddExpression,
+            onBlockUser,
+            onSaveAudio,
+            onSpeechToText
+        ).any { it != null }
+    }
+}
+
+private fun showMessageActionMode(
+    view: View,
+    callbacks: MessageActionCallbacks
+) {
+    view.startActionMode(object : ActionMode.Callback2() {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+            callbacks.onCopyAll?.let { menu.add(0, MENU_ITEM_COPY_ALL, 1, "复制全部") }
+            callbacks.onFreeCopy?.let { menu.add(0, MENU_ITEM_FREE_COPY, 2, "自由复制") }
+            callbacks.onQuote?.let { menu.add(0, MENU_ITEM_QUOTE, 3, "引用") }
+            callbacks.onPlusOne?.let { menu.add(0, MENU_ITEM_PLUS_ONE, 4, "+1") }
+            callbacks.onEdit?.let { menu.add(0, MENU_ITEM_EDIT, 5, "编辑") }
+            callbacks.onForward?.let { menu.add(0, MENU_ITEM_FORWARD, 6, "转发") }
+            callbacks.onFavorite?.let { menu.add(0, MENU_ITEM_FAVORITE, 7, "收藏") }
+            callbacks.onMultiSelect?.let { menu.add(0, MENU_ITEM_MULTI_SELECT, 8, "多选") }
+            callbacks.onOpenInInternalBrowser?.let { menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 9, "在内置浏览器中打开") }
+            callbacks.onAddExpression?.let { menu.add(0, MENU_ITEM_ADD_EXPRESSION, 10, "添加表情") }
+            callbacks.onSaveAudio?.let { menu.add(0, MENU_ITEM_SAVE_AUDIO, 11, "保存语音") }
+            callbacks.onSpeechToText?.let { menu.add(0, MENU_ITEM_SPEECH_TO_TEXT, 12, "语音转文字") }
+            callbacks.onBlockUser?.let { menu.add(0, MENU_ITEM_BLOCK_USER, 13, "屏蔽用户") }
+            callbacks.onDelete?.let { menu.add(0, MENU_ITEM_DELETE, 14, "撤回") }
+            return menu.size() > 0
+        }
+
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
+
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            val handled = when (item.itemId) {
+                MENU_ITEM_COPY_ALL -> callbacks.onCopyAll
+                MENU_ITEM_FREE_COPY -> callbacks.onFreeCopy
+                MENU_ITEM_QUOTE -> callbacks.onQuote
+                MENU_ITEM_PLUS_ONE -> callbacks.onPlusOne
+                MENU_ITEM_EDIT -> callbacks.onEdit
+                MENU_ITEM_FORWARD -> callbacks.onForward
+                MENU_ITEM_FAVORITE -> callbacks.onFavorite
+                MENU_ITEM_MULTI_SELECT -> callbacks.onMultiSelect
+                MENU_ITEM_OPEN_IN_INTERNAL_BROWSER -> callbacks.onOpenInInternalBrowser
+                MENU_ITEM_ADD_EXPRESSION -> callbacks.onAddExpression
+                MENU_ITEM_BLOCK_USER -> callbacks.onBlockUser
+                MENU_ITEM_SAVE_AUDIO -> callbacks.onSaveAudio
+                MENU_ITEM_SPEECH_TO_TEXT -> callbacks.onSpeechToText
+                MENU_ITEM_DELETE -> callbacks.onDelete
+                else -> null
+            }
+            handled?.invoke() ?: return false
+            mode.finish()
+            return true
+        }
+
+        override fun onDestroyActionMode(mode: ActionMode) = Unit
+
+        override fun onGetContentRect(mode: ActionMode, view: View, outRect: android.graphics.Rect) {
+            val centerX = (view.width / 2).coerceAtLeast(1)
+            val centerY = (view.height / 2).coerceAtLeast(1)
+            outRect.set(centerX - 1, centerY - 1, centerX + 1, centerY + 1)
+        }
+    }, ActionMode.TYPE_FLOATING)
+}
 
 /**
  * 自定义文本工具栏

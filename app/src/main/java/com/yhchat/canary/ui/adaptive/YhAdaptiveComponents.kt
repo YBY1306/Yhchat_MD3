@@ -2,11 +2,18 @@ package com.yhchat.canary.ui.adaptive
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -15,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -103,7 +111,7 @@ private val LocalYhMd3ScrollBehavior =
     compositionLocalOf<TopAppBarScrollBehavior?> { null }
 
 private val LocalYhScaffoldContainerColor =
-    compositionLocalOf { Color.Unspecified }
+    compositionLocalOf { Color.Transparent }
 
 private val YhTabIndicatorHeight = 3.dp
 private val YhMd3ButtonShape: Shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
@@ -285,33 +293,53 @@ fun YhModalNavigationDrawer(
     if (isMiuixUi) {
         Box(modifier = modifier.fillMaxSize()) {
             content()
-            if (drawerOpen) {
-                Row(
+            AnimatedVisibility(
+                visible = drawerOpen,
+                enter = fadeIn(animationSpec = tween(durationMillis = 160)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 140)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(1f)
+            ) {
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .zIndex(1f)
                         .background(Color.Black.copy(alpha = 0.28f))
                 ) {
-                    YhSurface(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(0.92f),
-                        color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .windowInsetsPadding(WindowInsets.safeDrawing)
-                        ) {
-                            drawerContent()
-                        }
-                    }
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
+                            .fillMaxSize()
                             .clickable(enabled = gesturesEnabled, onClick = onDismissRequest)
                     )
+                }
+            }
+            AnimatedVisibility(
+                visible = drawerOpen,
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                ),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.92f)
+                    .zIndex(2f)
+            ) {
+                YhSurface(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                    ) {
+                        drawerContent()
+                    }
                 }
             }
         }
@@ -531,6 +559,16 @@ fun YhTopAppBar(
 ) {
     if (isMiuixUi) {
         val scrollBehavior = LocalYhMiuixScrollBehavior.current
+        val composableTitle: @Composable () -> Unit = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                title()
+            }
+        }
         if (large) {
             top.yukonga.miuix.kmp.basic.TopAppBar(
                 title = "",
@@ -538,7 +576,8 @@ fun YhTopAppBar(
                 modifier = modifier,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                bottomContent = composableTitle
             )
         } else {
             top.yukonga.miuix.kmp.basic.SmallTopAppBar(
@@ -546,7 +585,8 @@ fun YhTopAppBar(
                 modifier = modifier,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                bottomContent = composableTitle
             )
         }
     } else if (large) {
@@ -739,7 +779,11 @@ fun YhSettingsGroup(
             if (!title.isNullOrEmpty()) {
                 top.yukonga.miuix.kmp.basic.SmallTitle(text = title)
             }
-            YhCard(modifier = Modifier.fillMaxWidth()) {
+            YhCard(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainerHigh,
+                cornerRadius = 16.dp
+            ) {
                 items.forEach { item -> item() }
             }
         }
@@ -1098,7 +1142,7 @@ fun YhIconButton(
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
-        val miuixBackgroundColor = containerColor ?: Color.Unspecified
+        val miuixBackgroundColor = containerColor ?: Color.Transparent
         val miuixContent: @Composable () -> Unit = {
             val providedContentColor = contentColor
             if (providedContentColor != null) {

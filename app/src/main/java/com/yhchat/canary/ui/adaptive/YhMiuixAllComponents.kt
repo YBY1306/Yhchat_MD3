@@ -519,10 +519,15 @@ fun YhText(
     style: TextStyle = TextStyle.Default
 ) {
     if (isMiuixUi) {
+        val resolvedColor = if (color == Color.Unspecified) {
+            top.yukonga.miuix.kmp.theme.LocalContentColor.current
+        } else {
+            color
+        }
         top.yukonga.miuix.kmp.basic.Text(
             text = text,
             modifier = modifier,
-            color = color,
+            color = resolvedColor,
             fontSize = fontSize,
             fontStyle = fontStyle,
             fontWeight = fontWeight,
@@ -583,10 +588,15 @@ fun YhText(
     style: TextStyle = TextStyle.Default
 ) {
     if (isMiuixUi) {
+        val resolvedColor = if (color == Color.Unspecified) {
+            top.yukonga.miuix.kmp.theme.LocalContentColor.current
+        } else {
+            color
+        }
         top.yukonga.miuix.kmp.basic.Text(
             text = text,
             modifier = modifier,
-            color = color,
+            color = resolvedColor,
             fontSize = fontSize,
             fontStyle = fontStyle,
             fontWeight = fontWeight,

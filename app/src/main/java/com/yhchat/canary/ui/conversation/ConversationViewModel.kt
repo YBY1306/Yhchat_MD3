@@ -64,10 +64,8 @@ class ConversationViewModel @Inject constructor(
     private fun loadCachedConversations() {
         viewModelScope.launch {
             cacheRepository.getCachedConversations().collect { cachedConversations ->
-                if (cachedConversations.isNotEmpty()) {
-                    _conversations.value = cachedConversations
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                _conversations.value = cachedConversations
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

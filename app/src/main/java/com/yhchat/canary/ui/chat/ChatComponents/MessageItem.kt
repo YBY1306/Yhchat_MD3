@@ -75,6 +75,7 @@ import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.components.rememberMessageActionMenuLauncher
 import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.FavoriteMessageStore
 import com.yhchat.canary.utils.UnifiedLinkHandler
@@ -151,6 +152,108 @@ fun MessageItem(
             }
         }
     }
+    val messageOperationText = remember(message.contentType, message.content) {
+        message.content.operationText(message.contentType)
+    }
+    val copyAllMessage: () -> Unit = {
+        if (messageOperationText.isNotBlank()) {
+            val clip = android.content.ClipData.newPlainText("message", messageOperationText)
+            clipboardManager.setPrimaryClip(clip)
+            Toast.makeText(context, "已复制全部", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "此消息没有可复制内容", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val quoteMessage: () -> Unit = {
+        val quotedText = "${
+            message.sender.name
+        } : ${messageOperationText.ifBlank { "[${message.contentType.messageTypeLabel()}]" }}"
+        onQuote(message.msgId, quotedText)
+    }
+    val addExpressionAction: (() -> Unit)? = if (message.contentType == 7) {
+        {
+            val expressionId = message.content.expressionId
+            if (!expressionId.isNullOrEmpty()) {
+                onAddExpression(expressionId)
+                Toast.makeText(context, "已添加表情", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "无法获取表情ID", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else {
+        null
+    }
+    val saveAudioAction: (() -> Unit)? = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
+        {
+            val audioUrl = message.content.audioUrl
+            if (!audioUrl.isNullOrBlank()) {
+                coroutineScope.launch {
+                    val saved = saveVoiceToSavedAudios(context, audioUrl)
+                    Toast.makeText(
+                        context,
+                        if (saved) "已保存语音" else "保存失败",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    } else {
+        null
+    }
+    val speechToTextAction: (() -> Unit)? = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
+        {
+            message.content.audioUrl?.takeIf { it.isNotBlank() }?.let(onSpeechToText)
+        }
+    } else {
+        null
+    }
+    val showRecall = when (conversationChatType) {
+        2 -> true
+        1, 3 -> isMyMessage
+        else -> false
+    }
+    val showCustomActionContainer = rememberMessageActionMenuLauncher(
+        enabled = !isMultiSelectMode,
+        onCopyAll = copyAllMessage,
+        onFreeCopy = if (message.contentType in listOf(1, 3, 8) && messageOperationText.isNotBlank()) {
+            {
+                freeCopyText = messageOperationText
+                showFreeCopyDialog = true
+            }
+        } else null,
+        onQuote = quoteMessage,
+        onForward = { onForward(message) },
+        onEdit = if (message.contentType in listOf(1, 3, 8, 14) && isMyMessage) {
+            { onEdit(message) }
+        } else null,
+        onDelete = if (showRecall) {
+            { onRecall(message.msgId) }
+        } else null,
+        onPlusOne = { onPlusOne(message) },
+        onFavorite = favoriteMessage,
+        onMultiSelect = onMultiSelect,
+        onOpenInInternalBrowser = if (message.contentType == 8) openHtmlInInternalBrowser else null,
+        onAddExpression = addExpressionAction,
+        onBlockUser = if (!isMyMessage) {
+            { onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl) }
+        } else null,
+        onSaveAudio = saveAudioAction,
+        onSpeechToText = speechToTextAction
+    )
+    var lastActionMenuOpenAt by remember(message.msgId) { mutableStateOf(0L) }
+    val openMessageActions: () -> Unit = {
+        if (!isMultiSelectMode) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastActionMenuOpenAt >= 350L) {
+                lastActionMenuOpenAt = now
+                if (enableContextMenu) {
+                    showContextMenuDialog = true
+                } else {
+                    showCustomActionContainer()
+                }
+            }
+        }
+    }
 
     if (message.msgDeleteTime != null) {
         RecallMessageItem(message = message, modifier = modifier)
@@ -185,14 +288,14 @@ fun MessageItem(
                 }
             )
             .indication(rowInteractionSource, LocalIndication.current)
-            .pointerInput(message.msgId, isMultiSelectMode) {
+            .pointerInput(message.msgId, isMultiSelectMode, openMessageActions) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val press = PressInteraction.Press(down.position)
                     rowInteractionSource.tryEmit(press)
                     val longPress = awaitLongPressOrCancellation(down.id)
-                    if (longPress != null && !isMultiSelectMode && enableContextMenu) {
-                        showContextMenuDialog = true
+                    if (longPress != null) {
+                        openMessageActions()
                     }
                     val up = waitForUpOrCancellation()
                     if (up == null) {
@@ -272,12 +375,12 @@ fun MessageItem(
                     )
                     // Long-press anywhere inside the bubble (including padding/empty area) to open context menu.
                     // This does not handle normal taps, so inner links/buttons keep working.
-                    .pointerInput(message.msgId, isMultiSelectMode) {
+                    .pointerInput(message.msgId, isMultiSelectMode, openMessageActions) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val longPress = awaitLongPressOrCancellation(down.id)
-                            if (longPress != null && !isMultiSelectMode && enableContextMenu) {
-                                showContextMenuDialog = true
+                            if (longPress != null) {
+                                openMessageActions()
                             }
                             waitForUpOrCancellation()
                         }
@@ -337,11 +440,7 @@ fun MessageItem(
                         conversationChatType = conversationChatType,
                         modifier = Modifier.padding(12.dp),
                         onImageClick = { imageUrl -> onImageClick(imageUrl) },
-                        onLongClick = {
-                            if (!isMultiSelectMode && enableContextMenu) {
-                                showContextMenuDialog = true
-                            }
-                        },
+                        onLongClick = openMessageActions,
                         onQuoteMessageClick = onQuoteMessageClick,
                         onQuote = onQuote,
                         onEdit = onEdit,
@@ -422,31 +521,19 @@ fun MessageItem(
     if (showContextMenuDialog) {
         MessageContextMenu(
             message = message,
-            showRecall = when (conversationChatType) {
-                2 -> true
-                1, 3 -> isMyMessage
-                else -> false
-            },
+            showRecall = showRecall,
             onDismiss = { showContextMenuDialog = false },
             onCopyAll = {
-                val textToCopy = message.content.text ?: ""
-                if (textToCopy.isNotEmpty()) {
-                    val clip = android.content.ClipData.newPlainText("message", textToCopy)
-                    clipboardManager.setPrimaryClip(clip)
-                    Toast.makeText(context, "已复制全部", Toast.LENGTH_SHORT).show()
-                }
+                copyAllMessage()
                 showContextMenuDialog = false
             },
             onFreeCopy = {
-                freeCopyText = message.content.text ?: ""
+                freeCopyText = messageOperationText
                 showContextMenuDialog = false
                 showFreeCopyDialog = true
             },
             onQuote = {
-                val senderName = message.sender.name
-                val content = message.content.text ?: ""
-                val quotedText = "$senderName : $content"
-                onQuote(message.msgId, quotedText)
+                quoteMessage()
                 showContextMenuDialog = false
             },
             onForward = {
@@ -463,49 +550,30 @@ fun MessageItem(
                     showContextMenuDialog = false
                 }
             } else null,
-            onAddExpression = if (message.contentType == 7) {
+            onAddExpression = addExpressionAction?.let { action ->
                 {
-                    val expressionId = message.content.expressionId
-                    if (!expressionId.isNullOrEmpty()) {
-                        onAddExpression(expressionId)
-                        Toast.makeText(context, "已添加表情", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "无法获取表情ID", Toast.LENGTH_SHORT).show()
-                    }
+                    action()
                     showContextMenuDialog = false
                 }
-            } else null,
+            },
             onBlockUser = if (!isMyMessage) {
                 {
                     onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl)
                     showContextMenuDialog = false
                 }
             } else null,
-            onSaveAudio = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
+            onSaveAudio = saveAudioAction?.let { action ->
                 {
-                    val audioUrl = message.content.audioUrl
-                    if (!audioUrl.isNullOrBlank()) {
-                        coroutineScope.launch {
-                            val saved = saveVoiceToSavedAudios(context, audioUrl)
-                            Toast.makeText(
-                                context,
-                                if (saved) "已保存语音" else "保存失败",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                    action()
                     showContextMenuDialog = false
                 }
-            } else null,
-            onSpeechToText = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
+            },
+            onSpeechToText = speechToTextAction?.let { action ->
                 {
-                    val audioUrl = message.content.audioUrl
-                    if (!audioUrl.isNullOrBlank()) {
-                        onSpeechToText(audioUrl)
-                    }
+                    action()
                     showContextMenuDialog = false
                 }
-            } else null,
+            },
             onPlusOne = {
                 onPlusOne(message)
                 showContextMenuDialog = false
@@ -772,6 +840,59 @@ fun Modifier.passThroughLongPress(onLongClick: () -> Unit): Modifier = composed 
                 waitForUpOrCancellation()
             }
         }
+    }
+}
+
+private fun com.yhchat.canary.data.model.MessageContent.operationText(contentType: Int): String {
+    return when (contentType) {
+        2 -> listOfNotNull(text, imageUrl).joinToString("\n").ifBlank { imageUrl.orEmpty() }
+        4 -> listOfNotNull(
+            fileName?.let { "文件：$it" },
+            fileSize?.let { "大小：${formatFileSize(it)}" },
+            fileUrl
+        ).joinToString("\n")
+        6 -> listOfNotNull(
+            postTitle?.let { "文章：$it" },
+            postContent,
+            postId?.let { "postId: $it" }
+        ).joinToString("\n")
+        7 -> listOfNotNull(
+            text,
+            imageUrl,
+            stickerUrl,
+            expressionId?.let { "expressionId: $it" },
+            stickerItemId?.let { "stickerItemId: $it" },
+            stickerPackId?.let { "stickerPackId: $it" }
+        ).joinToString("\n")
+        10 -> videoUrl.orEmpty()
+        11 -> listOfNotNull(
+            audioUrl,
+            audioTime?.let { "时长：${formatAudioDuration(it)}" }
+        ).joinToString("\n")
+        else -> listOfNotNull(
+            text,
+            imageUrl,
+            fileUrl,
+            videoUrl,
+            audioUrl,
+            postTitle,
+            postContent,
+            stickerUrl
+        ).joinToString("\n")
+    }
+}
+
+private fun Int.messageTypeLabel(): String {
+    return when (this) {
+        2 -> "图片消息"
+        4 -> "文件消息"
+        5 -> "表单消息"
+        6 -> "文章消息"
+        7 -> "表情消息"
+        10 -> "视频消息"
+        11 -> "语音消息"
+        14 -> "A2UI消息"
+        else -> "消息"
     }
 }
 

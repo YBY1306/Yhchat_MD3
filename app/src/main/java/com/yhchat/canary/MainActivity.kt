@@ -70,8 +70,6 @@ import kotlin.Unit
 import kotlin.and
 import kotlin.apply
 import kotlin.let
-import kotlin.onFailure
-import kotlin.onSuccess
 import kotlin.or
 import kotlin.toString
 
@@ -188,8 +186,6 @@ class MainActivity : BaseActivity() {
         var currentChatType by rememberSaveable { mutableStateOf(0) }
         var currentChatName by rememberSaveable { mutableStateOf("") }
         var currentChatAvatarUrl by rememberSaveable { mutableStateOf<String?>(null) }
-        var pendingLoginToken by rememberSaveable { mutableStateOf<String?>(null) }
-        
         // 大屏分屏模式：当前选中的聊天（右侧面板）
         var splitChatId by rememberSaveable { mutableStateOf("") }
         var splitChatType by rememberSaveable { mutableStateOf(0) }
@@ -237,29 +233,13 @@ class MainActivity : BaseActivity() {
             }
         }
 
-        // 处理登录后的用户信息获取
-        LaunchedEffect(pendingLoginToken) {
-            pendingLoginToken?.let { loginToken ->
-                userRepository?.getUserInfo()?.onSuccess { user ->
-                    userId = user.id
-                    mainViewModel.onLoginSuccess(loginToken, user.id)
-                }?.onFailure { error ->
-                    // 获取用户信息失败，显示错误并保持登录状态无效
-                    println("获取用户信息失败: ${error.message}")
-                    // 不设置userId，保持登录失败状态
-                }
-                pendingLoginToken = null
-            }
-        }
-        
         when {
             !isLoggedIn -> {
                 // 未登录，显示登录界面
                 LoginScreen(
                     viewModel = loginViewModel,
-                    onLoginSuccess = { loginToken, loginUserId -> 
+                    onLoginSuccess = { loginToken, loginUserId ->
                         token = loginToken
-                        pendingLoginToken = loginToken
                         userId = loginUserId
                         mainViewModel.onLoginSuccess(loginToken, loginUserId)
                     }

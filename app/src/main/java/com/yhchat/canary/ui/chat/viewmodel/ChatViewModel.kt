@@ -465,7 +465,10 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             groupRepository.getGroupBots(chatId).fold(
                 onSuccess = { bots ->
-                    _uiState.value = _uiState.value.copy(groupBots = bots)
+                    _uiState.value = _uiState.value.copy(
+                        groupBots = bots,
+                        groupBotBoards = emptyMap()
+                    )
                     if (bots.isNotEmpty()) {
                         // 只需要调用一次API，获取所有机器人的看板
                         loadGroupBotBoards(chatId)
@@ -491,11 +494,9 @@ class ChatViewModel @Inject constructor(
                     // boardResponse.boardList 现在是一个列表
                     val boardsDataList = boardResponse.boardList
                     Log.d(tag, "✅ 加载群聊看板成功: groupId=$chatId, 数量=${boardsDataList.size}")
-                    if (boardsDataList.isNotEmpty()) {
-                        // 使用机器人ID作为key，创建一个map
-                        val boardsMap = boardsDataList.associateBy { it.botId }
-                        _uiState.value = _uiState.value.copy(groupBotBoards = boardsMap)
-                    }
+                    // 使用机器人ID作为key，创建一个map；空列表也要覆盖旧状态，避免旧看板滞留。
+                    val boardsMap = boardsDataList.associateBy { it.botId }
+                    _uiState.value = _uiState.value.copy(groupBotBoards = boardsMap)
                 },
                 onFailure = { error ->
                     Log.e(tag, "❌ 加载群聊机器人看板失败: groupId=$chatId", error)

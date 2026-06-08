@@ -17,6 +17,9 @@ class AccountRepository @Inject constructor(
     private val secureStorage: SecureTokenStorage by lazy {
         SecureTokenStorage(context)
     }
+    private val localDataCleaner: AccountLocalDataCleaner by lazy {
+        AccountLocalDataCleaner(context)
+    }
 
     /**
      * 获取所有已保存的账号
@@ -51,10 +54,11 @@ class AccountRepository @Inject constructor(
      * 切换账号
      * @return true if switch successful (token found), false otherwise
      */
-    fun switchToAccount(userId: String): Boolean {
+    suspend fun switchToAccount(userId: String): Boolean {
         val token = secureStorage.getAccountToken(userId)
         return if (!token.isNullOrEmpty()) {
             secureStorage.saveUserToken(token, userId)
+            localDataCleaner.clearForAccountSwitch()
             true
         } else {
             false

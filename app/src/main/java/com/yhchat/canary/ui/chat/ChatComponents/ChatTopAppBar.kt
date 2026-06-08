@@ -45,6 +45,7 @@ import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhText as Text
+import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
@@ -103,6 +104,11 @@ fun ChatTopAppBar(
             }
         }
     }
+    val topBarContainerColor = if (isMiuixUi) {
+        top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
 
     val onTitleAreaClick = remember(context, chatId, chatType, safeChatName) {
         {
@@ -137,7 +143,7 @@ fun ChatTopAppBar(
     // so the avatar/title can truly align to the left edge.
     if (!shouldShowBackButton) {
         YhSurface(
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = topBarContainerColor,
             shadowElevation = 0.dp,
             modifier = modifier.statusBarsPadding()
         ) {
@@ -275,7 +281,7 @@ fun ChatTopAppBar(
     }
 
     YhSurface(
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = topBarContainerColor,
         shadowElevation = 0.dp,
         modifier = modifier.statusBarsPadding()
     ) {

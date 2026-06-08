@@ -204,6 +204,11 @@ fun GroupBotBoardsSection(
     val selectedBoardData = remember(selectedBotId, groupBotBoards) {
         selectedBotId?.let { groupBotBoards[it] }
     }
+    val selectedBoardKey = remember(selectedBotId, selectedBoardData) {
+        selectedBoardData?.let { boardData ->
+            boardContentIdentity(selectedBotId, boardData)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -297,59 +302,63 @@ fun GroupBotBoardsSection(
             exit = fadeOut(animationSpec = tween(90))
         ) {
             selectedBoardData?.let { boardData ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 500.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Row(
+                key(selectedBoardKey) {
+                    val contentScrollState = rememberScrollState()
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .heightIn(max = 500.dp)
+                            .verticalScroll(contentScrollState)
                     ) {
-                        YhText(
-                            text = "${boardData.botName.ifBlank{ "Bot" }}的看板",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            YhText(
+                                text = "${boardData.botName.ifBlank{ "Bot" }}的看板",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        YhTextButton(
-                            onClick = {
-                                val content = boardData.content.ifBlank { "" }
-                                clipboardManager.setText(AnnotatedString(content))
-                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            YhTextButton(
+                                onClick = {
+                                    val content = boardData.content.ifBlank { "" }
+                                    clipboardManager.setText(AnnotatedString(content))
+                                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                YhIcon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "澶嶅埗鍘熸枃",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                YhText("复制原文")
                             }
-                        ) {
-                            YhIcon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "澶嶅埗鍘熸枃",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            YhText("复制原文")
+
+                            YhIconButton(
+                                onClick = { selectedBotId = null },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                YhIcon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "鏀惰捣",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
-                        YhIconButton(
-                            onClick = { selectedBotId = null },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            YhIcon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "鏀惰捣",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        BotBoardContentScrollable(
+                            boardData = boardData,
+                            selectedBotId = selectedBotId,
+                            onImageClick = onImageClick
+                        )
                     }
-
-                    BotBoardContentScrollable(
-                        boardData = boardData,
-                        onImageClick = onImageClick
-                    )
                 }
             }
         }
@@ -359,17 +368,40 @@ fun GroupBotBoardsSection(
 @Composable
 private fun BotBoardContentScrollable(
     boardData: board.Board_data,
+    selectedBotId: String?,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
+    val boardKey = remember(selectedBotId, boardData) {
+        boardContentIdentity(selectedBotId, boardData)
+    }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(max = 400.dp)
-            .verticalScroll(scrollState)
-    ) {
-        BotBoardContent(boardData = boardData, onImageClick = onImageClick)
+    key(boardKey) {
+        val scrollState = rememberScrollState()
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(max = 400.dp)
+                .verticalScroll(scrollState)
+        ) {
+            BotBoardContent(boardData = boardData, onImageClick = onImageClick)
+        }
+    }
+}
+
+private fun boardContentIdentity(
+    selectedBotId: String?,
+    boardData: board.Board_data
+): String {
+    return buildString {
+        append(selectedBotId.orEmpty())
+        append('|')
+        append(boardData.botId)
+        append('|')
+        append(boardData.botName)
+        append('|')
+        append(boardData.contentType)
+        append('|')
+        append(boardData.content.hashCode())
     }
 }

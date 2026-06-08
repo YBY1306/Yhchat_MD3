@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -94,6 +95,7 @@ import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.coin.CoinDetailActivity
 import com.yhchat.canary.ui.coin.CoinRecordActivity
@@ -433,6 +435,8 @@ private fun UserProfileContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        val profileHeaderCardColor = rememberProfileHeaderCardColor()
+
         // 头像和姓名部分
         YhSurface(
             modifier = Modifier
@@ -440,7 +444,7 @@ private fun UserProfileContent(
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(24.dp),
             shadowElevation = 4.dp,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            color = profileHeaderCardColor
         ) {
             Column(
                 modifier = Modifier
@@ -780,6 +784,20 @@ private fun UserProfileContent(
         
         // 添加底部间距，确保内容不会贴底
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun rememberProfileHeaderCardColor(): Color {
+    if (!isMiuixUi) {
+        return MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    return if (isDark) {
+        Color(0xFF1E1E20)
+    } else {
+        Color(0xFFF7F7F8)
     }
 }
 

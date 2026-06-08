@@ -21,7 +21,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.yhchat.canary.data.di.RepositoryFactory
 import com.yhchat.canary.ui.base.BaseActivity
+import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.user.UserDetailActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -100,12 +102,19 @@ class ChatActivity : BaseActivity() {
         // 从Intent中读取参数
         updateChatParams(intent)
         
-        val enableAnimations = getSharedPreferences("chat_settings", Context.MODE_PRIVATE)
-            .getBoolean("enable_chat_animations", true)
-
         setContent {
             YhchatCanaryTheme {
-                val topBarComposeColor = MaterialTheme.colorScheme.primaryContainer
+                val enableAnimations by rememberBooleanPreference(
+                    preferencesName = "chat_settings",
+                    key = "enable_chat_animations",
+                    defaultValue = true,
+                    mode = Context.MODE_PRIVATE
+                )
+                val topBarComposeColor = if (isMiuixUi) {
+                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
                 val topBarColor = topBarComposeColor.toArgb()
                 val navigationBarColor = android.graphics.Color.TRANSPARENT
                 val view = LocalView.current

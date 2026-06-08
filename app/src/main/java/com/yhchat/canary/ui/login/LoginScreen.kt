@@ -76,12 +76,12 @@ fun LoginScreen(
     var tokenInput by remember { mutableStateOf("") }
     
     // 处理登录成功
-    LaunchedEffect(uiState.loginSuccess) {
+    LaunchedEffect(uiState.loginSuccess, uiState.loginData?.token, uiState.loggedInUserId) {
         if (uiState.loginSuccess) {
             val loginData = uiState.loginData
-            if (loginData != null) {
-                // 使用token作为用户ID，或者使用一个默认值
-                onLoginSuccess(loginData.token, loginData.token)
+            val loggedInUserId = uiState.loggedInUserId
+            if (loginData != null && !loggedInUserId.isNullOrBlank()) {
+                onLoginSuccess(loginData.token, loggedInUserId)
             }
         }
     }

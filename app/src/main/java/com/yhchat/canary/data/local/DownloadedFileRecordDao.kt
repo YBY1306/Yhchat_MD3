@@ -13,4 +13,3 @@ interface DownloadedFileRecordDao {
     @Query("SELECT * FROM downloaded_file_records WHERE msgId = :msgId LIMIT 1")
     suspend fun getByMsgId(msgId: String): DownloadedFileRecord?
 }
-

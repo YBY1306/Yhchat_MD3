@@ -290,6 +290,7 @@ fun PostContentCard(
             if (trimmedSearchQuery.isBlank()) {
                 MarkdownText(
                     markdown = post.content,
+                    textColor = MaterialTheme.colorScheme.onSurface,
                     onImageClick = { imageUrl ->
                         currentImageUrl = imageUrl
                         showImageViewer = true

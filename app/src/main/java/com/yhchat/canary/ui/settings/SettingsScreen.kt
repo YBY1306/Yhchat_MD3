@@ -76,6 +76,7 @@ import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
+import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.login.LoginActivity
 import com.yhchat.canary.ui.sticker.StickerPackDetailActivity
 import dagger.hilt.EntryPoint
@@ -102,30 +103,54 @@ fun SettingsScreen(
     
     // 聊天界面动画偏好
     val chatPrefs = remember { context.getSharedPreferences("chat_settings", Context.MODE_PRIVATE) }
-    var enableChatAnimations by remember { mutableStateOf(chatPrefs.getBoolean("enable_chat_animations", true)) }
-    var enableMessageListDragAnimation by remember {
-        mutableStateOf(chatPrefs.getBoolean("enable_message_list_drag_animation", true))
-    }
-    var enableChatContextMenu by remember {
-        mutableStateOf(chatPrefs.getBoolean("enable_chat_context_menu", true))
-    }
+    val enableChatAnimations by rememberBooleanPreference(
+        preferencesName = "chat_settings",
+        key = "enable_chat_animations",
+        defaultValue = true
+    )
+    val enableMessageListDragAnimation by rememberBooleanPreference(
+        preferencesName = "chat_settings",
+        key = "enable_message_list_drag_animation",
+        defaultValue = true
+    )
+    val enableChatContextMenu by rememberBooleanPreference(
+        preferencesName = "chat_settings",
+        key = "enable_chat_context_menu",
+        defaultValue = true
+    )
 
     // 获取用户信息
     var userEmail by remember { mutableStateOf("") }
 
-    val savedAccounts: List<SavedAccount> by (accountRepository?.getAllAccounts() ?: kotlinx.coroutines.flow.flowOf(emptyList()))
-        .collectAsStateWithLifecycle(initialValue = emptyList())
-    val currentUserId: String? = accountRepository?.getCurrentUserId()
     val resolvedAccountRepository = accountRepository ?: remember { RepositoryFactory.getAccountRepository(context) }
+    val savedAccounts: List<SavedAccount> by resolvedAccountRepository.getAllAccounts()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val currentUserId: String? = resolvedAccountRepository.getCurrentUserId()
+    val appContext = context.applicationContext
+    val wsEntryPoint = remember(appContext) {
+        EntryPointAccessors.fromApplication(appContext, SettingsWsEntryPoint::class.java)
+    }
+    val webSocketService = remember(wsEntryPoint) { wsEntryPoint.webSocketService() }
     var showAccountSwitchSheet by remember { mutableStateOf(false) }
     var showYhTools by remember { mutableStateOf(false) }
 
-    LaunchedEffect(tokenRepository) {
+    LaunchedEffect(tokenRepository, resolvedAccountRepository) {
         tokenRepository?.let { tokenRepo: TokenRepository ->
             val userRepo: UserRepository = com.yhchat.canary.data.di.RepositoryFactory.getUserRepository(context)
             userRepo.setTokenRepository(tokenRepo)
             userRepo.getUserProfile().onSuccess { profile: UserProfile ->
                 userEmail = profile.email ?: ""
+                val token = tokenRepo.getTokenSync()
+                if (!token.isNullOrBlank()) {
+                    tokenRepo.saveToken(token, profile.userId)
+                    resolvedAccountRepository.saveAccount(
+                        userId = profile.userId,
+                        name = profile.nickname,
+                        avatarUrl = profile.avatarUrl,
+                        displayId = profile.userId,
+                        token = token
+                    )
+                }
             }
         }
     }
@@ -193,7 +218,6 @@ fun SettingsScreen(
                                 subtitle = if (enableChatAnimations) "启用聊天界面内的动画效果" else "禁用聊天界面内的动画效果",
                                 checked = enableChatAnimations,
                                 onCheckedChange = { checked ->
-                                    enableChatAnimations = checked
                                     chatPrefs.edit().putBoolean("enable_chat_animations", checked).apply()
                                 }
                             )
@@ -209,7 +233,6 @@ fun SettingsScreen(
                                 },
                                 checked = enableMessageListDragAnimation,
                                 onCheckedChange = { checked ->
-                                    enableMessageListDragAnimation = checked
                                     chatPrefs.edit()
                                         .putBoolean("enable_message_list_drag_animation", checked)
                                         .apply()
@@ -227,7 +250,6 @@ fun SettingsScreen(
                                 },
                                 checked = enableChatContextMenu,
                                 onCheckedChange = { checked ->
-                                    enableChatContextMenu = checked
                                     chatPrefs.edit()
                                         .putBoolean("enable_chat_context_menu", checked)
                                         .apply()
@@ -453,22 +475,32 @@ fun SettingsScreen(
             },
             onDeleteAccount = { userId ->
                 coroutineScope.launch {
-                    accountRepository?.deleteAccount(userId)
+                    resolvedAccountRepository.deleteAccount(userId)
                 }
             },
             onSwitchAccount = { userId ->
-                val switched = accountRepository?.switchToAccount(userId) == true
-                if (switched) {
-                    showAccountSwitchSheet = false
-                    val intent = Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                coroutineScope.launch {
+                    val repo = accountRepository ?: resolvedAccountRepository
+                    if (repo.getCurrentUserId() == userId) {
+                        showAccountSwitchSheet = false
+                        return@launch
                     }
-                    context.startActivity(intent)
-                    (context as? Activity)?.finish()
-                } else {
-                    android.widget.Toast
-                        .makeText(context, "切换失败：未找到该账号 token，请重新登录", android.widget.Toast.LENGTH_SHORT)
-                        .show()
+                    webSocketService.disconnect()
+                    webSocketService.clearRuntimeCaches()
+                    val switched = repo.switchToAccount(userId)
+                    if (switched) {
+                        showAccountSwitchSheet = false
+                        webSocketService.connect(userId, "android")
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        context.startActivity(intent)
+                        (context as? Activity)?.finish()
+                    } else {
+                        android.widget.Toast
+                            .makeText(context, "切换失败：未找到该账号 token，请重新登录", android.widget.Toast.LENGTH_SHORT)
+                            .show()
+                    }
                 }
             }
         )

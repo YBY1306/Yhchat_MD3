@@ -2231,7 +2231,7 @@ fun YhCommunityActionChipContentColor(selected: Boolean): Color {
         if (selected) {
             top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onPrimaryContainer
         } else {
-            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariant
+            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantActions
         }
     } else {
         if (selected) {

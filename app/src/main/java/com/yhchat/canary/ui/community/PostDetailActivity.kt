@@ -1315,7 +1315,7 @@ fun PostDetailScreen(
             }
         },
         topBar = {
-            YhTopAppBar(
+            YhTopBar(
                 title = postDetailState.post?.title ?: postTitle,
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {

@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,6 +59,14 @@ import com.yhchat.canary.proto.bot.bot_info
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private fun TextUnit.scaledOrUnspecified(multiplier: Float): TextUnit {
+    return if (this == TextUnit.Unspecified) {
+        TextUnit.Unspecified
+    } else {
+        this * multiplier
+    }
+}
 
 /**
  * 机器人详细信息 Activity
@@ -654,7 +663,7 @@ private fun BotDetailContent(
                         Text(
                             text = botInfo.data.introduction,
                             style = MaterialTheme.typography.bodyLarge,
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.45
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.scaledOrUnspecified(1.45f)
                         )
                     }
                 }
@@ -717,7 +726,7 @@ private fun BotDetailContent(
                                             text = boardData.content,
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurface,
-                                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
+                                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.scaledOrUnspecified(1.5f)
                                         )
                                     }
                                     2 -> MarkdownText(

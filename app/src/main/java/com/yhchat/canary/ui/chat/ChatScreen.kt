@@ -174,6 +174,11 @@ fun ChatScreen(
     var showScrollToBottomButton by remember { mutableStateOf(false) }
     // 用户是否处于“粘底”状态（只由用户滚动行为改变，不受新消息插入瞬时布局影响）
     var shouldStickToBottom by remember { mutableStateOf(true) }
+    val enableMessageListDragAnimation by rememberBooleanPreference(
+        "chat_settings",
+        "enable_message_list_drag_animation",
+        true
+    )
     // WS 新消息到来后的待执行自动滚动标记（等列表插入完成后再滚动）
     var pendingAutoScrollToBottom by remember { mutableStateOf(false) }
     // WS 新消息到来且用户不在底部时，保持当前可视锚点，避免列表自己跳动
@@ -346,11 +351,6 @@ fun ChatScreen(
     val showTtsButton by rememberBooleanPreference("layout_settings", "chat_show_tts_button", true)
     val showRefreshButton by rememberBooleanPreference("layout_settings", "chat_show_refresh_button", true)
     val hideTopAppBar by rememberBooleanPreference("layout_settings", "chat_hide_top_app_bar", false)
-    val enableMessageListDragAnimation by rememberBooleanPreference(
-        "chat_settings",
-        "enable_message_list_drag_animation",
-        true
-    )
     val enableChatContextMenu by rememberBooleanPreference(
         "chat_settings",
         "enable_chat_context_menu",

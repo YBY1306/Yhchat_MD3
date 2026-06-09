@@ -113,6 +113,7 @@ import com.yhchat.canary.ui.adaptive.YhCommunityActionChipContainerColor
 import com.yhchat.canary.ui.adaptive.YhCommunityActionChipContentColor
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity

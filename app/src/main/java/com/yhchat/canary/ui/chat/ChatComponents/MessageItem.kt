@@ -140,9 +140,10 @@ fun MessageItem(
             ).show()
         }
     }
-    val openHtmlInInternalBrowser = remember(message.msgId, message.content.text) {
+    val openHtmlInInternalBrowser: () -> Unit = remember(message.msgId, message.content.text) {
         {
-            message.content.text?.takeIf { it.isNotBlank() }?.let { html ->
+            val html = message.content.text
+            if (!html.isNullOrBlank()) {
                 WebViewActivity.startHtml(
                     context = context,
                     html = html,

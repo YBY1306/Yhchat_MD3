@@ -203,7 +203,10 @@ fun MessageItem(
     }
     val speechToTextAction: (() -> Unit)? = if (message.contentType == 11 && !message.content.audioUrl.isNullOrBlank()) {
         {
-            message.content.audioUrl?.takeIf { it.isNotBlank() }?.let(onSpeechToText)
+            val audioUrl = message.content.audioUrl
+            if (!audioUrl.isNullOrBlank()) {
+                onSpeechToText(audioUrl)
+            }
         }
     } else {
         null

@@ -229,7 +229,7 @@ fun ChatScreen(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (listOverscrollOffset.value != 0f) {
+                if (enableMessageListDragAnimation && listOverscrollOffset.value != 0f) {
                     listOverscrollOffset.animateTo(
                         targetValue = 0f,
                         animationSpec = spring(
@@ -242,7 +242,7 @@ fun ChatScreen(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (listOverscrollOffset.value != 0f) {
+                if (enableMessageListDragAnimation && listOverscrollOffset.value != 0f) {
                     listOverscrollOffset.animateTo(
                         targetValue = 0f,
                         animationSpec = spring(
@@ -756,14 +756,20 @@ fun ChatScreen(
             } else {
                 val groupOwnerId = uiState.groupInfo?.ownerId
                 val groupAdminIds = uiState.groupInfo?.adminIds ?: emptyList()
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
+                val messageListModifier = if (enableMessageListDragAnimation) {
+                    Modifier
                         .fillMaxSize()
                         .nestedScroll(listOverscrollConnection)
                         .graphicsLayer {
                             translationY = listOverscrollOffset.value
-                        },
+                        }
+                } else {
+                    Modifier.fillMaxSize()
+                }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = messageListModifier,
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     reverseLayout = true // 最新消息在底部

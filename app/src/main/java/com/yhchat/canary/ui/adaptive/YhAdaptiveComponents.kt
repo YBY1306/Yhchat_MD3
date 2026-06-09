@@ -74,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -291,54 +292,83 @@ fun YhModalNavigationDrawer(
     content: @Composable () -> Unit
 ) {
     if (isMiuixUi) {
-        Box(modifier = modifier.fillMaxSize()) {
-            content()
-            AnimatedVisibility(
-                visible = drawerOpen,
-                enter = fadeIn(animationSpec = tween(durationMillis = 160)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 140)),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.28f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(enabled = gesturesEnabled, onClick = onDismissRequest)
-                    )
+        var mounted by remember { mutableStateOf(drawerOpen) }
+        var visible by remember { mutableStateOf(drawerOpen) }
+        val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+
+        LaunchedEffect(drawerOpen) {
+            if (drawerOpen) {
+                mounted = true
+                visible = true
+            } else if (mounted) {
+                visible = false
+            }
+        }
+
+        LaunchedEffect(visible) {
+            if (!visible && mounted) {
+                kotlinx.coroutines.delay(240)
+                if (!visible) {
+                    mounted = false
+                    currentOnDismissRequest()
                 }
             }
-            AnimatedVisibility(
-                visible = drawerOpen,
-                enter = slideInHorizontally(
-                    initialOffsetX = { -it },
-                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
-                ),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                ),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.92f)
-                    .zIndex(2f)
-            ) {
-                YhSurface(
+        }
+
+        Box(modifier = modifier.fillMaxSize()) {
+            content()
+            if (mounted) {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 160)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 140)),
                     modifier = Modifier
-                        .fillMaxSize(),
-                    color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+                        .fillMaxSize()
+                        .zIndex(1f)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .background(Color.Black.copy(alpha = 0.28f))
                     ) {
-                        drawerContent()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable(
+                                    enabled = gesturesEnabled,
+                                    onClick = {
+                                        currentOnDismissRequest()
+                                    }
+                                )
+                        )
+                    }
+                }
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    ),
+                    exit = slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                    ),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.92f)
+                        .zIndex(2f)
+                ) {
+                    YhSurface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .windowInsetsPadding(WindowInsets.safeDrawing)
+                        ) {
+                            drawerContent()
+                        }
                     }
                 }
             }
@@ -352,6 +382,13 @@ fun YhModalNavigationDrawer(
                 drawerState.open()
             } else {
                 drawerState.close()
+            }
+        }
+        LaunchedEffect(drawerState) {
+            snapshotFlow { drawerState.currentValue }.collect { value ->
+                if (value == DrawerValue.Closed && drawerOpen) {
+                    onDismissRequest()
+                }
             }
         }
         ModalNavigationDrawer(
@@ -474,10 +511,12 @@ fun YhTopBar(
 ) {
     if (isMiuixUi) {
         val scrollBehavior = LocalYhMiuixScrollBehavior.current
+        val resolvedTitle = title.ifBlank { "文章详情" }
+        val displayTitle = if (resolvedTitle.length > 18) "文章详情" else resolvedTitle
         if (large) {
             top.yukonga.miuix.kmp.basic.TopAppBar(
-                title = title,
-                largeTitle = title,
+                title = displayTitle,
+                largeTitle = displayTitle,
                 modifier = modifier,
                 navigationIcon = navigationIcon,
                 actions = actions,
@@ -485,7 +524,7 @@ fun YhTopBar(
             )
         } else {
             top.yukonga.miuix.kmp.basic.SmallTopAppBar(
-                title = title,
+                title = displayTitle,
                 modifier = modifier,
                 navigationIcon = navigationIcon,
                 actions = actions,
@@ -775,13 +814,14 @@ fun YhSettingsGroup(
     if (items.isEmpty()) return
 
     if (isMiuixUi) {
+        val sectionContainerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
         Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             if (!title.isNullOrEmpty()) {
                 top.yukonga.miuix.kmp.basic.SmallTitle(text = title)
             }
             YhCard(
                 modifier = Modifier.fillMaxWidth(),
-                containerColor = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainerHigh,
+                containerColor = sectionContainerColor,
                 cornerRadius = 16.dp
             ) {
                 items.forEach { item -> item() }
@@ -2156,6 +2196,49 @@ fun YhFilterChip(
             leadingIcon = leadingIcon,
             label = label
         )
+    }
+}
+
+@Composable
+fun YhCommunityActionBarColor(): Color {
+    return if (isMiuixUi) {
+        top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+}
+
+@Composable
+fun YhCommunityActionChipContainerColor(selected: Boolean): Color {
+    return if (isMiuixUi) {
+        if (selected) {
+            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.primaryContainer
+        } else {
+            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+        }
+    } else {
+        if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+    }
+}
+
+@Composable
+fun YhCommunityActionChipContentColor(selected: Boolean): Color {
+    return if (isMiuixUi) {
+        if (selected) {
+            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onPrimaryContainer
+        } else {
+            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariant
+        }
+    } else {
+        if (selected) {
+            Color.White
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
     }
 }
 

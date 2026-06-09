@@ -108,6 +108,9 @@ import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhPullToRefresh
 import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.adaptive.YhCommunityActionBarColor
+import com.yhchat.canary.ui.adaptive.YhCommunityActionChipContainerColor
+import com.yhchat.canary.ui.adaptive.YhCommunityActionChipContentColor
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
 import com.yhchat.canary.ui.adaptive.YhTopAppBar
@@ -517,7 +520,7 @@ fun PostBottomActionBarDuo3(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .background(YhCommunityActionBarColor())
                         .padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -525,11 +528,7 @@ fun PostBottomActionBarDuo3(
                     YhSurface(
                         modifier = Modifier.clickable { onLikeClick() },
                         shape = RoundedCornerShape(24.dp),
-                        color = if (post.isLiked == "1") {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainer
-                        }
+                        color = YhCommunityActionChipContainerColor(post.isLiked == "1")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -539,13 +538,13 @@ fun PostBottomActionBarDuo3(
                             Icon(
                                 imageVector = if (post.isLiked == "1") Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                                 contentDescription = "点赞",
-                                tint = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = YhCommunityActionChipContentColor(post.isLiked == "1"),
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = post.likeNum.toString(),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (post.isLiked == "1") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = YhCommunityActionChipContentColor(post.isLiked == "1")
                             )
                         }
                     }
@@ -553,11 +552,7 @@ fun PostBottomActionBarDuo3(
                     YhSurface(
                         modifier = Modifier.clickable { onCollectClick() },
                         shape = RoundedCornerShape(24.dp),
-                        color = if (post.isCollected == 1) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainer
-                        }
+                        color = YhCommunityActionChipContainerColor(post.isCollected == 1)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -567,13 +562,13 @@ fun PostBottomActionBarDuo3(
                             Icon(
                                 imageVector = if (post.isCollected == 1) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                                 contentDescription = "收藏",
-                                tint = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = YhCommunityActionChipContentColor(post.isCollected == 1),
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = post.collectNum.toString(),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (post.isCollected == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = YhCommunityActionChipContentColor(post.isCollected == 1)
                             )
                         }
                     }
@@ -581,11 +576,7 @@ fun PostBottomActionBarDuo3(
                     YhSurface(
                         modifier = Modifier.clickable { onRewardClick() },
                         shape = RoundedCornerShape(24.dp),
-                        color = if (post.isReward == 1) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainer
-                        }
+                        color = YhCommunityActionChipContainerColor(post.isReward == 1)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -595,13 +586,13 @@ fun PostBottomActionBarDuo3(
                             Icon(
                                 imageVector = if (post.isReward == 1) Icons.Filled.MonetizationOn else Icons.Outlined.MonetizationOn,
                                 contentDescription = "打赏",
-                                tint = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = YhCommunityActionChipContentColor(post.isReward == 1),
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = formatRewardAmount(post.amountNum),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (post.isReward == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = YhCommunityActionChipContentColor(post.isReward == 1)
                             )
                         }
                     }
@@ -612,7 +603,7 @@ fun PostBottomActionBarDuo3(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .background(YhCommunityActionBarColor())
                 .height(40.dp)
                 .padding(start = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1325,15 +1316,7 @@ fun PostDetailScreen(
         },
         topBar = {
             YhTopAppBar(
-                title = {
-                    Text(
-                        text = postDetailState.post?.title ?: postTitle,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
+                title = postDetailState.post?.title ?: postTitle,
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {
                         Icon(

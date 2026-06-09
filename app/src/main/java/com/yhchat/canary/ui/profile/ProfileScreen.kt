@@ -94,7 +94,7 @@ import com.yhchat.canary.ui.adaptive.YhRadioButton
 import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
-import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.isMiuixUi
 import com.yhchat.canary.ui.base.SystemBarUtils
 import com.yhchat.canary.ui.coin.CoinDetailActivity
@@ -231,13 +231,9 @@ fun ProfileScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // 顶部应用栏
-        YhTopAppBar(
-            title = {
-                Text(
-                    text = "我的",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+        YhTopBar(
+            title = "我的",
+            large = false,
             actions = {
                 YhIconButton(
                     onClick = {
@@ -1017,6 +1013,7 @@ private fun UserDataEditBottomSheet(
     YhBottomSheet(
         show = true,
         title = "个人信息",
+        fullScreen = true,
         onDismissRequest = {
             if (!saveUserDataState.isLoading) {
                 onDismiss()
@@ -1030,12 +1027,11 @@ private fun UserDataEditBottomSheet(
             SystemBarUtils.ApplyNavigationBarColor(activity, sheetColor, darkIcons)
         }
         val scrollState = rememberScrollState()
-        val maxSheetHeight = (configuration.screenHeightDp.dp * 0.95f)
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxSheetHeight)
+                .fillMaxHeight()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp),

@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.foundation.shape.RectangleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -519,6 +519,14 @@ fun YhText(
     style: TextStyle = TextStyle.Default
 ) {
     if (isMiuixUi) {
+        val baseStyle = if (style == TextStyle.Default) {
+            MaterialTheme.typography.bodyMedium
+        } else {
+            style
+        }
+        val resolvedFontSize = if (fontSize == TextUnit.Unspecified) baseStyle.fontSize else fontSize
+        val resolvedLetterSpacing = if (letterSpacing == TextUnit.Unspecified) baseStyle.letterSpacing else letterSpacing
+        val resolvedLineHeight = if (lineHeight == TextUnit.Unspecified) baseStyle.lineHeight else lineHeight
         val resolvedColor = if (color == Color.Unspecified) {
             top.yukonga.miuix.kmp.theme.LocalContentColor.current
         } else {
@@ -528,14 +536,14 @@ fun YhText(
             text = text,
             modifier = modifier,
             color = resolvedColor,
-            fontSize = fontSize,
+            fontSize = resolvedFontSize,
             fontStyle = fontStyle,
             fontWeight = fontWeight,
             fontFamily = fontFamily,
-            letterSpacing = letterSpacing,
+            letterSpacing = resolvedLetterSpacing,
             textDecoration = textDecoration,
             textAlign = textAlign,
-            lineHeight = lineHeight,
+            lineHeight = resolvedLineHeight,
             overflow = overflow,
             softWrap = softWrap,
             maxLines = maxLines,
@@ -588,6 +596,14 @@ fun YhText(
     style: TextStyle = TextStyle.Default
 ) {
     if (isMiuixUi) {
+        val baseStyle = if (style == TextStyle.Default) {
+            MaterialTheme.typography.bodyMedium
+        } else {
+            style
+        }
+        val resolvedFontSize = if (fontSize == TextUnit.Unspecified) baseStyle.fontSize else fontSize
+        val resolvedLetterSpacing = if (letterSpacing == TextUnit.Unspecified) baseStyle.letterSpacing else letterSpacing
+        val resolvedLineHeight = if (lineHeight == TextUnit.Unspecified) baseStyle.lineHeight else lineHeight
         val resolvedColor = if (color == Color.Unspecified) {
             top.yukonga.miuix.kmp.theme.LocalContentColor.current
         } else {
@@ -597,14 +613,14 @@ fun YhText(
             text = text,
             modifier = modifier,
             color = resolvedColor,
-            fontSize = fontSize,
+            fontSize = resolvedFontSize,
             fontStyle = fontStyle,
             fontWeight = fontWeight,
             fontFamily = fontFamily,
-            letterSpacing = letterSpacing,
+            letterSpacing = resolvedLetterSpacing,
             textDecoration = textDecoration,
             textAlign = textAlign,
-            lineHeight = lineHeight,
+            lineHeight = resolvedLineHeight,
             overflow = overflow,
             softWrap = softWrap,
             maxLines = maxLines,

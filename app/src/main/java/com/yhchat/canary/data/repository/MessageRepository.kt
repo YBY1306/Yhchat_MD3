@@ -7,7 +7,7 @@ import com.yhchat.canary.proto.*
 import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.UUID
+import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -62,6 +62,8 @@ class MessageRepository @Inject constructor(
     private val tag = "MessageRepository"
     private var botLlmParamsProvider: ((chatId: String, chatType: Int) -> String?)? = null
 
+    private val ulidRandom = SecureRandom()
+
     fun setBotLlmParamsProvider(provider: ((chatId: String, chatType: Int) -> String?)?) {
         botLlmParamsProvider = provider
     }
@@ -77,6 +79,12 @@ class MessageRepository @Inject constructor(
         const val CONTENT_TYPE_VIDEO = 10
         const val CONTENT_TYPE_AUDIO = 11
         const val CONTENT_TYPE_A2UI = 14
+        val ULID_CROCKFORD_BASE32 = charArrayOf(
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+            'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
+            'Y', 'Z'
+        )
     }
 
     suspend fun forwardMessage(
@@ -338,7 +346,7 @@ class MessageRepository @Inject constructor(
         return try {
             val token = getToken() ?: return Result.failure(Exception("用户未登录"))
 
-            val msgId = UUID.randomUUID().toString().replace("-", "")
+            val msgId = generateUlid()
             val contentBuilder = send_message_send.Content.newBuilder()
             var hasPrimaryContent = false
 
@@ -462,8 +470,47 @@ class MessageRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
-    
+
+    private fun generateUlid(timestampMs: Long = System.currentTimeMillis()): String {
+        val timeChars = CharArray(10)
+        var value = timestampMs
+        for (i in 9 downTo 0) {
+            timeChars[i] = ULID_CROCKFORD_BASE32[(value % 32).toInt()]
+            value /= 32
+        }
+
+        val randomness = ByteArray(10)
+        ulidRandom.nextBytes(randomness)
+
+        val randomChars = CharArray(16)
+        var buffer = 0
+        var bitsLeft = 0
+        var charIndex = 0
+        for (byte in randomness) {
+            buffer = (buffer shl 8) or (byte.toInt() and 0xFF)
+            bitsLeft += 8
+            while (bitsLeft >= 5 && charIndex < randomChars.size) {
+                val index = (buffer shr (bitsLeft - 5)) and 0x1F
+                randomChars[charIndex++] = ULID_CROCKFORD_BASE32[index]
+                bitsLeft -= 5
+            }
+        }
+
+        if (charIndex < randomChars.size && bitsLeft > 0) {
+            val index = (buffer shl (5 - bitsLeft)) and 0x1F
+            randomChars[charIndex++] = ULID_CROCKFORD_BASE32[index]
+        }
+
+        while (charIndex < randomChars.size) {
+            randomChars[charIndex++] = ULID_CROCKFORD_BASE32[0]
+        }
+
+        return buildString(26) {
+            append(timeChars)
+            append(randomChars)
+        }
+    }
+
     /**
      * 撤回消息
      * 使用protobuf的recall_msg_send

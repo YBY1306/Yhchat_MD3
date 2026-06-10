@@ -79,11 +79,9 @@ class MessageRepository @Inject constructor(
         const val CONTENT_TYPE_VIDEO = 10
         const val CONTENT_TYPE_AUDIO = 11
         const val CONTENT_TYPE_A2UI = 14
-        val ULID_CROCKFORD_BASE32 = charArrayOf(
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
-            'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
-            'Y', 'Z'
+        val HEX_CHARS = charArrayOf(
+            '0', '1', '2', '3', '4', '5', '6', '7',
+            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
         )
     }
 
@@ -472,43 +470,28 @@ class MessageRepository @Inject constructor(
     }
 
     private fun generateUlid(timestampMs: Long = System.currentTimeMillis()): String {
-        val timeChars = CharArray(10)
-        var value = timestampMs
-        for (i in 9 downTo 0) {
-            timeChars[i] = ULID_CROCKFORD_BASE32[(value % 32).toInt()]
-            value /= 32
+        val bytes = ByteArray(16)
+        var time = timestampMs
+        for (i in 5 downTo 0) {
+            bytes[i] = (time and 0xFF).toByte()
+            time = time shr 8
         }
 
-        val randomness = ByteArray(10)
-        ulidRandom.nextBytes(randomness)
+        val randomBytes = ByteArray(10)
+        ulidRandom.nextBytes(randomBytes)
+        System.arraycopy(randomBytes, 0, bytes, 6, randomBytes.size)
 
-        val randomChars = CharArray(16)
-        var buffer = 0
-        var bitsLeft = 0
-        var charIndex = 0
-        for (byte in randomness) {
-            buffer = (buffer shl 8) or (byte.toInt() and 0xFF)
-            bitsLeft += 8
-            while (bitsLeft >= 5 && charIndex < randomChars.size) {
-                val index = (buffer shr (bitsLeft - 5)) and 0x1F
-                randomChars[charIndex++] = ULID_CROCKFORD_BASE32[index]
-                bitsLeft -= 5
-            }
-        }
+        // 让格式更接近 UUID4：设置 version / variant 位，但仍保持 32 位十六进制字符串。
+        bytes[6] = ((bytes[6].toInt() and 0x0F) or 0x40).toByte()
+        bytes[8] = ((bytes[8].toInt() and 0x3F) or 0x80).toByte()
 
-        if (charIndex < randomChars.size && bitsLeft > 0) {
-            val index = (buffer shl (5 - bitsLeft)) and 0x1F
-            randomChars[charIndex++] = ULID_CROCKFORD_BASE32[index]
+        val hexChars = CharArray(32)
+        for (i in bytes.indices) {
+            val v = bytes[i].toInt() and 0xFF
+            hexChars[i * 2] = HEX_CHARS[v ushr 4]
+            hexChars[i * 2 + 1] = HEX_CHARS[v and 0x0F]
         }
-
-        while (charIndex < randomChars.size) {
-            randomChars[charIndex++] = ULID_CROCKFORD_BASE32[0]
-        }
-
-        return buildString(26) {
-            append(timeChars)
-            append(randomChars)
-        }
+        return String(hexChars)
     }
 
     /**

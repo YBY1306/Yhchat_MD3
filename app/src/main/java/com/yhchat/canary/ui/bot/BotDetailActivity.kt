@@ -47,8 +47,9 @@ import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
-import com.yhchat.canary.ui.adaptive.YhTopBar
+import com.yhchat.canary.ui.adaptive.YhTopAppBar
 import com.yhchat.canary.ui.adaptive.YhVerticalDivider
+import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.HtmlWebView
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.MarkdownText
@@ -165,9 +166,14 @@ private fun BotDetailScreen(
 
     YhScaffold(
         topBar = {
-            YhTopBar(
-                title = if (showCollapsedTitle) uiState.botInfo?.data?.name ?: botName else "",
-                large = false,
+            YhTopAppBar(
+                title = {
+                    Text(
+                        text = if (showCollapsedTitle) "机器人详情" else "",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {
                         Icon(
@@ -560,7 +566,9 @@ private fun BotDetailContent(
     val context = LocalContext.current
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .yhTopBarNestedScroll(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

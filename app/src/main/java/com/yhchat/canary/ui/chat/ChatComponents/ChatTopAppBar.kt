@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -145,7 +147,7 @@ fun ChatTopAppBar(
         YhSurface(
             color = topBarContainerColor,
             shadowElevation = 0.dp,
-            modifier = modifier.statusBarsPadding()
+            modifier = modifier.windowInsetsPadding(WindowInsets.statusBars)
         ) {
             Row(
                 modifier = Modifier
@@ -283,7 +285,7 @@ fun ChatTopAppBar(
     YhSurface(
         color = topBarContainerColor,
         shadowElevation = 0.dp,
-        modifier = modifier.statusBarsPadding()
+        modifier = modifier.windowInsetsPadding(WindowInsets.statusBars)
     ) {
         Row(
             modifier = Modifier

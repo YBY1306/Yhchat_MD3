@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,10 +26,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -63,6 +66,7 @@ import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhOutlinedButton
 import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhText as Text
@@ -115,6 +119,10 @@ fun ChatInputBar(
 
     var showAttachMenu by remember { mutableStateOf(false) }
 
+    var inputLineCount by remember { mutableStateOf(1) }
+    var showExpandedEditor by remember { mutableStateOf(false) }
+    var expandedEditorText by remember { mutableStateOf(text) }
+
 
     // 读取内容设置：是否允许发送空文本消息设置
     val isSendTextAllowEmptySetting by rememberBooleanPreference("send_text_settings", "send_text_allow_empty", false)//英语不好不知道起什么变量名
@@ -156,6 +164,13 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
             showInstructionPicker -> showInstructionPicker = false
         }
     }
+
+    LaunchedEffect(text) {
+        if (!showExpandedEditor) {
+            expandedEditorText = text
+        }
+    }
+
     
     // 文件选择器 - 使用OpenDocument以获取完整权限
     val audioPickerLauncher = rememberLauncherForActivityResult(
@@ -595,6 +610,28 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                             }
                         }
                     }
+
+                    if (inputLineCount >= 3) {
+                        YhIconButton(
+                            onClick = {
+                                expandedEditorText = text
+                                showExpandedEditor = true
+                                showAttachMenu = false
+                                showExpressionPicker = false
+                                showInstructionPicker = false
+                                isVoiceMode = false
+                                keyboardController?.hide()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "展开输入框",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 } else {
                     // 文本模式：显示输入框
                     BasicTextField(
@@ -632,6 +669,9 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 3,
+                        onTextLayout = { result ->
+                            inputLineCount = result.lineCount
+                        },
                         decorationBox = { innerTextField ->
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
@@ -821,6 +861,20 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                 },
                 selectedMessageType = selectedMessageType
             )
+
+            if (showExpandedEditor) {
+                ExpandedInputEditorSheet(
+                    text = expandedEditorText,
+                    placeholder = placeholder,
+                    selectedInstruction = selectedInstruction,
+                    onTextChange = { expandedEditorText = it },
+                    onDismiss = {
+                        onTextChange(expandedEditorText)
+                        onDraftChange?.invoke(expandedEditorText)
+                        showExpandedEditor = false
+                    }
+                )
+            }
         }  // 关闭主输入栏容器Column
 
         // 语音转文字选择对话框
@@ -1002,6 +1056,76 @@ fun InstructionBar(
                     contentDescription = "清除指令",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpandedInputEditorSheet(
+    text: String,
+    placeholder: String,
+    selectedInstruction: com.yhchat.canary.data.model.Instruction?,
+    onTextChange: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    YhBottomSheet(
+        title = "展开输入",
+        onDismissRequest = onDismiss,
+        fullScreen = true
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                YhOutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(18.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "收回输入框",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("收回")
+                }
+            }
+
+            YhSurface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = 12.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                BasicTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    decorationBox = { innerTextField ->
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (text.isEmpty()) {
+                                Text(
+                                    text = selectedInstruction?.hintText?.takeIf { it.isNotEmpty() } ?: placeholder,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
                 )
             }
         }

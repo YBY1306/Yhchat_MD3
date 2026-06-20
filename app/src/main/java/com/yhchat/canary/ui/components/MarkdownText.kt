@@ -346,8 +346,10 @@ private fun MarkdownTextRun(
     enableTextSelection: Boolean,
     onLinkClicked: (String) -> Unit
 ) {
+    val allowSelectionForThisRun =
+        enableTextSelection && !MarkdownRendererCache.shouldDisableSelectionForPerformance(content)
     val maybeSelection: @Composable (@Composable () -> Unit) -> Unit = { body ->
-        if (enableTextSelection) {
+        if (allowSelectionForThisRun) {
             SelectionContainer { body() }
         } else {
             body()
@@ -900,6 +902,10 @@ private object MarkdownRendererCache {
 
     fun getMarkdownRenderBlocks(content: String): List<String> = markdownRenderBlockCache.cached(content) {
         splitLinkHeavyMarkdownBlocks(content)
+    }
+
+    fun shouldDisableSelectionForPerformance(content: String): Boolean {
+        return isLinkHeavyMarkdown(content)
     }
 
     fun getHighlightedMarkdown(content: String, keyword: String): String {

@@ -1,4 +1,4 @@
-﻿package com.yhchat.canary.ui.contacts
+package com.yhchat.canary.ui.contacts
 
 import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -484,9 +485,11 @@ private fun FriendRequestRow(
         else -> "未知"
     }
 
+    val approvedTint = Color(0xFF16A34A)
+
     val (icon, iconTint) = when (item.result) {
         0 -> Icons.Default.HourglassEmpty to MaterialTheme.colorScheme.primary
-        1 -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.tertiary
+        1 -> Icons.Default.CheckCircle to approvedTint
         2 -> Icons.Default.Error to MaterialTheme.colorScheme.error
         else -> Icons.Default.Error to MaterialTheme.colorScheme.onSurfaceVariant
     }

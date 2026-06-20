@@ -1,10 +1,13 @@
 package com.yhchat.canary.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -28,8 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.yhchat.canary.ui.adaptive.YhDropdownMenu
-import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
+import com.yhchat.canary.ui.adaptive.YhBottomSheet
 import com.yhchat.canary.ui.adaptive.YhCheckbox
 import com.yhchat.canary.ui.adaptive.YhHorizontalDivider
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
@@ -105,7 +108,7 @@ fun QuotedMessageBar(
 }
 
 /**
- * 附件菜单 - DropdownMenu 版本
+ * 附件菜单 - 全屏 BottomSheet 版本
  */
 @Composable
 fun AttachmentMenu(
@@ -123,141 +126,169 @@ fun AttachmentMenu(
     onDefaultMessageTypeChange: ((Int) -> Unit)? = null,
     selectedMessageType: Int = 1
 ) {
-    YhDropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest
+    if (!expanded) return
+
+    YhBottomSheet(
+        title = "发送与消息类型",
+        onDismissRequest = onDismissRequest,
+        fullScreen = true
     ) {
-        // 附件选项
-        YhDropdownMenuItem(
-            text = { Text("图片") },
-            onClick = { onImageClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.Image, contentDescription = null)
-            }
-        )
-        
-        YhDropdownMenuItem(
-            text = { Text("拍照") },
-            onClick = { onCameraClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-            }
-        )
-        
-        YhDropdownMenuItem(
-            text = { Text("视频") },
-            onClick = { onVideoClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.VideoLibrary, contentDescription = null)
-            }
-        )
-        
-        YhDropdownMenuItem(
-            text = { Text("文件") },
-            onClick = { onFileClick?.invoke() },
-            leadingIcon = {
-                Icon(Icons.Default.AttachFile, contentDescription = null)
-            }
-        )
-        
-        // 消息类型选项
-        if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
-            YhHorizontalDivider()
-            
-            YhDropdownMenuItem(
-                text = { Text("文本") },
-                onClick = { onTextClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = selectedMessageType == 1)
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "附件",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
 
-            YhDropdownMenuItem(
-                text = { Text("HTML") },
-                onClick = { onHtmlClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = selectedMessageType == 8)
+            YhSurface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    AttachmentSheetRow("图片", Icons.Default.Image, onClick = { onImageClick?.invoke() })
+                    AttachmentSheetRow("拍照", Icons.Default.CameraAlt, onClick = { onCameraClick?.invoke() })
+                    AttachmentSheetRow("视频", Icons.Default.VideoLibrary, onClick = { onVideoClick?.invoke() })
+                    AttachmentSheetRow("文件", Icons.Default.AttachFile, onClick = { onFileClick?.invoke() }, showDivider = false)
                 }
-            )
-            
-            YhDropdownMenuItem(
-                text = { Text("Markdown") },
-                onClick = { onMarkdownClick.invoke() },
-                leadingIcon = {
-                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = selectedMessageType == 3)
-                }
-            )
-            
-            if (onA2UiClick != null) {
-                YhDropdownMenuItem(
-                    text = { Text("A2UI") },
-                    onClick = { onA2UiClick.invoke() },
-                    leadingIcon = {
-                        Icon(Icons.Default.Settings, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        MenuCheckedIndicator(checked = selectedMessageType == 14)
+            }
+
+            if (onTextClick != null && onHtmlClick != null && onMarkdownClick != null) {
+                Text(
+                    text = "当前消息类型",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                YhSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        AttachmentSheetRow(
+                            "文本",
+                            Icons.Default.TextFields,
+                            checked = selectedMessageType == 1,
+                            onClick = { onTextClick.invoke() }
+                        )
+                        AttachmentSheetRow(
+                            "HTML",
+                            Icons.Default.Code,
+                            checked = selectedMessageType == 8,
+                            onClick = { onHtmlClick.invoke() }
+                        )
+                        AttachmentSheetRow(
+                            "Markdown",
+                            Icons.AutoMirrored.Filled.Article,
+                            checked = selectedMessageType == 3,
+                            onClick = { onMarkdownClick.invoke() }
+                        )
+                        if (onA2UiClick != null) {
+                            AttachmentSheetRow(
+                                "A2UI",
+                                Icons.Default.Settings,
+                                checked = selectedMessageType == 14,
+                                onClick = { onA2UiClick.invoke() },
+                                showDivider = false
+                            )
+                        }
                     }
+                }
+            }
+
+            if (onDefaultMessageTypeChange != null) {
+                Text(
+                    text = "默认消息类型",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                YhSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        AttachmentSheetRow(
+                            "默认文本",
+                            Icons.Default.TextFields,
+                            checked = defaultMessageType == 1,
+                            onClick = { onDefaultMessageTypeChange.invoke(1) }
+                        )
+                        AttachmentSheetRow(
+                            "默认Markdown",
+                            Icons.AutoMirrored.Filled.Article,
+                            checked = defaultMessageType == 3,
+                            onClick = { onDefaultMessageTypeChange.invoke(3) }
+                        )
+                        AttachmentSheetRow(
+                            "默认HTML",
+                            Icons.Default.Code,
+                            checked = defaultMessageType == 8,
+                            onClick = { onDefaultMessageTypeChange.invoke(8) }
+                        )
+                        AttachmentSheetRow(
+                            "默认A2UI",
+                            Icons.Default.Settings,
+                            checked = defaultMessageType == 14,
+                            onClick = { onDefaultMessageTypeChange.invoke(14) },
+                            showDivider = false
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentSheetRow(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean = false,
+    showDivider: Boolean = true,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            if (checked) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "已选中",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
-
-        // 默认消息类型选项
-        if (onDefaultMessageTypeChange != null) {
-            YhHorizontalDivider()
-            
-            YhDropdownMenuItem(
-                text = { Text("默认文本") },
-                onClick = { onDefaultMessageTypeChange.invoke(1) },
-                leadingIcon = {
-                    Icon(Icons.Default.TextFields, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = defaultMessageType == 1)
-                }
-            )
-
-            YhDropdownMenuItem(
-                text = { Text("默认Markdown") },
-                onClick = { onDefaultMessageTypeChange.invoke(3) },
-                leadingIcon = {
-                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = defaultMessageType == 3)
-                }
-            )
-
-            YhDropdownMenuItem(
-                text = { Text("默认HTML") },
-                onClick = { onDefaultMessageTypeChange.invoke(8) },
-                leadingIcon = {
-                    Icon(Icons.Default.Code, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = defaultMessageType == 8)
-                }
-            )
-
-            YhDropdownMenuItem(
-                text = { Text("默认A2UI") },
-                onClick = { onDefaultMessageTypeChange.invoke(14) },
-                leadingIcon = {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                },
-                trailingIcon = {
-                    MenuCheckedIndicator(checked = defaultMessageType == 14)
-                }
-            )
+        if (showDivider) {
+            YhHorizontalDivider(modifier = Modifier.padding(top = 14.dp))
         }
     }
 }

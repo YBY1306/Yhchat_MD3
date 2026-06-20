@@ -563,7 +563,7 @@ fun ChatScreen(
             shouldStickToBottom = atBottomNow
         }
 
-        showScrollToBottomButton = !atBottomNow && !shouldStickToBottom
+        showScrollToBottomButton = !atBottomNow
     }
     
     // WebSocket 新消息处理：仅在底部时自动滚动
@@ -641,7 +641,7 @@ fun ChatScreen(
     YhSurface(
             modifier = Modifier.fillMaxSize(),
             color = if (uiState.chatBackgroundUrl != null) {
-                MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+                Color.Transparent
             } else {
                 MaterialTheme.colorScheme.background
             }
@@ -790,34 +790,7 @@ fun ChatScreen(
                             viewModel.isMyMessage(message)
                         }
                         val isStreaming = viewModel.isMessageStreaming(message.msgId)
-                        val itemModifier = if (isStreaming) {
-                            Modifier.fillMaxWidth()
-                        } else if (!enableAnimations || !enableMessageListDragAnimation) {
-                            Modifier.fillMaxWidth()
-                        } else {
-                            Modifier
-                                .fillMaxWidth()
-                                .animateItem(
-                                    fadeInSpec = tween(
-                                        durationMillis = 150,
-                                        easing = FastOutSlowInEasing
-                                    ),
-                                    fadeOutSpec = tween(
-                                        durationMillis = 150,
-                                        easing = FastOutSlowInEasing
-                                    ),
-                                    placementSpec = tween(
-                                        durationMillis = 200,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                                .animateContentSize(
-                                    animationSpec = tween(
-                                        durationMillis = 200,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                        }
+                        val itemModifier = Modifier.fillMaxWidth()
                         
                         AnimatedMessageItem(
                             message = message,

@@ -22,6 +22,7 @@ import com.yhchat.canary.ui.adaptive.YhText
 import com.yhchat.canary.ui.chat.ChatAddActivity
 import com.yhchat.canary.ui.community.BoardDetailActivity
 import com.yhchat.canary.ui.community.PostDetailActivity
+import com.yhchat.canary.ui.user.UserDetailActivity
 import java.util.regex.Pattern
 
 /**
@@ -39,6 +40,8 @@ object UnifiedLinkHandler {
     private val YUNHU_POST_DETAIL_PATTERN = Pattern.compile("yunhu://post-detail\\?id=(\\d+)")
     private val ALLEY_DETAIL_PATTERN = Pattern.compile("yunhu://alley-detail\\?id=(\\d+)")
     private val WEB_ARTICLE_PATTERN = Pattern.compile("https://www\\.yhchat\\.com/c/p/(\\d+)")
+    private val USER_HOMEPAGE_PATTERN = Pattern.compile("https://([^.]+\\.)?yhchat\\.com/user/homepage/(\\d+)")
+    private val YHCHAT_ROOT_PATTERN = Pattern.compile("https://([^.]+\\.)?yhchat\\.com/?(?:[?#].*)?")
     
     /**
      * 检查是否为可处理的链接
@@ -69,6 +72,9 @@ object UnifiedLinkHandler {
                 normalizedUrl.startsWith("yunhu://alley-detail") -> {
                     handleAlleyDetailLink(context, normalizedUrl)
                 }
+                normalizedUrl.startsWith("yunhu://ad") -> {
+                    handleYunhuAdLink(context, normalizedUrl)
+                }
                 normalizedUrl.startsWith("https://yhfx.jwznb.com/share") -> {
                     handleYhfxShareLink(context, normalizedUrl)
                 }
@@ -85,8 +91,14 @@ object UnifiedLinkHandler {
                         handleYhfxShareLink(context, normalizedUrl)
                     }
                 }
+                USER_HOMEPAGE_PATTERN.matcher(normalizedUrl).matches() -> {
+                    handleUserHomepageLink(context, normalizedUrl)
+                }
                 normalizedUrl.contains("https://www.yhchat.com/c/p/") -> {
                     handleWebArticleLink(context, normalizedUrl)
+                }
+                YHCHAT_ROOT_PATTERN.matcher(normalizedUrl).matches() -> {
+                    handleExternalLink(context, normalizedUrl)
                 }
                 else -> {
                     // 对于非云湖内链，尝试在外部浏览器中打开
@@ -195,6 +207,22 @@ object UnifiedLinkHandler {
         }
         context.startActivity(intent)
     }
+
+    /**
+     * 处理 yunhu://ad 链接
+     */
+    private fun handleYunhuAdLink(context: Context, url: String) {
+        Log.d(TAG, "Handling yunhu ad link: $url")
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.w(TAG, "No activity found for yunhu ad link: $url", e)
+            android.widget.Toast.makeText(context, "暂不支持打开该广告链接", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
     
     /**
      * 处理网页文章链接 https://www.yhchat.com/c/p/文章id
@@ -217,6 +245,23 @@ object UnifiedLinkHandler {
             handleExternalLink(context, url)
         }
     }
+
+    /**
+     * 处理用户主页链接 https://*.yhchat.com/user/homepage/{id}
+     */
+    private fun handleUserHomepageLink(context: Context, url: String) {
+        val matcher = USER_HOMEPAGE_PATTERN.matcher(url)
+        val userId = if (matcher.matches()) matcher.group(2) else null
+
+        if (userId.isNullOrBlank()) {
+            Log.w(TAG, "Failed to extract user id from homepage link: $url")
+            handleExternalLink(context, url)
+            return
+        }
+
+        Log.d(TAG, "Opening user detail from homepage link: userId=$userId")
+        UserDetailActivity.start(context, userId)
+    }
     
     /**
      * 处理外部链接，尝试在 WebViewActivity 中打开（如果适用），否则在系统浏览器中打开
@@ -225,6 +270,12 @@ object UnifiedLinkHandler {
         try {
             Log.d(TAG, "Opening external link: $url")
             
+            if (url.startsWith("yunhu://")) {
+                Log.w(TAG, "Refusing to route custom yunhu link through WebView: $url")
+                android.widget.Toast.makeText(context, "暂不支持打开该应用内链接", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+
             // 确保 URL 有正确的协议
             val finalUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 "https://$url"
@@ -260,7 +311,9 @@ object UnifiedLinkHandler {
 
         extractShareLink(uri)?.let { return it }
         extractChatAddLink(uri)?.let { return it }
+        extractUserHomepageLink(uri)?.let { return it }
         extractArticleLink(uri)?.let { return it }
+        extractYhchatRootLink(uri)?.let { return it }
 
         return trimmedUrl
     }
@@ -353,6 +406,36 @@ object UnifiedLinkHandler {
         }
     }
 
+    private fun extractUserHomepageLink(uri: Uri): String? {
+        val host = uri.host?.lowercase() ?: return null
+        if (host !in articleHosts && !host.endsWith(".yhchat.com")) return null
+
+        val pathSegments = uri.pathSegments
+        if (pathSegments.size < 3) return null
+        if (!pathSegments[0].equals("user", ignoreCase = true) ||
+            !pathSegments[1].equals("homepage", ignoreCase = true)
+        ) {
+            return null
+        }
+
+        val userId = pathSegments[2].trim()
+        return if (userId.isNotEmpty()) {
+            "https://www.yhchat.com/user/homepage/$userId"
+        } else {
+            null
+        }
+    }
+
+    private fun extractYhchatRootLink(uri: Uri): String? {
+        val host = uri.host?.lowercase() ?: return null
+        if (host != "yhchat.com" && host != "www.yhchat.com") return null
+
+        val normalizedPath = uri.encodedPath?.takeIf { it.isNotBlank() } ?: "/"
+        val query = uri.encodedQuery?.let { "?$it" } ?: ""
+        val fragment = uri.encodedFragment?.let { "#$it" } ?: ""
+        return "https://www.yhchat.com$normalizedPath$query$fragment"
+    }
+
     private fun normalizeChatType(rawType: String?): String? {
         return when (rawType?.trim()?.lowercase()) {
             "1", "user" -> "1"
@@ -369,7 +452,9 @@ object UnifiedLinkHandler {
     private fun isCanonicalHandleableLink(url: String): Boolean {
         return url.startsWith("yunhu://") ||
             url.startsWith("https://yhfx.jwznb.com/share") ||
-            url.contains("https://www.yhchat.com/c/p/")
+            url.contains("https://www.yhchat.com/c/p/") ||
+            USER_HOMEPAGE_PATTERN.matcher(url).matches() ||
+            YHCHAT_ROOT_PATTERN.matcher(url).matches()
     }
     
     /**
@@ -492,7 +577,9 @@ object UnifiedLinkHandler {
     fun containsHandleableLink(text: String): Boolean {
         return YUNHU_POST_DETAIL_PATTERN.matcher(text).find() || 
                ALLEY_DETAIL_PATTERN.matcher(text).find() ||
-               WEB_ARTICLE_PATTERN.matcher(text).find()
+               WEB_ARTICLE_PATTERN.matcher(text).find() ||
+               USER_HOMEPAGE_PATTERN.matcher(text).find() ||
+               YHCHAT_ROOT_PATTERN.matcher(text).find()
     }
     
     /**
@@ -517,6 +604,16 @@ object UnifiedLinkHandler {
         val webMatcher = WEB_ARTICLE_PATTERN.matcher(text)
         while (webMatcher.find()) {
             links.add(webMatcher.group())
+        }
+
+        val homepageMatcher = USER_HOMEPAGE_PATTERN.matcher(text)
+        while (homepageMatcher.find()) {
+            links.add(homepageMatcher.group())
+        }
+
+        val rootMatcher = YHCHAT_ROOT_PATTERN.matcher(text)
+        while (rootMatcher.find()) {
+            links.add(rootMatcher.group())
         }
         
         return links
@@ -594,6 +691,50 @@ object UnifiedLinkHandler {
                 ForegroundColorSpan(linkColor), 
                 start, 
                 end, 
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        // 处理用户主页链接
+        val homepageMatcher = USER_HOMEPAGE_PATTERN.matcher(text)
+        while (homepageMatcher.find()) {
+            val start = homepageMatcher.start()
+            val end = homepageMatcher.end()
+            val link = homepageMatcher.group()
+
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleLink(widget.context, link)
+                }
+            }
+
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor),
+                start,
+                end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        // 处理 yhchat.com 根域名链接
+        val rootMatcher = YHCHAT_ROOT_PATTERN.matcher(text)
+        while (rootMatcher.find()) {
+            val start = rootMatcher.start()
+            val end = rootMatcher.end()
+            val link = rootMatcher.group()
+
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleLink(widget.context, link)
+                }
+            }
+
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(linkColor),
+                start,
+                end,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }

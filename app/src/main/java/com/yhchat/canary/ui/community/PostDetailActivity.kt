@@ -84,6 +84,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -126,6 +127,14 @@ import com.yhchat.canary.utils.UnifiedLinkHandler
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.DecimalFormat
 import java.util.regex.Pattern
+
+private fun TextUnit.scaledOrUnspecified(multiplier: Float): TextUnit {
+    return if (this == TextUnit.Unspecified) {
+        TextUnit.Unspecified
+    } else {
+        this * multiplier
+    }
+}
 
 /**
  * 文章详情Activity
@@ -308,7 +317,7 @@ fun PostContentCard(
                         text = stripMarkdownForSearchDisplay(post.content),
                         keyword = trimmedSearchQuery,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.scaledOrUnspecified(1.3f),
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
@@ -322,7 +331,7 @@ fun PostContentCard(
                     ArticleLinkText(
                         text = post.content,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.scaledOrUnspecified(1.3f),
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
@@ -332,7 +341,7 @@ fun PostContentCard(
                         text = post.content,
                         keyword = trimmedSearchQuery,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.scaledOrUnspecified(1.3f),
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()

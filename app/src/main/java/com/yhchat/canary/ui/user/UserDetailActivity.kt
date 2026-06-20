@@ -89,7 +89,7 @@ import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
-import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.base.BaseActivity
 import com.yhchat.canary.ui.chat.ChatActivity
@@ -331,14 +331,9 @@ fun UserDetailScreen(
     
     YhScaffold(
         topBar = {
-            YhTopAppBar(
-                title = {
-                    Text(
-                        text = if (showCollapsedTitle) uiState.userDetail?.name ?: userName else "",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
+            YhTopBar(
+                title = "用户详情",
+                large = true,
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")

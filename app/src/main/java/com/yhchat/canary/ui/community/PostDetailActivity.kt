@@ -1317,7 +1317,7 @@ fun PostDetailScreen(
         },
         topBar = {
             YhTopBar(
-                title = postDetailState.post?.title ?: postTitle,
+                title = "文章详情",
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {
                         Icon(

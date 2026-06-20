@@ -511,8 +511,8 @@ fun YhTopBar(
 ) {
     if (isMiuixUi) {
         val scrollBehavior = LocalYhMiuixScrollBehavior.current
-        val resolvedTitle = title.ifBlank { "文章详情" }
-        val displayTitle = if (resolvedTitle.length > 18) "文章详情" else resolvedTitle
+        val resolvedTitle = title.ifBlank { "我是顶栏" }
+        val displayTitle = if (resolvedTitle.length > 18) "我是顶栏" else resolvedTitle
         if (large) {
             top.yukonga.miuix.kmp.basic.TopAppBar(
                 title = displayTitle,

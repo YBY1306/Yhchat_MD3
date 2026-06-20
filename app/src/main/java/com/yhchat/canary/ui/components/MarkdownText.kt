@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,6 +76,21 @@ import com.mikepenz.markdown.m3.Markdown as MikepenzMarkdown
 import com.mikepenz.markdown.model.MarkdownState
 import com.mikepenz.markdown.model.ReferenceLinkHandler
 import com.mikepenz.markdown.model.rememberMarkdownState
+import com.mikepenz.markdown.compose.LocalMarkdownColors
+import com.mikepenz.markdown.compose.LocalMarkdownDimens
+import com.mikepenz.markdown.compose.LocalMarkdownComponents
+import com.mikepenz.markdown.compose.components.MarkdownComponentModel
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownDivider
+import com.mikepenz.markdown.compose.elements.VerticalMarkdownDivider
+import com.mikepenz.markdown.compose.elements.MarkdownElement
+import com.mikepenz.markdown.annotator.annotatorSettings
+import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
+import com.mikepenz.markdown.utils.getUnescapedTextInNode
+import org.intellij.markdown.ast.findChildOfType
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.flavours.gfm.GFMElementTypes
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhText as Text
@@ -535,6 +553,9 @@ private fun MikepenzMarkdownText(
     val flavour = remember { GFMFlavourDescriptor() }
     val parser = remember(flavour) { MarkdownParser(flavour) }
     val referenceLinkHandler = remember { PersistentReferenceLinkHandler() }
+    val tableComponents = remember(typography) {
+        markdownComponents(table = { model -> AlignedMarkdownTable(model) })
+    }
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
     ) {
@@ -550,7 +571,8 @@ private fun MikepenzMarkdownText(
                 modifier = modifier,
                 colors = colors,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = tableComponents
             )
         } else {
             val markdownState = rememberMarkdownState(
@@ -567,8 +589,130 @@ private fun MikepenzMarkdownText(
                 modifier = modifier,
                 colors = colors,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = tableComponents
             )
+        }
+    }
+}
+
+/**
+ * 自定义表格组件
+ *
+ * 解决默认 MarkdownTable 的问题：
+ * 1. 列对齐错位（每行独立 weight 测量导致同列宽度不一致）
+ * 2. 内容被单行省略截断（maxLines = 1）
+ *
+ * 实现方式：按列组织渲染，每列用 IntrinsicSize.Max 取该列所有格子内容最大宽度，
+ * 列宽统一从而行对齐；单元格内容完整显示不截断；整表可横向滚动。
+ */
+@Composable
+private fun AlignedMarkdownTable(model: MarkdownComponentModel) {
+    val content = model.content
+    val node = model.node
+    val style = model.typography.table
+    val dimens = LocalMarkdownDimens.current
+    val colors = LocalMarkdownColors.current
+    val settings = annotatorSettings()
+
+    val headerNode = remember(node) { node.findChildOfType(GFMElementTypes.HEADER) }
+    val rows = remember(node) {
+        node.children.filter { it.type == GFMElementTypes.ROW }
+    }
+    val headerCells = remember(headerNode) {
+        headerNode?.children?.filter { it.type == GFMTokenTypes.CELL }.orEmpty()
+    }
+    val bodyCellRows = remember(rows) {
+        rows.map { row -> row.children.filter { it.type == GFMTokenTypes.CELL } }
+    }
+    val columnCount = remember(headerCells, bodyCellRows) {
+        maxOf(headerCells.size, bodyCellRows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+    }
+
+    // 按列组织：每列收集所有行（含表头）该列的 cell
+    val columns = remember(headerCells, bodyCellRows, columnCount) {
+        (0 until columnCount).map { colIndex ->
+            buildList {
+                headerCells.getOrNull(colIndex)?.let { add(it to true) }
+                bodyCellRows.forEach { row -> add(row.getOrNull(colIndex) to false) }
+            }
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .background(colors.tableBackground, RoundedCornerShape(dimens.tableCornerSize))
+            .widthIn(max = dimens.tableMaxWidth)
+    ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .width(IntrinsicSize.Max)
+        ) {
+            columns.forEachIndexed { colIndex, columnCells ->
+                Column(
+                    modifier = Modifier
+                        .width(IntrinsicSize.Max)
+                        .then(
+                            if (colIndex < columns.lastIndex) {
+                                Modifier.padding(end = dimens.tableCellPadding)
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    columnCells.forEachIndexed { rowIndex, (cell, isHeader) ->
+                        val cellStyle = if (isHeader) {
+                            style.copy(fontWeight = FontWeight.Bold)
+                        } else {
+                            style
+                        }
+                        val cellModifier = Modifier
+                            .padding(
+                                horizontal = if (colIndex == 0) dimens.tableCellPadding else 0.dp,
+                                vertical = dimens.tableCellPadding / 2
+                            )
+                            .fillMaxWidth()
+                        if (cell != null && cell.children.any { it.type == MarkdownElementTypes.IMAGE }) {
+                            val markdownComponents = LocalMarkdownComponents.current
+                            Box(modifier = cellModifier) {
+                                MarkdownElement(
+                                    node = cell,
+                                    components = markdownComponents,
+                                    content = content,
+                                    includeSpacer = false
+                                )
+                            }
+                        } else {
+                            val annotated = remember(cell, content, cellStyle, settings) {
+                                if (cell != null) {
+                                    content.buildMarkdownAnnotatedString(
+                                        textNode = cell,
+                                        style = cellStyle,
+                                        annotatorSettings = settings
+                                    )
+                                } else {
+                                    buildAnnotatedString { }
+                                }
+                            }
+                            Text(
+                                text = annotated,
+                                style = cellStyle,
+                                color = colors.text,
+                                maxLines = Int.MAX_VALUE,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+                                modifier = cellModifier
+                            )
+                        }
+                        if (rowIndex < columnCells.lastIndex) {
+                            MarkdownDivider(modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+                if (colIndex < columns.lastIndex) {
+                    VerticalMarkdownDivider(modifier = Modifier.fillMaxHeight())
+                }
+            }
         }
     }
 }

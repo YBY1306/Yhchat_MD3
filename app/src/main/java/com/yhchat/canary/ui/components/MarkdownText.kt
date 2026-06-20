@@ -137,12 +137,7 @@ fun MarkdownText(
             accessibilityEnabled = true,
             onHyperlinkClick = { url ->
                 try {
-                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                    } else {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(intent)
-                    }
+                    openMarkdownLink(context, url)
                 } catch (_: Exception) {
                 }
             }
@@ -177,12 +172,7 @@ fun MarkdownText(
                                                         enableTextSelection = enableTextSelection,
                                                         onLinkClicked = { url ->
                                                             try {
-                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                                                } else {
-                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                                    context.startActivity(intent)
-                                                                }
+                                                                openMarkdownLink(context, url)
                                                             } catch (_: Exception) {
                                                             }
                                                         }
@@ -220,12 +210,7 @@ fun MarkdownText(
                                                         enableTextSelection = enableTextSelection,
                                                         onLinkClicked = { url ->
                                                             try {
-                                                                if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                                                    com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                                                } else {
-                                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                                    context.startActivity(intent)
-                                                                }
+                                                                openMarkdownLink(context, url)
                                                             } catch (_: Exception) {
                                                             }
                                                         }
@@ -268,12 +253,7 @@ fun MarkdownText(
                             },
                             onUriClick = { url ->
                                 try {
-                                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                    } else {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        context.startActivity(intent)
-                                    }
+                                    openMarkdownLink(context, url)
                                 } catch (_: Exception) {
                                 }
                             },
@@ -306,12 +286,7 @@ fun MarkdownText(
                             },
                             onUriClick = { url ->
                                 try {
-                                    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
-                                        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
-                                    } else {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        context.startActivity(intent)
-                                    }
+                                    openMarkdownLink(context, url)
                                 } catch (_: Exception) {
                                 }
                             },
@@ -1235,6 +1210,29 @@ private fun MarkdownDetailsBlock(
             }
         }
     }
+}
+
+private fun openMarkdownLink(context: Context, url: String) {
+    val uri = Uri.parse(url)
+    if (uri.scheme.equals("yunhu", ignoreCase = true) && uri.host.equals("ad", ignoreCase = true)) {
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        return
+    }
+
+    if (com.yhchat.canary.utils.UnifiedLinkHandler.isHandleableLink(url)) {
+        com.yhchat.canary.utils.UnifiedLinkHandler.handleLink(context, url)
+        return
+    }
+
+    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+        addCategory(Intent.CATEGORY_BROWSABLE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(intent)
 }
 
 private fun injectHighlightMark(markdown: String, keyword: String): String {

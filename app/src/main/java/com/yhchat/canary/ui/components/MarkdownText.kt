@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
@@ -83,10 +84,11 @@ import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownDivider
 import com.mikepenz.markdown.compose.elements.VerticalMarkdownDivider
-import com.mikepenz.markdown.compose.elements.MarkdownElement
+import com.mikepenz.markdown.compose.MarkdownElement
 import com.mikepenz.markdown.annotator.annotatorSettings
 import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
+import org.intellij.markdown.MarkdownElementTypes
 import org.intellij.markdown.ast.findChildOfType
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes

@@ -6,10 +6,7 @@ import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
@@ -26,16 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -175,92 +165,11 @@ fun ChatScreen(
     var showScrollToBottomButton by remember { mutableStateOf(false) }
     // 用户是否处于“粘底”状态（只由用户滚动行为改变，不受新消息插入瞬时布局影响）
     var shouldStickToBottom by remember { mutableStateOf(true) }
-    val enableMessageListDragAnimation by rememberBooleanPreference(
-        "chat_settings",
-        "enable_message_list_drag_animation",
-        true
-    )
     // WS 新消息到来后的待执行自动滚动标记（等列表插入完成后再滚动）
     var pendingAutoScrollToBottom by remember { mutableStateOf(false) }
     // WS 新消息到来且用户不在底部时，保持当前可视锚点，避免列表自己跳动
     var pendingPreserveVisibleAnchor by remember { mutableStateOf<ListAnchorSnapshot?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    val maxListOverscrollPx = with(LocalDensity.current) { 72.dp.toPx() }
-    val listOverscrollOffset = remember { Animatable(0f) }
-    val listOverscrollConnection = remember(maxListOverscrollPx, coroutineScope) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source != NestedScrollSource.UserInput) return Offset.Zero
-
-                val currentOffset = listOverscrollOffset.value
-                if (currentOffset == 0f) return Offset.Zero
-
-                val deltaY = available.y
-                val isReturningToRest =
-                    (currentOffset > 0f && deltaY < 0f) || (currentOffset < 0f && deltaY > 0f)
-                if (!isReturningToRest) return Offset.Zero
-
-                val newOffset = if (currentOffset > 0f) {
-                    max(0f, currentOffset + deltaY)
-                } else {
-                    min(0f, currentOffset + deltaY)
-                }
-
-                coroutineScope.launch {
-                    listOverscrollOffset.stop()
-                    listOverscrollOffset.snapTo(newOffset)
-                }
-                return Offset(0f, newOffset - currentOffset)
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                if (source != NestedScrollSource.UserInput) return Offset.Zero
-                if (available.y == 0f) return Offset.Zero
-
-                val currentOffset = listOverscrollOffset.value
-                val resistance = (1f - abs(currentOffset) / maxListOverscrollPx)
-                    .coerceIn(0.25f, 1f)
-                val newOffset = (currentOffset + available.y * 0.35f * resistance)
-                    .coerceIn(-maxListOverscrollPx, maxListOverscrollPx)
-
-                coroutineScope.launch {
-                    listOverscrollOffset.stop()
-                    listOverscrollOffset.snapTo(newOffset)
-                }
-                return Offset(0f, available.y)
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (enableMessageListDragAnimation && listOverscrollOffset.value != 0f) {
-                    listOverscrollOffset.animateTo(
-                        targetValue = 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                }
-                return Velocity.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (enableMessageListDragAnimation && listOverscrollOffset.value != 0f) {
-                    listOverscrollOffset.animateTo(
-                        targetValue = 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                }
-                return Velocity.Zero
-            }
-        }
-    }
     
     // 引用消息状态
     var quotedMessageId by remember { mutableStateOf<String?>(null) }
@@ -595,7 +504,7 @@ fun ChatScreen(
     // 消息数量变化后再执行自动滚动，避免时序问题导致“未滚到最新”
     LaunchedEffect(messageListIdentity, pendingAutoScrollToBottom, pendingPreserveVisibleAnchor) {
         if (pendingAutoScrollToBottom) {
-            listState.animateScrollToItem(0)
+            listState.scrollToItem(0)
             pendingAutoScrollToBottom = false
             return@LaunchedEffect
         }
@@ -757,16 +666,7 @@ fun ChatScreen(
             } else {
                 val groupOwnerId = uiState.groupInfo?.ownerId
                 val groupAdminIds = uiState.groupInfo?.adminIds ?: emptyList()
-                val messageListModifier = if (enableMessageListDragAnimation) {
-                    Modifier
-                        .fillMaxSize()
-                        .nestedScroll(listOverscrollConnection)
-                        .graphicsLayer {
-                            translationY = listOverscrollOffset.value
-                        }
-                } else {
-                    Modifier.fillMaxSize()
-                }
+                val messageListModifier = Modifier.fillMaxSize()
 
                 LazyColumn(
                     state = listState,
@@ -1220,7 +1120,7 @@ fun ChatScreen(
                             shouldStickToBottom = true
                             pendingAutoScrollToBottom = false
                             // 滚动到最新消息（索引0，因为是 reverseLayout）
-                            listState.animateScrollToItem(0)
+                            listState.scrollToItem(0)
                         }
                     },
                     modifier = Modifier.size(48.dp),
@@ -1390,7 +1290,7 @@ fun ChatScreen(
                                 coroutineScope.launch {
                                     shouldStickToBottom = true
                                     pendingAutoScrollToBottom = false
-                                    listState.animateScrollToItem(0)
+                                    listState.scrollToItem(0)
                                 }
                                 // 发送成功后清除草稿
                                 viewModel.clearDraft()

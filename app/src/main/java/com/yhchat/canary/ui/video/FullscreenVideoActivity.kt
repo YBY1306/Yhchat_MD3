@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -54,7 +55,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.Toast
+import com.yhchat.canary.service.FileDownloadService
 import com.yhchat.canary.ui.adaptive.YhCircularProgressIndicator
+import com.yhchat.canary.ui.adaptive.YhDropdownMenu
+import com.yhchat.canary.ui.adaptive.YhDropdownMenuItem
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhSlider
@@ -156,6 +161,8 @@ private fun FullscreenVideoPlayer(
     val handler = remember { Handler(Looper.getMainLooper()) }
 
     var videoView by remember { mutableStateOf<android.widget.VideoView?>(null) }
+    var moreMenuExpanded by remember { mutableStateOf(false) }
+    var isLandscape by remember { mutableStateOf(true) }
 
     LaunchedEffect(initialPosition, initialPlaying) {
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
@@ -316,21 +323,70 @@ private fun FullscreenVideoPlayer(
                         )
                     )
             ) {
-                // 关闭按钮
-                YhIconButton(
-                    onClick = { 
-                        onClose(uiState.currentPositionMs, uiState.isPlaying)
-                    },
+                Row(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "关闭",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    YhIconButton(
+                        onClick = {
+                            onClose(uiState.currentPositionMs, uiState.isPlaying)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "关闭",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Box {
+                        YhIconButton(onClick = { moreMenuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多操作",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        YhDropdownMenu(
+                            expanded = moreMenuExpanded,
+                            onDismissRequest = { moreMenuExpanded = false }
+                        ) {
+                            YhDropdownMenuItem(
+                                text = { Text(if (isLandscape) "切换为竖屏" else "切换为横屏") },
+                                onClick = {
+                                    moreMenuExpanded = false
+                                    isLandscape = !isLandscape
+                                    (context as? Activity)?.requestedOrientation = if (isLandscape) {
+                                        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                    } else {
+                                        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                    }
+                                }
+                            )
+                            YhDropdownMenuItem(
+                                text = { Text("保存视频") },
+                                onClick = {
+                                    moreMenuExpanded = false
+                                    val fileName = videoUrl.substringAfterLast("/").ifEmpty {
+                                        "video_${System.currentTimeMillis()}.mp4"
+                                    }
+                                    FileDownloadService.startDownload(
+                                        context = context,
+                                        fileUrl = videoUrl,
+                                        fileName = fileName,
+                                        fileSize = 0L,
+                                        autoOpen = false
+                                    )
+                                    Toast.makeText(context, "开始下载视频：$fileName", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
                 }
             }
             

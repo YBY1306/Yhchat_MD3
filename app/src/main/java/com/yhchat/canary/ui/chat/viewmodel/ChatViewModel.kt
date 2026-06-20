@@ -100,6 +100,9 @@ class ChatViewModel @Inject constructor(
         )
     }
 
+    private var lastTextSendAtMs: Long = 0L
+    private val textSendDebounceWindowMs: Long = 800L
+
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
@@ -1752,6 +1755,13 @@ class ChatViewModel @Inject constructor(
             onError("Cannot send empty message")
             return
         }
+
+        val now = System.currentTimeMillis()
+        if (now - lastTextSendAtMs < textSendDebounceWindowMs) {
+            Log.d(tag, "Ignore duplicated send in debounce window: ${now - lastTextSendAtMs}ms")
+            return
+        }
+        lastTextSendAtMs = now
         
         viewModelScope.launch {
             try {

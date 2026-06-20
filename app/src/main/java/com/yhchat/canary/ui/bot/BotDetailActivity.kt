@@ -47,7 +47,7 @@ import com.yhchat.canary.ui.adaptive.YhSurface
 import com.yhchat.canary.ui.adaptive.YhSwitch
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
-import com.yhchat.canary.ui.adaptive.YhTopAppBar
+import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.YhVerticalDivider
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.HtmlWebView
@@ -139,7 +139,6 @@ private fun BotDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val showCollapsedTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     var showImageViewer by remember { mutableStateOf(false) }
     var currentImageUrl by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -166,14 +165,8 @@ private fun BotDetailScreen(
 
     YhScaffold(
         topBar = {
-            YhTopAppBar(
-                title = {
-                    Text(
-                        text = if (showCollapsedTitle) "机器人详情" else "",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
+            YhTopBar(
+                title = "机器人详情",
                 navigationIcon = {
                     YhIconButton(onClick = onBackClick) {
                         Icon(

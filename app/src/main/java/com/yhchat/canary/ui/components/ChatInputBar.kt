@@ -577,6 +577,28 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                                         }
                                     )
+
+                    if (inputLineCount >= 2) {
+                        YhIconButton(
+                            onClick = {
+                                expandedEditorText = text
+                                showExpandedEditor = true
+                                showAttachMenu = false
+                                showExpressionPicker = false
+                                showInstructionPicker = false
+                                isVoiceMode = false
+                                keyboardController?.hide()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "展开输入框",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                                 }
                             }
                         }
@@ -611,27 +633,6 @@ fun insertMentionPlaceholder(text: String, userName: String): String {
                         }
                     }
 
-                    if (inputLineCount >= 3) {
-                        YhIconButton(
-                            onClick = {
-                                expandedEditorText = text
-                                showExpandedEditor = true
-                                showAttachMenu = false
-                                showExpressionPicker = false
-                                showInstructionPicker = false
-                                isVoiceMode = false
-                                keyboardController?.hide()
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "展开输入框",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
                 } else {
                     // 文本模式：显示输入框
                     BasicTextField(
@@ -1082,21 +1083,6 @@ private fun ExpandedInputEditorSheet(
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                YhOutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(18.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "收回输入框",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text("收回")
-                }
-            }
-
             YhSurface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1105,28 +1091,49 @@ private fun ExpandedInputEditorSheet(
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                BasicTextField(
-                    value = text,
-                    onValueChange = onTextChange,
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    decorationBox = { innerTextField ->
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            if (text.isEmpty()) {
-                                Text(
-                                    text = selectedInstruction?.hintText?.takeIf { it.isNotEmpty() } ?: placeholder,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                )
-                            }
-                            innerTextField()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        YhOutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(18.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "收回输入框",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("收回")
                         }
                     }
-                )
+                    BasicTextField(
+                        value = text,
+                        onValueChange = onTextChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(top = 12.dp),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (text.isEmpty()) {
+                                    Text(
+                                        text = selectedInstruction?.hintText?.takeIf { it.isNotEmpty() } ?: placeholder,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                }
             }
         }
     }

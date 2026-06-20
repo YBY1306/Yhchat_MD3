@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -229,11 +230,16 @@ fun StickerPackDetailContent(
                             text = stickerPack.name,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable {
-                                clipboardManager.setText(buildAnnotatedString { append(stickerPack.name) })
-                                Toast.makeText(context, "已复制表情包名称", Toast.LENGTH_SHORT).show()
-                            }
+                            maxLines = Int.MAX_VALUE,
+                            overflow = TextOverflow.Clip,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    clipboardManager.setText(buildAnnotatedString { append(stickerPack.name) })
+                                    Toast.makeText(context, "已复制表情包名称", Toast.LENGTH_SHORT).show()
+                                }
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "ID: ${stickerPack.id}",
                             style = MaterialTheme.typography.labelSmall,

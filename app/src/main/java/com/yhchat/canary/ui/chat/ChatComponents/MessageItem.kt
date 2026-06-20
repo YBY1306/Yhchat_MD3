@@ -219,7 +219,7 @@ fun MessageItem(
     val showCustomActionContainer = rememberMessageActionMenuLauncher(
         enabled = !isMultiSelectMode,
         onCopyAll = copyAllMessage,
-        onFreeCopy = if (message.contentType in listOf(1, 3, 8) && messageOperationText.isNotBlank()) {
+        onFreeCopy = if (message.contentType in listOf(1, 3, 8, 14) && messageOperationText.isNotBlank()) {
             {
                 freeCopyText = messageOperationText
                 showFreeCopyDialog = true

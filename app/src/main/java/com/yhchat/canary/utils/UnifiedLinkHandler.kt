@@ -247,7 +247,7 @@ object UnifiedLinkHandler {
     }
 
     /**
-     * 处理用户主页链接 https://*.yhchat.com/user/homepage/{id}
+     * 处理用户主页链接 https://subdomain.yhchat.com/user/homepage/{id}
      */
     private fun handleUserHomepageLink(context: Context, url: String) {
         val matcher = USER_HOMEPAGE_PATTERN.matcher(url)

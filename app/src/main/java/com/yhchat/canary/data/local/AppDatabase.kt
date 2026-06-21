@@ -19,9 +19,10 @@ import com.yhchat.canary.data.model.SavedAccount
         SavedAccount::class,
         CachedDiscoverData::class,
         CachedProfileData::class,
-        DownloadedFileRecord::class
+        DownloadedFileRecord::class,
+        ShareTargetPreference::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedDiscoverDataDao(): CachedDiscoverDataDao
     abstract fun cachedProfileDataDao(): CachedProfileDataDao
     abstract fun downloadedFileRecordDao(): DownloadedFileRecordDao
+    abstract fun shareTargetPreferenceDao(): ShareTargetPreferenceDao
     
     companion object {
         @Volatile

@@ -79,6 +79,7 @@ import com.yhchat.canary.ui.community.PostDetailActivity
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.login.LoginActivity
 import com.yhchat.canary.ui.sticker.StickerPackDetailActivity
+import com.yhchat.canary.ui.share.ExternalShareManagerActivity
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -314,6 +315,24 @@ fun SettingsScreen(
             // 内容设置
             item {
                 ContentSettingsGroup(context = context)
+            }
+
+            item {
+                SettingsGroup(
+                    title = "分享",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Share,
+                                title = "外部分享",
+                                subtitle = "管理默认分享应用和会话专属分享目标",
+                                onClick = {
+                                    ExternalShareManagerActivity.start(context)
+                                }
+                            )
+                        }
+                    )
+                )
             }
 
             item {

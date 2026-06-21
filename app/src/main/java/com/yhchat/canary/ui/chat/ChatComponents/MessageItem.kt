@@ -77,6 +77,7 @@ import com.yhchat.canary.ui.components.htmltext.AdvancedHtmlRenderer
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.components.rememberMessageActionMenuLauncher
 import com.yhchat.canary.ui.webview.WebViewActivity
+import com.yhchat.canary.ui.share.ExternalShareUtils
 import com.yhchat.canary.utils.FavoriteMessageStore
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import kotlinx.coroutines.Dispatchers
@@ -171,6 +172,9 @@ fun MessageItem(
         } : ${messageOperationText.ifBlank { "[${message.contentType.messageTypeLabel()}]" }}"
         onQuote(message.msgId, quotedText)
     }
+    val externalShareMessage: () -> Unit = {
+        ExternalShareUtils.shareMessage(context, message)
+    }
     val addExpressionAction: (() -> Unit)? = if (message.contentType == 7) {
         {
             val expressionId = message.content.expressionId
@@ -242,7 +246,8 @@ fun MessageItem(
             { onBlockUser(message.sender.chatId, message.sender.name, message.sender.avatarUrl) }
         } else null,
         onSaveAudio = saveAudioAction,
-        onSpeechToText = speechToTextAction
+        onSpeechToText = speechToTextAction,
+        onExternalShare = externalShareMessage
     )
     var lastActionMenuOpenAt by remember(message.msgId) { mutableStateOf(0L) }
     val openMessageActions: () -> Unit = {
@@ -595,7 +600,11 @@ fun MessageItem(
                     openHtmlInInternalBrowser()
                     showContextMenuDialog = false
                 }
-            } else null
+            } else null,
+            onExternalShare = {
+                externalShareMessage()
+                showContextMenuDialog = false
+            }
         )
     }
 

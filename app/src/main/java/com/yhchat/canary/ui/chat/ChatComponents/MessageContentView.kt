@@ -76,6 +76,7 @@ import com.yhchat.canary.ui.components.MarkdownText
 import com.yhchat.canary.ui.components.MessageSelectionContainer
 import com.yhchat.canary.ui.components.htmltext.HtmlTextMessage
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.share.ExternalShareUtils
 import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import org.json.JSONObject
@@ -161,7 +162,10 @@ fun MessageContentView(
                             onPlusOne = { onPlusOne(message) },
                             onFavorite = { onFavorite(message) },
                             onMultiSelect = onMultiSelect,
-                            onOpenInInternalBrowser = openHtmlInInternalBrowser
+                            onOpenInInternalBrowser = openHtmlInInternalBrowser,
+                            onExternalShare = { selectedText ->
+                                ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: htmlContent, message.chatId ?: message.recvId)
+                            }
                         ) {
                             Text(
                                 text = htmlContent,
@@ -444,7 +448,10 @@ fun MessageContentView(
                             } else null,
                             onPlusOne = { onPlusOne(message) },
                             onFavorite = { onFavorite(message) },
-                            onMultiSelect = onMultiSelect
+                            onMultiSelect = onMultiSelect,
+                            onExternalShare = { selectedText ->
+                                ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: text, message.chatId ?: message.recvId)
+                            }
                         ) {
                             Text(
                                 text = text,
@@ -509,7 +516,10 @@ fun MessageContentView(
                                 } else null,
                                 onPlusOne = { onPlusOne(message) },
                                 onFavorite = { onFavorite(message) },
-                                onMultiSelect = onMultiSelect
+                                onMultiSelect = onMultiSelect,
+                                onExternalShare = { selectedText ->
+                                    ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: text, message.chatId ?: message.recvId)
+                                }
                             ) {
                                 Text(
                                     text = text,
@@ -538,7 +548,10 @@ fun MessageContentView(
                             } else null,
                             onPlusOne = { onPlusOne(message) },
                             onFavorite = { onFavorite(message) },
-                            onMultiSelect = onMultiSelect
+                            onMultiSelect = onMultiSelect,
+                            onExternalShare = { selectedText ->
+                                ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: markdownText, message.chatId ?: message.recvId)
+                            }
                         ) {
                             Text(
                                 text = markdownText,
@@ -560,7 +573,10 @@ fun MessageContentView(
                             } else null,
                             onPlusOne = { onPlusOne(message) },
                             onFavorite = { onFavorite(message) },
-                            onMultiSelect = onMultiSelect
+                            onMultiSelect = onMultiSelect,
+                            onExternalShare = { selectedText ->
+                                ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: markdownText, message.chatId ?: message.recvId)
+                            }
                         ) {
                             MarkdownText(
                                 markdown = markdownText,
@@ -758,7 +774,10 @@ fun MessageContentView(
                                     else -> null
                                 },
                                 onPlusOne = { onPlusOne(message) },
-                                onFavorite = { onFavorite(message) }
+                                onFavorite = { onFavorite(message) },
+                                onExternalShare = { selectedText ->
+                                    ExternalShareUtils.shareText(context, selectedText?.takeIf { it.isNotBlank() } ?: text, message.chatId ?: message.recvId)
+                                }
                             ) {
                         val containsExpressionToken = text.contains("[.") && text.contains("]")
                         val containsLink = LinkDetector.containsLink(text)

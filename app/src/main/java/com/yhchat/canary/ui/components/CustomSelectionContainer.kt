@@ -36,6 +36,7 @@ fun MessageSelectionContainer(
     onFreeCopy: (() -> Unit)? = null,
     onFavorite: (() -> Unit)? = null,
     onOpenInInternalBrowser: (() -> Unit)? = null,
+    onExternalShare: ((String?) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
@@ -53,7 +54,8 @@ fun MessageSelectionContainer(
         onCopyAll,
         onFreeCopy,
         onFavorite,
-        onOpenInInternalBrowser
+        onOpenInInternalBrowser,
+        onExternalShare
     ) {
         CustomTextToolbar(
             view = view,
@@ -67,11 +69,12 @@ fun MessageSelectionContainer(
             onCopyAll = onCopyAll,
             onFreeCopy = onFreeCopy,
             onFavorite = onFavorite,
-            onOpenInInternalBrowser = onOpenInInternalBrowser
+            onOpenInInternalBrowser = onOpenInInternalBrowser,
+            onExternalShare = onExternalShare
         )
     }
     
-    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onCopyAll, onFreeCopy, onFavorite, onOpenInInternalBrowser) {
+    val customMenuModifier = remember(onQuote, onEdit, onDelete, onPlusOne, onForward, onMultiSelect, onCopyAll, onFreeCopy, onFavorite, onOpenInInternalBrowser, onExternalShare) {
         Modifier.appendTextContextMenuComponents {
             onCopyAll?.let { action ->
                 item(
@@ -130,6 +133,16 @@ fun MessageSelectionContainer(
                     leadingIcon = Resources.ID_NULL,
                 ) {
                     action()
+                    close()
+                }
+            }
+            onExternalShare?.let { action ->
+                item(
+                    key = MENU_ITEM_EXTERNAL_SHARE,
+                    label = "外部分享",
+                    leadingIcon = Resources.ID_NULL,
+                ) {
+                    action(null)
                     close()
                 }
             }
@@ -199,6 +212,7 @@ private const val MENU_ITEM_ADD_EXPRESSION = 1011
 private const val MENU_ITEM_BLOCK_USER = 1012
 private const val MENU_ITEM_SAVE_AUDIO = 1013
 private const val MENU_ITEM_SPEECH_TO_TEXT = 1014
+private const val MENU_ITEM_EXTERNAL_SHARE = 1015
 
 /**
  * 非文本消息没有可选择文本，不能触发 SelectionContainer。
@@ -220,7 +234,8 @@ fun rememberMessageActionMenuLauncher(
     onAddExpression: (() -> Unit)? = null,
     onBlockUser: (() -> Unit)? = null,
     onSaveAudio: (() -> Unit)? = null,
-    onSpeechToText: (() -> Unit)? = null
+    onSpeechToText: (() -> Unit)? = null,
+    onExternalShare: (() -> Unit)? = null
 ): () -> Unit {
     val view = LocalView.current
     val callbacks = remember(
@@ -237,7 +252,8 @@ fun rememberMessageActionMenuLauncher(
         onAddExpression,
         onBlockUser,
         onSaveAudio,
-        onSpeechToText
+        onSpeechToText,
+        onExternalShare
     ) {
         MessageActionCallbacks(
             onQuote = onQuote,
@@ -253,7 +269,8 @@ fun rememberMessageActionMenuLauncher(
             onAddExpression = onAddExpression,
             onBlockUser = onBlockUser,
             onSaveAudio = onSaveAudio,
-            onSpeechToText = onSpeechToText
+            onSpeechToText = onSpeechToText,
+            onExternalShare = onExternalShare
         )
     }
 
@@ -280,7 +297,8 @@ private data class MessageActionCallbacks(
     val onAddExpression: (() -> Unit)?,
     val onBlockUser: (() -> Unit)?,
     val onSaveAudio: (() -> Unit)?,
-    val onSpeechToText: (() -> Unit)?
+    val onSpeechToText: (() -> Unit)?,
+    val onExternalShare: (() -> Unit)?
 ) {
     fun hasAnyAction(): Boolean {
         return listOf(
@@ -297,7 +315,8 @@ private data class MessageActionCallbacks(
             onAddExpression,
             onBlockUser,
             onSaveAudio,
-            onSpeechToText
+            onSpeechToText,
+            onExternalShare
         ).any { it != null }
     }
 }
@@ -320,8 +339,9 @@ private fun showMessageActionMode(
             callbacks.onAddExpression?.let { menu.add(0, MENU_ITEM_ADD_EXPRESSION, 10, "添加表情") }
             callbacks.onSaveAudio?.let { menu.add(0, MENU_ITEM_SAVE_AUDIO, 11, "保存语音") }
             callbacks.onSpeechToText?.let { menu.add(0, MENU_ITEM_SPEECH_TO_TEXT, 12, "语音转文字") }
-            callbacks.onBlockUser?.let { menu.add(0, MENU_ITEM_BLOCK_USER, 13, "屏蔽用户") }
-            callbacks.onDelete?.let { menu.add(0, MENU_ITEM_DELETE, 14, "撤回") }
+            callbacks.onExternalShare?.let { menu.add(0, MENU_ITEM_EXTERNAL_SHARE, 13, "外部分享") }
+            callbacks.onBlockUser?.let { menu.add(0, MENU_ITEM_BLOCK_USER, 14, "屏蔽用户") }
+            callbacks.onDelete?.let { menu.add(0, MENU_ITEM_DELETE, 15, "撤回") }
             return menu.size() > 0
         }
 
@@ -342,6 +362,7 @@ private fun showMessageActionMode(
                 MENU_ITEM_BLOCK_USER -> callbacks.onBlockUser
                 MENU_ITEM_SAVE_AUDIO -> callbacks.onSaveAudio
                 MENU_ITEM_SPEECH_TO_TEXT -> callbacks.onSpeechToText
+                MENU_ITEM_EXTERNAL_SHARE -> callbacks.onExternalShare
                 MENU_ITEM_DELETE -> callbacks.onDelete
                 else -> null
             }
@@ -375,7 +396,8 @@ private class CustomTextToolbar(
     private val onCopyAll: (() -> Unit)?,
     private val onFreeCopy: (() -> Unit)?,
     private val onFavorite: (() -> Unit)?,
-    private val onOpenInInternalBrowser: (() -> Unit)?
+    private val onOpenInInternalBrowser: (() -> Unit)?,
+    private val onExternalShare: ((String?) -> Unit)?
 ) : TextToolbar {
     
     private var actionMode: ActionMode? = null
@@ -460,13 +482,18 @@ private class CustomTextToolbar(
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
 
+                onExternalShare?.let {
+                    menu.add(0, MENU_ITEM_EXTERNAL_SHARE, 16, "外部分享")
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
+
                 onOpenInInternalBrowser?.let {
-                    menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 16, "在内置浏览器中打开")
+                    menu.add(0, MENU_ITEM_OPEN_IN_INTERNAL_BROWSER, 17, "在内置浏览器中打开")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
                 onDelete?.let {
-                    menu.add(0, MENU_ITEM_DELETE, 17, "撤回")
+                    menu.add(0, MENU_ITEM_DELETE, 18, "撤回")
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
                 }
                 
@@ -528,6 +555,13 @@ private class CustomTextToolbar(
                     }
                     MENU_ITEM_OPEN_IN_INTERNAL_BROWSER -> {
                         onOpenInInternalBrowser?.invoke()
+                        mode.finish()
+                        true
+                    }
+                    MENU_ITEM_EXTERNAL_SHARE -> {
+                        copyCallback?.invoke()
+                        val clipboard = view.context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        onExternalShare?.invoke(clipboard?.primaryClip?.getItemAt(0)?.coerceToText(view.context)?.toString())
                         mode.finish()
                         true
                     }

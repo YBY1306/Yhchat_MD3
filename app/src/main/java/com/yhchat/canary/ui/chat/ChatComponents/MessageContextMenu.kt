@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.MaterialTheme
 import com.yhchat.canary.ui.adaptive.YhIcon as Icon
 import com.yhchat.canary.ui.adaptive.YhText as Text
@@ -66,7 +67,8 @@ fun MessageContextMenu(
     onPlusOne: (() -> Unit)? = null,  // +1 复制发送同样消息
     onFavorite: (() -> Unit)? = null,  // 收藏消息到本地
     onMultiSelect: (() -> Unit)? = null,  // 多选
-    onOpenInInternalBrowser: (() -> Unit)? = null
+    onOpenInInternalBrowser: (() -> Unit)? = null,
+    onExternalShare: (() -> Unit)? = null
 ) {
     YhAlertDialog(
         onDismissRequest = onDismiss,
@@ -121,6 +123,14 @@ fun MessageContextMenu(
                     icon = Icons.AutoMirrored.Filled.Send,
                     text = "转发"
                 )
+
+                if (onExternalShare != null) {
+                    ContextMenuAction(
+                        onClick = onExternalShare,
+                        icon = Icons.Default.Share,
+                        text = "外部分享"
+                    )
+                }
                 
                 // 编辑消息（仅对文本、Markdown、HTML、A2UI消息显示）
                 if (onEdit != null && message.contentType in listOf(1, 3, 8, 14)) {

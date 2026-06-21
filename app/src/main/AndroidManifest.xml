@@ -24,6 +24,10 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
         <package android:name="com.google.android.tts" />
         <package android:name="com.xiaomi.mibrain.speech" />
         <package android:name="com.huawei.tts" />
@@ -195,6 +199,12 @@
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:label="设置"
+            android:theme="@style/Theme.YhchatCanary" />
+
+        <activity
+            android:name=".ui.share.ExternalShareManagerActivity"
+            android:exported="false"
+            android:label="外部分享"
             android:theme="@style/Theme.YhchatCanary" />
 
         <activity
@@ -512,6 +522,11 @@
         <!-- 通知快捷回复接收器 -->
         <receiver
             android:name=".receiver.NotificationReplyReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ui.share.ExternalShareChosenReceiver"
             android:enabled="true"
             android:exported="false" />
         

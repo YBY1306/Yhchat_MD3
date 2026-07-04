@@ -62,6 +62,8 @@ import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.search.SearchActivity
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 通讯录界面

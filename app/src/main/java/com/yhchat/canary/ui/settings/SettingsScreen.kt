@@ -80,6 +80,8 @@ import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.login.LoginActivity
 import com.yhchat.canary.ui.sticker.StickerPackDetailActivity
 import com.yhchat.canary.ui.share.ExternalShareManagerActivity
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -2394,4 +2396,28 @@ private fun YhToolsPanel(
             }
         )
     )
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 设置界面预览
+ * 所有仓库参数都为 null，预览中会显示设置页面的基本骨架
+ */
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "设置界面"
+)
+@Composable
+fun SettingsScreenPreview() {
+    YhchatCanaryTheme {
+        SettingsScreen(
+            navigationRepository = null,
+            tokenRepository = null,
+            accountRepository = null
+        )
+    }
 }

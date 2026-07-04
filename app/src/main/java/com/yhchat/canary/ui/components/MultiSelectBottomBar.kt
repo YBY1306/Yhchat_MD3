@@ -21,10 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhButton
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 多选模式底部操作栏
@@ -135,5 +137,29 @@ fun MultiSelectBottomBar(
                 }
             }
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 多选底部操作栏预览（浅色主题）
+ */
+@Preview(
+    showBackground = true,
+    name = "多选操作栏"
+)
+@Composable
+fun MultiSelectBottomBarPreview() {
+    YhchatCanaryTheme {
+        MultiSelectBottomBar(
+            selectedCount = 3,          // 模拟选中了3条消息
+            onGenerateImage = {},       // 预览中点击不做操作
+            onRecall = {},
+            onForward = {},
+            onClose = {}
+        )
     }
 }

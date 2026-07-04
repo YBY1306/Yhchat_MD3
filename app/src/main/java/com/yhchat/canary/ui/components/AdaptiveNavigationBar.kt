@@ -12,8 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 import com.yhchat.canary.ui.adaptive.YhNavigationBar
 import com.yhchat.canary.ui.adaptive.YhNavigationBarItem
 import com.yhchat.canary.ui.adaptive.YhNavigationRail
@@ -178,5 +180,28 @@ fun GradientBottomNavigationBar(
                 )
             }
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 渐变底部导航栏预览
+ */
+@Preview(
+    showBackground = true,
+    name = "渐变导航栏"
+)
+@Composable
+fun GradientBottomNavigationBarPreview() {
+    val defaultItems = com.yhchat.canary.data.model.NavigationConfig.getDefault().items
+    YhchatCanaryTheme {
+        GradientBottomNavigationBar(
+            currentScreen = "conversation",
+            visibleItems = defaultItems,
+            onScreenChange = {}
+        )
     }
 }

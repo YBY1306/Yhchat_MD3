@@ -22,12 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhCard
 import com.yhchat.canary.ui.adaptive.YhFloatingActionButton
 import com.yhchat.canary.ui.adaptive.YhIconButton
 import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhSurface
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 评论输入栏组件
@@ -180,5 +182,45 @@ fun BottomCommentInputBar(
                 }
             }
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 评论输入栏预览
+ */
+@Preview(
+    showBackground = true,
+    name = "评论输入栏"
+)
+@Composable
+fun CommentInputBarPreview() {
+    YhchatCanaryTheme {
+        CommentInputBar(
+            commentText = "写得好！赞一个~",
+            onCommentTextChange = {},
+            onSendComment = {}
+        )
+    }
+}
+
+/**
+ * 评论输入栏预览（空输入）
+ */
+@Preview(
+    showBackground = true,
+    name = "评论输入栏 - 空状态"
+)
+@Composable
+fun CommentInputBarPreviewEmpty() {
+    YhchatCanaryTheme {
+        CommentInputBar(
+            commentText = "",
+            onCommentTextChange = {},
+            onSendComment = {}
+        )
     }
 }

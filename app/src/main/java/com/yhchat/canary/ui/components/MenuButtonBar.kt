@@ -16,9 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.sp
 import com.yhchat.canary.data.model.MenuButton
 import com.yhchat.canary.ui.adaptive.YhButton
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 群聊菜单按钮栏
@@ -77,6 +79,47 @@ private fun MenuButtonItem(
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 菜单按钮栏预览
+ */
+@Preview(
+    showBackground = true,
+    name = "菜单按钮栏"
+)
+@Composable
+fun MenuButtonBarPreview() {
+    // 模拟群聊机器人菜单按钮数据
+    val mockButtons = listOf(
+        MenuButton(
+            id = 1, botId = "bot1", name = "签到",
+            content = "签到", menuType = 1, createTime = 0, menuAction = 1
+        ),
+        MenuButton(
+            id = 2, botId = "bot1", name = "查询天气",
+            content = "天气", menuType = 1, createTime = 0, menuAction = 2
+        ),
+        MenuButton(
+            id = 3, botId = "bot1", name = "每日运势",
+            content = "运势", menuType = 1, createTime = 0, menuAction = 3
+        ),
+        MenuButton(
+            id = 4, botId = "bot1", name = "更多功能",
+            content = "更多", menuType = 1, createTime = 0, menuAction = 4
+        )
+    )
+
+    YhchatCanaryTheme {
+        MenuButtonBar(
+            menuButtons = mockButtons,
+            onButtonClick = {}  // 预览中点击不做操作
         )
     }
 }

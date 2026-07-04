@@ -67,6 +67,8 @@ import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.rememberBooleanPreference
 import com.yhchat.canary.ui.search.SearchActivity
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 通讯录界面
@@ -731,3 +733,12 @@ private fun InfoLine(label: String, value: String) {
     }
     Spacer(modifier = Modifier.height(8.dp))
 }
+
+@Preview(showBackground = true, showSystemUi = true, name = "通讯录界面")
+@Composable
+private fun ContactsScreenPreview() {
+    YhchatCanaryTheme {
+        ContactsScreen()
+    }
+}
+

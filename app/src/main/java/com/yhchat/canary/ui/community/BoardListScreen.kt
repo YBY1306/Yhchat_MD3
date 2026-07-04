@@ -36,9 +36,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityBoard
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import com.yhchat.canary.ui.components.ImageUtils
 
 /**
@@ -222,5 +224,17 @@ fun BoardItem(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "板块列表")
+@Composable
+private fun BoardListScreenPreview() {
+    YhchatCanaryTheme {
+        BoardListScreen(
+            boards = emptyList(),
+            onBoardClick = {},
+            onSearchClick = {}
+        )
     }
 }

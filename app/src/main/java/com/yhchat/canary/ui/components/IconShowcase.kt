@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 图标展示界面 - 用于查看所有可用的图标
@@ -164,5 +166,23 @@ private fun IconItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 图标展示界面预览
+ */
+@Preview(
+    showBackground = true,
+    name = "图标展示"
+)
+@Composable
+fun IconShowcasePreview() {
+    YhchatCanaryTheme {
+        IconShowcase()
     }
 }

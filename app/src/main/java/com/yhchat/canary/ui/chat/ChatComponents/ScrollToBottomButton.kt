@@ -13,7 +13,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * "回到最新消息"浮动按钮
@@ -41,5 +43,26 @@ fun ScrollToBottomButton(
                 contentDescription = "回到最新消息"
             )
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 回到最新消息按钮预览
+ */
+@Preview(
+    showBackground = true,
+    name = "滚动到底部按钮"
+)
+@Composable
+fun ScrollToBottomButtonPreview() {
+    YhchatCanaryTheme {
+        ScrollToBottomButton(
+            visible = true,    // true = 显示按钮，false = 隐藏
+            onClick = {}
+        )
     }
 }

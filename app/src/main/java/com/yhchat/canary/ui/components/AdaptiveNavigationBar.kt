@@ -23,8 +23,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.data.model.NavigationItem
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 自适应导航栏 - LibChecker风格
@@ -249,5 +251,28 @@ fun GradientBottomNavigationBar(
                 )
             }
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 渐变底部导航栏预览
+ */
+@Preview(
+    showBackground = true,
+    name = "渐变导航栏"
+)
+@Composable
+fun GradientBottomNavigationBarPreview() {
+    val defaultItems = com.yhchat.canary.data.model.NavigationConfig.getDefault().items
+    YhchatCanaryTheme {
+        GradientBottomNavigationBar(
+            currentScreen = "conversation",
+            visibleItems = defaultItems,
+            onScreenChange = {}
+        )
     }
 }

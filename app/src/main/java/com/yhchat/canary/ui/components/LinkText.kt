@@ -11,6 +11,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview  // 引入预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 引入主题
 import com.yhchat.canary.ui.webview.WebViewActivity
 import com.yhchat.canary.utils.UnifiedLinkHandler
 import java.util.regex.Pattern
@@ -120,5 +122,65 @@ object LinkDetector {
         }
         
         return links
+    }
+}
+
+// ============================================================
+// @Preview 预览 — 不点"运行"，在 IDE 里就能直接看组件效果！
+// ============================================================
+
+/**
+ * LinkText 的预览
+ *
+ * @Preview 的参数说明：
+ *   showBackground = true     → 显示背景（默认是透明背景，加上白色背景更好看）
+ *   backgroundColor           → 自定义背景颜色（后面那个 0xFF 是 ARGB 格式的颜色值）
+ *   showSystemUi = true       → 显示系统状态栏和导航栏（更逼真）
+ *   fontScale                 → 字体缩放比例（可以测试大字模式下的布局）
+ *   locale                    → 模拟不同语言环境
+ *   uiMode                    → 模拟不同的UI模式（如车载、电视等）
+ *   widthDp / heightDp        → 限制预览的尺寸，适合测试不同屏幕大小
+ *
+ * 常用 @Preview 变体：
+ *   @Preview(device = "id:specs")  → 指定预览设备（如 "id:pixel_6"）
+ *   @Preview(apiLevel = 33)        → 指定 API 级别
+ */
+@Preview(
+    showBackground = true,
+    name = "链接文本预览"
+)
+@Composable
+fun LinkTextPreview() {
+    // 用 App 的主题包裹，让预览使用正确的颜色和字体
+    YhchatCanaryTheme {
+        LinkText(
+            text = "你好！欢迎使用云湖聊天。\n" +
+                    "访问官网：https://yhchat.com\n" +
+                    "查看帮助：https://help.yhchat.com",
+            // 使用 Material3 主题色作为链接颜色
+            linkColor = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+/**
+ * 带自定义样式的 LinkText 预览
+ *
+ * 一个文件里可以写多个 @Preview 函数，
+ * 它们会并排显示在预览面板中，方便对比不同状态。
+ */
+@Preview(
+    showBackground = true,
+    name = "链接文本 - 大字模式",
+    fontScale = 1.5f  // 字体放大 1.5 倍，测试无障碍模式
+)
+@Composable
+fun LinkTextPreviewLargeFont() {
+    YhchatCanaryTheme {
+        LinkText(
+            text = "大字模式下的链接：https://yhchat.com",
+            // 自定义样式：字号更大
+            style = MaterialTheme.typography.titleLarge
+        )
     }
 }

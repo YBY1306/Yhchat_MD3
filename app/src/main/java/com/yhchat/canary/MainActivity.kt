@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.content.res.Configuration  // 用于 @Preview 的 uiMode 参数（夜间模式）
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1048,6 +1049,10 @@ class MainActivity : BaseActivity() {
 }
 
 
+/**
+ * 普通的 Composable 函数
+ * @param modifier 修饰符
+ */
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
     Text(
@@ -1056,9 +1061,121 @@ fun MainScreen(modifier: Modifier = Modifier) {
     )
 }
 
-@Preview(showBackground = true)
+// ============================================================
+// 🎯 @Preview — Compose 预览的核心注解
+//
+// 工作原理：
+//   Android Studio 在编译时，会为所有加了 @Preview 的 Composable
+//   函数生成预览快照。它不需要运行 App，直接在 IDE 里渲染。
+//   你在代码中修改了什么，保存后预览会立刻刷新（Hot Reload）。
+//
+// 🎨 @Preview 常用参数一览：
+//
+//   showBackground = true/false
+//       是否显示背景（默认透明）。建议 true，方便看组件边界。
+//
+//   backgroundColor = 0xFF... (ARGB 格式)
+//       自定义背景颜色。0xFF 开头表示完全不透明。
+//       例：0xFFFF0000 = 红色背景
+//
+//   showSystemUi = true/false
+//       是否模拟系统状态栏和导航栏。
+//       设为 true 更贴近真机效果，但会占更多预览空间。
+//
+//   name = "自定义名称"
+//       给你的预览起个名字，多个预览时可以快速区分。
+//
+//   group = "分组名"
+//       把相关的预览放在同一个组里，方便管理。
+//
+//   device = "id:设备ID"
+//       指定模拟的设备，内置常见设备：
+//       "id:pixel_6"    → Pixel 6
+//       "id:pixel_4"    → Pixel 4
+//       "id: Nexus 7"  → 平板
+//       "spec:width=...dp,height=...dp" → 自定义尺寸
+//
+//   apiLevel = 33
+//       模拟指定 Android API 级别的行为。
+//
+//   uiMode = Configuration.UI_MODE_NIGHT_YES
+//       模拟夜间模式。
+//
+//   fontScale = 1.0f
+//       字体缩放比例，1.0f 是默认大小。
+//       设为 1.5f 可测试大字模式下的布局是否正常。
+//
+//   locale = "zh"
+//       模拟不同语言环境。
+//
+// 📱 使用技巧：
+//   1. 一个文件里可以写多个 @Preview，它们会并排显示
+//   2. 预览函数命名建议以 "Preview" 结尾，方便搜索
+//   3. 预览函数应该用 Theme 包裹，保证颜色、字体和 App 一致
+//   4. 如果预览内容依赖 ViewModel，在预览中传入模拟数据（mock data）
+// ============================================================
+
+/**
+ * MainScreen 的预览
+ * 这是最基础的 @Preview 用法
+ */
+@Preview(
+    showBackground = true,
+    name = "主屏幕预览"
+)
 @Composable
 fun MainScreenPreview() {
+    // 必须用 YhchatCanaryTheme 包裹，否则预览会使用 Compose 默认主题，
+    // 颜色和字体都跟你的 App 不一样。
+    YhchatCanaryTheme {
+        MainScreen()
+    }
+}
+
+/**
+ * 带更多设置的预览示例
+ */
+@Preview(
+    showBackground = true,
+    showSystemUi = true,          // 显示状态栏
+    name = "主屏幕 - 带系统栏",
+    device = "id:pixel_6",        // 模拟 Pixel 6 屏幕尺寸
+    apiLevel = 33                 // Android 13
+)
+@Composable
+fun MainScreenPreviewWithSystemUi() {
+    YhchatCanaryTheme {
+        MainScreen()
+    }
+}
+
+/**
+ * 深色模式预览
+ */
+@Preview(
+    showBackground = true,
+    name = "主屏幕 - 深色模式",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES  // 模拟夜间模式
+)
+@Composable
+fun MainScreenPreviewDark() {
+    // darkTheme = true 让主题使用深色配色
+    YhchatCanaryTheme(darkTheme = true) {
+        MainScreen()
+    }
+}
+
+/**
+ * 平板模式预览（大屏幕）
+ */
+@Preview(
+    showBackground = true,
+    name = "主屏幕 - 平板",
+    device = "id: Nexus 7",
+    showSystemUi = true
+)
+@Composable
+fun MainScreenPreviewTablet() {
     YhchatCanaryTheme {
         MainScreen()
     }

@@ -44,6 +44,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -781,4 +783,26 @@ fun ExitGroupDialog(
 private fun formatGroupUnbanTime(timestamp: Long?): String {
     if (timestamp == null || timestamp <= 0L) return "未设置"
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp * 1000L))
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 退出群聊对话框预览
+ */
+@Preview(
+    showBackground = true,
+    name = "退出群聊对话框"
+)
+@Composable
+fun ExitGroupDialogPreview() {
+    YhchatCanaryTheme {
+        ExitGroupDialog(
+            groupName = "云湖聊天技术交流群",
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
 }

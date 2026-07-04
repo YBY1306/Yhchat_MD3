@@ -78,8 +78,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -1554,6 +1556,82 @@ fun IntegratedStickyItem(
             modifier = Modifier.width(58.dp),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 未读消息徽章预览
+ */
+@Preview(
+    showBackground = true,
+    name = "未读徽章"
+)
+@Composable
+fun UnreadBadgePreview() {
+    YhchatCanaryTheme {
+        UnreadBadge(count = 5)
+    }
+}
+
+/**
+ * 未读消息徽章预览（三位数）
+ */
+@Preview(
+    showBackground = true,
+    name = "未读徽章 - 99+"
+)
+@Composable
+fun UnreadBadgePreviewMany() {
+    YhchatCanaryTheme {
+        UnreadBadge(count = 128)
+    }
+}
+
+/**
+ * 会话类型图标预览
+ */
+@Preview(
+    showBackground = true,
+    name = "会话类型图标"
+)
+@Composable
+fun ChatTypeIconPreview() {
+    YhchatCanaryTheme {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ChatTypeIcon(chatType = 1)  // 用户
+            ChatTypeIcon(chatType = 2)  // 群聊
+            ChatTypeIcon(chatType = 3)  // 机器人
+        }
+    }
+}
+
+/**
+ * 置顶会话卡片预览
+ */
+@Preview(
+    showBackground = true,
+    name = "置顶卡片"
+)
+@Composable
+fun StickyConversationCardPreview() {
+    val mockSticky = StickyItem(
+        id = 1, chatType = 2, chatId = "g1",
+        chatName = "群聊", sort = 0, avatarUrl = "",
+        createTime = 0, delFlag = 0, userId = "u1",
+        certificationLevel = 0
+    )
+    YhchatCanaryTheme {
+        StickyConversationCard(
+            stickyItem = mockSticky,
+            onClick = {}
         )
     }
 }

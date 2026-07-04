@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 import androidx.compose.ui.unit.dp
 import com.yhchat.canary.ui.adaptive.YhAlertDialog
 import com.yhchat.canary.ui.adaptive.YhBottomSheet
@@ -332,6 +334,47 @@ fun GroupMenuItem(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = textColor
+        )
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 群聊菜单项预览（普通）
+ */
+@Preview(
+    showBackground = true,
+    name = "群聊菜单项 - 普通"
+)
+@Composable
+fun GroupMenuItemPreviewNormal() {
+    YhchatCanaryTheme {
+        GroupMenuItem(
+            icon = androidx.compose.material.icons.Icons.Default.Settings,
+            text = "群聊设置",
+            onClick = {}
+        )
+    }
+}
+
+/**
+ * 群聊菜单项预览（危险操作）
+ */
+@Preview(
+    showBackground = true,
+    name = "群聊菜单项 - 危险"
+)
+@Composable
+fun GroupMenuItemPreviewDanger() {
+    YhchatCanaryTheme {
+        GroupMenuItem(
+            icon = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ExitToApp,
+            text = "退出群聊",
+            onClick = {},
+            isDangerous = true  // 危险操作显示红色
         )
     }
 }

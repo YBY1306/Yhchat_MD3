@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
@@ -52,6 +53,7 @@ import com.yhchat.canary.ui.adaptive.YhOutlinedTextField
 import com.yhchat.canary.ui.adaptive.YhSegmentedControl
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTextButton
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
  * 登录界面
@@ -438,4 +440,12 @@ private fun TokenLoginDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "登录界面")
+@Composable
+private fun LoginScreenPreview() {
+    YhchatCanaryTheme {
+        LoginScreen(onLoginSuccess = { _, _ -> })
+    }
 }

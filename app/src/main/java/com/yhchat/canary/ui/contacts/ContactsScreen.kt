@@ -731,3 +731,11 @@ private fun InfoLine(label: String, value: String) {
     Spacer(modifier = Modifier.height(8.dp))
 }
 
+@Preview(showBackground = true, showSystemUi = true, name = "通讯录界面")
+@Composable
+private fun ContactsScreenPreview() {
+    YhchatCanaryTheme {
+        ContactsScreen()
+    }
+}
+

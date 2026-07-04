@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yhchat.canary.data.model.CommunityPost
@@ -44,6 +45,7 @@ import com.yhchat.canary.ui.adaptive.YhScaffold
 import com.yhchat.canary.ui.adaptive.YhText as Text
 import com.yhchat.canary.ui.adaptive.YhTopBar
 import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
  * 文章列表界面
@@ -377,6 +379,20 @@ private fun StatItem(
                 MaterialTheme.colorScheme.primary 
             else 
                 MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "文章列表")
+@Composable
+private fun PostListScreenPreview() {
+    YhchatCanaryTheme {
+        PostListScreen(
+            boardName = "预览板块",
+            posts = emptyList(),
+            onPostClick = {},
+            onBackClick = {},
+            onSearchClick = {}
         )
     }
 }

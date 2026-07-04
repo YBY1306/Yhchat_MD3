@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -45,6 +46,7 @@ import com.yhchat.canary.ui.adaptive.yhTopBarNestedScroll
 import com.yhchat.canary.ui.chat.ChatActivity
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -726,4 +728,12 @@ private fun openChat(context: Context, chatId: String, chatType: Int, chatName: 
         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
     }
     context.startActivity(intent)
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "发现界面")
+@Composable
+private fun DiscoverScreenPreview() {
+    YhchatCanaryTheme {
+        DiscoverScreen()
+    }
 }

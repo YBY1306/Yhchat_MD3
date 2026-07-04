@@ -37,6 +37,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.yhchat.canary.R
 import com.yhchat.canary.data.model.StickyItem
+import androidx.compose.ui.tooling.preview.Preview  // 预览注解
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme  // 主题
 
 /**
  * 置顶会话组件
@@ -212,5 +214,69 @@ fun StickyConversationItem(
                 modifier = Modifier.width(58.dp)
             )
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ * 置顶会话项预览
+ */
+@Preview(
+    showBackground = true,
+    name = "置顶会话项",
+    widthDp = 80  // 限制宽度，模拟单个会话项
+)
+@Composable
+fun StickyConversationItemPreview() {
+    val mockSticky = StickyItem(
+        id = 1,
+        chatType = 2,
+        chatId = "group123",
+        chatName = "云湖聊天群",
+        sort = 0,
+        avatarUrl = "",
+        createTime = 0,
+        delFlag = 0,
+        userId = "user1",
+        certificationLevel = 0
+    )
+    YhchatCanaryTheme {
+        StickyConversationItem(
+            stickyItem = mockSticky,
+            onClick = {}
+        )
+    }
+}
+
+/**
+ * 置顶会话项预览（已认证）
+ */
+@Preview(
+    showBackground = true,
+    name = "置顶会话项 - 认证",
+    widthDp = 80
+)
+@Composable
+fun StickyConversationItemPreviewCertified() {
+    val mockSticky = StickyItem(
+        id = 2,
+        chatType = 2,
+        chatId = "group456",
+        chatName = "官方交流群",
+        sort = 0,
+        avatarUrl = "",
+        createTime = 0,
+        delFlag = 0,
+        userId = "user2",
+        certificationLevel = 1  // 官方认证，会显示绿色"官"标记
+    )
+    YhchatCanaryTheme {
+        StickyConversationItem(
+            stickyItem = mockSticky,
+            onClick = {}
+        )
     }
 }

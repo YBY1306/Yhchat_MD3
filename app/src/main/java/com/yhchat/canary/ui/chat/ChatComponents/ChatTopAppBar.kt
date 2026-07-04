@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -43,6 +44,7 @@ import com.yhchat.canary.ui.chat.ChatUiState
 import com.yhchat.canary.ui.components.ImageUtils
 import com.yhchat.canary.ui.components.isLargeScreenLayout
 import com.yhchat.canary.ui.components.rememberBooleanPreference
+import com.yhchat.canary.ui.theme.YhchatCanaryTheme
 
 /**
  * 聊天界面顶部应用栏
@@ -454,5 +456,34 @@ private fun LiveWaveButton(
                     )
             )
         }
+    }
+}
+
+// ============================================================
+// @Preview 预览
+// ============================================================
+
+/**
+ */
+@Preview(
+    showBackground = true,
+    name = "ChatTopAppBar"
+)
+@Composable
+fun ChatTopAppBarPreview() {
+    YhchatCanaryTheme {
+        ChatTopAppBar(
+            chatId = "ChatId",
+            chatType = -1,
+            chatName = "ChatName",
+            uiState = ChatUiState(),
+            showTtsButton = true,
+            showRefreshButton = true,
+            showLiveButton = true,
+            onBackClick = { /*TODO*/ },
+            onRefreshClick = { /*TODO*/ },
+            onTtsClick = { /*TODO*/ },
+            onLiveClick = { /*TODO*/ }
+        )
     }
 }

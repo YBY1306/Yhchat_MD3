@@ -34,12 +34,7 @@ android {
     productFlavors {
         create("standard") {
             dimension = "player"
-            buildConfigField("boolean", "WITH_PLAYER", "false")
-            buildConfigField("boolean", "WITH_LIVE", "false")
         }
-    }
-    buildFeatures {
-        buildConfig = true
     }
 
 

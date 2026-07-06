@@ -49,3 +49,4 @@ rootProject.name = "Yhchat Canary"
 include(":app")
 include(":player")
 include(":live")
+include(":dynamicfeature")

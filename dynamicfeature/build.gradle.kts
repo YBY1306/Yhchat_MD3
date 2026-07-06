@@ -30,12 +30,6 @@ android {
         jvmTarget = "11"
     }
 
-    flavorDimensions += "player"
-    productFlavors {
-        create("standard") {
-            dimension = "player"
-        }
-    }
 
 
 }

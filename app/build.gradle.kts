@@ -70,6 +70,10 @@ android {
             buildConfigField("boolean", "WITH_PLAYER", "false")
             buildConfigField("boolean", "WITH_LIVE", "true")
         }
+        debug {
+            buildConfigField("boolean", "WITH_PLAYER", "false")
+            buildConfigField("boolean", "WITH_LIVE", "true")
+        }
     }
 
 

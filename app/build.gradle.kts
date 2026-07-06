@@ -84,6 +84,7 @@ android {
         buildConfig = true
     }
     dynamicFeatures += setOf(":dynamicfeature")
+    dynamicFeatures += setOf(":live")
 }
 
 kotlin {

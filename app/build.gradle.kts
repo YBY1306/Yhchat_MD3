@@ -12,7 +12,7 @@ plugins {
 android {
     namespace = "com.yhchat.canary"
     compileSdk = 36
-    val baseVersionName = "21.7"
+    val baseVersionName = ""
     val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix").orNull
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
@@ -38,7 +38,7 @@ android {
         applicationId = "com.yhchat.canary"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
+        // versionCode = 0
         versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

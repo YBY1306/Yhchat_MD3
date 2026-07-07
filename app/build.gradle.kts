@@ -85,6 +85,7 @@ android {
     }
     dynamicFeatures += setOf(":dynamicfeature")
     dynamicFeatures += setOf(":live")
+    dynamicFeatures += setOf(":player")
 }
 
 kotlin {
